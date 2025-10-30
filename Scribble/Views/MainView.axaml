@@ -6,11 +6,14 @@
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:Class="Scribble.Views.MainView"
              x:DataType="vm:MainViewModel">
-  <Design.DataContext>
-    <!-- This only sets the DataContext for the previewer in an IDE,
+    <Design.DataContext>
+        <!-- This only sets the DataContext for the previewer in an IDE,
          to set the actual DataContext for runtime, set the DataContext property in code (look at App.axaml.cs) -->
-    <vm:MainViewModel />
-  </Design.DataContext>
+        <vm:MainViewModel />
+    </Design.DataContext>
 
-  <TextBlock Text="{Binding Greeting}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+    <Canvas Name="MainCanvas" Background="DimGray" PointerPressed="InputElement_OnPointerPressed"
+            PointerReleased="InputElement_OnPointerReleased" PointerMoved="InputElement_OnPointerMoved">
+        <Rectangle Width="5" Height="5" Fill="Red"></Rectangle>
+    </Canvas>
 </UserControl>
