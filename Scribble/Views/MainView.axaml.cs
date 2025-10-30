@@ -1,3 +1,4 @@
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Shapes;
 using Avalonia.Input;
@@ -7,35 +8,31 @@ namespace Scribble.Views;
 
 public partial class MainView : UserControl
 {
-    private bool _mouseIsPressed = false;
-
     public MainView()
     {
         InitializeComponent();
     }
 
-    private void InputElement_OnPointerPressed(object? sender, PointerPressedEventArgs e)
-    {
-        _mouseIsPressed = true;
-    }
-
-    private void InputElement_OnPointerReleased(object? sender, PointerReleasedEventArgs e)
-    {
-        _mouseIsPressed = false;
-    }
-
     private void InputElement_OnPointerMoved(object? sender, PointerEventArgs e)
     {
-        if (!_mouseIsPressed) return;
-        var mousePosition = e.GetPosition(MainCanvas);
+        if (e.Properties.IsLeftButtonPressed)
+        {
+            Draw(e.GetPosition(MainCanvas));
+        };
+        
+    }
+
+    private void Draw(Point inputDevicePosition)
+    {
+        // Draw pixels on the canvas
         var pixel = new Rectangle
         {
-            Width = 5,
-            Height = 5,
+            Width = 2,
+            Height = 2,
             Fill = Brushes.Red
         };
-        Canvas.SetLeft(pixel, mousePosition.X);
-        Canvas.SetTop(pixel, mousePosition.Y);
+        Canvas.SetLeft(pixel, inputDevicePosition.X);
+        Canvas.SetTop(pixel, inputDevicePosition.Y);
         MainCanvas.Children.Add(pixel);
     }
 }

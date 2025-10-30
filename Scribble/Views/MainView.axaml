@@ -12,8 +12,6 @@
         <vm:MainViewModel />
     </Design.DataContext>
 
-    <Canvas Name="MainCanvas" Background="DimGray" PointerPressed="InputElement_OnPointerPressed"
-            PointerReleased="InputElement_OnPointerReleased" PointerMoved="InputElement_OnPointerMoved">
-        <Rectangle Width="5" Height="5" Fill="Red"></Rectangle>
+    <Canvas Name="MainCanvas" Background="DimGray" PointerMoved="InputElement_OnPointerMoved">
     </Canvas>
 </UserControl>
