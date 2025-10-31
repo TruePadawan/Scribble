@@ -50,7 +50,6 @@ public partial class MainView : UserControl
         MainCanvas.Children.Add(pixel);
     }
 
-    // TODO: Implement Xiaolin Wu's line algorithm
     private void DrawLine(Point start, Point end)
     {
         // Check if the line segment is longer on the x or y-axis to know if we have a horizontal or vertical line
@@ -68,6 +67,18 @@ public partial class MainView : UserControl
             var deltaX = end.X - start.X;
             var deltaY = end.Y - start.Y;
             var slope = deltaX == 0 ? 1 : deltaY / deltaX;
+
+            // Handle opacity for the first pixel
+            var xOverlapDistance = 1 - ((start.X + 0.5) - (int)(start.X + 0.5));
+            var firstPixelAlpha = start.Y - (int)start.Y;
+            PutPixel(new Point((int)(start.X + 0.5), (int)start.Y), (1 - firstPixelAlpha) * xOverlapDistance);
+            PutPixel(new Point((int)(start.X + 0.5), (int)start.Y + 1), firstPixelAlpha * xOverlapDistance);
+
+            // Handle opacity for the last pixel
+            xOverlapDistance = ((end.X - 0.5) - (int)(end.X - 0.5));
+            firstPixelAlpha = end.Y - (int)end.Y;
+            PutPixel(new Point((int)(end.X + 0.5), (int)end.Y), (1 - firstPixelAlpha) * xOverlapDistance);
+            PutPixel(new Point((int)(end.X + 0.5), (int)end.Y + 1), firstPixelAlpha * xOverlapDistance);
 
             for (var i = 0; i < (int)deltaX + 1; i++)
             {
@@ -96,6 +107,18 @@ public partial class MainView : UserControl
             var deltaX = end.X - start.X;
             var deltaY = end.Y - start.Y;
             var slope = deltaY == 0 ? 1 : deltaX / deltaY;
+
+            // Handle opacity for the first pixel
+            var xOverlapDistance = 1 - ((start.Y + 0.5) - (int)(start.Y + 0.5));
+            var firstPixelAlpha = start.Y - (int)start.Y;
+            PutPixel(new Point((int)(start.X + 0.5), (int)start.Y), (1 - firstPixelAlpha) * xOverlapDistance);
+            PutPixel(new Point((int)(start.X + 0.5), (int)start.Y + 1), firstPixelAlpha * xOverlapDistance);
+
+            // Handle opacity for the last pixel
+            xOverlapDistance = ((end.Y - 0.5) - (int)(end.Y - 0.5));
+            firstPixelAlpha = end.Y - (int)end.Y;
+            PutPixel(new Point((int)end.X, (int)(end.Y + 0.5)), (1 - firstPixelAlpha) * xOverlapDistance);
+            PutPixel(new Point((int)end.X + 1, (int)(end.Y + 0.5)), firstPixelAlpha * xOverlapDistance);
 
             for (var i = 0; i < (int)deltaY + 1; i++)
             {
