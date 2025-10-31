@@ -8,31 +8,66 @@ namespace Scribble.Views;
 
 public partial class MainView : UserControl
 {
+    private Point _prevCoord;
+
     public MainView()
     {
+        _prevCoord = new Point(-1, -1);
         InitializeComponent();
     }
 
-    private void InputElement_OnPointerMoved(object? sender, PointerEventArgs e)
+    private void MainCanvas_OnPointerMoved(object? sender, PointerEventArgs e)
     {
-        if (e.Properties.IsLeftButtonPressed)
+        var pointerCoordinates = e.GetPosition(MainCanvas);
+        var hasLastCoordinates = !_prevCoord.NearlyEquals(new Point(-1, -1));
+
+        if (e.Properties.IsLeftButtonPressed && hasLastCoordinates)
         {
-            Draw(e.GetPosition(MainCanvas));
-        };
-        
+            DrawLine(_prevCoord, pointerCoordinates);
+        }
+
+        _prevCoord = e.GetPosition(MainCanvas);
     }
 
-    private void Draw(Point inputDevicePosition)
+    private void MainCanvas_OnPointerReleased(object? sender, PointerReleasedEventArgs e)
     {
-        // Draw pixels on the canvas
+        // Reset the last coordinates when the mouse is released
+        _prevCoord = new Point(-1, -1);
+    }
+
+    private void PutPixel(Point coord, double opacity)
+    {
         var pixel = new Rectangle
         {
             Width = 2,
             Height = 2,
-            Fill = Brushes.Red
+            Fill = Brushes.Red,
+            Opacity = opacity
         };
-        Canvas.SetLeft(pixel, inputDevicePosition.X);
-        Canvas.SetTop(pixel, inputDevicePosition.Y);
+        Canvas.SetLeft(pixel, coord.X);
+        Canvas.SetTop(pixel, coord.Y);
         MainCanvas.Children.Add(pixel);
+    }
+
+    // TODO: Implement Xiaolin Wu's line algorithm
+    private void DrawLine(Point start, Point end)
+    {
+        // TODO: Handle Left and Vertical Lines
+        var deltaX = end.X - start.X;
+        var deltaY = end.Y - start.Y;
+        var slope = deltaX == 0 ? 1 : deltaY / deltaX;
+
+        for (var i = 0; i < (int)deltaX + 1; i++)
+        {
+            var x = start.X + i;
+            var y = start.Y + (i * slope);
+            var pixelIntegerCoord = new Point((int)x, (int)y);
+
+            // Calculate the alpha values used for opacity
+            var alpha = y - (int)y;
+
+            PutPixel(pixelIntegerCoord, 1 - alpha);
+            PutPixel(pixelIntegerCoord.WithY((int)y + 1), alpha);
+        }
     }
 }

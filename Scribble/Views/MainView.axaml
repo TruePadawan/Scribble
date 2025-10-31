@@ -12,6 +12,6 @@
         <vm:MainViewModel />
     </Design.DataContext>
 
-    <Canvas Name="MainCanvas" Background="DimGray" PointerMoved="InputElement_OnPointerMoved">
+    <Canvas Name="MainCanvas" Background="DimGray" PointerMoved="MainCanvas_OnPointerMoved" PointerReleased="MainCanvas_OnPointerReleased">
     </Canvas>
 </UserControl>
