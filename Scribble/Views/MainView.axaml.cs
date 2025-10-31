@@ -19,7 +19,7 @@ public partial class MainView : UserControl
     private void MainCanvas_OnPointerMoved(object? sender, PointerEventArgs e)
     {
         var pointerCoordinates = e.GetPosition(MainCanvas);
-        var hasLastCoordinates = !_prevCoord.NearlyEquals(new Point(-1, -1));
+        var hasLastCoordinates = !_prevCoord.Equals(new Point(-1, -1));
 
         if (e.Properties.IsLeftButtonPressed && hasLastCoordinates)
         {
@@ -52,7 +52,14 @@ public partial class MainView : UserControl
     // TODO: Implement Xiaolin Wu's line algorithm
     private void DrawLine(Point start, Point end)
     {
-        // TODO: Handle Left and Vertical Lines
+        // TODO: Handle Vertical Lines
+        if (end.X < start.X)
+        {
+            var temp = new Point(end.X, end.Y);
+            end = start;
+            start = temp;
+        }
+
         var deltaX = end.X - start.X;
         var deltaY = end.Y - start.Y;
         var slope = deltaX == 0 ? 1 : deltaY / deltaX;
