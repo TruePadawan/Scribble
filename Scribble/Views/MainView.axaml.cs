@@ -110,16 +110,16 @@ public partial class MainView : UserControl
             var slope = deltaY == 0 ? 1 : deltaX / deltaY;
 
             // Handle opacity for the first pixel
-            var xOverlapDistance = 1 - ((start.Y + 0.5) - (int)(start.Y + 0.5));
+            var yOverlapDistance = 1 - ((start.Y + 0.5) - (int)(start.Y + 0.5));
             var firstPixelAlpha = start.Y - (int)start.Y;
-            PutPixel(new Point((int)(start.X + 0.5), (int)start.Y), (1 - firstPixelAlpha) * xOverlapDistance);
-            PutPixel(new Point((int)(start.X + 0.5), (int)start.Y + 1), firstPixelAlpha * xOverlapDistance);
+            PutPixel(new Point((int)(start.X + 0.5), (int)start.Y), (1 - firstPixelAlpha) * yOverlapDistance);
+            PutPixel(new Point((int)(start.X + 0.5), (int)start.Y + 1), firstPixelAlpha * yOverlapDistance);
 
             // Handle opacity for the last pixel
-            xOverlapDistance = ((end.Y - 0.5) - (int)(end.Y - 0.5));
+            yOverlapDistance = ((end.Y - 0.5) - (int)(end.Y - 0.5));
             firstPixelAlpha = end.Y - (int)end.Y;
-            PutPixel(new Point((int)end.X, (int)(end.Y + 0.5)), (1 - firstPixelAlpha) * xOverlapDistance);
-            PutPixel(new Point((int)end.X + 1, (int)(end.Y + 0.5)), firstPixelAlpha * xOverlapDistance);
+            PutPixel(new Point((int)end.X, (int)(end.Y + 0.5)), (1 - firstPixelAlpha) * yOverlapDistance);
+            PutPixel(new Point((int)end.X + 1, (int)(end.Y + 0.5)), firstPixelAlpha * yOverlapDistance);
 
             for (var i = 0; i < (int)deltaY + 1; i++)
             {
