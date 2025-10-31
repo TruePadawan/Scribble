@@ -50,6 +50,7 @@ public partial class MainView : UserControl
         MainCanvas.Children.Add(pixel);
     }
 
+    // Draw lines using Xiaolin Wu's Line Algorithm
     private void DrawLine(Point start, Point end)
     {
         // Check if the line segment is longer on the x or y-axis to know if we have a horizontal or vertical line
