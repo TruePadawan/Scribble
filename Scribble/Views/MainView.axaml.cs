@@ -1,3 +1,4 @@
+using System;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Shapes;
@@ -52,29 +53,62 @@ public partial class MainView : UserControl
     // TODO: Implement Xiaolin Wu's line algorithm
     private void DrawLine(Point start, Point end)
     {
-        // TODO: Handle Vertical Lines
-        if (end.X < start.X)
+        // Check if the line segment is longer on the x or y-axis to know if we have a horizontal or vertical line
+        if (Math.Abs(end.Y - start.Y) < Math.Abs(end.X - start.X))
         {
-            var temp = new Point(end.X, end.Y);
-            end = start;
-            start = temp;
+            // HORIZONTAL LINE
+            // Handle lines drawn to the left by swapping the start and end coordinates
+            if (end.X < start.X)
+            {
+                var temp = new Point(end.X, end.Y);
+                end = start;
+                start = temp;
+            }
+
+            var deltaX = end.X - start.X;
+            var deltaY = end.Y - start.Y;
+            var slope = deltaX == 0 ? 1 : deltaY / deltaX;
+
+            for (var i = 0; i < (int)deltaX + 1; i++)
+            {
+                var x = start.X + i;
+                var y = start.Y + (i * slope);
+                var pixelIntegerCoord = new Point((int)x, (int)y);
+
+                // Calculate the alpha values used for opacity
+                var alpha = y - (int)y;
+
+                PutPixel(pixelIntegerCoord, 1 - alpha);
+                PutPixel(pixelIntegerCoord.WithY((int)y + 1), alpha);
+            }
         }
-
-        var deltaX = end.X - start.X;
-        var deltaY = end.Y - start.Y;
-        var slope = deltaX == 0 ? 1 : deltaY / deltaX;
-
-        for (var i = 0; i < (int)deltaX + 1; i++)
+        else
         {
-            var x = start.X + i;
-            var y = start.Y + (i * slope);
-            var pixelIntegerCoord = new Point((int)x, (int)y);
+            // VERTICAL LINE
+            // Handle lines drawn to the left
+            if (end.Y < start.Y)
+            {
+                var temp = new Point(end.X, end.Y);
+                end = start;
+                start = temp;
+            }
 
-            // Calculate the alpha values used for opacity
-            var alpha = y - (int)y;
+            var deltaX = end.X - start.X;
+            var deltaY = end.Y - start.Y;
+            var slope = deltaY == 0 ? 1 : deltaX / deltaY;
 
-            PutPixel(pixelIntegerCoord, 1 - alpha);
-            PutPixel(pixelIntegerCoord.WithY((int)y + 1), alpha);
+            for (var i = 0; i < (int)deltaY + 1; i++)
+            {
+                var x = start.X + (i * slope);
+                var y = start.Y + i;
+                var pixelIntegerCoord = new Point((int)x, (int)y);
+
+                // Calculate the alpha values used for opacity
+                var alpha = x - (int)x;
+
+                PutPixel(pixelIntegerCoord, 1 - alpha);
+                PutPixel(pixelIntegerCoord.WithX((int)x + 1), alpha);
+            }
         }
     }
 }
