@@ -12,36 +12,18 @@ public partial class MainView : UserControl
 {
     private Point _prevCoord;
     private WriteableBitmap _whiteboardBitmap;
-    private const int BytesPerPixel = 4;
     private readonly Vector _dpi = new(96, 96);
+    private const int BytesPerPixel = 4;
+    private const int CanvasWidth = 5000;
+    private const int CanvasHeight = 5000;
     
     public MainView()
     {
         InitializeComponent();
         _prevCoord = new Point(-1, -1);
         
-        // Initialize bitmap with placeholder size
-        _whiteboardBitmap = new WriteableBitmap(new PixelSize(10, 10), _dpi, PixelFormat.Bgra8888);
-        
-        this.SizeChanged += OnSizeChanged;
-    }
-    
-    // Ensure that bitmap's dimensions match the window
-    private void OnSizeChanged(object? sender, SizeChangedEventArgs e)
-    {
-        if (e.NewSize is { Width: > 0, Height: > 0 })
-        {
-            // Create a new Bitmap
-            CreateBitmap((int)e.NewSize.Width, (int)e.NewSize.Height);
-        }
-    }
-
-    private void CreateBitmap(int width, int height)
-    {
-        PixelSize whiteboardDimensions = new PixelSize(width, height);
-        _whiteboardBitmap = new WriteableBitmap(whiteboardDimensions, _dpi, PixelFormat.Bgra8888);
-        
-        // Give it a white background
+        // Initialize the bitmap with a large dimension
+        _whiteboardBitmap = new WriteableBitmap(new PixelSize(CanvasWidth, CanvasHeight), _dpi, PixelFormat.Bgra8888);
         ClearBitmap(Colors.White);
         WhiteboardRenderer.Source = _whiteboardBitmap;
     }
