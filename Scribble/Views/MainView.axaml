@@ -11,7 +11,9 @@
          to set the actual DataContext for runtime, set the DataContext property in code (look at App.axaml.cs) -->
         <vm:MainViewModel />
     </Design.DataContext>
-    <Image Name="Whiteboard" Stretch="None" />
+    <Border Name="MainCanvas" PointerMoved="MainCanvas_OnPointerMoved" PointerReleased="MainCanvas_OnPointerReleased">
+        <Image Name="WhiteboardRenderer" Stretch="None" />
+    </Border>
     <!-- <Canvas Name="MainCanvas" Background="DimGray" PointerMoved="MainCanvas_OnPointerMoved" PointerReleased="MainCanvas_OnPointerReleased"> -->
     <!-- </Canvas> -->
 </UserControl>
