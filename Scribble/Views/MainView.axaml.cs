@@ -13,18 +13,36 @@ public partial class MainView : UserControl
     private Point _prevCoord;
     private WriteableBitmap _whiteboardBitmap;
     private const int BytesPerPixel = 4;
-
+    private readonly Vector _dpi = new(96, 96);
+    
     public MainView()
     {
         InitializeComponent();
         _prevCoord = new Point(-1, -1);
+        
+        // Initialize bitmap with placeholder size
+        _whiteboardBitmap = new WriteableBitmap(new PixelSize(10, 10), _dpi, PixelFormat.Bgra8888);
+        
+        this.SizeChanged += OnSizeChanged;
+    }
+    
+    // Ensure that bitmap's dimensions match the window
+    private void OnSizeChanged(object? sender, SizeChangedEventArgs e)
+    {
+        if (e.NewSize is { Width: > 0, Height: > 0 })
+        {
+            // Create a new Bitmap
+            CreateBitmap((int)e.NewSize.Width, (int)e.NewSize.Height);
+        }
+    }
 
-        var pixelSize = new PixelSize(800, 450);
-        var dpi = new Vector(96, 96);
-
-        _whiteboardBitmap = new WriteableBitmap(pixelSize, dpi, PixelFormat.Bgra8888);
-        // Initialize bitmap with a white background
-        ClearBitmap(Colors.DimGray);
+    private void CreateBitmap(int width, int height)
+    {
+        PixelSize whiteboardDimensions = new PixelSize(width, height);
+        _whiteboardBitmap = new WriteableBitmap(whiteboardDimensions, _dpi, PixelFormat.Bgra8888);
+        
+        // Give it a white background
+        ClearBitmap(Colors.White);
         WhiteboardRenderer.Source = _whiteboardBitmap;
     }
 
@@ -80,10 +98,12 @@ public partial class MainView : UserControl
             long offset = (long)y * stride + (long)x * BytesPerPixel;
 
             byte* p = (byte*)address.ToPointer();
+            // Account for opacity
+            byte alpha = (byte)(color.A * opacity);
             p[offset + 0] = color.B;
             p[offset + 1] = color.G;
             p[offset + 2] = color.R;
-            p[offset + 3] = color.A;
+            p[offset + 3] = alpha;
         }
     }
     
