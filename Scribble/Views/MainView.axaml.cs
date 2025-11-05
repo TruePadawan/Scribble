@@ -26,6 +26,9 @@ public partial class MainView : UserControl
         _whiteboardBitmap = new WriteableBitmap(new PixelSize(CanvasWidth, CanvasHeight), _dpi, PixelFormat.Bgra8888);
         ClearBitmap(Colors.White);
         WhiteboardRenderer.Source = _whiteboardBitmap;
+
+        // Move the whiteboard from the top-left edge
+        CanvasScrollViewer.Offset = new Vector(2500d, 2500d);
     }
 
     private unsafe void ClearBitmap(Color backgroundColor)
