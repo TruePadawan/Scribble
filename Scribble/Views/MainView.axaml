@@ -11,9 +11,10 @@
          to set the actual DataContext for runtime, set the DataContext property in code (look at App.axaml.cs) -->
         <vm:MainViewModel />
     </Design.DataContext>
-    <ScrollViewer Name="CanvasScrollViewer">
-        <!-- Simulate a wide canvas -->
-        <Border Width="5000" Height="5000" Name="MainCanvas" PointerMoved="MainCanvas_OnPointerMoved" PointerReleased="MainCanvas_OnPointerReleased">
+    <!-- Simulate a wide canvas -->
+    <ScrollViewer Name="CanvasScrollViewer" HorizontalScrollBarVisibility="Auto">
+        <Border HorizontalAlignment="Left" Width="5000" Height="5000" Name="MainCanvas" PointerMoved="MainCanvas_OnPointerMoved"
+                PointerReleased="MainCanvas_OnPointerReleased">
             <Image Name="WhiteboardRenderer" />
         </Border>
     </ScrollViewer>
