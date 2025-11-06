@@ -81,104 +81,108 @@ public partial class MainView : UserControl
         if (x >= 0 && x < width && y >= 0 && y < height)
         {
             long offset = (long)y * stride + (long)x * BytesPerPixel;
-
             byte* p = (byte*)address.ToPointer();
-            // Account for opacity
-            byte alpha = (byte)(color.A * opacity);
-            p[offset + 0] = color.B;
-            p[offset + 1] = color.G;
-            p[offset + 2] = color.R;
-            p[offset + 3] = alpha;
+            
+            // Get existing pixel values for alpha blending
+            byte existingB = p[offset + 0];
+            byte existingG = p[offset + 1];
+            byte existingR = p[offset + 2];
+            byte existingA = p[offset + 3];
+            
+            // Calculate blended values using alpha compositing
+            double alpha = opacity;
+            byte newB = (byte)(color.B * alpha + existingB * (1 - alpha));
+            byte newG = (byte)(color.G * alpha + existingG * (1 - alpha));
+            byte newR = (byte)(color.R * alpha + existingR * (1 - alpha));
+            byte newA = (byte)Math.Min(255, existingA + color.A * alpha);
+            
+            p[offset + 0] = newB;
+            p[offset + 1] = newG;
+            p[offset + 2] = newR;
+            p[offset + 3] = newA;
         }
     }
     
     // Draw lines using Xiaolin Wu's Line Algorithm
     private void DrawLine(Point start, Point end, Color color)
     {
-        // Check if the line segment is longer on the x or y-axis to know if we have a horizontal or vertical line
         using var frame = _whiteboardBitmap.Lock();
         IntPtr address = frame.Address;
         int stride = frame.RowBytes;
 
-        if (Math.Abs(end.Y - start.Y) < Math.Abs(end.X - start.X))
+        double dx = end.X - start.X;
+        double dy = end.Y - start.Y;
+        bool steep = Math.Abs(dy) > Math.Abs(dx);
+        
+        if (steep)
         {
-            // HORIZONTAL LINE
-            // Handle lines drawn to the left by swapping the start and end coordinates
-            if (end.X < start.X)
-            {
-                var temp = new Point(end.X, end.Y);
-                end = start;
-                start = temp;
-            }
-
-            var deltaX = end.X - start.X;
-            var deltaY = end.Y - start.Y;
-            var slope = deltaX == 0 ? 1 : deltaY / deltaX;
-
-            // Handle opacity for the first pixel
-            var xOverlapDistance = 1 - ((start.X + 0.5) - (int)(start.X + 0.5));
-            var firstPixelAlpha = start.Y - (int)start.Y;
-            SetPixel(address, stride, new Point((int)(start.X + 0.5), (int)start.Y), color, (1 - firstPixelAlpha) * xOverlapDistance);
-            SetPixel(address, stride, new Point((int)(start.X + 0.5), (int)start.Y + 1), color, firstPixelAlpha * xOverlapDistance);
-
-            // Handle opacity for the last pixel
-            xOverlapDistance = ((end.X - 0.5) - (int)(end.X - 0.5));
-            firstPixelAlpha = end.Y - (int)end.Y;
-            SetPixel(address, stride, new Point((int)(end.X + 0.5), (int)end.Y), color, (1 - firstPixelAlpha) * xOverlapDistance);
-            SetPixel(address, stride, new Point((int)(end.X + 0.5), (int)end.Y + 1), color, firstPixelAlpha * xOverlapDistance);
-
-            for (var i = 0; i < (int)deltaX + 1; i++)
-            {
-                var x = start.X + i;
-                var y = start.Y + (i * slope);
-                var pixelIntegerCoord = new Point((int)x, (int)y);
-
-                // Calculate the alpha values used for opacity
-                var alpha = y - (int)y;
-
-                SetPixel(address, stride, pixelIntegerCoord, color, 1 - alpha);
-                SetPixel(address, stride, pixelIntegerCoord.WithY((int)y + 1), color, alpha);
-            }
+            // Swap x and y coordinates for steep lines
+            (start, end) = (new Point(start.Y, start.X), new Point(end.Y, end.X));
+            (dx, dy) = (dy, dx);
+        }
+        
+        if (start.X > end.X)
+        {
+            // Ensure we draw from left to right
+            (start, end) = (end, start);
+            dx = -dx;
+            dy = -dy;
+        }
+        
+        double gradient = dx == 0 ? 1 : dy / dx;
+        
+        // Handle the first endpoint
+        double xend = Math.Round(start.X);
+        double yend = start.Y + gradient * (xend - start.X);
+        double xgap = 1 - (start.X + 0.5 - Math.Floor(start.X + 0.5));
+        int xpxl1 = (int)xend; // This will be used in the main loop
+        int ypxl1 = (int)Math.Floor(yend);
+        
+        if (steep)
+        {
+            SetPixel(address, stride, new Point(ypxl1, xpxl1), color, (1 - (yend - Math.Floor(yend))) * xgap);
+            SetPixel(address, stride, new Point(ypxl1 + 1, xpxl1), color, (yend - Math.Floor(yend)) * xgap);
         }
         else
         {
-            // VERTICAL LINE
-            // Handle lines drawn to the left
-            if (end.Y < start.Y)
+            SetPixel(address, stride, new Point(xpxl1, ypxl1), color, (1 - (yend - Math.Floor(yend))) * xgap);
+            SetPixel(address, stride, new Point(xpxl1, ypxl1 + 1), color, (yend - Math.Floor(yend)) * xgap);
+        }
+        
+        double intery = yend + gradient; // First y-intersection for the main loop
+        
+        // Handle the second endpoint
+        xend = Math.Round(end.X);
+        yend = end.Y + gradient * (xend - end.X);
+        xgap = end.X + 0.5 - Math.Floor(end.X + 0.5);
+        int xpxl2 = (int)xend; // This will be used in the main loop
+        int ypxl2 = (int)Math.Floor(yend);
+        
+        if (steep)
+        {
+            SetPixel(address, stride, new Point(ypxl2, xpxl2), color, (1 - (yend - Math.Floor(yend))) * xgap);
+            SetPixel(address, stride, new Point(ypxl2 + 1, xpxl2), color, (yend - Math.Floor(yend)) * xgap);
+        }
+        else
+        {
+            SetPixel(address, stride, new Point(xpxl2, ypxl2), color, (1 - (yend - Math.Floor(yend))) * xgap);
+            SetPixel(address, stride, new Point(xpxl2, ypxl2 + 1), color, (yend - Math.Floor(yend)) * xgap);
+        }
+        
+        // Main loop
+        for (int x = xpxl1 + 1; x < xpxl2; x++)
+        {
+            if (steep)
             {
-                var temp = new Point(end.X, end.Y);
-                end = start;
-                start = temp;
+                SetPixel(address, stride, new Point((int)Math.Floor(intery), x), color, 1 - (intery - Math.Floor(intery)));
+                SetPixel(address, stride, new Point((int)Math.Floor(intery) + 1, x), color, intery - Math.Floor(intery));
             }
-
-            var deltaX = end.X - start.X;
-            var deltaY = end.Y - start.Y;
-            var slope = deltaY == 0 ? 1 : deltaX / deltaY;
-
-            // Handle opacity for the first pixel
-            var yOverlapDistance = 1 - ((start.Y + 0.5) - (int)(start.Y + 0.5));
-            var firstPixelAlpha = start.Y - (int)start.Y;
-            SetPixel(address, stride, new Point((int)(start.X + 0.5), (int)start.Y), color, (1 - firstPixelAlpha) * yOverlapDistance);
-            SetPixel(address, stride, new Point((int)(start.X + 0.5), (int)start.Y + 1), color, firstPixelAlpha * yOverlapDistance);
-
-            // Handle opacity for the last pixel
-            yOverlapDistance = ((end.Y - 0.5) - (int)(end.Y - 0.5));
-            firstPixelAlpha = end.Y - (int)end.Y;
-            SetPixel(address, stride, new Point((int)end.X, (int)(end.Y + 0.5)), color, (1 - firstPixelAlpha) * yOverlapDistance);
-            SetPixel(address, stride, new Point((int)end.X + 1, (int)(end.Y + 0.5)), color, firstPixelAlpha * yOverlapDistance);
-
-            for (var i = 0; i < (int)deltaY + 1; i++)
+            else
             {
-                var x = start.X + (i * slope);
-                var y = start.Y + i;
-                var pixelIntegerCoord = new Point((int)x, (int)y);
-
-                // Calculate the alpha values used for opacity
-                var alpha = x - (int)x;
-
-                SetPixel(address, stride, pixelIntegerCoord, color, 1 - alpha);
-                SetPixel(address, stride, pixelIntegerCoord.WithX((int)x + 1), color, alpha);
+                SetPixel(address, stride, new Point(x, (int)Math.Floor(intery)), color, 1 - (intery - Math.Floor(intery)));
+                SetPixel(address, stride, new Point(x, (int)Math.Floor(intery) + 1), color, intery - Math.Floor(intery));
             }
+            intery += gradient;
         }
         
         // Render updated bitmap
