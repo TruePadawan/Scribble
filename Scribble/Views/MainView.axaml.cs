@@ -77,11 +77,15 @@ public partial class MainView : UserControl
         _prevCoord = new Point(-1, -1);
     }
 
+    /**
+     * TODO: Refine the zoom functionality further
+     * Center the zoom
+     * The direction of the zoom should match what part of the window the cursor lies in
+     */
     private void MainCanvas_OnPointerWheelChanged(object? sender, PointerWheelEventArgs e)
     {
         bool ctrlKeyIsActive = (e.KeyModifiers & KeyModifiers.Control) != 0;
         if (!ctrlKeyIsActive) return;
-
         if (e.Delta.Y > 0)
         {
             ZoomIn();
