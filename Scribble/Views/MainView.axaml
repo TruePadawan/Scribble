@@ -14,7 +14,8 @@
     <!-- Simulate a wide canvas -->
     <ScrollViewer Name="CanvasScrollViewer" HorizontalScrollBarVisibility="Auto">
         <Border HorizontalAlignment="Left" Width="5000" Height="5000" Name="MainCanvas" PointerMoved="MainCanvas_OnPointerMoved"
-                PointerReleased="MainCanvas_OnPointerReleased">
+                PointerReleased="MainCanvas_OnPointerReleased"
+                PointerWheelChanged="MainCanvas_OnPointerWheelChanged">
             <Image Name="WhiteboardRenderer" />
         </Border>
     </ScrollViewer>
