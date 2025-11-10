@@ -16,13 +16,13 @@ enum WindowQuadrant
 public partial class MainView : UserControl
 {
     private Point _prevCoord;
-    private WriteableBitmap _whiteboardBitmap;
+    private readonly WriteableBitmap _whiteboardBitmap;
     private readonly Vector _dpi = new(96, 96);
     private const int BytesPerPixel = 4;
     private const int CanvasWidth = 5000;
     private const int CanvasHeight = 5000;
     private readonly ScaleTransform _scaleTransform;
-    private double zoomFactor = 1f;
+    private double _zoomFactor = 1f;
 
     public MainView()
     {
@@ -124,10 +124,10 @@ public partial class MainView : UserControl
     
     private void ZoomIn(WindowQuadrant pointerQuadrant)
     {
-        if (zoomFactor >= 3) return;
-        zoomFactor += 0.5f;
-        _scaleTransform.ScaleX = zoomFactor;
-        _scaleTransform.ScaleY = zoomFactor;
+        if (_zoomFactor >= 3) return;
+        _zoomFactor += 0.5f;
+        _scaleTransform.ScaleX = _zoomFactor;
+        _scaleTransform.ScaleY = _zoomFactor;
         
         // Zoom correction, upper-left case is automatically handled
         (double offsetX, double offsetY) = CanvasScrollViewer.Offset;
@@ -147,10 +147,10 @@ public partial class MainView : UserControl
     // TODO: Fix buggy zoom out; the logic is insufficient for when the pointer quadrant is changed from where it was at zoom in
     private void ZoomOut(WindowQuadrant pointerQuadrant)
     {
-        if (zoomFactor <= 1) return;
-        zoomFactor -= 0.5f;
-        _scaleTransform.ScaleX = zoomFactor;
-        _scaleTransform.ScaleY = zoomFactor;
+        if (_zoomFactor <= 1) return;
+        _zoomFactor -= 0.5f;
+        _scaleTransform.ScaleX = _zoomFactor;
+        _scaleTransform.ScaleY = _zoomFactor;
         
         // Zoom correction, upper-left case is automatically handled
         (double offsetX, double offsetY) = CanvasScrollViewer.Offset;
