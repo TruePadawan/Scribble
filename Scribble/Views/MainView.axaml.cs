@@ -23,6 +23,7 @@ public partial class MainView : UserControl
     private const int CanvasHeight = 5000;
     private readonly ScaleTransform _scaleTransform;
     private double _zoomFactor = 1f;
+    private Color _canvasBackgroundColor = Colors.White;
 
     public MainView()
     {
@@ -34,7 +35,7 @@ public partial class MainView : UserControl
 
         // Initialize the bitmap with a large dimension
         _whiteboardBitmap = new WriteableBitmap(new PixelSize(CanvasWidth, CanvasHeight), _dpi, PixelFormat.Bgra8888);
-        ClearBitmap(Colors.White);
+        ClearBitmap(_canvasBackgroundColor);
         WhiteboardRenderer.Source = _whiteboardBitmap;
 
         // Move the whiteboard from the top-left edge
@@ -71,6 +72,9 @@ public partial class MainView : UserControl
         if (e.Properties.IsLeftButtonPressed && hasLastCoordinates)
         {
             DrawLine(_prevCoord, pointerCoordinates, Colors.Red);
+        } else if (e.Properties.IsRightButtonPressed && hasLastCoordinates)
+        {
+            DrawLine(_prevCoord, pointerCoordinates, _canvasBackgroundColor);
         }
 
         _prevCoord = e.GetPosition(sender as Control);
@@ -78,9 +82,14 @@ public partial class MainView : UserControl
 
     private void MainCanvas_OnPointerPressed(object? sender, PointerPressedEventArgs e)
     {
-        if (!e.Properties.IsLeftButtonPressed) return;
         var pointerCoordinates = e.GetPosition(sender as Control);
-        DrawSinglePixel(pointerCoordinates, Colors.Red);
+        if (e.Properties.IsLeftButtonPressed)
+        {
+            DrawSinglePixel(pointerCoordinates, Colors.Red);
+        } else if (e.Properties.IsRightButtonPressed)
+        {
+            DrawSinglePixel(pointerCoordinates, _canvasBackgroundColor);
+        }
     }
     
     private void MainCanvas_OnPointerReleased(object? sender, PointerReleasedEventArgs e)
