@@ -8,6 +8,11 @@ using Avalonia.Platform;
 
 namespace Scribble.Views;
 
+enum WindowQuadrant
+{
+    UpperLeft, UpperRight, LowerLeft, LowerRight
+}
+
 public partial class MainView : UserControl
 {
     private Point _prevCoord;
@@ -86,30 +91,80 @@ public partial class MainView : UserControl
     {
         bool ctrlKeyIsActive = (e.KeyModifiers & KeyModifiers.Control) != 0;
         if (!ctrlKeyIsActive) return;
+
         if (e.Delta.Y > 0)
         {
-            ZoomIn();
+            ZoomIn(GetPointerQuadrant(e.GetPosition(this)));
         }
         else
         {
-            ZoomOut();
+            ZoomOut(GetPointerQuadrant(e.GetPosition(this)));
         }
     }
 
-    private void ZoomIn()
+    private WindowQuadrant GetPointerQuadrant(Point pointerPos)
+    {
+        if (pointerPos.X > this.Bounds.Width || pointerPos.Y > this.Bounds.Height)
+        {
+            throw new Exception("Pointer position must be relative to the app window!");
+        }
+
+        var halfWidth = this.Bounds.Width / 2;
+        var halfHeight = this.Bounds.Height / 2;
+
+        if (pointerPos.Y < halfHeight)
+        {
+            return pointerPos.X < halfWidth ? WindowQuadrant.UpperLeft : WindowQuadrant.UpperRight;
+        }
+        else
+        {
+            return pointerPos.X < halfWidth ? WindowQuadrant.LowerLeft : WindowQuadrant.LowerRight;
+        }
+    }
+    
+    private void ZoomIn(WindowQuadrant pointerQuadrant)
     {
         if (zoomFactor >= 3) return;
         zoomFactor += 0.5f;
         _scaleTransform.ScaleX = zoomFactor;
         _scaleTransform.ScaleY = zoomFactor;
+        
+        // Zoom correction, upper-left case is automatically handled
+        (double offsetX, double offsetY) = CanvasScrollViewer.Offset;
+        if (pointerQuadrant == WindowQuadrant.UpperRight)
+        {
+            CanvasScrollViewer.Offset = CanvasScrollViewer.Offset.WithX(offsetX + 0.5f * this.Bounds.Width);
+        } else if (pointerQuadrant == WindowQuadrant.LowerLeft)
+        {
+            CanvasScrollViewer.Offset = CanvasScrollViewer.Offset.WithY(offsetY + 0.5f * this.Bounds.Height);
+        } else if (pointerQuadrant == WindowQuadrant.LowerRight)
+        {
+            CanvasScrollViewer.Offset =
+                new Vector(offsetX + 0.5f * this.Bounds.Width, offsetY + 0.5f * this.Bounds.Height);
+        }
     }
 
-    private void ZoomOut()
+    // TODO: Fix buggy zoom out; the logic is insufficient for when the pointer quadrant is changed from where it was at zoom in
+    private void ZoomOut(WindowQuadrant pointerQuadrant)
     {
         if (zoomFactor <= 1) return;
         zoomFactor -= 0.5f;
         _scaleTransform.ScaleX = zoomFactor;
         _scaleTransform.ScaleY = zoomFactor;
+        
+        // Zoom correction, upper-left case is automatically handled
+        (double offsetX, double offsetY) = CanvasScrollViewer.Offset;
+        if (pointerQuadrant == WindowQuadrant.UpperRight)
+        {
+            CanvasScrollViewer.Offset = CanvasScrollViewer.Offset.WithX(offsetX - 0.5f * this.Bounds.Width);
+        } else if (pointerQuadrant == WindowQuadrant.LowerLeft)
+        {
+            CanvasScrollViewer.Offset = CanvasScrollViewer.Offset.WithY(offsetY - 0.5f * this.Bounds.Height);
+        } else if (pointerQuadrant == WindowQuadrant.LowerRight)
+        {
+            CanvasScrollViewer.Offset =
+                new Vector(offsetX - 0.5f * this.Bounds.Width, offsetY - 0.5f * this.Bounds.Height);
+        }
     }
 
     private unsafe void SetPixel(IntPtr address, int stride, Point coord, Color color, double opacity)
