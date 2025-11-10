@@ -76,6 +76,13 @@ public partial class MainView : UserControl
         _prevCoord = e.GetPosition(sender as Control);
     }
 
+    private void MainCanvas_OnPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (!e.Properties.IsLeftButtonPressed) return;
+        var pointerCoordinates = e.GetPosition(sender as Control);
+        DrawSinglePixel(pointerCoordinates, Colors.Red);
+    }
+    
     private void MainCanvas_OnPointerReleased(object? sender, PointerReleasedEventArgs e)
     {
         // Reset the last coordinates when the mouse is released
@@ -122,6 +129,7 @@ public partial class MainView : UserControl
         }
     }
     
+    // TODO: Offset shouldn't go outside the canvas
     private void ZoomIn(WindowQuadrant pointerQuadrant)
     {
         if (_zoomFactor >= 3) return;
@@ -285,6 +293,18 @@ public partial class MainView : UserControl
             intery += gradient;
         }
 
+        // Render updated bitmap
+        WhiteboardRenderer.InvalidateVisual();
+    }
+
+    private void DrawSinglePixel(Point coord, Color color)
+    {
+        using var frame = _whiteboardBitmap.Lock();
+        IntPtr address = frame.Address;
+        int stride = frame.RowBytes;
+        
+        SetPixel(address, stride, coord, color, 1f);
+        
         // Render updated bitmap
         WhiteboardRenderer.InvalidateVisual();
     }

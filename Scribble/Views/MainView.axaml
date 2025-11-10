@@ -15,6 +15,7 @@
     <ScrollViewer Name="CanvasScrollViewer" HorizontalScrollBarVisibility="Auto">
         <Border HorizontalAlignment="Left" Width="5000" Height="5000" Name="MainCanvas" PointerMoved="MainCanvas_OnPointerMoved"
                 PointerReleased="MainCanvas_OnPointerReleased"
+                PointerPressed="MainCanvas_OnPointerPressed"
                 PointerWheelChanged="MainCanvas_OnPointerWheelChanged">
             <Image Name="WhiteboardRenderer" />
         </Border>
