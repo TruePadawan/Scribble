@@ -8,11 +8,6 @@ using Avalonia.Platform;
 
 namespace Scribble.Views;
 
-enum WindowQuadrant
-{
-    UpperLeft, UpperRight, LowerLeft, LowerRight
-}
-
 public partial class MainView : UserControl
 {
     private Point _prevCoord;
@@ -22,7 +17,6 @@ public partial class MainView : UserControl
     private const int CanvasWidth = 5000;
     private const int CanvasHeight = 5000;
     private readonly ScaleTransform _scaleTransform;
-    private double _zoomFactor = 0.25f;
     private const double MinZoom = 1f;
     private const double MaxZoom = 3f;
     private Color _canvasBackgroundColor = Colors.White;
@@ -110,63 +104,34 @@ public partial class MainView : UserControl
         bool ctrlKeyIsActive = (e.KeyModifiers & KeyModifiers.Control) != 0;
         if (!ctrlKeyIsActive) return;
 
-        Point pointerCanvasPosPreZoom = e.GetPosition(sender as Control) / _scaleTransform.ScaleX;
-        if (e.Delta.Y > 0)
-        {
-            ZoomIn(GetPointerQuadrant(e.GetPosition(this)));
-        }
-        else
-        {
-            ZoomOut(GetPointerQuadrant(e.GetPosition(this)));
-        }
-        Point pointerCanvasPosPostZoom = e.GetPosition(sender as Control) / _scaleTransform.ScaleX;
+        double currentScale = _scaleTransform.ScaleX;
+        Point mousePosOnViewPort = e.GetPosition(CanvasScrollViewer);
+        Point mousePosOnCanvas = e.GetPosition(MainCanvas);
 
-        Console.WriteLine("--BEGIN--");
-        Console.WriteLine(pointerCanvasPosPreZoom);
-        Console.WriteLine(pointerCanvasPosPostZoom);
-        Console.WriteLine("--END--");
+        // Multiplicative Zoom
+        double zoomFactor = e.Delta.Y > 0 ? 1.1f : 0.9f;
+        double newScale = currentScale * zoomFactor;
 
-        // Zoom correction, the zoom should be about the pointer position
-        var scrollViewerOffset = pointerCanvasPosPreZoom - pointerCanvasPosPostZoom;
-        (double offsetX, double offsetY) = CanvasScrollViewer.Offset;
-        CanvasScrollViewer.Offset = new Vector(offsetX + scrollViewerOffset.X, offsetY + scrollViewerOffset.Y);
-        Console.WriteLine(e.GetPosition(MainCanvas));
-    }
-
-    private WindowQuadrant GetPointerQuadrant(Point pointerPos)
-    {
-        if (pointerPos.X > this.Bounds.Width || pointerPos.Y > this.Bounds.Height)
+        // Clamp new zoom between min and max zoom
+        newScale = Math.Max(MinZoom, Math.Min(newScale, MaxZoom));
+        
+        // Do nothing if there was no change in zoom, i.e., I'm at the min or max zoom
+        if (Math.Abs(newScale - currentScale) < 0.0001f)
         {
-            throw new Exception("Pointer position must be relative to the app window!");
+            return;
         }
 
-        var halfWidth = this.Bounds.Width / 2;
-        var halfHeight = this.Bounds.Height / 2;
-
-        if (pointerPos.Y < halfHeight)
-        {
-            return pointerPos.X < halfWidth ? WindowQuadrant.UpperLeft : WindowQuadrant.UpperRight;
-        }
-        else
-        {
-            return pointerPos.X < halfWidth ? WindowQuadrant.LowerLeft : WindowQuadrant.LowerRight;
-        }
+        _scaleTransform.ScaleX = newScale;
+        _scaleTransform.ScaleY = newScale;
+        
+        // Implement zoom to point
+        var newOffset = (mousePosOnCanvas * newScale) - mousePosOnViewPort;
+        CanvasScrollViewer.Offset = new Vector(newOffset.X, newOffset.Y);
+        
+        // Stop the scroll viewer from applying its own scrolling logic
+        e.Handled = true;
     }
     
-    // TODO: Offset shouldn't go outside the canvas
-    private void ZoomIn(WindowQuadrant pointerQuadrant)
-    {
-        _scaleTransform.ScaleX = double.Min(_scaleTransform.ScaleX + _zoomFactor, MaxZoom);
-        _scaleTransform.ScaleY = double.Min(_scaleTransform.ScaleY + _zoomFactor, MaxZoom);
-    }
-
-    // TODO: Fix buggy zoom out; the logic is insufficient for when the pointer quadrant is changed from where it was at zoom in
-    private void ZoomOut(WindowQuadrant pointerQuadrant)
-    {
-        _scaleTransform.ScaleX = double.Max(_scaleTransform.ScaleX - _zoomFactor, MinZoom);
-        _scaleTransform.ScaleY = double.Max(_scaleTransform.ScaleY - _zoomFactor, MinZoom);
-    }
-
     private unsafe void SetPixel(IntPtr address, int stride, Point coord, Color color, double opacity)
     {
         int width = _whiteboardBitmap.PixelSize.Width;
