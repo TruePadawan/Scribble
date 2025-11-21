@@ -94,16 +94,12 @@ public partial class MainView : UserControl
         _prevCoord = new Point(-1, -1);
     }
 
-    /**
-     * TODO: Refine the zoom functionality further
-     * Center the zoom
-     * The direction of the zoom should match what part of the window the cursor lies in
-     */
     private void MainCanvas_OnPointerWheelChanged(object? sender, PointerWheelEventArgs e)
     {
         bool ctrlKeyIsActive = (e.KeyModifiers & KeyModifiers.Control) != 0;
         if (!ctrlKeyIsActive) return;
 
+        // ZOOM TO POINT
         double currentScale = _scaleTransform.ScaleX;
         Point mousePosOnViewPort = e.GetPosition(CanvasScrollViewer);
         Point mousePosOnCanvas = e.GetPosition(MainCanvas);
@@ -123,7 +119,10 @@ public partial class MainView : UserControl
 
         _scaleTransform.ScaleX = newScale;
         _scaleTransform.ScaleY = newScale;
-        
+
+        // Force the scroll viewer to update its layout before calculating new offset
+        CanvasScrollViewer.UpdateLayout();
+
         // Implement zoom to point
         var newOffset = (mousePosOnCanvas * newScale) - mousePosOnViewPort;
         CanvasScrollViewer.Offset = new Vector(newOffset.X, newOffset.Y);
