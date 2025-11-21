@@ -27,7 +27,7 @@ public partial class MainView : UserControl
         _prevCoord = new Point(-1, -1);
 
         _scaleTransform = new ScaleTransform(1, 1);
-        MainCanvas.RenderTransform = _scaleTransform;
+        MainCanvasLayoutTransform.LayoutTransform = _scaleTransform;
 
         // Initialize the bitmap with a large dimension
         _whiteboardBitmap = new WriteableBitmap(new PixelSize(CanvasWidth, CanvasHeight), _dpi, PixelFormat.Bgra8888);
