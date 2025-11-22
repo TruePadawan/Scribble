@@ -14,13 +14,13 @@
     <!-- Simulate a wide canvas -->
     <!-- Use a RenderTransformOrigin to tell the ScrollViewer to scale from top left -->
     <ScrollViewer Name="CanvasScrollViewer" HorizontalScrollBarVisibility="Auto">
-        <LayoutTransformControl Name="MainCanvasLayoutTransform">
+        <LayoutTransformControl Name="MainCanvasLayoutTransform" LayoutTransform="{Binding ScaleTransform}">
             <Border HorizontalAlignment="Left" MinWidth="5000" MinHeight="5000" Name="MainCanvas" PointerMoved="MainCanvas_OnPointerMoved"
                     PointerReleased="MainCanvas_OnPointerReleased"
                     PointerPressed="MainCanvas_OnPointerPressed"
                     PointerWheelChanged="MainCanvas_OnPointerWheelChanged"
                     RenderTransformOrigin="0 0">
-                <Image Name="WhiteboardRenderer" />
+                <Image Name="WhiteboardRenderer" Source="{Binding WhiteboardBitmap}" />
             </Border>
         </LayoutTransformControl>
     </ScrollViewer>
