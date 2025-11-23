@@ -10,8 +10,8 @@ public partial class MainViewModel : ViewModelBase
 {
     private readonly Vector _dpi = new(96, 96);
     private const int BytesPerPixel = 4;
-    private const int CanvasWidth = 5000;
-    private const int CanvasHeight = 5000;
+    private const int CanvasWidth = 10000;
+    private const int CanvasHeight = 10000;
 
     public WriteableBitmap WhiteboardBitmap { get; }
     public ScaleTransform ScaleTransform { get; }
@@ -25,6 +25,8 @@ public partial class MainViewModel : ViewModelBase
         WhiteboardBitmap = new WriteableBitmap(new PixelSize(CanvasWidth, CanvasHeight), _dpi, PixelFormat.Bgra8888);
         ClearBitmap(Colors.White);
     }
+
+    public Vector GetCanvasDimensions() => new Vector(CanvasWidth, CanvasHeight);
 
     public double GetCurrentScale() => ScaleTransform.ScaleX;
 
