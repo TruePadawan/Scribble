@@ -10,8 +10,8 @@ public partial class MainViewModel : ViewModelBase
 {
     private readonly Vector _dpi = new(96, 96);
     private const int BytesPerPixel = 4;
-    private const int CanvasWidth = 5000;
-    private const int CanvasHeight = 5000;
+    private const int CanvasWidth = 10000;
+    private const int CanvasHeight = 10000;
 
     public WriteableBitmap WhiteboardBitmap { get; }
     public ScaleTransform ScaleTransform { get; }
@@ -25,6 +25,8 @@ public partial class MainViewModel : ViewModelBase
         WhiteboardBitmap = new WriteableBitmap(new PixelSize(CanvasWidth, CanvasHeight), _dpi, PixelFormat.Bgra8888);
         ClearBitmap(Colors.White);
     }
+
+    public Vector GetCanvasDimensions() => new Vector(CanvasWidth, CanvasHeight);
 
     public double GetCurrentScale() => ScaleTransform.ScaleX;
 
@@ -88,8 +90,11 @@ public partial class MainViewModel : ViewModelBase
     }
 
     // Draw lines using Xiaolin Wu's Line Algorithm
-    public void DrawLine(Point start, Point end, Color color)
+    // Modified to allow drawing lines of a particular thickness; gotten from https://github.com/jambolo/thick-xiaolin-wu/blob/master/cs/thick-xiaolin-wu.coffee
+    public void DrawLine(Point start, Point end, Color color, int strokeWidth = 1)
     {
+        strokeWidth = Math.Max(1, strokeWidth);
+
         using var frame = WhiteboardBitmap.Lock();
         IntPtr address = frame.Address;
         int stride = frame.RowBytes;
@@ -115,9 +120,11 @@ public partial class MainViewModel : ViewModelBase
 
         double gradient = dx == 0 ? 1 : dy / dx;
 
+        strokeWidth = (int)(strokeWidth * Math.Sqrt(1 + (gradient * gradient)));
+
         // Handle the first endpoint
         double xend = Math.Round(start.X);
-        double yend = start.Y + gradient * (xend - start.X);
+        double yend = start.Y - (strokeWidth - 1) * 0.5 + gradient * (xend - start.X);
         double xgap = 1 - (start.X + 0.5 - Math.Floor(start.X + 0.5));
         int xpxl1 = (int)xend; // This will be used in the main loop
         int ypxl1 = (int)Math.Floor(yend);
@@ -125,19 +132,27 @@ public partial class MainViewModel : ViewModelBase
         if (steep)
         {
             SetPixel(address, stride, new Point(ypxl1, xpxl1), color, (1 - (yend - Math.Floor(yend))) * xgap);
-            SetPixel(address, stride, new Point(ypxl1 + 1, xpxl1), color, (yend - Math.Floor(yend)) * xgap);
+            for (int i = 1; i < strokeWidth; i++)
+            {
+                SetPixel(address, stride, new Point(ypxl1 + i, xpxl1), color, 1);
+            }
+            SetPixel(address, stride, new Point(ypxl1 + strokeWidth, xpxl1), color, (yend - Math.Floor(yend)) * xgap);
         }
         else
         {
             SetPixel(address, stride, new Point(xpxl1, ypxl1), color, (1 - (yend - Math.Floor(yend))) * xgap);
-            SetPixel(address, stride, new Point(xpxl1, ypxl1 + 1), color, (yend - Math.Floor(yend)) * xgap);
+            for (int i = 1; i < strokeWidth; i++)
+            {
+                SetPixel(address, stride, new Point(xpxl1, ypxl1 + i), color, 1);
+            }
+            SetPixel(address, stride, new Point(xpxl1, ypxl1 + strokeWidth), color, (yend - Math.Floor(yend)) * xgap);
         }
 
         double intery = yend + gradient; // First y-intersection for the main loop
 
         // Handle the second endpoint
         xend = Math.Round(end.X);
-        yend = end.Y + gradient * (xend - end.X);
+        yend = end.Y - (strokeWidth - 1) * 0.5 + gradient * (xend - end.X);
         xgap = end.X + 0.5 - Math.Floor(end.X + 0.5);
         int xpxl2 = (int)xend; // This will be used in the main loop
         int ypxl2 = (int)Math.Floor(yend);
@@ -145,12 +160,20 @@ public partial class MainViewModel : ViewModelBase
         if (steep)
         {
             SetPixel(address, stride, new Point(ypxl2, xpxl2), color, (1 - (yend - Math.Floor(yend))) * xgap);
-            SetPixel(address, stride, new Point(ypxl2 + 1, xpxl2), color, (yend - Math.Floor(yend)) * xgap);
+            for (int i = 1; i < strokeWidth; i++)
+            {
+                SetPixel(address, stride, new Point(ypxl2 + i, xpxl2), color, 1);
+            }
+            SetPixel(address, stride, new Point(ypxl2 + strokeWidth, xpxl2), color, (yend - Math.Floor(yend)) * xgap);
         }
         else
         {
             SetPixel(address, stride, new Point(xpxl2, ypxl2), color, (1 - (yend - Math.Floor(yend))) * xgap);
-            SetPixel(address, stride, new Point(xpxl2, ypxl2 + 1), color, (yend - Math.Floor(yend)) * xgap);
+            for (int i = 1; i < strokeWidth; i++)
+            {
+                SetPixel(address, stride, new Point(xpxl2, ypxl2 + i), color, 1);
+            }
+            SetPixel(address, stride, new Point(xpxl2, ypxl2 + strokeWidth), color, (yend - Math.Floor(yend)) * xgap);
         }
 
         // Main loop
@@ -158,16 +181,24 @@ public partial class MainViewModel : ViewModelBase
         {
             if (steep)
             {
-                SetPixel(address, stride, new Point((int)Math.Floor(intery), x), color,
+                SetPixel(address, stride, new Point(Math.Floor(intery), x), color,
                     1 - (intery - Math.Floor(intery)));
-                SetPixel(address, stride, new Point((int)Math.Floor(intery) + 1, x), color,
+                for (int i = 1; i < strokeWidth; i++)
+                {
+                    SetPixel(address, stride, new Point(Math.Floor(intery) + i, x), color, 1);
+                }
+                SetPixel(address, stride, new Point(Math.Floor(intery) + strokeWidth, x), color,
                     intery - Math.Floor(intery));
             }
             else
             {
-                SetPixel(address, stride, new Point(x, (int)Math.Floor(intery)), color,
+                SetPixel(address, stride, new Point(x, Math.Floor(intery)), color,
                     1 - (intery - Math.Floor(intery)));
-                SetPixel(address, stride, new Point(x, (int)Math.Floor(intery) + 1), color,
+                for (int i = 1; i < strokeWidth; i++)
+                {
+                    SetPixel(address, stride, new Point(x, Math.Floor(intery) + i), color, 1);
+                }
+                SetPixel(address, stride, new Point(x, Math.Floor(intery) + strokeWidth), color,
                     intery - Math.Floor(intery));
             }
 

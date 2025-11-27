@@ -18,8 +18,9 @@ public partial class MainView : UserControl
         InitializeComponent();
         _prevCoord = new Point(-1, -1);
 
-        // Move the whiteboard from the top-left edge
-        CanvasScrollViewer.Offset = new Vector(2500d, 2500d);
+        // Center the whiteboard
+        (double canvasWidth, double canvasHeight) = GetDataContext().GetCanvasDimensions();
+        CanvasScrollViewer.Offset = new Vector(canvasWidth / 2, canvasHeight / 2);
     }
 
     private MainViewModel GetDataContext() => DataContext as MainViewModel ?? new MainViewModel();

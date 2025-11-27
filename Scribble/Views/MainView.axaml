@@ -15,7 +15,10 @@
     <!-- Use a RenderTransformOrigin to tell the ScrollViewer to scale from top left -->
     <ScrollViewer Name="CanvasScrollViewer" HorizontalScrollBarVisibility="Auto">
         <LayoutTransformControl Name="MainCanvasLayoutTransform" LayoutTransform="{Binding ScaleTransform}">
-            <Border HorizontalAlignment="Left" MinWidth="5000" MinHeight="5000" Name="MainCanvas" PointerMoved="MainCanvas_OnPointerMoved"
+            <Border HorizontalAlignment="Left" Name="MainCanvas"
+                    Width="{Binding WhiteboardBitmap.PixelSize.Width}"
+                    Height="{Binding WhiteboardBitmap.PixelSize.Height}"
+                    PointerMoved="MainCanvas_OnPointerMoved"
                     PointerReleased="MainCanvas_OnPointerReleased"
                     PointerPressed="MainCanvas_OnPointerPressed"
                     PointerWheelChanged="MainCanvas_OnPointerWheelChanged"
