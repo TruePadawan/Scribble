@@ -13,18 +13,39 @@
     </Design.DataContext>
     <!-- Simulate a wide canvas -->
     <!-- Use a RenderTransformOrigin to tell the ScrollViewer to scale from top left -->
-    <ScrollViewer Name="CanvasScrollViewer" HorizontalScrollBarVisibility="Auto">
-        <LayoutTransformControl Name="MainCanvasLayoutTransform" LayoutTransform="{Binding ScaleTransform}">
-            <Border HorizontalAlignment="Left" Name="MainCanvas"
-                    Width="{Binding WhiteboardBitmap.PixelSize.Width}"
-                    Height="{Binding WhiteboardBitmap.PixelSize.Height}"
-                    PointerMoved="MainCanvas_OnPointerMoved"
-                    PointerReleased="MainCanvas_OnPointerReleased"
-                    PointerPressed="MainCanvas_OnPointerPressed"
-                    PointerWheelChanged="MainCanvas_OnPointerWheelChanged"
-                    RenderTransformOrigin="0 0">
-                <Image Name="WhiteboardRenderer" Source="{Binding WhiteboardBitmap}" />
-            </Border>
-        </LayoutTransformControl>
-    </ScrollViewer>
+    <Panel>
+        <ScrollViewer Name="CanvasScrollViewer" HorizontalScrollBarVisibility="Auto">
+            <LayoutTransformControl Name="MainCanvasLayoutTransform" LayoutTransform="{Binding ScaleTransform}">
+                <Border HorizontalAlignment="Left" Name="MainCanvas"
+                        Width="{Binding WhiteboardBitmap.PixelSize.Width}"
+                        Height="{Binding WhiteboardBitmap.PixelSize.Height}"
+                        PointerMoved="MainCanvas_OnPointerMoved"
+                        PointerReleased="MainCanvas_OnPointerReleased"
+                        PointerPressed="MainCanvas_OnPointerPressed"
+                        PointerWheelChanged="MainCanvas_OnPointerWheelChanged"
+                        RenderTransformOrigin="0 0">
+                    <Image Name="WhiteboardRenderer" Source="{Binding WhiteboardBitmap}" />
+                </Border>
+            </LayoutTransformControl>
+        </ScrollViewer>
+        <StackPanel Name="Toolbar"
+                    Background="Beige"
+                    Height="300"
+                    HorizontalAlignment="Left"
+                    Margin="10,0,0,0"
+                    Spacing="2">
+            <Button Width="50" Name="DrawToolButton" Margin="4">
+                <Image Source="../Assets/draw.png"></Image>
+            </Button>
+            <Button Width="50" Name="EraseToolButton" Margin="4">
+                <Image Source="../Assets/eraser.png"></Image>
+            </Button>
+
+            <StackPanel.Styles>
+                <Style Selector="Button:pointerover /template/ ContentPresenter">
+                    <Setter Property="Background" Value="Gray" />
+                </Style>
+            </StackPanel.Styles>
+        </StackPanel>
+    </Panel>
 </UserControl>
