@@ -48,7 +48,7 @@ public partial class MainView : UserControl
             WhiteboardRenderer.InvalidateVisual();
         }
     }
-    
+
     private void MainCanvas_OnPointerReleased(object? sender, PointerReleasedEventArgs e)
     {
         // Reset the last coordinates when the mouse is released
@@ -71,7 +71,7 @@ public partial class MainView : UserControl
 
         // Clamp new zoom between min and max zoom
         newScale = Math.Max(MinZoom, Math.Min(newScale, MaxZoom));
-        
+
         // Do nothing if there was no change in zoom, i.e., I'm at the min or max zoom
         if (Math.Abs(newScale - currentScale) < 0.0001f)
         {
@@ -86,9 +86,8 @@ public partial class MainView : UserControl
         // Implement zoom to point
         var newOffset = (mousePosOnCanvas * newScale) - mousePosOnViewPort;
         CanvasScrollViewer.Offset = new Vector(newOffset.X, newOffset.Y);
-        
+
         // Stop the scroll viewer from applying its own scrolling logic
         e.Handled = true;
     }
-
 }
