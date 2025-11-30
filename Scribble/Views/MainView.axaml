@@ -3,6 +3,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="clr-namespace:Scribble.ViewModels"
+             xmlns:b="clr-namespace:Scribble.Behaviours"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:Class="Scribble.Views.MainView"
              x:DataType="vm:MainViewModel">
@@ -34,15 +35,15 @@
                     HorizontalAlignment="Left"
                     Margin="10,0,0,0"
                     Spacing="2">
-            <Button Width="50" Name="DrawToolButton" Margin="4">
+            <ToggleButton Width="50" Name="DrawToolButton" Margin="4" b:ToggleButtonGroup.GroupName="PointerTools" IsChecked="True">
                 <Image Source="../Assets/draw.png"></Image>
-            </Button>
-            <Button Width="50" Name="EraseToolButton" Margin="4">
+            </ToggleButton>
+            <ToggleButton Width="50" Name="EraseToolButton" Margin="4" b:ToggleButtonGroup.GroupName="PointerTools">
                 <Image Source="../Assets/eraser.png"></Image>
-            </Button>
+            </ToggleButton>
 
             <StackPanel.Styles>
-                <Style Selector="Button:pointerover /template/ ContentPresenter">
+                <Style Selector="ToggleButton:checked /template/ ContentPresenter">
                     <Setter Property="Background" Value="Gray" />
                 </Style>
             </StackPanel.Styles>
