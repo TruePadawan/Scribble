@@ -227,4 +227,19 @@ public partial class MainViewModel : ViewModelBase
             }
         }
     }
+
+    public void Erase(Point coord, int radius = 8)
+    {
+        using var frame = WhiteboardBitmap.Lock();
+        IntPtr address = frame.Address;
+        int stride = frame.RowBytes;
+
+        for (int i = (int)coord.Y - radius; i < (int) coord.Y + radius; i++)
+        {
+            for (int j = (int)coord.X - radius; j < (int) coord.X + radius; j++)
+            {
+                SetPixel(address, stride, new Point(j, i), Colors.White, 1f);
+            }
+        }
+    }
 }
