@@ -136,6 +136,7 @@ public partial class MainViewModel : ViewModelBase
             {
                 SetPixel(address, stride, new Point(ypxl1 + i, xpxl1), color, 1);
             }
+
             SetPixel(address, stride, new Point(ypxl1 + strokeWidth, xpxl1), color, (yend - Math.Floor(yend)) * xgap);
         }
         else
@@ -145,6 +146,7 @@ public partial class MainViewModel : ViewModelBase
             {
                 SetPixel(address, stride, new Point(xpxl1, ypxl1 + i), color, 1);
             }
+
             SetPixel(address, stride, new Point(xpxl1, ypxl1 + strokeWidth), color, (yend - Math.Floor(yend)) * xgap);
         }
 
@@ -164,6 +166,7 @@ public partial class MainViewModel : ViewModelBase
             {
                 SetPixel(address, stride, new Point(ypxl2 + i, xpxl2), color, 1);
             }
+
             SetPixel(address, stride, new Point(ypxl2 + strokeWidth, xpxl2), color, (yend - Math.Floor(yend)) * xgap);
         }
         else
@@ -173,6 +176,7 @@ public partial class MainViewModel : ViewModelBase
             {
                 SetPixel(address, stride, new Point(xpxl2, ypxl2 + i), color, 1);
             }
+
             SetPixel(address, stride, new Point(xpxl2, ypxl2 + strokeWidth), color, (yend - Math.Floor(yend)) * xgap);
         }
 
@@ -187,6 +191,7 @@ public partial class MainViewModel : ViewModelBase
                 {
                     SetPixel(address, stride, new Point(Math.Floor(intery) + i, x), color, 1);
                 }
+
                 SetPixel(address, stride, new Point(Math.Floor(intery) + strokeWidth, x), color,
                     intery - Math.Floor(intery));
             }
@@ -198,6 +203,7 @@ public partial class MainViewModel : ViewModelBase
                 {
                     SetPixel(address, stride, new Point(x, Math.Floor(intery) + i), color, 1);
                 }
+
                 SetPixel(address, stride, new Point(x, Math.Floor(intery) + strokeWidth), color,
                     intery - Math.Floor(intery));
             }
@@ -206,12 +212,34 @@ public partial class MainViewModel : ViewModelBase
         }
     }
 
-    public void DrawSinglePixel(Point coord, Color color)
+    public void DrawSinglePixel(Point coord, Color color, int strokeWidth = 1)
     {
         using var frame = WhiteboardBitmap.Lock();
         IntPtr address = frame.Address;
         int stride = frame.RowBytes;
 
-        SetPixel(address, stride, coord, color, 1f);
+        for (int i = 0; i < strokeWidth; i++)
+        {
+            SetPixel(address, stride, coord.WithY(coord.Y + i), color, 1f);
+            for (int j = 0; j < strokeWidth; j++)
+            {
+                SetPixel(address, stride, new Point(coord.X + j, coord.Y + i), color, 1f);
+            }
+        }
+    }
+
+    public void Erase(Point coord, int radius = 8)
+    {
+        using var frame = WhiteboardBitmap.Lock();
+        IntPtr address = frame.Address;
+        int stride = frame.RowBytes;
+
+        for (int i = (int)coord.Y - radius; i < (int) coord.Y + radius; i++)
+        {
+            for (int j = (int)coord.X - radius; j < (int) coord.X + radius; j++)
+            {
+                SetPixel(address, stride, new Point(j, i), Colors.White, 1f);
+            }
+        }
     }
 }
