@@ -125,7 +125,7 @@ public partial class MainView : UserControl
         e.Handled = true;
     }
 
-    private void DrawToolButton_OnIsCheckedChanged(object? sender, RoutedEventArgs e)
+    private void PointerTools_OnSelected(object? sender, RoutedEventArgs e)
     {
         if (sender is ToggleButton checkedButton && checkedButton.IsChecked == true)
         {
