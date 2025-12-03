@@ -12,6 +12,7 @@ public partial class MainViewModel : ViewModelBase
     private const int BytesPerPixel = 4;
     private const int CanvasWidth = 10000;
     private const int CanvasHeight = 10000;
+    private Color _backgroundColor;
 
     public WriteableBitmap WhiteboardBitmap { get; }
     public ScaleTransform ScaleTransform { get; }
@@ -19,11 +20,12 @@ public partial class MainViewModel : ViewModelBase
 
     public MainViewModel()
     {
+        _backgroundColor = Colors.Black;
         ScaleTransform = new ScaleTransform(1, 1);
 
         // Initialize the bitmap with a large dimension
         WhiteboardBitmap = new WriteableBitmap(new PixelSize(CanvasWidth, CanvasHeight), _dpi, PixelFormat.Bgra8888);
-        ClearBitmap(Colors.White);
+        ClearBitmap(_backgroundColor);
     }
 
     public Vector GetCanvasDimensions() => new Vector(CanvasWidth, CanvasHeight);
@@ -234,11 +236,43 @@ public partial class MainViewModel : ViewModelBase
         IntPtr address = frame.Address;
         int stride = frame.RowBytes;
 
-        for (int i = (int)coord.Y - radius; i < (int) coord.Y + radius; i++)
+        for (int i = (int)coord.Y - radius; i < (int)coord.Y + radius; i++)
         {
-            for (int j = (int)coord.X - radius; j < (int) coord.X + radius; j++)
+            for (int j = (int)coord.X - radius; j < (int)coord.X + radius; j++)
             {
-                SetPixel(address, stride, new Point(j, i), Colors.White, 1f);
+                SetPixel(address, stride, new Point(j, i), _backgroundColor, 1f);
+            }
+        }
+    }
+
+    // Should keep track of anti-aliased pixels and update them
+    public unsafe void ChangeBackgroundColor(Color color)
+    {
+        if (color == _backgroundColor) return;
+
+        using var frame = WhiteboardBitmap.Lock();
+        var address = frame.Address;
+        int stride = frame.RowBytes;
+        var bitmapPtr = (byte*)address.ToPointer();
+
+        int width = WhiteboardBitmap.PixelSize.Width;
+        int height = WhiteboardBitmap.PixelSize.Height;
+        for (int y = 0; y < height; ++y)
+        {
+            for (int x = 0; x < width; ++x)
+            {
+                long offset = (long)y * stride + (long)x * BytesPerPixel;
+                // Update all pixels that are the color of the previous background color to the new one
+                var b = bitmapPtr[offset];
+                var g = bitmapPtr[offset + 1];
+                var r = bitmapPtr[offset + 2];
+                var a = bitmapPtr[offset + 3];
+                if (b != _backgroundColor.B || g != _backgroundColor.G || r != _backgroundColor.R ||
+                    a != _backgroundColor.A) continue;
+                bitmapPtr[offset] = color.B;
+                bitmapPtr[offset + 1] = color.G;
+                bitmapPtr[offset + 2] = color.R;
+                bitmapPtr[offset + 3] = color.A;
             }
         }
     }
