@@ -12,7 +12,7 @@ public partial class MainViewModel : ViewModelBase
     private const int BytesPerPixel = 4;
     private const int CanvasWidth = 10000;
     private const int CanvasHeight = 10000;
-    private Color _backgroundColor;
+    public Color BackgroundColor { get; }
 
     public WriteableBitmap WhiteboardBitmap { get; }
     public ScaleTransform ScaleTransform { get; }
@@ -20,12 +20,12 @@ public partial class MainViewModel : ViewModelBase
 
     public MainViewModel()
     {
-        _backgroundColor = Colors.Black;
+        BackgroundColor = Colors.Black;
         ScaleTransform = new ScaleTransform(1, 1);
 
         // Initialize the bitmap with a large dimension
         WhiteboardBitmap = new WriteableBitmap(new PixelSize(CanvasWidth, CanvasHeight), _dpi, PixelFormat.Bgra8888);
-        ClearBitmap(_backgroundColor);
+        ClearBitmap(BackgroundColor);
     }
 
     public Vector GetCanvasDimensions() => new Vector(CanvasWidth, CanvasHeight);
@@ -60,7 +60,7 @@ public partial class MainViewModel : ViewModelBase
         }
     }
 
-    private unsafe void SetPixel(IntPtr address, int stride, Point coord, Color color, double opacity)
+    public unsafe void SetPixel(IntPtr address, int stride, Point coord, Color color, double opacity)
     {
         int width = WhiteboardBitmap.PixelSize.Width;
         int height = WhiteboardBitmap.PixelSize.Height;
@@ -91,164 +91,10 @@ public partial class MainViewModel : ViewModelBase
         }
     }
 
-    // Draw lines using Xiaolin Wu's Line Algorithm
-    // Modified to allow drawing lines of a particular thickness; gotten from https://github.com/jambolo/thick-xiaolin-wu/blob/master/cs/thick-xiaolin-wu.coffee
-    public void DrawLine(Point start, Point end, Color color, int strokeWidth = 1)
-    {
-        strokeWidth = Math.Max(1, strokeWidth);
-
-        using var frame = WhiteboardBitmap.Lock();
-        IntPtr address = frame.Address;
-        int stride = frame.RowBytes;
-
-        double dx = end.X - start.X;
-        double dy = end.Y - start.Y;
-        bool steep = Math.Abs(dy) > Math.Abs(dx);
-
-        if (steep)
-        {
-            // Swap x and y coordinates for steep lines
-            (start, end) = (new Point(start.Y, start.X), new Point(end.Y, end.X));
-            (dx, dy) = (dy, dx);
-        }
-
-        if (start.X > end.X)
-        {
-            // Ensure we draw from left to right
-            (start, end) = (end, start);
-            dx = -dx;
-            dy = -dy;
-        }
-
-        double gradient = dx == 0 ? 1 : dy / dx;
-
-        strokeWidth = (int)(strokeWidth * Math.Sqrt(1 + (gradient * gradient)));
-
-        // Handle the first endpoint
-        double xend = Math.Round(start.X);
-        double yend = start.Y - (strokeWidth - 1) * 0.5 + gradient * (xend - start.X);
-        double xgap = 1 - (start.X + 0.5 - Math.Floor(start.X + 0.5));
-        int xpxl1 = (int)xend; // This will be used in the main loop
-        int ypxl1 = (int)Math.Floor(yend);
-
-        if (steep)
-        {
-            SetPixel(address, stride, new Point(ypxl1, xpxl1), color, (1 - (yend - Math.Floor(yend))) * xgap);
-            for (int i = 1; i < strokeWidth; i++)
-            {
-                SetPixel(address, stride, new Point(ypxl1 + i, xpxl1), color, 1);
-            }
-
-            SetPixel(address, stride, new Point(ypxl1 + strokeWidth, xpxl1), color, (yend - Math.Floor(yend)) * xgap);
-        }
-        else
-        {
-            SetPixel(address, stride, new Point(xpxl1, ypxl1), color, (1 - (yend - Math.Floor(yend))) * xgap);
-            for (int i = 1; i < strokeWidth; i++)
-            {
-                SetPixel(address, stride, new Point(xpxl1, ypxl1 + i), color, 1);
-            }
-
-            SetPixel(address, stride, new Point(xpxl1, ypxl1 + strokeWidth), color, (yend - Math.Floor(yend)) * xgap);
-        }
-
-        double intery = yend + gradient; // First y-intersection for the main loop
-
-        // Handle the second endpoint
-        xend = Math.Round(end.X);
-        yend = end.Y - (strokeWidth - 1) * 0.5 + gradient * (xend - end.X);
-        xgap = end.X + 0.5 - Math.Floor(end.X + 0.5);
-        int xpxl2 = (int)xend; // This will be used in the main loop
-        int ypxl2 = (int)Math.Floor(yend);
-
-        if (steep)
-        {
-            SetPixel(address, stride, new Point(ypxl2, xpxl2), color, (1 - (yend - Math.Floor(yend))) * xgap);
-            for (int i = 1; i < strokeWidth; i++)
-            {
-                SetPixel(address, stride, new Point(ypxl2 + i, xpxl2), color, 1);
-            }
-
-            SetPixel(address, stride, new Point(ypxl2 + strokeWidth, xpxl2), color, (yend - Math.Floor(yend)) * xgap);
-        }
-        else
-        {
-            SetPixel(address, stride, new Point(xpxl2, ypxl2), color, (1 - (yend - Math.Floor(yend))) * xgap);
-            for (int i = 1; i < strokeWidth; i++)
-            {
-                SetPixel(address, stride, new Point(xpxl2, ypxl2 + i), color, 1);
-            }
-
-            SetPixel(address, stride, new Point(xpxl2, ypxl2 + strokeWidth), color, (yend - Math.Floor(yend)) * xgap);
-        }
-
-        // Main loop
-        for (int x = xpxl1 + 1; x < xpxl2; x++)
-        {
-            if (steep)
-            {
-                SetPixel(address, stride, new Point(Math.Floor(intery), x), color,
-                    1 - (intery - Math.Floor(intery)));
-                for (int i = 1; i < strokeWidth; i++)
-                {
-                    SetPixel(address, stride, new Point(Math.Floor(intery) + i, x), color, 1);
-                }
-
-                SetPixel(address, stride, new Point(Math.Floor(intery) + strokeWidth, x), color,
-                    intery - Math.Floor(intery));
-            }
-            else
-            {
-                SetPixel(address, stride, new Point(x, Math.Floor(intery)), color,
-                    1 - (intery - Math.Floor(intery)));
-                for (int i = 1; i < strokeWidth; i++)
-                {
-                    SetPixel(address, stride, new Point(x, Math.Floor(intery) + i), color, 1);
-                }
-
-                SetPixel(address, stride, new Point(x, Math.Floor(intery) + strokeWidth), color,
-                    intery - Math.Floor(intery));
-            }
-
-            intery += gradient;
-        }
-    }
-
-    public void DrawSinglePixel(Point coord, Color color, int strokeWidth = 1)
-    {
-        using var frame = WhiteboardBitmap.Lock();
-        IntPtr address = frame.Address;
-        int stride = frame.RowBytes;
-
-        for (int i = 0; i < strokeWidth; i++)
-        {
-            SetPixel(address, stride, coord.WithY(coord.Y + i), color, 1f);
-            for (int j = 0; j < strokeWidth; j++)
-            {
-                SetPixel(address, stride, new Point(coord.X + j, coord.Y + i), color, 1f);
-            }
-        }
-    }
-
-    public void Erase(Point coord, int radius = 8)
-    {
-        using var frame = WhiteboardBitmap.Lock();
-        IntPtr address = frame.Address;
-        int stride = frame.RowBytes;
-
-        for (int i = (int)coord.Y - radius; i < (int)coord.Y + radius; i++)
-        {
-            for (int j = (int)coord.X - radius; j < (int)coord.X + radius; j++)
-            {
-                SetPixel(address, stride, new Point(j, i), _backgroundColor, 1f);
-            }
-        }
-    }
-
-    // Should keep track of anti-aliased pixels and update them
+    // TODO: Should keep track of anti-aliased pixels and update them
     public unsafe void ChangeBackgroundColor(Color color)
     {
-        if (color == _backgroundColor) return;
+        if (color == BackgroundColor) return;
 
         using var frame = WhiteboardBitmap.Lock();
         var address = frame.Address;
@@ -267,8 +113,8 @@ public partial class MainViewModel : ViewModelBase
                 var g = bitmapPtr[offset + 1];
                 var r = bitmapPtr[offset + 2];
                 var a = bitmapPtr[offset + 3];
-                if (b != _backgroundColor.B || g != _backgroundColor.G || r != _backgroundColor.R ||
-                    a != _backgroundColor.A) continue;
+                if (b != BackgroundColor.B || g != BackgroundColor.G || r != BackgroundColor.R ||
+                    a != BackgroundColor.A) continue;
                 bitmapPtr[offset] = color.B;
                 bitmapPtr[offset + 1] = color.G;
                 bitmapPtr[offset + 2] = color.R;
