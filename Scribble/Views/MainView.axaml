@@ -31,9 +31,10 @@
         </ScrollViewer>
         <StackPanel Name="Toolbar"
                     Background="Coral"
-                    HorizontalAlignment="Left"
-                    VerticalAlignment="Center"
-                    Margin="10,0,0,0"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Bottom"
+                    Orientation="Horizontal"
+                    Margin="0,0,0,20"
                     Spacing="2">
             <ToggleButton Width="50" Name="DrawToolButton" Margin="4" b:ToggleButtonGroup.GroupName="PointerTools"
                           IsChecked="True" IsCheckedChanged="PointerTools_OnSelected">
