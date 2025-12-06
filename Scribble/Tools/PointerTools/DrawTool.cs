@@ -25,10 +25,10 @@ public class DrawTool(string name, MainViewModel viewModel, IImage icon) : Point
 
         for (int i = 0; i < strokeWidth; i++)
         {
-            SetPixel(address, stride, coord.WithY(coord.Y + i), color, 1f);
+            ViewModel.SetPixel(address, stride, coord.WithY(coord.Y + i), color, 1f);
             for (int j = 0; j < strokeWidth; j++)
             {
-                SetPixel(address, stride, new Point(coord.X + j, coord.Y + i), color, 1f);
+                ViewModel.SetPixel(address, stride, new Point(coord.X + j, coord.Y + i), color, 1f);
             }
         }
     }
@@ -75,23 +75,25 @@ public class DrawTool(string name, MainViewModel viewModel, IImage icon) : Point
 
         if (steep)
         {
-            SetPixel(address, stride, new Point(ypxl1, xpxl1), color, (1 - (yend - Math.Floor(yend))) * xgap);
+            ViewModel.SetPixel(address, stride, new Point(ypxl1, xpxl1), color, (1 - (yend - Math.Floor(yend))) * xgap);
             for (int i = 1; i < strokeWidth; i++)
             {
-                SetPixel(address, stride, new Point(ypxl1 + i, xpxl1), color, 1);
+                ViewModel.SetPixel(address, stride, new Point(ypxl1 + i, xpxl1), color, 1);
             }
 
-            SetPixel(address, stride, new Point(ypxl1 + strokeWidth, xpxl1), color, (yend - Math.Floor(yend)) * xgap);
+            ViewModel.SetPixel(address, stride, new Point(ypxl1 + strokeWidth, xpxl1), color,
+                (yend - Math.Floor(yend)) * xgap);
         }
         else
         {
-            SetPixel(address, stride, new Point(xpxl1, ypxl1), color, (1 - (yend - Math.Floor(yend))) * xgap);
+            ViewModel.SetPixel(address, stride, new Point(xpxl1, ypxl1), color, (1 - (yend - Math.Floor(yend))) * xgap);
             for (int i = 1; i < strokeWidth; i++)
             {
-                SetPixel(address, stride, new Point(xpxl1, ypxl1 + i), color, 1);
+                ViewModel.SetPixel(address, stride, new Point(xpxl1, ypxl1 + i), color, 1);
             }
 
-            SetPixel(address, stride, new Point(xpxl1, ypxl1 + strokeWidth), color, (yend - Math.Floor(yend)) * xgap);
+            ViewModel.SetPixel(address, stride, new Point(xpxl1, ypxl1 + strokeWidth), color,
+                (yend - Math.Floor(yend)) * xgap);
         }
 
         double intery = yend + gradient; // First y-intersection for the main loop
@@ -105,23 +107,25 @@ public class DrawTool(string name, MainViewModel viewModel, IImage icon) : Point
 
         if (steep)
         {
-            SetPixel(address, stride, new Point(ypxl2, xpxl2), color, (1 - (yend - Math.Floor(yend))) * xgap);
+            ViewModel.SetPixel(address, stride, new Point(ypxl2, xpxl2), color, (1 - (yend - Math.Floor(yend))) * xgap);
             for (int i = 1; i < strokeWidth; i++)
             {
-                SetPixel(address, stride, new Point(ypxl2 + i, xpxl2), color, 1);
+                ViewModel.SetPixel(address, stride, new Point(ypxl2 + i, xpxl2), color, 1);
             }
 
-            SetPixel(address, stride, new Point(ypxl2 + strokeWidth, xpxl2), color, (yend - Math.Floor(yend)) * xgap);
+            ViewModel.SetPixel(address, stride, new Point(ypxl2 + strokeWidth, xpxl2), color,
+                (yend - Math.Floor(yend)) * xgap);
         }
         else
         {
-            SetPixel(address, stride, new Point(xpxl2, ypxl2), color, (1 - (yend - Math.Floor(yend))) * xgap);
+            ViewModel.SetPixel(address, stride, new Point(xpxl2, ypxl2), color, (1 - (yend - Math.Floor(yend))) * xgap);
             for (int i = 1; i < strokeWidth; i++)
             {
-                SetPixel(address, stride, new Point(xpxl2, ypxl2 + i), color, 1);
+                ViewModel.SetPixel(address, stride, new Point(xpxl2, ypxl2 + i), color, 1);
             }
 
-            SetPixel(address, stride, new Point(xpxl2, ypxl2 + strokeWidth), color, (yend - Math.Floor(yend)) * xgap);
+            ViewModel.SetPixel(address, stride, new Point(xpxl2, ypxl2 + strokeWidth), color,
+                (yend - Math.Floor(yend)) * xgap);
         }
 
         // Main loop
@@ -129,26 +133,26 @@ public class DrawTool(string name, MainViewModel viewModel, IImage icon) : Point
         {
             if (steep)
             {
-                SetPixel(address, stride, new Point(Math.Floor(intery), x), color,
+                ViewModel.SetPixel(address, stride, new Point(Math.Floor(intery), x), color,
                     1 - (intery - Math.Floor(intery)));
                 for (int i = 1; i < strokeWidth; i++)
                 {
-                    SetPixel(address, stride, new Point(Math.Floor(intery) + i, x), color, 1);
+                    ViewModel.SetPixel(address, stride, new Point(Math.Floor(intery) + i, x), color, 1);
                 }
 
-                SetPixel(address, stride, new Point(Math.Floor(intery) + strokeWidth, x), color,
+                ViewModel.SetPixel(address, stride, new Point(Math.Floor(intery) + strokeWidth, x), color,
                     intery - Math.Floor(intery));
             }
             else
             {
-                SetPixel(address, stride, new Point(x, Math.Floor(intery)), color,
+                ViewModel.SetPixel(address, stride, new Point(x, Math.Floor(intery)), color,
                     1 - (intery - Math.Floor(intery)));
                 for (int i = 1; i < strokeWidth; i++)
                 {
-                    SetPixel(address, stride, new Point(x, Math.Floor(intery) + i), color, 1);
+                    ViewModel.SetPixel(address, stride, new Point(x, Math.Floor(intery) + i), color, 1);
                 }
 
-                SetPixel(address, stride, new Point(x, Math.Floor(intery) + strokeWidth), color,
+                ViewModel.SetPixel(address, stride, new Point(x, Math.Floor(intery) + strokeWidth), color,
                     intery - Math.Floor(intery));
             }
 
