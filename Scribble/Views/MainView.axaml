@@ -3,7 +3,6 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="clr-namespace:Scribble.ViewModels"
-             xmlns:b="clr-namespace:Scribble.Behaviours"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:Class="Scribble.Views.MainView"
              x:DataType="vm:MainViewModel">
@@ -30,7 +29,7 @@
             </LayoutTransformControl>
         </ScrollViewer>
         <StackPanel Name="Toolbar"
-                    Background="Coral"
+                    Background="DarkSlateGray"
                     HorizontalAlignment="Center"
                     VerticalAlignment="Bottom"
                     Orientation="Horizontal"
@@ -39,8 +38,17 @@
             <StackPanel.Styles>
                 <Style Selector="ToggleButton:checked /template/ ContentPresenter">
                     <Setter Property="Background" Value="Gray" />
+                    <Setter Property="BorderThickness" Value="2" />
+                    <Setter Property="BorderBrush" Value="Brown" />
                 </Style>
             </StackPanel.Styles>
+        </StackPanel>
+        <StackPanel Name="ToolOptions"
+                    Background="DarkSlateBlue"
+                    HorizontalAlignment="Left"
+                    VerticalAlignment="Top"
+                    Spacing="8"
+                    Margin="10, 80, 0, 0">
         </StackPanel>
     </Panel>
 </UserControl>
