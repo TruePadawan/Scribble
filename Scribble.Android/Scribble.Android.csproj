@@ -19,6 +19,7 @@
 
     <ItemGroup>
         <PackageReference Include="Avalonia.Android"/>
+        <PackageReference Include="Avalonia.Controls.ColorPicker" />
         <PackageReference Include="Xamarin.AndroidX.Core.SplashScreen"/>
     </ItemGroup>
 
