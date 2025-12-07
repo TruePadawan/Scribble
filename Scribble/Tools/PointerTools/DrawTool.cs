@@ -1,5 +1,6 @@
 using System;
 using Avalonia;
+using Avalonia.Controls;
 using Avalonia.Media;
 using Scribble.ViewModels;
 
@@ -7,14 +8,43 @@ namespace Scribble.Tools.PointerTools;
 
 public class DrawTool(string name, MainViewModel viewModel, IImage icon) : PointerToolsBase(name, viewModel, icon)
 {
+    private Color _strokeColor = Colors.Red;
+    private int _strokeWidth = 1;
+
     public override void HandlePointerMove(Point prevCoord, Point currentCoord)
     {
-        DrawLine(prevCoord, currentCoord, Colors.Red, 2);
+        DrawLine(prevCoord, currentCoord, _strokeColor, _strokeWidth);
     }
 
     public override void HandlePointerClick(Point coord)
     {
-        DrawSinglePixel(coord, Colors.Red, 2);
+        DrawSinglePixel(coord, _strokeColor, _strokeWidth);
+    }
+
+    public override void RenderOptions(Panel parent)
+    {
+        // Render a slider for controlling the stroke width and a color picker for stroke color
+        Slider slider = new Slider
+        {
+            TickFrequency = 1,
+            IsSnapToTickEnabled = true,
+            Minimum = 1,
+            Maximum = 5,
+            Value = _strokeWidth
+        };
+        slider.ValueChanged += ((sender, args) => { _strokeWidth = (int)args.NewValue; });
+        slider.Padding = new Thickness(8, 0);
+
+        ColorPicker colorPicker = new ColorPicker
+        {
+            Color = _strokeColor
+        };
+        colorPicker.ColorChanged += (sender, args) => { _strokeColor = args.NewColor; };
+        colorPicker.Margin = new Thickness(0, 8);
+
+        parent.Children.Add(colorPicker);
+        parent.Children.Add(slider);
+        parent.Width = 180;
     }
 
     private void DrawSinglePixel(Point coord, Color color, int strokeWidth = 1)

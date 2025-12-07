@@ -62,6 +62,10 @@ public partial class MainView : UserControl
             if (toggleButton.IsChecked == true)
             {
                 _activePointerTool = tool;
+
+                // Render tool options
+                ToolOptions.Children.Clear();
+                tool.RenderOptions(ToolOptions);
             }
         };
 

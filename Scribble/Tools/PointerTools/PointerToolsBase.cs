@@ -1,5 +1,5 @@
-using System;
 using Avalonia;
+using Avalonia.Controls;
 using Avalonia.Media;
 using Scribble.ViewModels;
 
@@ -19,5 +19,9 @@ public abstract class PointerToolsBase(string name, MainViewModel viewModel, IIm
     public readonly IImage ToolIcon = icon;
 
     public abstract void HandlePointerMove(Point prevCoord, Point currentCoord);
+
     public abstract void HandlePointerClick(Point coord);
+
+    // Derived classes should override this and render their options in the panel
+    public abstract void RenderOptions(Panel parent);
 }
