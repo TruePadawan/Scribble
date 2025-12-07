@@ -49,6 +49,6 @@ public class EraseTool(string name, MainViewModel viewModel, IImage icon) : Poin
         slider.ValueChanged += ((sender, args) => { _radius = (int)args.NewValue; });
         slider.Padding = new Thickness(8, 0);
 
-        parent.Children.Add(slider);
+        parent.Children.Add(CreateOptionControl(slider, "Radius"));
     }
 }

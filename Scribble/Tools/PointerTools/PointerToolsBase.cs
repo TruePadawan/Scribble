@@ -24,4 +24,12 @@ public abstract class PointerToolsBase(string name, MainViewModel viewModel, IIm
 
     // Derived classes should override this and render their options in the panel
     public abstract void RenderOptions(Panel parent);
+
+    protected StackPanel CreateOptionControl(Control actualControl, string optionLabel)
+    {
+        var stackPanel = new StackPanel();
+        stackPanel.Children.Add(new Label { Content = optionLabel });
+        stackPanel.Children.Add(actualControl);
+        return stackPanel;
+    }
 }
