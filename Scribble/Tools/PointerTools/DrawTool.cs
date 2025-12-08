@@ -40,7 +40,6 @@ public class DrawTool(string name, MainViewModel viewModel, IImage icon) : Point
             Color = _strokeColor
         };
         colorPicker.ColorChanged += (sender, args) => { _strokeColor = args.NewColor; };
-        colorPicker.Margin = new Thickness(0, 8);
 
         parent.Children.Add(CreateOptionControl(colorPicker, "Color"));
         parent.Children.Add(CreateOptionControl(slider, "Thickness"));

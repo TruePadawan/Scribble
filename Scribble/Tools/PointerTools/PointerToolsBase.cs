@@ -27,7 +27,11 @@ public abstract class PointerToolsBase(string name, MainViewModel viewModel, IIm
 
     protected StackPanel CreateOptionControl(Control actualControl, string optionLabel)
     {
-        var stackPanel = new StackPanel();
+        var stackPanel = new StackPanel
+        {
+            Margin = new Thickness(8),
+            Spacing = 2
+        };
         stackPanel.Children.Add(new Label { Content = optionLabel });
         stackPanel.Children.Add(actualControl);
         return stackPanel;
