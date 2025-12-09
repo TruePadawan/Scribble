@@ -3,7 +3,6 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="clr-namespace:Scribble.ViewModels"
-             xmlns:b="clr-namespace:Scribble.Behaviours"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:Class="Scribble.Views.MainView"
              x:DataType="vm:MainViewModel">
@@ -30,25 +29,26 @@
             </LayoutTransformControl>
         </ScrollViewer>
         <StackPanel Name="Toolbar"
-                    Background="Coral"
-                    HorizontalAlignment="Left"
-                    VerticalAlignment="Center"
-                    Margin="10,0,0,0"
+                    Background="DarkSlateGray"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Bottom"
+                    Orientation="Horizontal"
+                    Margin="0,0,0,20"
                     Spacing="2">
-            <ToggleButton Width="50" Name="DrawToolButton" Margin="4" b:ToggleButtonGroup.GroupName="PointerTools"
-                          IsChecked="True" IsCheckedChanged="PointerTools_OnSelected">
-                <Image Source="../Assets/draw.png"></Image>
-            </ToggleButton>
-            <ToggleButton Width="50" Name="EraseToolButton" Margin="4" b:ToggleButtonGroup.GroupName="PointerTools"
-                          IsCheckedChanged="PointerTools_OnSelected">
-                <Image Source="../Assets/eraser.png"></Image>
-            </ToggleButton>
-
             <StackPanel.Styles>
                 <Style Selector="ToggleButton:checked /template/ ContentPresenter">
                     <Setter Property="Background" Value="Gray" />
+                    <Setter Property="BorderThickness" Value="2" />
+                    <Setter Property="BorderBrush" Value="Brown" />
                 </Style>
             </StackPanel.Styles>
+        </StackPanel>
+        <StackPanel Name="ToolOptions"
+                    Background="DarkSlateBlue"
+                    HorizontalAlignment="Left"
+                    VerticalAlignment="Top"
+                    Spacing="8"
+                    Margin="10, 80, 0, 0">
         </StackPanel>
     </Panel>
 </UserControl>

@@ -4,36 +4,79 @@ using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Interactivity;
-using Avalonia.Media;
+using Avalonia.Media.Imaging;
+using Avalonia.Platform;
+using Scribble.Behaviours;
+using Scribble.Tools.PointerTools;
 using Scribble.ViewModels;
 
 namespace Scribble.Views;
-
-enum PointerTools
-{
-    DrawTool,
-    EraseTool
-}
 
 public partial class MainView : UserControl
 {
     private Point _prevCoord;
     private const double MinZoom = 1f;
     private const double MaxZoom = 3f;
-    private PointerTools _activeTool;
+    private PointerToolsBase? _activePointerTool;
+    private MainViewModel? _viewModel;
 
     public MainView()
     {
         InitializeComponent();
-        _activeTool = PointerTools.DrawTool;
         _prevCoord = new Point(-1, -1);
-
-        // Center the whiteboard
-        (double canvasWidth, double canvasHeight) = GetDataContext().GetCanvasDimensions();
-        CanvasScrollViewer.Offset = new Vector(canvasWidth / 2, canvasHeight / 2);
     }
 
-    private MainViewModel GetDataContext() => DataContext as MainViewModel ?? new MainViewModel();
+    protected override void OnDataContextChanged(EventArgs e)
+    {
+        base.OnDataContextChanged(e);
+
+        if (DataContext is MainViewModel viewModel)
+        {
+            _viewModel = viewModel;
+
+            Toolbar.Children.Clear();
+
+            // Center the whiteboard
+            (double canvasWidth, double canvasHeight) = viewModel.GetCanvasDimensions();
+            CanvasScrollViewer.Offset = new Vector(canvasWidth / 2, canvasHeight / 2);
+
+            // Register pointer tools
+            RegisterPointerTool(new DrawTool("DrawToolButton", viewModel,
+                new Bitmap(AssetLoader.Open(new Uri("avares://Scribble/Assets/draw.png")))));
+            RegisterPointerTool(new EraseTool("EraseTool", viewModel,
+                new Bitmap(AssetLoader.Open(new Uri("avares://Scribble/Assets/eraser.png")))));
+        }
+    }
+
+    private void RegisterPointerTool(PointerToolsBase tool)
+    {
+        var toggleButton = new ToggleButton
+        {
+            Name = tool.Name,
+            Width = 50,
+            Margin = new Thickness(4),
+        };
+        ToggleButtonGroup.SetGroupName(toggleButton, "PointerTools");
+        toggleButton.IsCheckedChanged += (object? sender, RoutedEventArgs e) =>
+        {
+            if (toggleButton.IsChecked == true)
+            {
+                _activePointerTool = tool;
+
+                // Render tool options
+                ToolOptions.Children.Clear();
+                tool.RenderOptions(ToolOptions);
+            }
+        };
+
+        var toolIcon = new Image
+        {
+            Source = tool.ToolIcon
+        };
+        toggleButton.Content = toolIcon;
+
+        Toolbar.Children.Add(toggleButton);
+    }
 
     private void MainCanvas_OnPointerMoved(object? sender, PointerEventArgs e)
     {
@@ -42,19 +85,7 @@ public partial class MainView : UserControl
 
         if (e.Properties.IsLeftButtonPressed && hasLastCoordinates)
         {
-            var viewModel = GetDataContext();
-            switch (_activeTool)
-            {
-                case PointerTools.DrawTool:
-                    viewModel.DrawLine(_prevCoord, pointerCoordinates, Colors.Red, 2);
-                    break;
-                case PointerTools.EraseTool:
-                    viewModel.Erase(pointerCoordinates);
-                    break;
-                default:
-                    throw new Exception("No pointer tool is selected");
-            }
-
+            _activePointerTool?.HandlePointerMove(_prevCoord, pointerCoordinates);
             WhiteboardRenderer.InvalidateVisual();
         }
 
@@ -66,25 +97,28 @@ public partial class MainView : UserControl
         var pointerCoordinates = e.GetPosition(sender as Control);
         if (e.Properties.IsLeftButtonPressed)
         {
-            var viewModel = GetDataContext();
-            switch (_activeTool)
-            {
-                case PointerTools.DrawTool:
-                    viewModel.DrawSinglePixel(pointerCoordinates, Colors.Red, 2);
-                    break;
-                case PointerTools.EraseTool:
-                    viewModel.Erase(pointerCoordinates);
-                    break;
-                default:
-                    throw new Exception("No pointer tool is selected");
-            }
-
+            _prevCoord = pointerCoordinates;
+            _activePointerTool?.HandlePointerClick(pointerCoordinates);
             WhiteboardRenderer.InvalidateVisual();
         }
     }
 
     private void MainCanvas_OnPointerReleased(object? sender, PointerReleasedEventArgs e)
     {
+        var pointerCoordinates = e.GetPosition(sender as Control);
+        // If the stroke was active with the left button, place a final round dab at the release point
+        // only if we didn't already place one there on the last move (to avoid over-darkening).
+        if (e.InitialPressMouseButton == MouseButton.Left)
+        {
+            double dx = pointerCoordinates.X - _prevCoord.X;
+            double dy = pointerCoordinates.Y - _prevCoord.Y;
+            double dist2 = dx * dx + dy * dy;
+            if (_activePointerTool != null && dist2 > 1e-4)
+            {
+                _activePointerTool.HandlePointerClick(pointerCoordinates);
+                WhiteboardRenderer.InvalidateVisual();
+            }
+        }
         // Reset the last coordinates when the mouse is released
         _prevCoord = new Point(-1, -1);
     }
@@ -95,7 +129,9 @@ public partial class MainView : UserControl
         if (!ctrlKeyIsActive) return;
 
         // ZOOM TO POINT
-        double currentScale = GetDataContext().GetCurrentScale();
+        if (_viewModel == null) throw new Exception("View Model not initialized");
+
+        double currentScale = _viewModel.GetCurrentScale();
         Point mousePosOnViewPort = e.GetPosition(CanvasScrollViewer);
         Point mousePosOnCanvas = e.GetPosition(MainCanvas);
 
@@ -112,7 +148,7 @@ public partial class MainView : UserControl
             return;
         }
 
-        GetDataContext().SetCurrentScale(newScale);
+        _viewModel.SetCurrentScale(newScale);
 
         // Force the scroll viewer to update its layout before calculating a new offset
         CanvasScrollViewer.UpdateLayout();
@@ -123,18 +159,5 @@ public partial class MainView : UserControl
 
         // Stop the scroll viewer from applying its own scrolling logic
         e.Handled = true;
-    }
-
-    private void PointerTools_OnSelected(object? sender, RoutedEventArgs e)
-    {
-        if (sender is ToggleButton checkedButton && checkedButton.IsChecked == true)
-        {
-            _activeTool = checkedButton.Name switch
-            {
-                nameof(DrawToolButton) => PointerTools.DrawTool,
-                nameof(EraseToolButton) => PointerTools.EraseTool,
-                _ => _activeTool
-            };
-        }
     }
 }
