@@ -97,6 +97,7 @@ public partial class MainView : UserControl
         var pointerCoordinates = e.GetPosition(sender as Control);
         if (e.Properties.IsLeftButtonPressed)
         {
+            _prevCoord = pointerCoordinates;
             _activePointerTool?.HandlePointerClick(pointerCoordinates);
             WhiteboardRenderer.InvalidateVisual();
         }
