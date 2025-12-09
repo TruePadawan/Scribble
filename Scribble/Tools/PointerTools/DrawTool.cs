@@ -14,7 +14,10 @@ public class DrawTool(string name, MainViewModel viewModel, IImage icon) : Point
     public override void HandlePointerMove(Point prevCoord, Point currentCoord)
     {
         float opacity = _strokeColor.A / 255f;
-        DrawLine(prevCoord, currentCoord, _strokeColor, _strokeWidth, opacity);
+        // Draw an interior segment without round caps to avoid over-dark joints,
+        // then place a single circular dab at the current point to form a smooth join.
+        DrawSegmentNoCaps(prevCoord, currentCoord, _strokeColor, _strokeWidth, opacity);
+        DrawSinglePixel(currentCoord, _strokeColor, _strokeWidth, opacity);
     }
 
     public override void HandlePointerClick(Point coord)
@@ -127,6 +130,7 @@ public class DrawTool(string name, MainViewModel viewModel, IImage icon) : Point
                     ViewModel.SetPixel(address, stride, new Point(x, y), color, (float)(a * opacity));
                 }
             }
+
             return;
         }
 
@@ -154,8 +158,8 @@ public class DrawTool(string name, MainViewModel viewModel, IImage icon) : Point
                 // Pixel center in line's local coordinates (u along, v across), centered at segment midpoint
                 double cx = x + 0.5 - mx;
                 double cy = y + 0.5 - my;
-                double u = cx * ux + cy * uy;        // along the segment
-                double v = cx * pxn + cy * pyn;       // perpendicular to the segment
+                double u = cx * ux + cy * uy; // along the segment
+                double v = cx * pxn + cy * pyn; // perpendicular to the segment
 
                 // Signed distance to a capsule (segment with round caps)
                 double du = Math.Max(Math.Abs(u) - halfLen, 0.0);
@@ -168,10 +172,68 @@ public class DrawTool(string name, MainViewModel viewModel, IImage icon) : Point
                 ViewModel.SetPixel(address, stride, new Point(x, y), color, (float)(a * opacity));
             }
         }
-
     }
 
-    private static double SmoothStep(double edge0, double edge1, double x)
+    // Internal helper: draw an AA thick segment without round end caps (rectangle SDF).
+    private void DrawSegmentNoCaps(Point start, Point end, Color color, int strokeWidth = 1, float opacity = 1f)
+    {
+        strokeWidth = Math.Max(1, strokeWidth);
+
+        // Compute geometry
+        double dx = end.X - start.X;
+        double dy = end.Y - start.Y;
+        double len2 = dx * dx + dy * dy;
+        if (len2 < 1e-12) return;
+
+        double len = Math.Sqrt(len2);
+        double ux = dx / len;
+        double uy = dy / len;
+        double pxn = -uy;
+        double pyn = ux;
+
+        double halfWidth = strokeWidth / 2.0;
+        double mx = (start.X + end.X) * 0.5;
+        double my = (start.Y + end.Y) * 0.5;
+        double halfLen = len * 0.5;
+
+        using var frame = ViewModel.WhiteboardBitmap.Lock();
+        IntPtr address = frame.Address;
+        int stride = frame.RowBytes;
+
+        // Bounding box expanded by halfWidth + 1 for AA fringe
+        int minXi = (int)Math.Floor(Math.Min(start.X, end.X) - halfWidth - 1);
+        int maxXi = (int)Math.Ceiling(Math.Max(start.X, end.X) + halfWidth + 1);
+        int minYi = (int)Math.Floor(Math.Min(start.Y, end.Y) - halfWidth - 1);
+        int maxYi = (int)Math.Ceiling(Math.Max(start.Y, end.Y) + halfWidth + 1);
+
+        for (int y = minYi; y <= maxYi; y++)
+        {
+            for (int x = minXi; x <= maxXi; x++)
+            {
+                double cx = x + 0.5 - mx;
+                double cy = y + 0.5 - my;
+                double u = cx * ux + cy * uy;
+                double v = cx * pxn + cy * pyn;
+
+                // Signed distance to an axis-aligned rectangle in the line's local space
+                double qx = Math.Abs(u) - halfLen;
+                double qy = Math.Abs(v) - halfWidth;
+                double ox = Math.Max(qx, 0.0);
+                double oy = Math.Max(qy, 0.0);
+                double outside = Math.Sqrt(ox * ox + oy * oy);
+                double inside = Math.Min(Math.Max(qx, qy), 0.0);
+                double sd = outside + inside; // signed distance to rectangle (negative inside)
+
+                // Convert geometric distance to coverage using a ~1px smooth edge
+                double a = SmoothStep(1.0, 0.0, sd);
+                if (a <= 0) continue;
+
+                ViewModel.SetPixel(address, stride, new Point(x, y), color, (float)(a * opacity));
+            }
+        }
+    }
+
+    internal static double SmoothStep(double edge0, double edge1, double x)
     {
         if (Math.Abs(edge1 - edge0) < 1e-9)
             return x < edge0 ? 1.0 : 0.0;

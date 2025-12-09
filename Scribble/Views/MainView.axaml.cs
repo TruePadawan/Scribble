@@ -105,6 +105,20 @@ public partial class MainView : UserControl
 
     private void MainCanvas_OnPointerReleased(object? sender, PointerReleasedEventArgs e)
     {
+        var pointerCoordinates = e.GetPosition(sender as Control);
+        // If the stroke was active with the left button, place a final round dab at the release point
+        // only if we didn't already place one there on the last move (to avoid over-darkening).
+        if (e.InitialPressMouseButton == MouseButton.Left)
+        {
+            double dx = pointerCoordinates.X - _prevCoord.X;
+            double dy = pointerCoordinates.Y - _prevCoord.Y;
+            double dist2 = dx * dx + dy * dy;
+            if (_activePointerTool != null && dist2 > 1e-4)
+            {
+                _activePointerTool.HandlePointerClick(pointerCoordinates);
+                WhiteboardRenderer.InvalidateVisual();
+            }
+        }
         // Reset the last coordinates when the mouse is released
         _prevCoord = new Point(-1, -1);
     }
