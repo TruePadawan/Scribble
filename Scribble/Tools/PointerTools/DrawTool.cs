@@ -29,7 +29,7 @@ public class DrawTool(string name, MainViewModel viewModel, IImage icon) : Point
             TickFrequency = 1,
             IsSnapToTickEnabled = true,
             Minimum = 1,
-            Maximum = 5,
+            Maximum = 10,
             Value = _strokeWidth
         };
         slider.ValueChanged += ((sender, args) => { _strokeWidth = (int)args.NewValue; });
