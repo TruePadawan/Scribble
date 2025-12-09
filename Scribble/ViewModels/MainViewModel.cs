@@ -71,23 +71,44 @@ public partial class MainViewModel : ViewModelBase
             long offset = (long)y * stride + (long)x * BytesPerPixel;
             byte* p = (byte*)address.ToPointer();
 
-            // Get existing pixel values for alpha blending
-            byte existingB = p[offset + 0];
-            byte existingG = p[offset + 1];
-            byte existingR = p[offset + 2];
-            byte existingA = p[offset + 3];
+            // Existing destination pixel (straight/un-premultiplied BGRA)
+            byte dstB8 = p[offset + 0];
+            byte dstG8 = p[offset + 1];
+            byte dstR8 = p[offset + 2];
+            byte dstA8 = p[offset + 3];
 
-            // Calculate blended values using alpha compositing
-            double alpha = opacity;
-            byte newB = (byte)(color.B * alpha + existingB * (1 - alpha));
-            byte newG = (byte)(color.G * alpha + existingG * (1 - alpha));
-            byte newR = (byte)(color.R * alpha + existingR * (1 - alpha));
-            byte newA = (byte)Math.Min(255, existingA + color.A * alpha);
+            // Effective source alpha: callers pass coverage-weighted opacity in [0..1]
+            double srcA = Math.Clamp(opacity, 0.0, 1.0);
+            if (srcA <= 0.0) return;
 
-            p[offset + 0] = newB;
-            p[offset + 1] = newG;
-            p[offset + 2] = newR;
-            p[offset + 3] = newA;
+            // Normalize to [0..1]
+            double dstA = dstA8 / 255.0;
+            double dstB = dstB8 / 255.0;
+            double dstG = dstG8 / 255.0;
+            double dstR = dstR8 / 255.0;
+
+            double srcB = color.B / 255.0;
+            double srcG = color.G / 255.0;
+            double srcR = color.R / 255.0;
+
+            // Porter-Duff "source over" compositing in straight alpha
+            double outA = srcA + dstA * (1.0 - srcA);
+            double outB, outG, outR;
+            if (outA > 1e-6)
+            {
+                outB = (srcB * srcA + dstB * dstA * (1.0 - srcA)) / outA;
+                outG = (srcG * srcA + dstG * dstA * (1.0 - srcA)) / outA;
+                outR = (srcR * srcA + dstR * dstA * (1.0 - srcA)) / outA;
+            }
+            else
+            {
+                outB = outG = outR = 0.0;
+            }
+
+            p[offset + 0] = (byte)Math.Round(Math.Clamp(outB, 0.0, 1.0) * 255.0);
+            p[offset + 1] = (byte)Math.Round(Math.Clamp(outG, 0.0, 1.0) * 255.0);
+            p[offset + 2] = (byte)Math.Round(Math.Clamp(outR, 0.0, 1.0) * 255.0);
+            p[offset + 3] = (byte)Math.Round(Math.Clamp(outA, 0.0, 1.0) * 255.0);
         }
     }
 

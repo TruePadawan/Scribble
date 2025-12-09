@@ -50,22 +50,42 @@ public class DrawTool(string name, MainViewModel viewModel, IImage icon) : Point
 
     private void DrawSinglePixel(Point coord, Color color, int strokeWidth = 1, float opacity = 1f)
     {
+        strokeWidth = Math.Max(1, strokeWidth);
+        double halfWidth = strokeWidth / 2.0;
+
         using var frame = ViewModel.WhiteboardBitmap.Lock();
         IntPtr address = frame.Address;
         int stride = frame.RowBytes;
 
-        // Fill a strokeWidth x strokeWidth block with the requested opacity
-        for (int i = 0; i < strokeWidth; i++)
+        // Render an anti-aliased circular dab centered at coord
+        double cx = coord.X;
+        double cy = coord.Y;
+        int minX = (int)Math.Floor(cx - halfWidth - 1);
+        int maxX = (int)Math.Ceiling(cx + halfWidth + 1);
+        int minY = (int)Math.Floor(cy - halfWidth - 1);
+        int maxY = (int)Math.Ceiling(cy + halfWidth + 1);
+
+        for (int y = minY; y <= maxY; y++)
         {
-            for (int j = 0; j < strokeWidth; j++)
+            for (int x = minX; x <= maxX; x++)
             {
-                ViewModel.SetPixel(address, stride, new Point(coord.X + j, coord.Y + i), color, opacity);
+                double px = x + 0.5;
+                double py = y + 0.5;
+                double ddx = px - cx;
+                double ddy = py - cy;
+                double d = Math.Sqrt(ddx * ddx + ddy * ddy);
+                // Signed distance to the circle boundary (negative inside)
+                double sd = d - halfWidth;
+                // 1-pixel soft edge
+                double a = SmoothStep(1.0, 0.0, sd);
+                if (a <= 0) continue;
+                ViewModel.SetPixel(address, stride, new Point(x, y), color, (float)(a * opacity));
             }
         }
     }
 
-    // Draw lines using Xiaolin Wu's Line Algorithm
-    // Modified to allow drawing lines of a particular thickness; gotten from https://github.com/jambolo/thick-xiaolin-wu/blob/master/cs/thick-xiaolin-wu.coffee
+    // Anti-aliased thick line with butt/square caps (signed-distance field)
+    // Notes: Bounding box is expanded by radius+1 for AA fringe; zero-length strokes render a circular dab.
     private void DrawLine(Point start, Point end, Color color, int strokeWidth = 1, float opacity = 1f)
     {
         strokeWidth = Math.Max(1, strokeWidth);
@@ -74,125 +94,89 @@ public class DrawTool(string name, MainViewModel viewModel, IImage icon) : Point
         IntPtr address = frame.Address;
         int stride = frame.RowBytes;
 
+        // Compute geometry
         double dx = end.X - start.X;
         double dy = end.Y - start.Y;
-        bool steep = Math.Abs(dy) > Math.Abs(dx);
+        double len2 = dx * dx + dy * dy;
+        double len = Math.Sqrt(len2);
 
-        if (steep)
+        double halfWidth = strokeWidth / 2.0;
+
+        // Fast path for zero-length (tap): render a circular dab with AA
+        if (len < 1e-6)
         {
-            // Swap x and y coordinates for steep lines
-            (start, end) = (new Point(start.Y, start.X), new Point(end.Y, end.X));
-            (dx, dy) = (dy, dx);
-        }
+            double cx = start.X;
+            double cy = start.Y;
+            int minX = (int)Math.Floor(cx - halfWidth - 1);
+            int maxX = (int)Math.Ceiling(cx + halfWidth + 1);
+            int minY = (int)Math.Floor(cy - halfWidth - 1);
+            int maxY = (int)Math.Ceiling(cy + halfWidth + 1);
 
-        if (start.X > end.X)
-        {
-            // Ensure we draw from left to right
-            (start, end) = (end, start);
-            dx = -dx;
-            dy = -dy;
-        }
-
-        double gradient = dx == 0 ? 1 : dy / dx;
-
-        // Scale stroke to maintain visual thickness regardless of slope
-        strokeWidth = Math.Max(1, (int)Math.Round(strokeWidth * Math.Sqrt(1 + (gradient * gradient))));
-
-        // Handle the first endpoint
-        double xend = Math.Round(start.X);
-        double yend = start.Y - (strokeWidth - 1) * 0.5 + gradient * (xend - start.X);
-        double xgap = 1 - (start.X + 0.5 - Math.Floor(start.X + 0.5));
-        int xpxl1 = (int)xend; // This will be used in the main loop
-        int ypxl1 = (int)Math.Floor(yend);
-
-        if (steep)
-        {
-            ViewModel.SetPixel(address, stride, new Point(ypxl1, xpxl1), color,
-                (float)(((1 - (yend - Math.Floor(yend))) * xgap) * opacity));
-            for (int i = 1; i < strokeWidth; i++)
+            for (int y = minY; y <= maxY; y++)
             {
-                ViewModel.SetPixel(address, stride, new Point(ypxl1 + i, xpxl1), color, opacity);
-            }
-
-            ViewModel.SetPixel(address, stride, new Point(ypxl1 + (strokeWidth - 1), xpxl1), color,
-                (float)(((yend - Math.Floor(yend)) * xgap) * opacity));
-        }
-        else
-        {
-            ViewModel.SetPixel(address, stride, new Point(xpxl1, ypxl1), color,
-                (float)(((1 - (yend - Math.Floor(yend))) * xgap) * opacity));
-            for (int i = 1; i < strokeWidth; i++)
-            {
-                ViewModel.SetPixel(address, stride, new Point(xpxl1, ypxl1 + i), color, opacity);
-            }
-
-            ViewModel.SetPixel(address, stride, new Point(xpxl1, ypxl1 + (strokeWidth - 1)), color,
-                (float)(((yend - Math.Floor(yend)) * xgap) * opacity));
-        }
-
-        double intery = yend + gradient; // First y-intersection for the main loop
-
-        // Handle the second endpoint
-        xend = Math.Round(end.X);
-        yend = end.Y - (strokeWidth - 1) * 0.5 + gradient * (xend - end.X);
-        xgap = end.X + 0.5 - Math.Floor(end.X + 0.5);
-        int xpxl2 = (int)xend; // This will be used in the main loop
-        int ypxl2 = (int)Math.Floor(yend);
-
-        if (steep)
-        {
-            ViewModel.SetPixel(address, stride, new Point(ypxl2, xpxl2), color,
-                (float)(((1 - (yend - Math.Floor(yend))) * xgap) * opacity));
-            for (int i = 1; i < strokeWidth; i++)
-            {
-                ViewModel.SetPixel(address, stride, new Point(ypxl2 + i, xpxl2), color, opacity);
-            }
-
-            ViewModel.SetPixel(address, stride, new Point(ypxl2 + (strokeWidth - 1), xpxl2), color,
-                (float)(((yend - Math.Floor(yend)) * xgap) * opacity));
-        }
-        else
-        {
-            ViewModel.SetPixel(address, stride, new Point(xpxl2, ypxl2), color,
-                (float)(((1 - (yend - Math.Floor(yend))) * xgap) * opacity));
-            for (int i = 1; i < strokeWidth; i++)
-            {
-                ViewModel.SetPixel(address, stride, new Point(xpxl2, ypxl2 + i), color, opacity);
-            }
-
-            ViewModel.SetPixel(address, stride, new Point(xpxl2, ypxl2 + (strokeWidth - 1)), color,
-                (float)(((yend - Math.Floor(yend)) * xgap) * opacity));
-        }
-
-        // Main loop
-        for (int x = xpxl1 + 1; x < xpxl2; x++)
-        {
-            if (steep)
-            {
-                ViewModel.SetPixel(address, stride, new Point(Math.Floor(intery), x), color,
-                    (float)((1 - (intery - Math.Floor(intery))) * opacity));
-                for (int i = 1; i < strokeWidth; i++)
+                for (int x = minX; x <= maxX; x++)
                 {
-                    ViewModel.SetPixel(address, stride, new Point(Math.Floor(intery) + i, x), color, opacity);
+                    double px = x + 0.5;
+                    double py = y + 0.5;
+                    double ddx = px - cx;
+                    double ddy = py - cy;
+                    double d = Math.Sqrt(ddx * ddx + ddy * ddy);
+                    // Smooth edge from r to r+1 pixel
+                    double a = SmoothStep(halfWidth + 1.0, halfWidth, d);
+                    if (a <= 0) continue;
+                    ViewModel.SetPixel(address, stride, new Point(x, y), color, (float)(a * opacity));
                 }
-
-                ViewModel.SetPixel(address, stride, new Point(Math.Floor(intery) + (strokeWidth - 1), x), color,
-                    (float)((intery - Math.Floor(intery)) * opacity));
             }
-            else
-            {
-                ViewModel.SetPixel(address, stride, new Point(x, Math.Floor(intery)), color,
-                    (float)((1 - (intery - Math.Floor(intery))) * opacity));
-                for (int i = 1; i < strokeWidth; i++)
-                {
-                    ViewModel.SetPixel(address, stride, new Point(x, Math.Floor(intery) + i), color, opacity);
-                }
-
-                ViewModel.SetPixel(address, stride, new Point(x, Math.Floor(intery) + (strokeWidth - 1)), color,
-                    (float)((intery - Math.Floor(intery)) * opacity));
-            }
-
-            intery += gradient;
+            return;
         }
+
+        // Unit direction and perpendicular
+        double ux = dx / len;
+        double uy = dy / len;
+        double pxn = -uy;
+        double pyn = ux;
+
+        // Midpoint and half-length (for round caps)
+        double mx = (start.X + end.X) * 0.5;
+        double my = (start.Y + end.Y) * 0.5;
+        double halfLen = len * 0.5;
+
+        // Bounding box expanded by halfWidth + 1 for AA fringe
+        int minXi = (int)Math.Floor(Math.Min(start.X, end.X) - halfWidth - 1);
+        int maxXi = (int)Math.Ceiling(Math.Max(start.X, end.X) + halfWidth + 1);
+        int minYi = (int)Math.Floor(Math.Min(start.Y, end.Y) - halfWidth - 1);
+        int maxYi = (int)Math.Ceiling(Math.Max(start.Y, end.Y) + halfWidth + 1);
+
+        for (int y = minYi; y <= maxYi; y++)
+        {
+            for (int x = minXi; x <= maxXi; x++)
+            {
+                // Pixel center in line's local coordinates (u along, v across), centered at segment midpoint
+                double cx = x + 0.5 - mx;
+                double cy = y + 0.5 - my;
+                double u = cx * ux + cy * uy;        // along the segment
+                double v = cx * pxn + cy * pyn;       // perpendicular to the segment
+
+                // Signed distance to a capsule (segment with round caps)
+                double du = Math.Max(Math.Abs(u) - halfLen, 0.0);
+                double sd = Math.Sqrt(du * du + v * v) - halfWidth;
+
+                // Convert geometric distance to coverage using a 1px smooth edge
+                double a = SmoothStep(1.0, 0.0, sd);
+                if (a <= 0) continue;
+
+                ViewModel.SetPixel(address, stride, new Point(x, y), color, (float)(a * opacity));
+            }
+        }
+
+    }
+
+    private static double SmoothStep(double edge0, double edge1, double x)
+    {
+        if (Math.Abs(edge1 - edge0) < 1e-9)
+            return x < edge0 ? 1.0 : 0.0;
+        double t = (x - edge0) / (edge1 - edge0);
+        t = Math.Clamp(t, 0.0, 1.0);
+        return t * t * (3 - 2 * t);
     }
 }
