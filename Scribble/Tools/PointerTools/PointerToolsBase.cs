@@ -18,12 +18,18 @@ public abstract class PointerToolsBase(string name, MainViewModel viewModel, IIm
     protected MainViewModel ViewModel { get; } = viewModel;
     public readonly IImage ToolIcon = icon;
 
-    public abstract void HandlePointerMove(Point prevCoord, Point currentCoord);
+    public virtual void HandlePointerMove(Point prevCoord, Point currentCoord)
+    {
+    }
 
-    public abstract void HandlePointerClick(Point coord);
+    public virtual void HandlePointerClick(Point coord)
+    {
+    }
 
     // Derived classes should override this and render their options in the panel
-    public abstract void RenderOptions(Panel parent);
+    public virtual void RenderOptions(Panel parent)
+    {
+    }
 
     protected StackPanel CreateOptionControl(Control actualControl, string optionLabel)
     {

@@ -45,6 +45,8 @@ public partial class MainView : UserControl
                 new Bitmap(AssetLoader.Open(new Uri("avares://Scribble/Assets/draw.png")))));
             RegisterPointerTool(new EraseTool("EraseTool", viewModel,
                 new Bitmap(AssetLoader.Open(new Uri("avares://Scribble/Assets/eraser.png")))));
+            RegisterPointerTool(new PanningTool("PanningTool", viewModel,
+                new Bitmap(AssetLoader.Open(new Uri("avares://Scribble/Assets/hand.png"))), CanvasScrollViewer));
         }
     }
 
@@ -89,7 +91,7 @@ public partial class MainView : UserControl
             WhiteboardRenderer.InvalidateVisual();
         }
 
-        _prevCoord = e.GetPosition(sender as Control);
+        _prevCoord = pointerCoordinates;
     }
 
     private void MainCanvas_OnPointerPressed(object? sender, PointerPressedEventArgs e)
@@ -119,6 +121,7 @@ public partial class MainView : UserControl
                 WhiteboardRenderer.InvalidateVisual();
             }
         }
+
         // Reset the last coordinates when the mouse is released
         _prevCoord = new Point(-1, -1);
     }
