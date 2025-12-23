@@ -12,7 +12,6 @@ public class PanningTool(string name, MainViewModel viewModel, IImage icon, Scro
     public override void HandlePointerMove(Point prevCoord, Point currentCoord)
     {
         var distance = currentCoord - prevCoord;
-        Console.WriteLine(distance);
         scrollViewer.Offset -= new Vector(distance.X, distance.Y);
     }
 }
