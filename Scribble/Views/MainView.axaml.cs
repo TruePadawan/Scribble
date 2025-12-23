@@ -80,9 +80,22 @@ public partial class MainView : UserControl
         Toolbar.Children.Add(toggleButton);
     }
 
+    private Point GetPointerPosition(PointerEventArgs e)
+    {
+        // For panning, we need coordinates relative to the viewport (ScrollViewer)
+        // because Canvas itself moves, creating a feedback loop if we use its coordinates
+        if (_activePointerTool is PanningTool)
+        {
+            return e.GetPosition(CanvasScrollViewer);
+        }
+
+        // For drawing/erasing, we need coordinates relative to the Canvas content
+        return e.GetPosition(MainCanvas);
+    }
+
     private void MainCanvas_OnPointerMoved(object? sender, PointerEventArgs e)
     {
-        var pointerCoordinates = e.GetPosition(sender as Control);
+        var pointerCoordinates = GetPointerPosition(e);
         var hasLastCoordinates = !_prevCoord.Equals(new Point(-1, -1));
 
         if (e.Properties.IsLeftButtonPressed && hasLastCoordinates)
@@ -96,7 +109,7 @@ public partial class MainView : UserControl
 
     private void MainCanvas_OnPointerPressed(object? sender, PointerPressedEventArgs e)
     {
-        var pointerCoordinates = e.GetPosition(sender as Control);
+        var pointerCoordinates = GetPointerPosition(e);
         if (e.Properties.IsLeftButtonPressed)
         {
             _prevCoord = pointerCoordinates;
@@ -107,7 +120,7 @@ public partial class MainView : UserControl
 
     private void MainCanvas_OnPointerReleased(object? sender, PointerReleasedEventArgs e)
     {
-        var pointerCoordinates = e.GetPosition(sender as Control);
+        var pointerCoordinates = GetPointerPosition(e);
         // If the stroke was active with the left button, place a final round dab at the release point
         // only if we didn't already place one there on the last move (to avoid over-darkening).
         if (e.InitialPressMouseButton == MouseButton.Left)
