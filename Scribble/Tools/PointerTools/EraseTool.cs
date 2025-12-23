@@ -38,23 +38,23 @@ public class EraseTool(string name, MainViewModel viewModel, IImage icon) : Poin
         parent.Children.Add(CreateOptionControl(slider, "Thickness"));
     }
 
-    // TODO: Remove anti-aliasing logic
+    // Solid (non-AA) circular dab for performance
     private void EraseSinglePixel(Point coord, int strokeWidth)
     {
         strokeWidth = Math.Max(1, strokeWidth);
         double halfWidth = strokeWidth / 2.0;
+        double r2 = halfWidth * halfWidth;
 
         using var frame = ViewModel.WhiteboardBitmap.Lock();
         IntPtr address = frame.Address;
         int stride = frame.RowBytes;
 
-        // Render an anti-aliased circular dab centered at coord
         double cx = coord.X;
         double cy = coord.Y;
-        int minX = (int)Math.Floor(cx - halfWidth - 1);
-        int maxX = (int)Math.Ceiling(cx + halfWidth + 1);
-        int minY = (int)Math.Floor(cy - halfWidth - 1);
-        int maxY = (int)Math.Ceiling(cy + halfWidth + 1);
+        int minX = (int)Math.Floor(cx - halfWidth);
+        int maxX = (int)Math.Ceiling(cx + halfWidth);
+        int minY = (int)Math.Floor(cy - halfWidth);
+        int maxY = (int)Math.Ceiling(cy + halfWidth);
 
         for (int y = minY; y <= maxY; y++)
         {
@@ -64,12 +64,8 @@ public class EraseTool(string name, MainViewModel viewModel, IImage icon) : Poin
                 double py = y + 0.5;
                 double ddx = px - cx;
                 double ddy = py - cy;
-                double d = Math.Sqrt(ddx * ddx + ddy * ddy);
-                // Signed distance to the circle boundary (negative inside)
-                double sd = d - halfWidth;
-                // 1-pixel soft edge
-                double a = DrawTool.SmoothStep(1.0, 0.0, sd);
-                if (a <= 0) continue;
+                double d2 = ddx * ddx + ddy * ddy;
+                if (d2 > r2) continue;
                 ViewModel.SetPixel(address, stride, new Point(x, y), ViewModel.BackgroundColor, 1f);
             }
         }
@@ -115,20 +111,11 @@ public class EraseTool(string name, MainViewModel viewModel, IImage icon) : Poin
                 double u = cx * ux + cy * uy;
                 double v = cx * pxn + cy * pyn;
 
-                // Signed distance to an axis-aligned rectangle in the line's local space
-                double qx = Math.Abs(u) - halfLen;
-                double qy = Math.Abs(v) - halfWidth;
-                double ox = Math.Max(qx, 0.0);
-                double oy = Math.Max(qy, 0.0);
-                double outside = Math.Sqrt(ox * ox + oy * oy);
-                double inside = Math.Min(Math.Max(qx, qy), 0.0);
-                double sd = outside + inside; // signed distance to rectangle (negative inside)
-
-                // Convert geometric distance to coverage using a ~1px smooth edge
-                double a = DrawTool.SmoothStep(1.0, 0.0, sd);
-                if (a <= 0) continue;
-
-                ViewModel.SetPixel(address, stride, new Point(x, y), ViewModel.BackgroundColor, 1f);
+                // Solid (non-AA) rectangle coverage in the line's local space
+                if (Math.Abs(u) <= halfLen && Math.Abs(v) <= halfWidth)
+                {
+                    ViewModel.SetPixel(address, stride, new Point(x, y), ViewModel.BackgroundColor, 1f);
+                }
             }
         }
     }
