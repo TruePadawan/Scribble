@@ -484,3 +484,4 @@ $RECYCLE.BIN/
 *.swp
 
 */staging/usr/lib
+out
