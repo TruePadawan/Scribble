@@ -9,6 +9,8 @@
 
     <ItemGroup>
         <AvaloniaResource Include="Assets\**"/>
+        <AvaloniaResource Include="staging\usr\share\icons\hicolor\scalable\apps\scribble.svg" />
+        <AvaloniaResource Include="staging\usr\share\pixmaps\scribble.jpg" />
     </ItemGroup>
 
     <ItemGroup>
@@ -22,5 +24,9 @@
             <PrivateAssets Condition="'$(Configuration)' != 'Debug'">All</PrivateAssets>
         </PackageReference>
         <PackageReference Include="CommunityToolkit.Mvvm"/>
+    </ItemGroup>
+
+    <ItemGroup>
+      <Folder Include="staging\" />
     </ItemGroup>
 </Project>
