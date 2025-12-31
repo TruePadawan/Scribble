@@ -1,0 +1,11 @@
+[Desktop Entry]
+Name=Scribble
+Comment=Scribble is a simple drawing tool
+Icon=scribble
+Exec=scribble
+StartupWMClass=scribble
+Terminal=false
+Type=Application
+Categories=Graphics
+GenericName=Drawing Application
+Keywords=draw; graphics; paint
