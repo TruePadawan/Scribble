@@ -19,9 +19,9 @@ public partial class MainViewModel : ViewModelBase
     public WriteableBitmap WhiteboardBitmap { get; }
     public ScaleTransform ScaleTransform { get; }
 
-    private LinkedList<PixelState> _pixelsState = [];
-    private Stack<LinkedList<PixelState>> _undoOperations = [];
-    private Stack<LinkedList<PixelState>> _redoOperations = [];
+    private List<PixelState> _pixelsState = [];
+    private Stack<List<PixelState>> _undoOperations = [];
+    private Stack<List<PixelState>> _redoOperations = [];
     private bool _isCapturingState = false;
 
 
@@ -131,7 +131,7 @@ public partial class MainViewModel : ViewModelBase
 
             if (_isCapturingState)
             {
-                _pixelsState.AddLast(new PixelState(offset, new Color(dstA8, dstR8, dstG8, dstB8)));
+                _pixelsState.Add(new PixelState(offset, new Color(dstA8, dstR8, dstG8, dstB8)));
             }
         }
     }
@@ -195,24 +195,22 @@ public partial class MainViewModel : ViewModelBase
         byte* p = (byte*)address.ToPointer();
 
         var operationsToBeUndone = _undoOperations.Pop();
-        LinkedList<PixelState> operationsToBeRedone = [];
+        List<PixelState> operationsToBeRedone = new List<PixelState>(operationsToBeUndone.Count);
 
-        while (operationsToBeUndone.Last != null)
+        for (int i = operationsToBeUndone.Count - 1; i >= 0; i--)
         {
-            var (offset, color) = operationsToBeUndone.Last.Value;
+            var (offset, color) = operationsToBeUndone[i];
             byte dstB8 = p[offset + 0];
             byte dstG8 = p[offset + 1];
             byte dstR8 = p[offset + 2];
             byte dstA8 = p[offset + 3];
             var currentPixelState = new PixelState(offset, new Color(dstA8, dstR8, dstG8, dstB8));
-            operationsToBeRedone.AddLast(currentPixelState);
+            operationsToBeRedone.Add(currentPixelState);
 
             p[offset] = color.B;
             p[offset + 1] = color.G;
             p[offset + 2] = color.R;
             p[offset + 3] = color.A;
-
-            operationsToBeUndone.RemoveLast();
         }
 
         _redoOperations.Push(operationsToBeRedone);
@@ -227,24 +225,22 @@ public partial class MainViewModel : ViewModelBase
         var p = (byte*)address.ToPointer();
 
         var operationsToBeRedone = _redoOperations.Pop();
-        LinkedList<PixelState> operationsToBeUndone = [];
+        List<PixelState> operationsToBeUndone = new List<PixelState>(operationsToBeRedone.Count);
 
-        while (operationsToBeRedone.Last != null)
+        for (int i = operationsToBeRedone.Count - 1; i >= 0; i--)
         {
-            var (offset, color) = operationsToBeRedone.Last.Value;
+            var (offset, color) = operationsToBeRedone[i];
             byte dstB8 = p[offset + 0];
             byte dstG8 = p[offset + 1];
             byte dstR8 = p[offset + 2];
             byte dstA8 = p[offset + 3];
             var currentPixelState = new PixelState(offset, new Color(dstA8, dstR8, dstG8, dstB8));
-            operationsToBeUndone.AddLast(currentPixelState);
+            operationsToBeUndone.Add(currentPixelState);
 
             p[offset] = color.B;
             p[offset + 1] = color.G;
             p[offset + 2] = color.R;
             p[offset + 3] = color.A;
-
-            operationsToBeRedone.RemoveLast();
         }
 
         _undoOperations.Push(operationsToBeUndone);
