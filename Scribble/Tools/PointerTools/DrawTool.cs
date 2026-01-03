@@ -46,7 +46,7 @@ public class DrawTool(string name, MainViewModel viewModel, IImage icon) : Point
         ViewModel.StopStateCapture();
     }
 
-    public override void RenderOptions(Panel parent)
+    public override bool RenderOptions(Panel parent)
     {
         // Render a slider for controlling the stroke width and a color picker for stroke color
         Slider slider = new Slider
@@ -69,6 +69,7 @@ public class DrawTool(string name, MainViewModel viewModel, IImage icon) : Point
         parent.Children.Add(CreateOptionControl(colorPicker, "Color"));
         parent.Children.Add(CreateOptionControl(slider, "Thickness"));
         parent.Width = 180;
+        return true;
     }
 
     private void DrawSinglePixel(IntPtr address, int stride, Point coord, Color color, int strokeWidth = 1, float opacity = 1f)

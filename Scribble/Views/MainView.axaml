@@ -33,27 +33,85 @@
                 </Border>
             </LayoutTransformControl>
         </ScrollViewer>
-        <StackPanel Name="Toolbar"
-                    Background="DarkSlateGray"
-                    HorizontalAlignment="Center"
-                    VerticalAlignment="Bottom"
-                    Orientation="Horizontal"
-                    Margin="0,0,0,20"
-                    Spacing="2">
-            <StackPanel.Styles>
-                <Style Selector="ToggleButton:checked /template/ ContentPresenter">
-                    <Setter Property="Background" Value="Gray" />
-                    <Setter Property="BorderThickness" Value="2" />
-                    <Setter Property="BorderBrush" Value="Brown" />
+        <Border Name="ToolbarContainer"
+                Background="#EE2B2B2B"
+                CornerRadius="16"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Bottom"
+                Margin="0,0,0,24"
+                Padding="8"
+                BoxShadow="0 4 20 0 #60000000">
+            <StackPanel Name="Toolbar"
+                        Orientation="Horizontal"
+                        Spacing="8">
+                <StackPanel.Styles>
+                    <Style Selector="ToggleButton">
+                        <Setter Property="CornerRadius" Value="10" />
+                        <Setter Property="Background" Value="Transparent" />
+                        <Setter Property="BorderThickness" Value="0" />
+                        <Setter Property="Padding" Value="8" />
+                        <Setter Property="Width" Value="48" />
+                        <Setter Property="Height" Value="48" />
+                        <Setter Property="Transitions">
+                            <Transitions>
+                                <BrushTransition Property="Background" Duration="0:0:0.15" />
+                                <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.15" />
+                            </Transitions>
+                        </Setter>
+                    </Style>
+                    <Style Selector="ToggleButton:pointerover">
+                        <Setter Property="Background" Value="#1AFFFFFF" />
+                        <Setter Property="RenderTransform" Value="scale(1.1)" />
+                    </Style>
+                    <Style Selector="ToggleButton:checked">
+                        <Setter Property="Background" Value="#33FFFFFF" />
+                    </Style>
+                    <Style Selector="ToggleButton:checked /template/ ContentPresenter">
+                        <Setter Property="Background" Value="#33FFFFFF" />
+                    </Style>
+                </StackPanel.Styles>
+            </StackPanel>
+        </Border>
+
+        <Border Name="ToolOptionsContainer"
+                Background="#EE2B2B2B"
+                CornerRadius="16"
+                HorizontalAlignment="Left"
+                VerticalAlignment="Top"
+                Margin="24, 80, 0, 0"
+                Padding="16"
+                BoxShadow="0 4 20 0 #60000000"
+                IsVisible="False"
+                Opacity="0">
+            <Border.Transitions>
+                <Transitions>
+                    <DoubleTransition Property="Opacity" Duration="0:0:0.3" Easing="CubicEaseOut" />
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.3" Easing="CubicEaseOut" />
+                </Transitions>
+            </Border.Transitions>
+            <Border.Styles>
+                <Style Selector="Border[IsVisible=True]">
+                    <Setter Property="Opacity" Value="1" />
+                    <Setter Property="RenderTransform" Value="translate(0px, 0px)" />
                 </Style>
-            </StackPanel.Styles>
-        </StackPanel>
-        <StackPanel Name="ToolOptions"
-                    Background="DarkSlateBlue"
-                    HorizontalAlignment="Left"
-                    VerticalAlignment="Top"
-                    Spacing="8"
-                    Margin="10, 80, 0, 0">
-        </StackPanel>
+                <Style Selector="Border[IsVisible=False]">
+                    <Setter Property="Opacity" Value="0" />
+                    <Setter Property="RenderTransform" Value="translate(-20px, 0px)" />
+                </Style>
+
+                <!-- Style for controls inside ToolOptions -->
+                <Style Selector="Label">
+                    <Setter Property="FontSize" Value="12" />
+                    <Setter Property="Foreground" Value="#AAAAAA" />
+                    <Setter Property="Margin" Value="0,0,0,4" />
+                </Style>
+                <Style Selector="Slider">
+                    <Setter Property="MinWidth" Value="120" />
+                </Style>
+            </Border.Styles>
+            <StackPanel Name="ToolOptions"
+                        Spacing="12">
+            </StackPanel>
+        </Border>
     </Panel>
 </UserControl>
