@@ -100,22 +100,34 @@ public partial class MainViewModel : ViewModelBase
 
             // Porter-Duff "source over" compositing in straight alpha
             double outA = srcA + dstA * (1.0 - srcA);
-            double outB, outG, outR;
-            if (outA > 1e-6)
+
+            // Bypass complex Porter-Duff alpha blending when the source opacity is 1.0.
+            if (outA > 1.0 - 1e-6 && srcA > 1.0 - 1e-6)
             {
-                outB = (srcB * srcA + dstB * dstA * (1.0 - srcA)) / outA;
-                outG = (srcG * srcA + dstG * dstA * (1.0 - srcA)) / outA;
-                outR = (srcR * srcA + dstR * dstA * (1.0 - srcA)) / outA;
+                p[offset + 0] = color.B;
+                p[offset + 1] = color.G;
+                p[offset + 2] = color.R;
+                p[offset + 3] = color.A;
             }
             else
             {
-                outB = outG = outR = 0.0;
-            }
+                double outB, outG, outR;
+                if (outA > 1e-6)
+                {
+                    outB = (srcB * srcA + dstB * dstA * (1.0 - srcA)) / outA;
+                    outG = (srcG * srcA + dstG * dstA * (1.0 - srcA)) / outA;
+                    outR = (srcR * srcA + dstR * dstA * (1.0 - srcA)) / outA;
+                }
+                else
+                {
+                    outB = outG = outR = 0.0;
+                }
 
-            p[offset + 0] = (byte)Math.Round(Math.Clamp(outB, 0.0, 1.0) * 255.0);
-            p[offset + 1] = (byte)Math.Round(Math.Clamp(outG, 0.0, 1.0) * 255.0);
-            p[offset + 2] = (byte)Math.Round(Math.Clamp(outR, 0.0, 1.0) * 255.0);
-            p[offset + 3] = (byte)Math.Round(Math.Clamp(outA, 0.0, 1.0) * 255.0);
+                p[offset + 0] = (byte)Math.Round(Math.Clamp(outB, 0.0, 1.0) * 255.0);
+                p[offset + 1] = (byte)Math.Round(Math.Clamp(outG, 0.0, 1.0) * 255.0);
+                p[offset + 2] = (byte)Math.Round(Math.Clamp(outR, 0.0, 1.0) * 255.0);
+                p[offset + 3] = (byte)Math.Round(Math.Clamp(outA, 0.0, 1.0) * 255.0);
+            }
 
             if (_isCapturingState)
             {

@@ -12,14 +12,21 @@ public class EraseTool(string name, MainViewModel viewModel, IImage icon) : Poin
 
     public override void HandlePointerMove(Point prevCoord, Point currentCoord)
     {
-        EraseSegmentNoCaps(prevCoord, currentCoord, _strokeWidth);
-        EraseSinglePixel(currentCoord, _strokeWidth);
+        using var frame = ViewModel.WhiteboardBitmap.Lock();
+        IntPtr address = frame.Address;
+        int stride = frame.RowBytes;
+
+        EraseSegmentNoCaps(address, stride, prevCoord, currentCoord, _strokeWidth);
+        EraseSinglePixel(address, stride, currentCoord, _strokeWidth);
     }
 
     public override void HandlePointerClick(Point coord)
     {
         ViewModel.StartStateCapture();
-        EraseSinglePixel(coord, _strokeWidth);
+        using var frame = ViewModel.WhiteboardBitmap.Lock();
+        IntPtr address = frame.Address;
+        int stride = frame.RowBytes;
+        EraseSinglePixel(address, stride, coord, _strokeWidth);
     }
 
     public override void HandlePointerRelease(Point prevCoord, Point currentCoord)
@@ -45,15 +52,11 @@ public class EraseTool(string name, MainViewModel viewModel, IImage icon) : Poin
     }
 
     // Solid (non-AA) circular dab for performance
-    private void EraseSinglePixel(Point coord, int strokeWidth)
+    private void EraseSinglePixel(IntPtr address, int stride, Point coord, int strokeWidth)
     {
         strokeWidth = Math.Max(1, strokeWidth);
         double halfWidth = strokeWidth / 2.0;
         double r2 = halfWidth * halfWidth;
-
-        using var frame = ViewModel.WhiteboardBitmap.Lock();
-        IntPtr address = frame.Address;
-        int stride = frame.RowBytes;
 
         double cx = coord.X;
         double cy = coord.Y;
@@ -77,7 +80,7 @@ public class EraseTool(string name, MainViewModel viewModel, IImage icon) : Poin
         }
     }
 
-    private void EraseSegmentNoCaps(Point start, Point end, int strokeWidth)
+    private void EraseSegmentNoCaps(IntPtr address, int stride, Point start, Point end, int strokeWidth)
     {
         strokeWidth = Math.Max(1, strokeWidth);
 
@@ -97,10 +100,6 @@ public class EraseTool(string name, MainViewModel viewModel, IImage icon) : Poin
         double mx = (start.X + end.X) * 0.5;
         double my = (start.Y + end.Y) * 0.5;
         double halfLen = len * 0.5;
-
-        using var frame = ViewModel.WhiteboardBitmap.Lock();
-        IntPtr address = frame.Address;
-        int stride = frame.RowBytes;
 
         // Bounding box expanded by halfWidth + 1 for AA fringe
         int minXi = (int)Math.Floor(Math.Min(start.X, end.X) - halfWidth - 1);
