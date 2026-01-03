@@ -1,8 +1,10 @@
 ﻿using System;
+using System.Collections.Generic;
 using Avalonia;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
+using Scribble.Lib;
 
 namespace Scribble.ViewModels;
 
@@ -16,6 +18,11 @@ public partial class MainViewModel : ViewModelBase
 
     public WriteableBitmap WhiteboardBitmap { get; }
     public ScaleTransform ScaleTransform { get; }
+
+    private List<PixelState> _pixelsState = [];
+    private Stack<List<PixelState>> _undoOperations = [];
+    private Stack<List<PixelState>> _redoOperations = [];
+    private bool _isCapturingState = false;
 
 
     public MainViewModel()
@@ -93,22 +100,39 @@ public partial class MainViewModel : ViewModelBase
 
             // Porter-Duff "source over" compositing in straight alpha
             double outA = srcA + dstA * (1.0 - srcA);
-            double outB, outG, outR;
-            if (outA > 1e-6)
+
+            // Bypass complex Porter-Duff alpha blending when the source opacity is 1.0.
+            if (outA > 1.0 - 1e-6 && srcA > 1.0 - 1e-6)
             {
-                outB = (srcB * srcA + dstB * dstA * (1.0 - srcA)) / outA;
-                outG = (srcG * srcA + dstG * dstA * (1.0 - srcA)) / outA;
-                outR = (srcR * srcA + dstR * dstA * (1.0 - srcA)) / outA;
+                p[offset + 0] = color.B;
+                p[offset + 1] = color.G;
+                p[offset + 2] = color.R;
+                p[offset + 3] = color.A;
             }
             else
             {
-                outB = outG = outR = 0.0;
+                double outB, outG, outR;
+                if (outA > 1e-6)
+                {
+                    outB = (srcB * srcA + dstB * dstA * (1.0 - srcA)) / outA;
+                    outG = (srcG * srcA + dstG * dstA * (1.0 - srcA)) / outA;
+                    outR = (srcR * srcA + dstR * dstA * (1.0 - srcA)) / outA;
+                }
+                else
+                {
+                    outB = outG = outR = 0.0;
+                }
+
+                p[offset + 0] = (byte)Math.Round(Math.Clamp(outB, 0.0, 1.0) * 255.0);
+                p[offset + 1] = (byte)Math.Round(Math.Clamp(outG, 0.0, 1.0) * 255.0);
+                p[offset + 2] = (byte)Math.Round(Math.Clamp(outR, 0.0, 1.0) * 255.0);
+                p[offset + 3] = (byte)Math.Round(Math.Clamp(outA, 0.0, 1.0) * 255.0);
             }
 
-            p[offset + 0] = (byte)Math.Round(Math.Clamp(outB, 0.0, 1.0) * 255.0);
-            p[offset + 1] = (byte)Math.Round(Math.Clamp(outG, 0.0, 1.0) * 255.0);
-            p[offset + 2] = (byte)Math.Round(Math.Clamp(outR, 0.0, 1.0) * 255.0);
-            p[offset + 3] = (byte)Math.Round(Math.Clamp(outA, 0.0, 1.0) * 255.0);
+            if (_isCapturingState)
+            {
+                _pixelsState.Add(new PixelState(offset, new Color(dstA8, dstR8, dstG8, dstB8)));
+            }
         }
     }
 
@@ -142,5 +166,83 @@ public partial class MainViewModel : ViewModelBase
                 bitmapPtr[offset + 3] = color.A;
             }
         }
+    }
+
+    public void StartStateCapture()
+    {
+        _isCapturingState = true;
+        _pixelsState = [];
+    }
+
+    public void StopStateCapture()
+    {
+        _isCapturingState = false;
+        _undoOperations.Push(_pixelsState);
+
+        // Clear the redo stack when the undo 'root' changes
+        if (_redoOperations.Count > 0)
+        {
+            _redoOperations.Clear();
+        }
+    }
+
+    public unsafe void UndoLastOperation()
+    {
+        if (_undoOperations.Count == 0) return;
+
+        using var frame = WhiteboardBitmap.Lock();
+        IntPtr address = frame.Address;
+        byte* p = (byte*)address.ToPointer();
+
+        var operationsToBeUndone = _undoOperations.Pop();
+        List<PixelState> operationsToBeRedone = new List<PixelState>(operationsToBeUndone.Count);
+
+        for (int i = operationsToBeUndone.Count - 1; i >= 0; i--)
+        {
+            var (offset, color) = operationsToBeUndone[i];
+            byte dstB8 = p[offset + 0];
+            byte dstG8 = p[offset + 1];
+            byte dstR8 = p[offset + 2];
+            byte dstA8 = p[offset + 3];
+            var currentPixelState = new PixelState(offset, new Color(dstA8, dstR8, dstG8, dstB8));
+            operationsToBeRedone.Add(currentPixelState);
+
+            p[offset] = color.B;
+            p[offset + 1] = color.G;
+            p[offset + 2] = color.R;
+            p[offset + 3] = color.A;
+        }
+
+        _redoOperations.Push(operationsToBeRedone);
+    }
+
+    public unsafe void RedoLastOperation()
+    {
+        if (_redoOperations.Count == 0) return;
+
+        using var frame = WhiteboardBitmap.Lock();
+        IntPtr address = frame.Address;
+        var p = (byte*)address.ToPointer();
+
+        var operationsToBeRedone = _redoOperations.Pop();
+        List<PixelState> operationsToBeUndone = new List<PixelState>(operationsToBeRedone.Count);
+
+        for (int i = operationsToBeRedone.Count - 1; i >= 0; i--)
+        {
+            var (offset, color) = operationsToBeRedone[i];
+            byte dstB8 = p[offset + 0];
+            byte dstG8 = p[offset + 1];
+            byte dstR8 = p[offset + 2];
+            byte dstA8 = p[offset + 3];
+            var currentPixelState = new PixelState(offset, new Color(dstA8, dstR8, dstG8, dstB8));
+            operationsToBeUndone.Add(currentPixelState);
+
+            p[offset] = color.B;
+            p[offset + 1] = color.G;
+            p[offset + 2] = color.R;
+            p[offset + 3] = color.A;
+        }
+
+        _undoOperations.Push(operationsToBeUndone);
     }
 }

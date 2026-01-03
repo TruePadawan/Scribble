@@ -125,14 +125,8 @@ public partial class MainView : UserControl
         // only if we didn't already place one there on the last move (to avoid over-darkening).
         if (e.InitialPressMouseButton == MouseButton.Left)
         {
-            double dx = pointerCoordinates.X - _prevCoord.X;
-            double dy = pointerCoordinates.Y - _prevCoord.Y;
-            double dist2 = dx * dx + dy * dy;
-            if (_activePointerTool != null && dist2 > 1e-4)
-            {
-                _activePointerTool.HandlePointerClick(pointerCoordinates);
-                WhiteboardRenderer.InvalidateVisual();
-            }
+            _activePointerTool?.HandlePointerRelease(_prevCoord, pointerCoordinates);
+            WhiteboardRenderer.InvalidateVisual();
         }
 
         // Reset the last coordinates when the mouse is released
@@ -175,5 +169,17 @@ public partial class MainView : UserControl
 
         // Stop the scroll viewer from applying its own scrolling logic
         e.Handled = true;
+    }
+
+    public void Undo()
+    {
+        _viewModel?.UndoLastOperation();
+        WhiteboardRenderer.InvalidateVisual();
+    }
+
+    public void Redo()
+    {
+        _viewModel?.RedoLastOperation();
+        WhiteboardRenderer.InvalidateVisual();
     }
 }

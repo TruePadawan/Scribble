@@ -14,16 +14,36 @@ public class DrawTool(string name, MainViewModel viewModel, IImage icon) : Point
     public override void HandlePointerMove(Point prevCoord, Point currentCoord)
     {
         float opacity = _strokeColor.A / 255f;
+        using var frame = ViewModel.WhiteboardBitmap.Lock();
+        IntPtr address = frame.Address;
+        int stride = frame.RowBytes;
         // Draw an interior segment without round caps to avoid over-dark joints,
         // then place a single circular dab at the current point to form a smooth join.
-        DrawSegmentNoCaps(prevCoord, currentCoord, _strokeColor, _strokeWidth, opacity);
-        DrawSinglePixel(currentCoord, _strokeColor, _strokeWidth, opacity);
+        DrawSegmentNoCaps(address, stride, prevCoord, currentCoord, _strokeColor, _strokeWidth, opacity);
+        DrawSinglePixel(address, stride, currentCoord, _strokeColor, _strokeWidth, opacity);
     }
 
     public override void HandlePointerClick(Point coord)
     {
+        ViewModel.StartStateCapture();
         float opacity = _strokeColor.A / 255f;
-        DrawSinglePixel(coord, _strokeColor, _strokeWidth, opacity);
+        using var frame = ViewModel.WhiteboardBitmap.Lock();
+        IntPtr address = frame.Address;
+        int stride = frame.RowBytes;
+        DrawSinglePixel(address, stride, coord, _strokeColor, _strokeWidth, opacity);
+    }
+
+    public override void HandlePointerRelease(Point prevCoord, Point currentCoord)
+    {
+        double dx = currentCoord.X - prevCoord.X;
+        double dy = currentCoord.Y - prevCoord.Y;
+        double dist2 = dx * dx + dy * dy;
+        if (dist2 > 1e-4)
+        {
+            HandlePointerClick(currentCoord);
+        }
+
+        ViewModel.StopStateCapture();
     }
 
     public override void RenderOptions(Panel parent)
@@ -51,14 +71,10 @@ public class DrawTool(string name, MainViewModel viewModel, IImage icon) : Point
         parent.Width = 180;
     }
 
-    private void DrawSinglePixel(Point coord, Color color, int strokeWidth = 1, float opacity = 1f)
+    private void DrawSinglePixel(IntPtr address, int stride, Point coord, Color color, int strokeWidth = 1, float opacity = 1f)
     {
         strokeWidth = Math.Max(1, strokeWidth);
         double halfWidth = strokeWidth / 2.0;
-
-        using var frame = ViewModel.WhiteboardBitmap.Lock();
-        IntPtr address = frame.Address;
-        int stride = frame.RowBytes;
 
         // Render an anti-aliased circular dab centered at coord
         double cx = coord.X;
@@ -89,13 +105,9 @@ public class DrawTool(string name, MainViewModel viewModel, IImage icon) : Point
 
     // Anti-aliased thick line with butt/square caps (signed-distance field)
     // Notes: Bounding box is expanded by radius+1 for AA fringe; zero-length strokes render a circular dab.
-    private void DrawLine(Point start, Point end, Color color, int strokeWidth = 1, float opacity = 1f)
+    private void DrawLine(IntPtr address, int stride, Point start, Point end, Color color, int strokeWidth = 1, float opacity = 1f)
     {
         strokeWidth = Math.Max(1, strokeWidth);
-
-        using var frame = ViewModel.WhiteboardBitmap.Lock();
-        IntPtr address = frame.Address;
-        int stride = frame.RowBytes;
 
         // Compute geometry
         double dx = end.X - start.X;
@@ -175,7 +187,7 @@ public class DrawTool(string name, MainViewModel viewModel, IImage icon) : Point
     }
 
     // Internal helper: draw an AA thick segment without round end caps (rectangle SDF).
-    private void DrawSegmentNoCaps(Point start, Point end, Color color, int strokeWidth = 1, float opacity = 1f)
+    private void DrawSegmentNoCaps(IntPtr address, int stride, Point start, Point end, Color color, int strokeWidth = 1, float opacity = 1f)
     {
         strokeWidth = Math.Max(1, strokeWidth);
 
@@ -195,10 +207,6 @@ public class DrawTool(string name, MainViewModel viewModel, IImage icon) : Point
         double mx = (start.X + end.X) * 0.5;
         double my = (start.Y + end.Y) * 0.5;
         double halfLen = len * 0.5;
-
-        using var frame = ViewModel.WhiteboardBitmap.Lock();
-        IntPtr address = frame.Address;
-        int stride = frame.RowBytes;
 
         // Bounding box expanded by halfWidth + 1 for AA fringe
         int minXi = (int)Math.Floor(Math.Min(start.X, end.X) - halfWidth - 1);
@@ -233,7 +241,7 @@ public class DrawTool(string name, MainViewModel viewModel, IImage icon) : Point
         }
     }
 
-    internal static double SmoothStep(double edge0, double edge1, double x)
+    private static double SmoothStep(double edge0, double edge1, double x)
     {
         if (Math.Abs(edge1 - edge0) < 1e-9)
             return x < edge0 ? 1.0 : 0.0;
