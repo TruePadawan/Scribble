@@ -1,8 +1,10 @@
 ﻿using System;
+using System.Collections.Generic;
 using Avalonia;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
+using Scribble.Lib;
 
 namespace Scribble.ViewModels;
 
@@ -16,6 +18,11 @@ public partial class MainViewModel : ViewModelBase
 
     public WriteableBitmap WhiteboardBitmap { get; }
     public ScaleTransform ScaleTransform { get; }
+
+    private LinkedList<PixelState> _pixelsState = [];
+    private Stack<LinkedList<PixelState>> _undoOperations = [];
+    private Stack<LinkedList<PixelState>> _redoOperations = [];
+    private bool _isCapturingState = false;
 
 
     public MainViewModel()
@@ -109,6 +116,11 @@ public partial class MainViewModel : ViewModelBase
             p[offset + 1] = (byte)Math.Round(Math.Clamp(outG, 0.0, 1.0) * 255.0);
             p[offset + 2] = (byte)Math.Round(Math.Clamp(outR, 0.0, 1.0) * 255.0);
             p[offset + 3] = (byte)Math.Round(Math.Clamp(outA, 0.0, 1.0) * 255.0);
+
+            if (_isCapturingState)
+            {
+                _pixelsState.AddLast(new PixelState(offset, new Color(dstA8, dstR8, dstG8, dstB8)));
+            }
         }
     }
 
@@ -142,5 +154,87 @@ public partial class MainViewModel : ViewModelBase
                 bitmapPtr[offset + 3] = color.A;
             }
         }
+    }
+
+    public void StartStateCapture()
+    {
+        _isCapturingState = true;
+        _pixelsState = [];
+    }
+
+    public void StopStateCapture()
+    {
+        _isCapturingState = false;
+        _undoOperations.Push(_pixelsState);
+
+        // Clear the redo stack when the undo 'root' changes
+        if (_redoOperations.Count > 0)
+        {
+            _redoOperations.Clear();
+        }
+    }
+
+    public unsafe void UndoLastOperation()
+    {
+        if (_undoOperations.Count == 0) return;
+
+        using var frame = WhiteboardBitmap.Lock();
+        IntPtr address = frame.Address;
+        byte* p = (byte*)address.ToPointer();
+
+        var operationsToBeUndone = _undoOperations.Pop();
+        LinkedList<PixelState> operationsToBeRedone = [];
+
+        while (operationsToBeUndone.Last != null)
+        {
+            var (offset, color) = operationsToBeUndone.Last.Value;
+            byte dstB8 = p[offset + 0];
+            byte dstG8 = p[offset + 1];
+            byte dstR8 = p[offset + 2];
+            byte dstA8 = p[offset + 3];
+            var currentPixelState = new PixelState(offset, new Color(dstA8, dstR8, dstG8, dstB8));
+            operationsToBeRedone.AddLast(currentPixelState);
+
+            p[offset] = color.B;
+            p[offset + 1] = color.G;
+            p[offset + 2] = color.R;
+            p[offset + 3] = color.A;
+
+            operationsToBeUndone.RemoveLast();
+        }
+
+        _redoOperations.Push(operationsToBeRedone);
+    }
+
+    public unsafe void RedoLastOperation()
+    {
+        if (_redoOperations.Count == 0) return;
+
+        using var frame = WhiteboardBitmap.Lock();
+        IntPtr address = frame.Address;
+        var p = (byte*)address.ToPointer();
+
+        var operationsToBeRedone = _redoOperations.Pop();
+        LinkedList<PixelState> operationsToBeUndone = [];
+
+        while (operationsToBeRedone.Last != null)
+        {
+            var (offset, color) = operationsToBeRedone.Last.Value;
+            byte dstB8 = p[offset + 0];
+            byte dstG8 = p[offset + 1];
+            byte dstR8 = p[offset + 2];
+            byte dstA8 = p[offset + 3];
+            var currentPixelState = new PixelState(offset, new Color(dstA8, dstR8, dstG8, dstB8));
+            operationsToBeUndone.AddLast(currentPixelState);
+
+            p[offset] = color.B;
+            p[offset + 1] = color.G;
+            p[offset + 2] = color.R;
+            p[offset + 3] = color.A;
+
+            operationsToBeRedone.RemoveLast();
+        }
+
+        _undoOperations.Push(operationsToBeUndone);
     }
 }

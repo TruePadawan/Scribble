@@ -26,6 +26,10 @@ public abstract class PointerToolsBase(string name, MainViewModel viewModel, IIm
     {
     }
 
+    public virtual void HandlePointerRelease(Point prevCoord, Point currentCoord)
+    {
+    }
+
     // Derived classes should override this and render their options in the panel
     public virtual void RenderOptions(Panel parent)
     {

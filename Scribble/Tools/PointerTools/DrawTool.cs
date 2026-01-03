@@ -22,8 +22,22 @@ public class DrawTool(string name, MainViewModel viewModel, IImage icon) : Point
 
     public override void HandlePointerClick(Point coord)
     {
+        ViewModel.StartStateCapture();
         float opacity = _strokeColor.A / 255f;
         DrawSinglePixel(coord, _strokeColor, _strokeWidth, opacity);
+    }
+
+    public override void HandlePointerRelease(Point prevCoord, Point currentCoord)
+    {
+        double dx = currentCoord.X - prevCoord.X;
+        double dy = currentCoord.Y - prevCoord.Y;
+        double dist2 = dx * dx + dy * dy;
+        if (dist2 > 1e-4)
+        {
+            HandlePointerClick(currentCoord);
+        }
+
+        ViewModel.StopStateCapture();
     }
 
     public override void RenderOptions(Panel parent)
@@ -233,7 +247,7 @@ public class DrawTool(string name, MainViewModel viewModel, IImage icon) : Point
         }
     }
 
-    internal static double SmoothStep(double edge0, double edge1, double x)
+    private static double SmoothStep(double edge0, double edge1, double x)
     {
         if (Math.Abs(edge1 - edge0) < 1e-9)
             return x < edge0 ? 1.0 : 0.0;

@@ -5,12 +5,17 @@
              xmlns:vm="clr-namespace:Scribble.ViewModels"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:Class="Scribble.Views.MainView"
-             x:DataType="vm:MainViewModel">
+             x:DataType="vm:MainViewModel"
+             x:Name="Root">
     <Design.DataContext>
         <!-- This only sets the DataContext for the previewer in an IDE,
          to set the actual DataContext for runtime, set the DataContext property in code (look at App.axaml.cs) -->
         <vm:MainViewModel />
     </Design.DataContext>
+    <UserControl.KeyBindings>
+        <KeyBinding Gesture="Ctrl+Z" Command="{Binding #Root.Undo}" />
+        <KeyBinding Gesture="Ctrl+Shift+Z" Command="{Binding #Root.Redo}" />
+    </UserControl.KeyBindings>
     <!-- Simulate a wide canvas -->
     <!-- Use a RenderTransformOrigin to tell the ScrollViewer to scale from top left -->
     <Panel>
