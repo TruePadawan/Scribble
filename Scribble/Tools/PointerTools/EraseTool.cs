@@ -34,7 +34,7 @@ public class EraseTool(string name, MainViewModel viewModel, IImage icon) : Poin
         ViewModel.StopStateCapture();
     }
 
-    public override void RenderOptions(Panel parent)
+    public override bool RenderOptions(Panel parent)
     {
         // Render a slider for controlling the eraser thickness
         Slider slider = new Slider
@@ -49,6 +49,7 @@ public class EraseTool(string name, MainViewModel viewModel, IImage icon) : Poin
         slider.Padding = new Thickness(8, 0);
 
         parent.Children.Add(CreateOptionControl(slider, "Thickness"));
+        return true;
     }
 
     // Solid (non-AA) circular dab for performance

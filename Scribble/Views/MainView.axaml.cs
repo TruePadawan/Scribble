@@ -47,6 +47,12 @@ public partial class MainView : UserControl
                 new Bitmap(AssetLoader.Open(new Uri("avares://Scribble/Assets/eraser.png")))));
             RegisterPointerTool(new PanningTool("PanningTool", viewModel,
                 new Bitmap(AssetLoader.Open(new Uri("avares://Scribble/Assets/hand.png"))), CanvasScrollViewer));
+
+            // Select the first tool by default
+            if (Toolbar.Children.Count > 0 && Toolbar.Children[0] is ToggleButton firstButton)
+            {
+                firstButton.IsChecked = true;
+            }
         }
     }
 
@@ -56,6 +62,7 @@ public partial class MainView : UserControl
         {
             Name = tool.Name,
             Width = 50,
+            Height = 50,
             Margin = new Thickness(4),
         };
         ToggleButtonGroup.SetGroupName(toggleButton, "PointerTools");
@@ -67,13 +74,27 @@ public partial class MainView : UserControl
 
                 // Render tool options
                 ToolOptions.Children.Clear();
-                tool.RenderOptions(ToolOptions);
+                if (tool.RenderOptions(ToolOptions))
+                {
+                    ToolOptionsContainer.IsVisible = true;
+                    ToolOptionsContainer.Opacity = 1;
+                }
+                else
+                {
+                    ToolOptionsContainer.IsVisible = false;
+                }
+            }
+            else
+            {
+                // If no tool is selected (shouldn't happen with ToggleButtonGroup, but just in case)
+                // we might want to hide it, but usually another tool will be checked immediately.
             }
         };
 
         var toolIcon = new Image
         {
-            Source = tool.ToolIcon
+            Source = tool.ToolIcon,
+            Margin = new Thickness(4)
         };
         toggleButton.Content = toolIcon;
 

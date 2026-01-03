@@ -31,8 +31,10 @@ public abstract class PointerToolsBase(string name, MainViewModel viewModel, IIm
     }
 
     // Derived classes should override this and render their options in the panel
-    public virtual void RenderOptions(Panel parent)
+    // Should return true if the tool has options to render
+    public virtual bool RenderOptions(Panel parent)
     {
+        return false;
     }
 
     protected StackPanel CreateOptionControl(Control actualControl, string optionLabel)
