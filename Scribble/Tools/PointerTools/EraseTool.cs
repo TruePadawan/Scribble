@@ -18,7 +18,13 @@ public class EraseTool(string name, MainViewModel viewModel, IImage icon) : Poin
 
     public override void HandlePointerClick(Point coord)
     {
+        ViewModel.StartStateCapture();
         EraseSinglePixel(coord, _strokeWidth);
+    }
+
+    public override void HandlePointerRelease(Point prevCoord, Point currentCoord)
+    {
+        ViewModel.StopStateCapture();
     }
 
     public override void RenderOptions(Panel parent)
