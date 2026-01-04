@@ -6,6 +6,7 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
+using Avalonia.Threading;
 using Scribble.Behaviours;
 using Scribble.Tools.PointerTools;
 using Scribble.ViewModels;
@@ -47,12 +48,20 @@ public partial class MainView : UserControl
                 new Bitmap(AssetLoader.Open(new Uri("avares://Scribble/Assets/eraser.png")))));
             RegisterPointerTool(new PanningTool("PanningTool", viewModel,
                 new Bitmap(AssetLoader.Open(new Uri("avares://Scribble/Assets/hand.png"))), CanvasScrollViewer));
+        }
+    }
 
-            // Select the first tool by default
-            if (Toolbar.Children.Count > 0 && Toolbar.Children[0] is ToggleButton firstButton)
-            {
-                firstButton.IsChecked = true;
-            }
+    protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        base.OnAttachedToVisualTree(e);
+        // Select the first tool by default
+        if (Toolbar.Children.Count > 0 && Toolbar.Children[0] is ToggleButton firstButton)
+        {
+            firstButton.IsChecked = true;
+
+            // Schedules the focus attempt for the next UI cycle
+            // This is required for undo/redo to work immediately
+            Dispatcher.UIThread.Post(() => firstButton.Focus());
         }
     }
 
@@ -64,30 +73,24 @@ public partial class MainView : UserControl
             Width = 50,
             Height = 50,
             Margin = new Thickness(4),
+            // Focusable = true,
         };
         ToggleButtonGroup.SetGroupName(toggleButton, "PointerTools");
         toggleButton.IsCheckedChanged += (object? sender, RoutedEventArgs e) =>
         {
-            if (toggleButton.IsChecked == true)
-            {
-                _activePointerTool = tool;
+            if (toggleButton.IsChecked != true) return;
+            _activePointerTool = tool;
 
-                // Render tool options
-                ToolOptions.Children.Clear();
-                if (tool.RenderOptions(ToolOptions))
-                {
-                    ToolOptionsContainer.IsVisible = true;
-                    ToolOptionsContainer.Opacity = 1;
-                }
-                else
-                {
-                    ToolOptionsContainer.IsVisible = false;
-                }
+            // Render tool options
+            ToolOptions.Children.Clear();
+            if (tool.RenderOptions(ToolOptions))
+            {
+                ToolOptionsContainer.IsVisible = true;
+                ToolOptionsContainer.Opacity = 1;
             }
             else
             {
-                // If no tool is selected (shouldn't happen with ToggleButtonGroup, but just in case)
-                // we might want to hide it, but usually another tool will be checked immediately.
+                ToolOptionsContainer.IsVisible = false;
             }
         };
 
