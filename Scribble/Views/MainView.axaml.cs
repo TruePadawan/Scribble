@@ -9,6 +9,9 @@ using Avalonia.Platform;
 using Avalonia.Threading;
 using Scribble.Behaviours;
 using Scribble.Tools.PointerTools;
+using Scribble.Tools.PointerTools.DrawTool;
+using Scribble.Tools.PointerTools.EraseTool;
+using Scribble.Tools.PointerTools.PanningTool;
 using Scribble.ViewModels;
 
 namespace Scribble.Views;
@@ -42,12 +45,9 @@ public partial class MainView : UserControl
             CanvasScrollViewer.Offset = new Vector(canvasWidth / 2, canvasHeight / 2);
 
             // Register pointer tools
-            RegisterPointerTool(new DrawTool("DrawToolButton", viewModel,
-                new Bitmap(AssetLoader.Open(new Uri("avares://Scribble/Assets/draw.png")))));
-            RegisterPointerTool(new EraseTool("EraseTool", viewModel,
-                new Bitmap(AssetLoader.Open(new Uri("avares://Scribble/Assets/eraser.png")))));
-            RegisterPointerTool(new PanningTool("PanningTool", viewModel,
-                new Bitmap(AssetLoader.Open(new Uri("avares://Scribble/Assets/hand.png"))), CanvasScrollViewer));
+            RegisterPointerTool(new DrawTool("DrawToolButton", viewModel));
+            RegisterPointerTool(new EraseTool("EraseTool", viewModel));
+            RegisterPointerTool(new PanningTool("PanningTool", viewModel, CanvasScrollViewer));
         }
     }
 
@@ -73,7 +73,6 @@ public partial class MainView : UserControl
             Width = 50,
             Height = 50,
             Margin = new Thickness(4),
-            // Focusable = true,
         };
         ToggleButtonGroup.SetGroupName(toggleButton, "PointerTools");
         toggleButton.IsCheckedChanged += (object? sender, RoutedEventArgs e) =>
@@ -91,6 +90,11 @@ public partial class MainView : UserControl
             else
             {
                 ToolOptionsContainer.IsVisible = false;
+            }
+
+            if (tool.Cursor != null)
+            {
+                MainCanvas.Cursor = tool.Cursor;
             }
         };
 

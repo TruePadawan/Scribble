@@ -1,6 +1,9 @@
+using System;
 using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Media;
+using Avalonia.Input;
+using Avalonia.Media.Imaging;
+using Avalonia.Platform;
 using Scribble.ViewModels;
 
 namespace Scribble.Tools.PointerTools;
@@ -10,13 +13,26 @@ namespace Scribble.Tools.PointerTools;
  * It enforces the data that all Pointer Tools should have
  * Name - The name of the Tool
  * Icon - The icon that represents the tool in the UI
- * Every PointerTool should consume the ViewModel to perform its operation
  */
-public abstract class PointerToolsBase(string name, MainViewModel viewModel, IImage icon)
+public abstract class PointerToolsBase(string name, MainViewModel viewModel, Bitmap icon)
 {
     public string Name { get; } = name;
     protected MainViewModel ViewModel { get; } = viewModel;
-    public readonly IImage ToolIcon = icon;
+    public readonly Bitmap ToolIcon = icon;
+    public Cursor? Cursor;
+
+    /// <summary>
+    /// Loads a bitmap relative to the tool's folder.
+    /// Example: If the class is in Scribble.Tools.PanningTool, it looks for Scribble/Tools/PanningTool/filename
+    /// </summary>
+    protected static Bitmap LoadToolBitmap(Type toolType, string filename)
+    {
+        // Converts "Scribble.Tools.PointerTools.PanningTool" to "Scribble/Tools/PointerTools/PanningTool"
+        var assetPath = toolType.Namespace?.Replace('.', '/') ?? "";
+        var uri = new Uri($"avares://{assetPath}/{filename}");
+
+        return new Bitmap(AssetLoader.Open(uri));
+    }
 
     public virtual void HandlePointerMove(Point prevCoord, Point currentCoord)
     {
