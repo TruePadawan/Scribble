@@ -1,6 +1,7 @@
 using System;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Media;
 using Scribble.ViewModels;
 
@@ -14,7 +15,7 @@ public class DrawTool : PointerToolsBase
     public DrawTool(string name, MainViewModel viewModel) : base(name, viewModel,
         LoadToolBitmap(typeof(DrawTool), "draw.png"))
     {
-        CursorIcon = ToolIcon;
+        Cursor = new Cursor(ToolIcon, new PixelPoint(0, 50));
     }
 
     public override void HandlePointerMove(Point prevCoord, Point currentCoord)
