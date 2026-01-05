@@ -1,6 +1,7 @@
 using System;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Input;
 using Scribble.ViewModels;
 
 namespace Scribble.Tools.PointerTools.EraseTool;
@@ -12,7 +13,7 @@ public class EraseTool : PointerToolsBase
     public EraseTool(string name, MainViewModel viewModel)
         : base(name, viewModel, LoadToolBitmap(typeof(EraseTool), "eraser.png"))
     {
-        CursorIcon = ToolIcon;
+        Cursor = new Cursor(ToolIcon, new PixelPoint(10, 40));
     }
 
     public override void HandlePointerMove(Point prevCoord, Point currentCoord)

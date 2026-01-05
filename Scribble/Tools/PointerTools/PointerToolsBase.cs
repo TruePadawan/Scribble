@@ -1,7 +1,7 @@
 using System;
 using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Media;
+using Avalonia.Input;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
 using Scribble.ViewModels;
@@ -14,12 +14,12 @@ namespace Scribble.Tools.PointerTools;
  * Name - The name of the Tool
  * Icon - The icon that represents the tool in the UI
  */
-public abstract class PointerToolsBase(string name, MainViewModel viewModel, IImage icon)
+public abstract class PointerToolsBase(string name, MainViewModel viewModel, Bitmap icon)
 {
     public string Name { get; } = name;
     protected MainViewModel ViewModel { get; } = viewModel;
-    public readonly IImage ToolIcon = icon;
-    public IImage? CursorIcon;
+    public readonly Bitmap ToolIcon = icon;
+    public Cursor? Cursor;
 
     /// <summary>
     /// Loads a bitmap relative to the tool's folder.

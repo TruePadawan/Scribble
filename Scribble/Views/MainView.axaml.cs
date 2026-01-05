@@ -91,6 +91,11 @@ public partial class MainView : UserControl
             {
                 ToolOptionsContainer.IsVisible = false;
             }
+
+            if (tool.Cursor != null)
+            {
+                MainCanvas.Cursor = tool.Cursor;
+            }
         };
 
         var toolIcon = new Image

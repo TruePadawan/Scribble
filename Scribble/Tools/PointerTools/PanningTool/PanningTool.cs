@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Input;
 using Scribble.ViewModels;
 
 namespace Scribble.Tools.PointerTools.PanningTool;
@@ -12,7 +13,7 @@ public class PanningTool : PointerToolsBase
         : base(name, viewModel, LoadToolBitmap(typeof(PanningTool), "hand.png"))
     {
         _scrollViewer = scrollViewer;
-        CursorIcon = ToolIcon;
+        Cursor = new Cursor(ToolIcon, new PixelPoint(25, 25));
     }
 
     public override void HandlePointerMove(Point prevCoord, Point currentCoord)
