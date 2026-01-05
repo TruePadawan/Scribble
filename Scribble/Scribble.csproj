@@ -9,11 +9,13 @@
 
     <ItemGroup>
         <AvaloniaResource Include="Assets\**"/>
+        <!-- Automatically include all tool icons -->
+        <AvaloniaResource Include="Tools\**\*.png"/>
     </ItemGroup>
 
     <ItemGroup>
         <PackageReference Include="Avalonia"/>
-        <PackageReference Include="Avalonia.Controls.ColorPicker" />
+        <PackageReference Include="Avalonia.Controls.ColorPicker"/>
         <PackageReference Include="Avalonia.Themes.Fluent"/>
         <PackageReference Include="Avalonia.Fonts.Inter"/>
         <!--Condition below is needed to remove Avalonia.Diagnostics package from build output in Release configuration.-->

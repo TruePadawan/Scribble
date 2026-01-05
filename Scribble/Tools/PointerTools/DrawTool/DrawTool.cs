@@ -4,12 +4,18 @@ using Avalonia.Controls;
 using Avalonia.Media;
 using Scribble.ViewModels;
 
-namespace Scribble.Tools.PointerTools;
+namespace Scribble.Tools.PointerTools.DrawTool;
 
-public class DrawTool(string name, MainViewModel viewModel, IImage icon) : PointerToolsBase(name, viewModel, icon)
+public class DrawTool : PointerToolsBase
 {
     private Color _strokeColor = Colors.Red;
     private int _strokeWidth = 1;
+
+    public DrawTool(string name, MainViewModel viewModel) : base(name, viewModel,
+        LoadToolBitmap(typeof(DrawTool), "draw.png"))
+    {
+        CursorIcon = ToolIcon;
+    }
 
     public override void HandlePointerMove(Point prevCoord, Point currentCoord)
     {
@@ -72,7 +78,8 @@ public class DrawTool(string name, MainViewModel viewModel, IImage icon) : Point
         return true;
     }
 
-    private void DrawSinglePixel(IntPtr address, int stride, Point coord, Color color, int strokeWidth = 1, float opacity = 1f)
+    private void DrawSinglePixel(IntPtr address, int stride, Point coord, Color color, int strokeWidth = 1,
+        float opacity = 1f)
     {
         strokeWidth = Math.Max(1, strokeWidth);
         double halfWidth = strokeWidth / 2.0;
@@ -106,7 +113,8 @@ public class DrawTool(string name, MainViewModel viewModel, IImage icon) : Point
 
     // Anti-aliased thick line with butt/square caps (signed-distance field)
     // Notes: Bounding box is expanded by radius+1 for AA fringe; zero-length strokes render a circular dab.
-    private void DrawLine(IntPtr address, int stride, Point start, Point end, Color color, int strokeWidth = 1, float opacity = 1f)
+    private void DrawLine(IntPtr address, int stride, Point start, Point end, Color color, int strokeWidth = 1,
+        float opacity = 1f)
     {
         strokeWidth = Math.Max(1, strokeWidth);
 
@@ -188,7 +196,8 @@ public class DrawTool(string name, MainViewModel viewModel, IImage icon) : Point
     }
 
     // Internal helper: draw an AA thick segment without round end caps (rectangle SDF).
-    private void DrawSegmentNoCaps(IntPtr address, int stride, Point start, Point end, Color color, int strokeWidth = 1, float opacity = 1f)
+    private void DrawSegmentNoCaps(IntPtr address, int stride, Point start, Point end, Color color, int strokeWidth = 1,
+        float opacity = 1f)
     {
         strokeWidth = Math.Max(1, strokeWidth);
 

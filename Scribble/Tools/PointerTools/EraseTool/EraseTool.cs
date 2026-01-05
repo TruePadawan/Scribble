@@ -1,14 +1,19 @@
 using System;
 using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Media;
 using Scribble.ViewModels;
 
-namespace Scribble.Tools.PointerTools;
+namespace Scribble.Tools.PointerTools.EraseTool;
 
-public class EraseTool(string name, MainViewModel viewModel, IImage icon) : PointerToolsBase(name, viewModel, icon)
+public class EraseTool : PointerToolsBase
 {
     private int _strokeWidth = 5;
+
+    public EraseTool(string name, MainViewModel viewModel)
+        : base(name, viewModel, LoadToolBitmap(typeof(EraseTool), "eraser.png"))
+    {
+        CursorIcon = ToolIcon;
+    }
 
     public override void HandlePointerMove(Point prevCoord, Point currentCoord)
     {
