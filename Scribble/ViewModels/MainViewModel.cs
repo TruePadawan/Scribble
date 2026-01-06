@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using Avalonia;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
@@ -20,10 +19,6 @@ public partial class MainViewModel : ViewModelBase
     public ScaleTransform ScaleTransform { get; }
 
     public readonly EventsManager EventsManager;
-    // private List<PixelState> _pixelsState = [];
-    // private Stack<List<PixelState>> _undoOperations = [];
-    // private Stack<List<PixelState>> _redoOperations = [];
-    // private bool _isCapturingState = false;
 
 
     public MainViewModel()
@@ -49,23 +44,34 @@ public partial class MainViewModel : ViewModelBase
         ScaleTransform.ScaleY = newScale;
     }
 
+    // Use SIMD instructions to quickly clear the bitmap
     public unsafe void ClearBitmap(ILockedFramebuffer buffer)
     {
         var address = buffer.Address;
-        int stride = buffer.RowBytes;
-        byte* bitmapPtr = (byte*)address.ToPointer();
-
+        var stride = buffer.RowBytes;
+        var bitmapPtr = (byte*)address.ToPointer();
         int width = WhiteboardBitmap.PixelSize.Width;
         int height = WhiteboardBitmap.PixelSize.Height;
-        for (int y = 0; y < height; ++y)
+
+        // Construct the 32bit pixel value for the background color
+        var pixelValue = (uint)((BackgroundColor.A << 24) |
+                                (BackgroundColor.R << 16) |
+                                (BackgroundColor.G << 8) |
+                                BackgroundColor.B);
+
+        // If stride matches width, memory is contiguous.
+        // Fill the entire buffer in one go using SIMD
+        if (stride == width * 4)
         {
-            for (int x = 0; x < width; ++x)
+            new Span<uint>(bitmapPtr, width * height).Fill(pixelValue);
+        }
+        else
+        {
+            // Fill row by row if there is padding
+            for (int y = 0; y < height; y++)
             {
-                long offset = (long)y * stride + (long)x * BytesPerPixel;
-                bitmapPtr[offset] = BackgroundColor.B;
-                bitmapPtr[offset + 1] = BackgroundColor.G;
-                bitmapPtr[offset + 2] = BackgroundColor.R;
-                bitmapPtr[offset + 3] = BackgroundColor.A;
+                var rowStart = (uint*)(bitmapPtr + y * stride);
+                new Span<uint>(rowStart, width).Fill(pixelValue);
             }
         }
     }
