@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
@@ -9,6 +10,7 @@ namespace Scribble.Tools.PointerTools.EraseTool;
 public class EraseTool : PointerToolsBase
 {
     private int _radius = 5;
+    private readonly List<Point> _currentErasePoints = [];
 
     public EraseTool(string name, MainViewModel viewModel)
         : base(name, viewModel, LoadToolBitmap(typeof(EraseTool), "eraser.png"))
@@ -18,18 +20,43 @@ public class EraseTool : PointerToolsBase
 
     public override void HandlePointerMove(Point prevCoord, Point currentCoord)
     {
-        ViewModel.EventsManager.Apply(new PointsErased(prevCoord, currentCoord, _radius));
+        // Erase but don't save the event till the mouse/pointer is released
+        using var frameBuffer = ViewModel.WhiteboardBitmap.Lock();
+        var address = frameBuffer.Address;
+        var stride = frameBuffer.RowBytes;
+
+        ViewModel.EraseSegmentNoCaps(address, stride, prevCoord, currentCoord, _radius);
+        ViewModel.EraseSinglePixel(address, stride, currentCoord, _radius);
+
+        // Accumulate points for the stroke
+        _currentErasePoints.Add(currentCoord);
     }
 
     public override void HandlePointerClick(Point coord)
     {
-        ViewModel.StartStateCapture();
-        ViewModel.EventsManager.Apply(new PointErased(coord, _radius));
+        _currentErasePoints.Clear();
+
+        using var frameBuffer = ViewModel.WhiteboardBitmap.Lock();
+        var address = frameBuffer.Address;
+        var stride = frameBuffer.RowBytes;
+        ViewModel.EraseSinglePixel(address, stride, coord, _radius);
+
+        _currentErasePoints.Add(coord);
     }
 
     public override void HandlePointerRelease(Point prevCoord, Point currentCoord)
     {
-        ViewModel.StopStateCapture();
+        if (_currentErasePoints.Count == 0) return;
+
+        if (_currentErasePoints.Count == 1)
+        {
+            ViewModel.EventsManager.Apply(new PointErased(_currentErasePoints[0], _radius), true);
+        }
+        else
+        {
+            var fullStrokeEvent = new PointsErased([.._currentErasePoints], _radius);
+            ViewModel.EventsManager.Apply(fullStrokeEvent, skipRendering: true);
+        }
     }
 
     public override bool RenderOptions(Panel parent)

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Avalonia;
 using Avalonia.Media;
 
@@ -14,9 +15,8 @@ public abstract record Event
 
 /// <summary>
 /// Represents an event that captures the drawing of a line segment
-/// between two points using a specified color and stroke width.
 /// </summary>
-public record PointsDrawn(Point Start, Point End, Color Color, int StrokeWidth) : Event;
+public record PointsDrawn(List<Point> Points, Color Color, int StrokeWidth) : Event;
 
 /// <summary>
 /// Represents an event that captures the drawing of a single point
@@ -28,7 +28,7 @@ public record PointDrawn(Point Coord, Color Color, int StrokeWidth) : Event;
 /// Represents an event that captures the erasing of a line segment
 /// between two points using a specified radius
 /// </summary>
-public record PointsErased(Point Start, Point End, int Radius) : Event;
+public record PointsErased(List<Point> Points, int Radius) : Event;
 
 /// <summary>
 /// Represents an event that captures the erasing of a single point

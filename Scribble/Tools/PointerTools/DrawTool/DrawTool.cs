@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
@@ -11,6 +12,7 @@ public class DrawTool : PointerToolsBase
 {
     private Color _strokeColor = Colors.Red;
     private int _strokeWidth = 1;
+    private readonly List<Point> _currentStrokePoints = [];
 
     public DrawTool(string name, MainViewModel viewModel) : base(name, viewModel,
         LoadToolBitmap(typeof(DrawTool), "draw.png"))
@@ -20,26 +22,59 @@ public class DrawTool : PointerToolsBase
 
     public override void HandlePointerMove(Point prevCoord, Point currentCoord)
     {
-        ViewModel.EventsManager.Apply(new PointsDrawn(prevCoord, currentCoord, _strokeColor, _strokeWidth));
+        // Draw but don't save any event till the mouse/pointer is released
+        using var frameBuffer = ViewModel.WhiteboardBitmap.Lock();
+        var address = frameBuffer.Address;
+        var stride = frameBuffer.RowBytes;
+        var opacity = _strokeColor.A / 255f;
+
+        // Draw an interior segment without round caps to avoid over-dark joints,
+        // then place a single circular dab at the current point to form a smooth join.
+        ViewModel.DrawSegmentNoCaps(address, stride, prevCoord, currentCoord, _strokeColor, _strokeWidth, opacity);
+        ViewModel.DrawSinglePixel(address, stride, currentCoord, _strokeColor, _strokeWidth, opacity);
+
+        // Accumulate points for the stroke
+        _currentStrokePoints.Add(currentCoord);
     }
 
     public override void HandlePointerClick(Point coord)
     {
-        ViewModel.StartStateCapture();
-        ViewModel.EventsManager.Apply(new PointDrawn(coord, _strokeColor, _strokeWidth));
+        _currentStrokePoints.Clear();
+
+        using var frameBuffer = ViewModel.WhiteboardBitmap.Lock();
+        var address = frameBuffer.Address;
+        var stride = frameBuffer.RowBytes;
+        var opacity = _strokeColor.A / 255f;
+        ViewModel.DrawSinglePixel(address, stride, coord, _strokeColor, _strokeWidth, opacity);
+
+        _currentStrokePoints.Add(coord);
     }
 
     public override void HandlePointerRelease(Point prevCoord, Point currentCoord)
     {
-        double dx = currentCoord.X - prevCoord.X;
-        double dy = currentCoord.Y - prevCoord.Y;
-        double dist2 = dx * dx + dy * dy;
-        if (dist2 > 1e-4)
-        {
-            ViewModel.EventsManager.Apply(new PointDrawn(currentCoord, _strokeColor, _strokeWidth));
-        }
+        if (_currentStrokePoints.Count == 0) return;
 
-        ViewModel.StopStateCapture();
+        if (_currentStrokePoints.Count == 1)
+        {
+            // Dealing with a mouse/pointer click
+            ViewModel.EventsManager.Apply(new PointDrawn(_currentStrokePoints[0], _strokeColor, _strokeWidth), true);
+        }
+        else
+        {
+            // Dealing with click + drag
+
+            // Add a final dab if the line is long enough
+            double dx = currentCoord.X - prevCoord.X;
+            double dy = currentCoord.Y - prevCoord.Y;
+            double dist2 = dx * dx + dy * dy;
+            if (dist2 > 1e-4)
+            {
+                _currentStrokePoints.Add(currentCoord);
+            }
+
+            var fullStrokeEvent = new PointsDrawn([.._currentStrokePoints], _strokeColor, _strokeWidth);
+            ViewModel.EventsManager.Apply(fullStrokeEvent, skipRendering: true);
+        }
     }
 
     public override bool RenderOptions(Panel parent)
