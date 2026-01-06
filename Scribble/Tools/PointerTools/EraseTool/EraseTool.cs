@@ -1,14 +1,14 @@
-using System;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
+using Scribble.Lib;
 using Scribble.ViewModels;
 
 namespace Scribble.Tools.PointerTools.EraseTool;
 
 public class EraseTool : PointerToolsBase
 {
-    private int _strokeWidth = 5;
+    private int _radius = 5;
 
     public EraseTool(string name, MainViewModel viewModel)
         : base(name, viewModel, LoadToolBitmap(typeof(EraseTool), "eraser.png"))
@@ -18,21 +18,13 @@ public class EraseTool : PointerToolsBase
 
     public override void HandlePointerMove(Point prevCoord, Point currentCoord)
     {
-        using var frame = ViewModel.WhiteboardBitmap.Lock();
-        IntPtr address = frame.Address;
-        int stride = frame.RowBytes;
-
-        ViewModel.EraseSegmentNoCaps(address, stride, prevCoord, currentCoord, _strokeWidth);
-        ViewModel.EraseSinglePixel(address, stride, currentCoord, _strokeWidth);
+        ViewModel.EventsManager.Apply(new PointsErased(prevCoord, currentCoord, _radius));
     }
 
     public override void HandlePointerClick(Point coord)
     {
         ViewModel.StartStateCapture();
-        using var frame = ViewModel.WhiteboardBitmap.Lock();
-        IntPtr address = frame.Address;
-        int stride = frame.RowBytes;
-        ViewModel.EraseSinglePixel(address, stride, coord, _strokeWidth);
+        ViewModel.EventsManager.Apply(new PointErased(coord, _radius));
     }
 
     public override void HandlePointerRelease(Point prevCoord, Point currentCoord)
@@ -49,9 +41,9 @@ public class EraseTool : PointerToolsBase
             IsSnapToTickEnabled = true,
             Minimum = 1,
             Maximum = 40,
-            Value = _strokeWidth
+            Value = _radius
         };
-        slider.ValueChanged += ((sender, args) => { _strokeWidth = (int)args.NewValue; });
+        slider.ValueChanged += ((sender, args) => { _radius = (int)args.NewValue; });
         slider.Padding = new Thickness(8, 0);
 
         parent.Children.Add(CreateOptionControl(slider, "Thickness"));

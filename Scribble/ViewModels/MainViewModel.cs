@@ -19,6 +19,7 @@ public partial class MainViewModel : ViewModelBase
     public WriteableBitmap WhiteboardBitmap { get; }
     public ScaleTransform ScaleTransform { get; }
 
+    public readonly EventsManager EventsManager;
     private List<PixelState> _pixelsState = [];
     private Stack<List<PixelState>> _undoOperations = [];
     private Stack<List<PixelState>> _redoOperations = [];
@@ -29,6 +30,7 @@ public partial class MainViewModel : ViewModelBase
     {
         BackgroundColor = Colors.Black;
         ScaleTransform = new ScaleTransform(1, 1);
+        EventsManager = new EventsManager(this);
 
         // Initialize the bitmap with a large dimension
         WhiteboardBitmap = new WriteableBitmap(new PixelSize(CanvasWidth, CanvasHeight), _dpi, PixelFormat.Bgra8888);
@@ -67,7 +69,7 @@ public partial class MainViewModel : ViewModelBase
         }
     }
 
-    public unsafe void SetPixel(IntPtr address, int stride, Point coord, Color color, double opacity)
+    private unsafe void SetPixel(IntPtr address, int stride, Point coord, Color color, double opacity)
     {
         int width = WhiteboardBitmap.PixelSize.Width;
         int height = WhiteboardBitmap.PixelSize.Height;

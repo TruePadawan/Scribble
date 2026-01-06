@@ -1,8 +1,8 @@
-using System;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Media;
+using Scribble.Lib;
 using Scribble.ViewModels;
 
 namespace Scribble.Tools.PointerTools.DrawTool;
@@ -20,25 +20,13 @@ public class DrawTool : PointerToolsBase
 
     public override void HandlePointerMove(Point prevCoord, Point currentCoord)
     {
-        float opacity = _strokeColor.A / 255f;
-        using var frame = ViewModel.WhiteboardBitmap.Lock();
-        IntPtr address = frame.Address;
-        int stride = frame.RowBytes;
-
-        // Draw an interior segment without round caps to avoid over-dark joints,
-        // then place a single circular dab at the current point to form a smooth join.
-        ViewModel.DrawSegmentNoCaps(address, stride, prevCoord, currentCoord, _strokeColor, _strokeWidth, opacity);
-        ViewModel.DrawSinglePixel(address, stride, currentCoord, _strokeColor, _strokeWidth, opacity);
+        ViewModel.EventsManager.Apply(new PointsDrawn(prevCoord, currentCoord, _strokeColor, _strokeWidth));
     }
 
     public override void HandlePointerClick(Point coord)
     {
         ViewModel.StartStateCapture();
-        float opacity = _strokeColor.A / 255f;
-        using var frame = ViewModel.WhiteboardBitmap.Lock();
-        IntPtr address = frame.Address;
-        int stride = frame.RowBytes;
-        ViewModel.DrawSinglePixel(address, stride, coord, _strokeColor, _strokeWidth, opacity);
+        ViewModel.EventsManager.Apply(new PointDrawn(coord, _strokeColor, _strokeWidth));
     }
 
     public override void HandlePointerRelease(Point prevCoord, Point currentCoord)
@@ -48,7 +36,7 @@ public class DrawTool : PointerToolsBase
         double dist2 = dx * dx + dy * dy;
         if (dist2 > 1e-4)
         {
-            HandlePointerClick(currentCoord);
+            ViewModel.EventsManager.Apply(new PointDrawn(currentCoord, _strokeColor, _strokeWidth));
         }
 
         ViewModel.StopStateCapture();
