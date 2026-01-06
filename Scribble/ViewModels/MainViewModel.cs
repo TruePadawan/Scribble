@@ -180,63 +180,11 @@ public partial class MainViewModel : ViewModelBase
     public unsafe void UndoLastOperation()
     {
         EventsManager.Revert();
-        // if (_undoOperations.Count == 0) return;
-        //
-        // using var frame = WhiteboardBitmap.Lock();
-        // IntPtr address = frame.Address;
-        // byte* p = (byte*)address.ToPointer();
-        //
-        // var operationsToBeUndone = _undoOperations.Pop();
-        // List<PixelState> operationsToBeRedone = new List<PixelState>(operationsToBeUndone.Count);
-        //
-        // for (int i = operationsToBeUndone.Count - 1; i >= 0; i--)
-        // {
-        //     var (offset, color) = operationsToBeUndone[i];
-        //     byte dstB8 = p[offset + 0];
-        //     byte dstG8 = p[offset + 1];
-        //     byte dstR8 = p[offset + 2];
-        //     byte dstA8 = p[offset + 3];
-        //     var currentPixelState = new PixelState(offset, new Color(dstA8, dstR8, dstG8, dstB8));
-        //     operationsToBeRedone.Add(currentPixelState);
-        //
-        //     p[offset] = color.B;
-        //     p[offset + 1] = color.G;
-        //     p[offset + 2] = color.R;
-        //     p[offset + 3] = color.A;
-        // }
-        //
-        // _redoOperations.Push(operationsToBeRedone);
     }
 
     public unsafe void RedoLastOperation()
     {
         EventsManager.FastForward();
-        // if (_redoOperations.Count == 0) return;
-        //
-        // using var frame = WhiteboardBitmap.Lock();
-        // IntPtr address = frame.Address;
-        // var p = (byte*)address.ToPointer();
-        //
-        // var operationsToBeRedone = _redoOperations.Pop();
-        // List<PixelState> operationsToBeUndone = new List<PixelState>(operationsToBeRedone.Count);
-        //
-        // for (int i = operationsToBeRedone.Count - 1; i >= 0; i--)
-        // {
-        //     var (offset, color) = operationsToBeRedone[i];
-        //     byte dstB8 = p[offset + 0];
-        //     byte dstG8 = p[offset + 1];
-        //     byte dstR8 = p[offset + 2];
-        //     byte dstA8 = p[offset + 3];
-        //     var currentPixelState = new PixelState(offset, new Color(dstA8, dstR8, dstG8, dstB8));
-        //     operationsToBeUndone.Add(currentPixelState);
-        //
-        //     p[offset] = color.B;
-        //     p[offset + 1] = color.G;
-        //     p[offset + 2] = color.R;
-        //     p[offset + 3] = color.A;
-        // }
-        //
-        // _undoOperations.Push(operationsToBeUndone);
     }
 
     private double SmoothStep(double edge0, double edge1, double x)
