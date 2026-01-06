@@ -27,6 +27,11 @@ public class EventsManager(MainViewModel viewModel)
                 {
                     var start = e.Points[i];
                     var end = e.Points[i + 1];
+                    if (i == 0)
+                    {
+                        viewModel.DrawSinglePixel(address, stride, start, e.Color, e.StrokeWidth, e.Color.A / 255f);
+                    }
+
                     viewModel.DrawSegmentNoCaps(address, stride, start, end, e.Color, e.StrokeWidth, e.Color.A / 255f);
                     viewModel.DrawSinglePixel(address, stride, end, e.Color, e.StrokeWidth, e.Color.A / 255f);
                 }
