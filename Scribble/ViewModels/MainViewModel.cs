@@ -13,7 +13,11 @@ public partial class MainViewModel : ViewModelBase
     private const int BytesPerPixel = 4;
     private const int CanvasWidth = 10000;
     private const int CanvasHeight = 10000;
-    public Color BackgroundColor { get; }
+    public const int CanvasSnapshotInterval = 10;
+
+    private Color BackgroundColor { get; }
+    private WriteableBitmap? _snapshotBitmap;
+    public int CheckpointIndex { get; private set; } = -1;
 
     public WriteableBitmap WhiteboardBitmap { get; }
     public ScaleTransform ScaleTransform { get; }
@@ -137,11 +141,6 @@ public partial class MainViewModel : ViewModelBase
                 p[offset + 2] = (byte)Math.Round(Math.Clamp(outR, 0.0, 1.0) * 255.0);
                 p[offset + 3] = (byte)Math.Round(Math.Clamp(outA, 0.0, 1.0) * 255.0);
             }
-
-            // if (_isCapturingState)
-            // {
-            //     _pixelsState.Add(new PixelState(offset, new Color(dstA8, dstR8, dstG8, dstB8)));
-            // }
         }
     }
 
@@ -177,14 +176,86 @@ public partial class MainViewModel : ViewModelBase
         }
     }
 
-    public unsafe void UndoLastOperation()
+    public void UndoLastOperation()
     {
-        EventsManager.Revert();
+        if (EventsManager.Events.Count == 0 || EventsManager.CurrentEventIndex == -1) return;
+
+        using var frameBuffer = WhiteboardBitmap.Lock();
+        // Fast Undo: Use checkpoint if the target state is after our saved checkpoint
+        if (CheckpointIndex != -1 && EventsManager.CurrentEventIndex - 1 >= CheckpointIndex)
+        {
+            using var checkpointBuffer = _snapshotBitmap!.Lock();
+            var size = WhiteboardBitmap.PixelSize;
+            var srcSize = checkpointBuffer.RowBytes * size.Height;
+            var dstSize = frameBuffer.RowBytes * size.Height;
+
+            unsafe
+            {
+                Buffer.MemoryCopy(checkpointBuffer.Address.ToPointer(), frameBuffer.Address.ToPointer(), dstSize,
+                    srcSize);
+            }
+
+            // Replay the remaining small events
+            for (int i = CheckpointIndex + 1; i <= EventsManager.CurrentEventIndex - 1; i++)
+            {
+                EventsManager.ApplyEvent(EventsManager.Events[i], frameBuffer);
+            }
+        }
+        else
+        {
+            // Full Replay
+            ClearBitmap(frameBuffer);
+            for (var i = 0; i < EventsManager.CurrentEventIndex; i++)
+            {
+                EventsManager.ApplyEvent(EventsManager.Events[i], frameBuffer);
+            }
+        }
+
+        EventsManager.CurrentEventIndex -= 1;
     }
 
-    public unsafe void RedoLastOperation()
+    public void RedoLastOperation()
     {
-        EventsManager.FastForward();
+        var eventsCount = EventsManager.Events.Count;
+        if (eventsCount == 0 || EventsManager.CurrentEventIndex >= eventsCount - 1) return;
+
+        using var frameBuffer = WhiteboardBitmap.Lock();
+
+        EventsManager.CurrentEventIndex += 1;
+        var @eventToApply = EventsManager.Events[EventsManager.CurrentEventIndex];
+        EventsManager.ApplyEvent(@eventToApply, frameBuffer);
+    }
+
+    public void UpdateCanvasSnapshot()
+    {
+        var size = WhiteboardBitmap.PixelSize;
+        var dpi = WhiteboardBitmap.Dpi;
+
+        // Lazy initialization
+        if (_snapshotBitmap == null || _snapshotBitmap.PixelSize != size)
+        {
+            _snapshotBitmap?.Dispose();
+            // Create the backup bitmap
+            _snapshotBitmap = new WriteableBitmap(size, dpi, PixelFormat.Bgra8888);
+        }
+
+        // copy screen to checkpoint
+        using var srcBuffer = WhiteboardBitmap.Lock();
+        using var checkpointBuffer = _snapshotBitmap.Lock();
+        var srcSize = srcBuffer.RowBytes * size.Height;
+        var dstSize = checkpointBuffer.RowBytes * size.Height;
+
+        unsafe
+        {
+            Buffer.MemoryCopy(srcBuffer.Address.ToPointer(), checkpointBuffer.Address.ToPointer(), dstSize, srcSize);
+        }
+
+        CheckpointIndex = EventsManager.CurrentEventIndex;
+    }
+
+    public void InvalidateCanvasSnapshot()
+    {
+        CheckpointIndex = -1;
     }
 
     private double SmoothStep(double edge0, double edge1, double x)
@@ -354,90 +425,6 @@ public partial class MainViewModel : ViewModelBase
                 {
                     SetPixel(address, stride, new Point(x, y), BackgroundColor, 1f);
                 }
-            }
-        }
-    }
-
-    // Anti-aliased thick line with butt/square caps (signed-distance field)
-    // Notes: Bounding box is expanded by radius+1 for AA fringe; zero-length strokes render a circular dab.
-    private void DrawLine(IntPtr address, int stride, Point start, Point end, Color color, int strokeWidth = 1,
-        float opacity = 1f)
-    {
-        strokeWidth = Math.Max(1, strokeWidth);
-
-        // Compute geometry
-        double dx = end.X - start.X;
-        double dy = end.Y - start.Y;
-        double len2 = dx * dx + dy * dy;
-        double len = Math.Sqrt(len2);
-
-        double halfWidth = strokeWidth / 2.0;
-
-        // Fast path for zero-length (tap): render a circular dab with AA
-        if (len < 1e-6)
-        {
-            double cx = start.X;
-            double cy = start.Y;
-            int minX = (int)Math.Floor(cx - halfWidth - 1);
-            int maxX = (int)Math.Ceiling(cx + halfWidth + 1);
-            int minY = (int)Math.Floor(cy - halfWidth - 1);
-            int maxY = (int)Math.Ceiling(cy + halfWidth + 1);
-
-            for (int y = minY; y <= maxY; y++)
-            {
-                for (int x = minX; x <= maxX; x++)
-                {
-                    double px = x + 0.5;
-                    double py = y + 0.5;
-                    double ddx = px - cx;
-                    double ddy = py - cy;
-                    double d = Math.Sqrt(ddx * ddx + ddy * ddy);
-                    // Smooth edge from r to r+1 pixel
-                    double a = SmoothStep(halfWidth + 1.0, halfWidth, d);
-                    if (a <= 0) continue;
-                    SetPixel(address, stride, new Point(x, y), color, (float)(a * opacity));
-                }
-            }
-
-            return;
-        }
-
-        // Unit direction and perpendicular
-        double ux = dx / len;
-        double uy = dy / len;
-        double pxn = -uy;
-        double pyn = ux;
-
-        // Midpoint and half-length (for round caps)
-        double mx = (start.X + end.X) * 0.5;
-        double my = (start.Y + end.Y) * 0.5;
-        double halfLen = len * 0.5;
-
-        // Bounding box expanded by halfWidth + 1 for AA fringe
-        int minXi = (int)Math.Floor(Math.Min(start.X, end.X) - halfWidth - 1);
-        int maxXi = (int)Math.Ceiling(Math.Max(start.X, end.X) + halfWidth + 1);
-        int minYi = (int)Math.Floor(Math.Min(start.Y, end.Y) - halfWidth - 1);
-        int maxYi = (int)Math.Ceiling(Math.Max(start.Y, end.Y) + halfWidth + 1);
-
-        for (int y = minYi; y <= maxYi; y++)
-        {
-            for (int x = minXi; x <= maxXi; x++)
-            {
-                // Pixel center in line's local coordinates (u along, v across), centered at segment midpoint
-                double cx = x + 0.5 - mx;
-                double cy = y + 0.5 - my;
-                double u = cx * ux + cy * uy; // along the segment
-                double v = cx * pxn + cy * pyn; // perpendicular to the segment
-
-                // Signed distance to a capsule (segment with round caps)
-                double du = Math.Max(Math.Abs(u) - halfLen, 0.0);
-                double sd = Math.Sqrt(du * du + v * v) - halfWidth;
-
-                // Convert geometric distance to coverage using a 1px smooth edge
-                double a = SmoothStep(1.0, 0.0, sd);
-                if (a <= 0) continue;
-
-                SetPixel(address, stride, new Point(x, y), color, (float)(a * opacity));
             }
         }
     }
