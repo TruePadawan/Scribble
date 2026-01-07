@@ -22,11 +22,7 @@ public class EraseTool : PointerToolsBase
     {
         // Erase but don't save the event till the mouse/pointer is released
         using var frameBuffer = ViewModel.WhiteboardBitmap.Lock();
-        var address = frameBuffer.Address;
-        var stride = frameBuffer.RowBytes;
-
-        ViewModel.EraseSegmentNoCaps(address, stride, prevCoord, currentCoord, _radius);
-        ViewModel.EraseSinglePixel(address, stride, currentCoord, _radius);
+        ViewModel.BitmapRenderer.EraseStroke(frameBuffer, prevCoord, currentCoord, ViewModel.BackgroundColor, _radius);
 
         // Accumulate points for the stroke
         _currentErasePoints.Add(currentCoord);
@@ -37,9 +33,7 @@ public class EraseTool : PointerToolsBase
         _currentErasePoints.Clear();
 
         using var frameBuffer = ViewModel.WhiteboardBitmap.Lock();
-        var address = frameBuffer.Address;
-        var stride = frameBuffer.RowBytes;
-        ViewModel.EraseSinglePixel(address, stride, coord, _radius);
+        ViewModel.BitmapRenderer.EraseSinglePoint(frameBuffer, coord, ViewModel.BackgroundColor, _radius);
 
         _currentErasePoints.Add(coord);
     }

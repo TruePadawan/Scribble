@@ -11,9 +11,6 @@ public class EventsManager(MainViewModel viewModel)
 
     public void ApplyEvent(Event @event, ILockedFramebuffer frameBuffer)
     {
-        var address = frameBuffer.Address;
-        var stride = frameBuffer.RowBytes;
-
         switch (@event)
         {
             case PointsDrawn e:
@@ -23,29 +20,27 @@ public class EventsManager(MainViewModel viewModel)
                     var end = e.Points[i + 1];
                     if (i == 0)
                     {
-                        viewModel.DrawSinglePixel(address, stride, start, e.Color, e.StrokeWidth, e.Color.A / 255f);
+                        viewModel.BitmapRenderer.DrawSinglePoint(frameBuffer, start, e.Color, e.StrokeWidth);
                     }
 
-                    viewModel.DrawSegmentNoCaps(address, stride, start, end, e.Color, e.StrokeWidth, e.Color.A / 255f);
-                    viewModel.DrawSinglePixel(address, stride, end, e.Color, e.StrokeWidth, e.Color.A / 255f);
+                    viewModel.BitmapRenderer.DrawStroke(frameBuffer, start, end, e.Color, e.StrokeWidth);
                 }
 
                 break;
             case PointDrawn e:
-                viewModel.DrawSinglePixel(address, stride, e.Coord, e.Color, e.StrokeWidth, e.Color.A / 255f);
+                viewModel.BitmapRenderer.DrawSinglePoint(frameBuffer, e.Coord, e.Color, e.StrokeWidth);
                 break;
             case PointsErased e:
                 for (int i = 0; i < e.Points.Count - 1; i++)
                 {
                     var start = e.Points[i];
                     var end = e.Points[i + 1];
-                    viewModel.EraseSegmentNoCaps(address, stride, start, end, e.Radius);
-                    viewModel.EraseSinglePixel(address, stride, end, e.Radius);
+                    viewModel.BitmapRenderer.EraseStroke(frameBuffer, start, end, viewModel.BackgroundColor, e.Radius);
                 }
 
                 break;
             case PointErased e:
-                viewModel.EraseSinglePixel(address, stride, e.Coord, e.Radius);
+                viewModel.BitmapRenderer.EraseSinglePoint(frameBuffer, e.Coord, viewModel.BackgroundColor, e.Radius);
                 break;
         }
     }

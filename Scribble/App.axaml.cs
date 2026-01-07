@@ -4,6 +4,7 @@ using Avalonia.Data.Core;
 using Avalonia.Data.Core.Plugins;
 using System.Linq;
 using Avalonia.Markup.Xaml;
+using Scribble.Lib.BitmapRenderer;
 using Scribble.ViewModels;
 using Scribble.Views;
 
@@ -18,6 +19,7 @@ public partial class App : Application
 
     public override void OnFrameworkInitializationCompleted()
     {
+        BitmapRendererBase renderer = new BitmapRenderer();
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             // Avoid duplicate validations from both Avalonia and the CommunityToolkit. 
@@ -25,14 +27,14 @@ public partial class App : Application
             DisableAvaloniaDataAnnotationValidation();
             desktop.MainWindow = new MainWindow
             {
-                DataContext = new MainViewModel()
+                DataContext = new MainViewModel(renderer)
             };
         }
         else if (ApplicationLifetime is ISingleViewApplicationLifetime singleViewPlatform)
         {
             singleViewPlatform.MainView = new MainView
             {
-                DataContext = new MainViewModel()
+                DataContext = new MainViewModel(renderer)
             };
         }
 

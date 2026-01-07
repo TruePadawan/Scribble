@@ -24,14 +24,7 @@ public class DrawTool : PointerToolsBase
     {
         // Draw but don't save any event till the mouse/pointer is released
         using var frameBuffer = ViewModel.WhiteboardBitmap.Lock();
-        var address = frameBuffer.Address;
-        var stride = frameBuffer.RowBytes;
-        var opacity = _strokeColor.A / 255f;
-
-        // Draw an interior segment without round caps to avoid over-dark joints,
-        // then place a single circular dab at the current point to form a smooth join.
-        ViewModel.DrawSegmentNoCaps(address, stride, prevCoord, currentCoord, _strokeColor, _strokeWidth, opacity);
-        ViewModel.DrawSinglePixel(address, stride, currentCoord, _strokeColor, _strokeWidth, opacity);
+        ViewModel.BitmapRenderer.DrawStroke(frameBuffer, prevCoord, currentCoord, _strokeColor, _strokeWidth);
 
         // Accumulate points for the stroke
         _currentStrokePoints.Add(currentCoord);
@@ -42,10 +35,7 @@ public class DrawTool : PointerToolsBase
         _currentStrokePoints.Clear();
 
         using var frameBuffer = ViewModel.WhiteboardBitmap.Lock();
-        var address = frameBuffer.Address;
-        var stride = frameBuffer.RowBytes;
-        var opacity = _strokeColor.A / 255f;
-        ViewModel.DrawSinglePixel(address, stride, coord, _strokeColor, _strokeWidth, opacity);
+        ViewModel.BitmapRenderer.DrawSinglePoint(frameBuffer, coord, _strokeColor, _strokeWidth);
 
         _currentStrokePoints.Add(coord);
     }
