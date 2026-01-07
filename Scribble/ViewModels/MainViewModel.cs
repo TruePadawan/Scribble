@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using Avalonia;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
@@ -14,25 +13,29 @@ public partial class MainViewModel : ViewModelBase
     private const int BytesPerPixel = 4;
     private const int CanvasWidth = 10000;
     private const int CanvasHeight = 10000;
-    public Color BackgroundColor { get; }
+    public const int CanvasSnapshotInterval = 10;
+
+    private Color BackgroundColor { get; }
+    private WriteableBitmap? _snapshotBitmap;
+    public int CheckpointIndex { get; private set; } = -1;
 
     public WriteableBitmap WhiteboardBitmap { get; }
     public ScaleTransform ScaleTransform { get; }
 
-    private List<PixelState> _pixelsState = [];
-    private Stack<List<PixelState>> _undoOperations = [];
-    private Stack<List<PixelState>> _redoOperations = [];
-    private bool _isCapturingState = false;
+    public readonly EventsManager EventsManager;
 
 
     public MainViewModel()
     {
         BackgroundColor = Colors.Black;
         ScaleTransform = new ScaleTransform(1, 1);
+        EventsManager = new EventsManager(this);
 
         // Initialize the bitmap with a large dimension
         WhiteboardBitmap = new WriteableBitmap(new PixelSize(CanvasWidth, CanvasHeight), _dpi, PixelFormat.Bgra8888);
-        ClearBitmap(BackgroundColor);
+
+        using var frameBuffer = WhiteboardBitmap.Lock();
+        ClearBitmap(frameBuffer);
     }
 
     public Vector GetCanvasDimensions() => new Vector(CanvasWidth, CanvasHeight);
@@ -45,29 +48,39 @@ public partial class MainViewModel : ViewModelBase
         ScaleTransform.ScaleY = newScale;
     }
 
-    private unsafe void ClearBitmap(Color backgroundColor)
+    // Use SIMD instructions to quickly clear the bitmap
+    public unsafe void ClearBitmap(ILockedFramebuffer buffer)
     {
-        using var frame = WhiteboardBitmap.Lock();
-        var address = frame.Address;
-        int stride = frame.RowBytes;
-        byte* bitmapPtr = (byte*)address.ToPointer();
-
+        var address = buffer.Address;
+        var stride = buffer.RowBytes;
+        var bitmapPtr = (byte*)address.ToPointer();
         int width = WhiteboardBitmap.PixelSize.Width;
         int height = WhiteboardBitmap.PixelSize.Height;
-        for (int y = 0; y < height; ++y)
+
+        // Construct the 32bit pixel value for the background color
+        var pixelValue = (uint)((BackgroundColor.A << 24) |
+                                (BackgroundColor.R << 16) |
+                                (BackgroundColor.G << 8) |
+                                BackgroundColor.B);
+
+        // If stride matches width, memory is contiguous.
+        // Fill the entire buffer in one go using SIMD
+        if (stride == width * 4)
         {
-            for (int x = 0; x < width; ++x)
+            new Span<uint>(bitmapPtr, width * height).Fill(pixelValue);
+        }
+        else
+        {
+            // Fill row by row if there is padding
+            for (int y = 0; y < height; y++)
             {
-                long offset = (long)y * stride + (long)x * BytesPerPixel;
-                bitmapPtr[offset] = backgroundColor.B;
-                bitmapPtr[offset + 1] = backgroundColor.G;
-                bitmapPtr[offset + 2] = backgroundColor.R;
-                bitmapPtr[offset + 3] = backgroundColor.A;
+                var rowStart = (uint*)(bitmapPtr + y * stride);
+                new Span<uint>(rowStart, width).Fill(pixelValue);
             }
         }
     }
 
-    public unsafe void SetPixel(IntPtr address, int stride, Point coord, Color color, double opacity)
+    private unsafe void SetPixel(IntPtr address, int stride, Point coord, Color color, double opacity)
     {
         int width = WhiteboardBitmap.PixelSize.Width;
         int height = WhiteboardBitmap.PixelSize.Height;
@@ -128,11 +141,6 @@ public partial class MainViewModel : ViewModelBase
                 p[offset + 2] = (byte)Math.Round(Math.Clamp(outR, 0.0, 1.0) * 255.0);
                 p[offset + 3] = (byte)Math.Round(Math.Clamp(outA, 0.0, 1.0) * 255.0);
             }
-
-            if (_isCapturingState)
-            {
-                _pixelsState.Add(new PixelState(offset, new Color(dstA8, dstR8, dstG8, dstB8)));
-            }
         }
     }
 
@@ -168,81 +176,256 @@ public partial class MainViewModel : ViewModelBase
         }
     }
 
-    public void StartStateCapture()
+    public void UndoLastOperation()
     {
-        _isCapturingState = true;
-        _pixelsState = [];
+        if (EventsManager.Events.Count == 0 || EventsManager.CurrentEventIndex == -1) return;
+
+        using var frameBuffer = WhiteboardBitmap.Lock();
+        // Fast Undo: Use checkpoint if the target state is after our saved checkpoint
+        if (CheckpointIndex != -1 && EventsManager.CurrentEventIndex - 1 >= CheckpointIndex)
+        {
+            using var checkpointBuffer = _snapshotBitmap!.Lock();
+            var size = WhiteboardBitmap.PixelSize;
+            var srcSize = checkpointBuffer.RowBytes * size.Height;
+            var dstSize = frameBuffer.RowBytes * size.Height;
+
+            unsafe
+            {
+                Buffer.MemoryCopy(checkpointBuffer.Address.ToPointer(), frameBuffer.Address.ToPointer(), dstSize,
+                    srcSize);
+            }
+
+            // Replay the remaining small events
+            for (int i = CheckpointIndex + 1; i <= EventsManager.CurrentEventIndex - 1; i++)
+            {
+                EventsManager.ApplyEvent(EventsManager.Events[i], frameBuffer);
+            }
+        }
+        else
+        {
+            // Full Replay
+            ClearBitmap(frameBuffer);
+            for (var i = 0; i < EventsManager.CurrentEventIndex; i++)
+            {
+                EventsManager.ApplyEvent(EventsManager.Events[i], frameBuffer);
+            }
+        }
+
+        EventsManager.CurrentEventIndex -= 1;
     }
 
-    public void StopStateCapture()
+    public void RedoLastOperation()
     {
-        _isCapturingState = false;
-        _undoOperations.Push(_pixelsState);
+        var eventsCount = EventsManager.Events.Count;
+        if (eventsCount == 0 || EventsManager.CurrentEventIndex >= eventsCount - 1) return;
 
-        // Clear the redo stack when the undo 'root' changes
-        if (_redoOperations.Count > 0)
+        using var frameBuffer = WhiteboardBitmap.Lock();
+
+        EventsManager.CurrentEventIndex += 1;
+        var @eventToApply = EventsManager.Events[EventsManager.CurrentEventIndex];
+        EventsManager.ApplyEvent(@eventToApply, frameBuffer);
+    }
+
+    public void UpdateCanvasSnapshot()
+    {
+        var size = WhiteboardBitmap.PixelSize;
+        var dpi = WhiteboardBitmap.Dpi;
+
+        // Lazy initialization
+        if (_snapshotBitmap == null || _snapshotBitmap.PixelSize != size)
         {
-            _redoOperations.Clear();
+            _snapshotBitmap?.Dispose();
+            // Create the backup bitmap
+            _snapshotBitmap = new WriteableBitmap(size, dpi, PixelFormat.Bgra8888);
+        }
+
+        // copy screen to checkpoint
+        using var srcBuffer = WhiteboardBitmap.Lock();
+        using var checkpointBuffer = _snapshotBitmap.Lock();
+        var srcSize = srcBuffer.RowBytes * size.Height;
+        var dstSize = checkpointBuffer.RowBytes * size.Height;
+
+        unsafe
+        {
+            Buffer.MemoryCopy(srcBuffer.Address.ToPointer(), checkpointBuffer.Address.ToPointer(), dstSize, srcSize);
+        }
+
+        CheckpointIndex = EventsManager.CurrentEventIndex;
+    }
+
+    public void InvalidateCanvasSnapshot()
+    {
+        CheckpointIndex = -1;
+    }
+
+    private double SmoothStep(double edge0, double edge1, double x)
+    {
+        if (Math.Abs(edge1 - edge0) < 1e-9)
+            return x < edge0 ? 1.0 : 0.0;
+        double t = (x - edge0) / (edge1 - edge0);
+        t = Math.Clamp(t, 0.0, 1.0);
+        return t * t * (3 - 2 * t);
+    }
+
+    public void DrawSinglePixel(IntPtr address, int stride, Point coord, Color color, int strokeWidth, float opacity)
+    {
+        strokeWidth = Math.Max(1, strokeWidth);
+        double halfWidth = strokeWidth / 2.0;
+
+        // Render an anti-aliased circular dab centered at coord
+        double cx = coord.X;
+        double cy = coord.Y;
+        int minX = (int)Math.Floor(cx - halfWidth - 1);
+        int maxX = (int)Math.Ceiling(cx + halfWidth + 1);
+        int minY = (int)Math.Floor(cy - halfWidth - 1);
+        int maxY = (int)Math.Ceiling(cy + halfWidth + 1);
+
+        for (int y = minY; y <= maxY; y++)
+        {
+            for (int x = minX; x <= maxX; x++)
+            {
+                double px = x + 0.5;
+                double py = y + 0.5;
+                double ddx = px - cx;
+                double ddy = py - cy;
+                double d = Math.Sqrt(ddx * ddx + ddy * ddy);
+                // Signed distance to the circle boundary (negative inside)
+                double sd = d - halfWidth;
+                // 1-pixel soft edge
+                double a = SmoothStep(1.0, 0.0, sd);
+                if (a <= 0) continue;
+                SetPixel(address, stride, new Point(x, y), color, (float)(a * opacity));
+            }
         }
     }
 
-    public unsafe void UndoLastOperation()
+    // Draw an AA thick segment without round end caps
+    public void DrawSegmentNoCaps(IntPtr address, int stride, Point start, Point end, Color color, int strokeWidth,
+        float opacity)
     {
-        if (_undoOperations.Count == 0) return;
+        strokeWidth = Math.Max(1, strokeWidth);
 
-        using var frame = WhiteboardBitmap.Lock();
-        IntPtr address = frame.Address;
-        byte* p = (byte*)address.ToPointer();
+        // Compute geometry
+        double dx = end.X - start.X;
+        double dy = end.Y - start.Y;
+        double len2 = dx * dx + dy * dy;
+        if (len2 < 1e-12) return;
 
-        var operationsToBeUndone = _undoOperations.Pop();
-        List<PixelState> operationsToBeRedone = new List<PixelState>(operationsToBeUndone.Count);
+        double len = Math.Sqrt(len2);
+        double ux = dx / len;
+        double uy = dy / len;
+        double pxn = -uy;
+        double pyn = ux;
 
-        for (int i = operationsToBeUndone.Count - 1; i >= 0; i--)
+        double halfWidth = strokeWidth / 2.0;
+        double mx = (start.X + end.X) * 0.5;
+        double my = (start.Y + end.Y) * 0.5;
+        double halfLen = len * 0.5;
+
+        // Bounding box expanded by halfWidth + 1 for AA fringe
+        int minXi = (int)Math.Floor(Math.Min(start.X, end.X) - halfWidth - 1);
+        int maxXi = (int)Math.Ceiling(Math.Max(start.X, end.X) + halfWidth + 1);
+        int minYi = (int)Math.Floor(Math.Min(start.Y, end.Y) - halfWidth - 1);
+        int maxYi = (int)Math.Ceiling(Math.Max(start.Y, end.Y) + halfWidth + 1);
+
+        for (int y = minYi; y <= maxYi; y++)
         {
-            var (offset, color) = operationsToBeUndone[i];
-            byte dstB8 = p[offset + 0];
-            byte dstG8 = p[offset + 1];
-            byte dstR8 = p[offset + 2];
-            byte dstA8 = p[offset + 3];
-            var currentPixelState = new PixelState(offset, new Color(dstA8, dstR8, dstG8, dstB8));
-            operationsToBeRedone.Add(currentPixelState);
+            for (int x = minXi; x <= maxXi; x++)
+            {
+                double cx = x + 0.5 - mx;
+                double cy = y + 0.5 - my;
+                double u = cx * ux + cy * uy;
+                double v = cx * pxn + cy * pyn;
 
-            p[offset] = color.B;
-            p[offset + 1] = color.G;
-            p[offset + 2] = color.R;
-            p[offset + 3] = color.A;
+                // Signed distance to an axis-aligned rectangle in the line's local space
+                double qx = Math.Abs(u) - halfLen;
+                double qy = Math.Abs(v) - halfWidth;
+                double ox = Math.Max(qx, 0.0);
+                double oy = Math.Max(qy, 0.0);
+                double outside = Math.Sqrt(ox * ox + oy * oy);
+                double inside = Math.Min(Math.Max(qx, qy), 0.0);
+                double sd = outside + inside; // signed distance to rectangle (negative inside)
+
+                // Convert geometric distance to coverage using a ~1px smooth edge
+                double a = SmoothStep(1.0, 0.0, sd);
+                if (a <= 0) continue;
+
+                SetPixel(address, stride, new Point(x, y), color, (float)(a * opacity));
+            }
         }
-
-        _redoOperations.Push(operationsToBeRedone);
     }
 
-    public unsafe void RedoLastOperation()
+    // Solid (non-AA) circular dab for performance
+    public void EraseSinglePixel(IntPtr address, int stride, Point coord, int strokeWidth)
     {
-        if (_redoOperations.Count == 0) return;
+        strokeWidth = Math.Max(1, strokeWidth);
+        double halfWidth = strokeWidth / 2.0;
+        double r2 = halfWidth * halfWidth;
 
-        using var frame = WhiteboardBitmap.Lock();
-        IntPtr address = frame.Address;
-        var p = (byte*)address.ToPointer();
+        double cx = coord.X;
+        double cy = coord.Y;
+        int minX = (int)Math.Floor(cx - halfWidth);
+        int maxX = (int)Math.Ceiling(cx + halfWidth);
+        int minY = (int)Math.Floor(cy - halfWidth);
+        int maxY = (int)Math.Ceiling(cy + halfWidth);
 
-        var operationsToBeRedone = _redoOperations.Pop();
-        List<PixelState> operationsToBeUndone = new List<PixelState>(operationsToBeRedone.Count);
-
-        for (int i = operationsToBeRedone.Count - 1; i >= 0; i--)
+        for (int y = minY; y <= maxY; y++)
         {
-            var (offset, color) = operationsToBeRedone[i];
-            byte dstB8 = p[offset + 0];
-            byte dstG8 = p[offset + 1];
-            byte dstR8 = p[offset + 2];
-            byte dstA8 = p[offset + 3];
-            var currentPixelState = new PixelState(offset, new Color(dstA8, dstR8, dstG8, dstB8));
-            operationsToBeUndone.Add(currentPixelState);
-
-            p[offset] = color.B;
-            p[offset + 1] = color.G;
-            p[offset + 2] = color.R;
-            p[offset + 3] = color.A;
+            for (int x = minX; x <= maxX; x++)
+            {
+                double px = x + 0.5;
+                double py = y + 0.5;
+                double ddx = px - cx;
+                double ddy = py - cy;
+                double d2 = ddx * ddx + ddy * ddy;
+                if (d2 > r2) continue;
+                SetPixel(address, stride, new Point(x, y), BackgroundColor, 1f);
+            }
         }
+    }
 
-        _undoOperations.Push(operationsToBeUndone);
+    public void EraseSegmentNoCaps(IntPtr address, int stride, Point start, Point end, int strokeWidth)
+    {
+        strokeWidth = Math.Max(1, strokeWidth);
+
+        // Compute geometry
+        double dx = end.X - start.X;
+        double dy = end.Y - start.Y;
+        double len2 = dx * dx + dy * dy;
+        if (len2 < 1e-12) return;
+
+        double len = Math.Sqrt(len2);
+        double ux = dx / len;
+        double uy = dy / len;
+        double pxn = -uy;
+        double pyn = ux;
+
+        double halfWidth = strokeWidth / 2.0;
+        double mx = (start.X + end.X) * 0.5;
+        double my = (start.Y + end.Y) * 0.5;
+        double halfLen = len * 0.5;
+
+        // Bounding box expanded by halfWidth + 1 for AA fringe
+        int minXi = (int)Math.Floor(Math.Min(start.X, end.X) - halfWidth - 1);
+        int maxXi = (int)Math.Ceiling(Math.Max(start.X, end.X) + halfWidth + 1);
+        int minYi = (int)Math.Floor(Math.Min(start.Y, end.Y) - halfWidth - 1);
+        int maxYi = (int)Math.Ceiling(Math.Max(start.Y, end.Y) + halfWidth + 1);
+
+        for (int y = minYi; y <= maxYi; y++)
+        {
+            for (int x = minXi; x <= maxXi; x++)
+            {
+                double cx = x + 0.5 - mx;
+                double cy = y + 0.5 - my;
+                double u = cx * ux + cy * uy;
+                double v = cx * pxn + cy * pyn;
+
+                // Solid (non-AA) rectangle coverage in the line's local space
+                if (Math.Abs(u) <= halfLen && Math.Abs(v) <= halfWidth)
+                {
+                    SetPixel(address, stride, new Point(x, y), BackgroundColor, 1f);
+                }
+            }
+        }
     }
 }
