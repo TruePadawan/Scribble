@@ -44,12 +44,12 @@ public class EraseTool : PointerToolsBase
 
         if (_currentErasePoints.Count == 1)
         {
-            ViewModel.EventsManager.Apply(new PointErased(_currentErasePoints[0], _radius), true);
+            ViewModel.BitmapEventsManager.Apply(new PointErased(_currentErasePoints[0], _radius), true);
         }
         else
         {
             var fullStrokeEvent = new PointsErased([.._currentErasePoints], _radius);
-            ViewModel.EventsManager.Apply(fullStrokeEvent, skipRendering: true);
+            ViewModel.BitmapEventsManager.Apply(fullStrokeEvent, skipRendering: true);
         }
     }
 

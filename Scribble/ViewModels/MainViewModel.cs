@@ -22,7 +22,7 @@ public partial class MainViewModel : ViewModelBase
     public WriteableBitmap WhiteboardBitmap { get; }
     public ScaleTransform ScaleTransform { get; }
 
-    public readonly EventsManager EventsManager;
+    public readonly BitmapEventsManager BitmapEventsManager;
     public readonly BitmapRendererBase BitmapRenderer;
 
 
@@ -30,7 +30,7 @@ public partial class MainViewModel : ViewModelBase
     {
         BackgroundColor = Colors.Black;
         ScaleTransform = new ScaleTransform(1, 1);
-        EventsManager = new EventsManager(this);
+        BitmapEventsManager = new BitmapEventsManager(this);
         BitmapRenderer = bitmapRenderer;
 
         // Initialize the bitmap with a large dimension
@@ -84,11 +84,11 @@ public partial class MainViewModel : ViewModelBase
 
     public void UndoLastOperation()
     {
-        if (EventsManager.Events.Count == 0 || EventsManager.CurrentEventIndex == -1) return;
+        if (BitmapEventsManager.Events.Count == 0 || BitmapEventsManager.CurrentEventIndex == -1) return;
 
         using var frameBuffer = WhiteboardBitmap.Lock();
         // Fast Undo: Use checkpoint if the target state is after our saved checkpoint
-        if (CheckpointIndex != -1 && EventsManager.CurrentEventIndex - 1 >= CheckpointIndex)
+        if (CheckpointIndex != -1 && BitmapEventsManager.CurrentEventIndex - 1 >= CheckpointIndex)
         {
             using var checkpointBuffer = _snapshotBitmap!.Lock();
             var size = WhiteboardBitmap.PixelSize;
@@ -102,34 +102,34 @@ public partial class MainViewModel : ViewModelBase
             }
 
             // Replay the remaining small events
-            for (int i = CheckpointIndex + 1; i <= EventsManager.CurrentEventIndex - 1; i++)
+            for (int i = CheckpointIndex + 1; i <= BitmapEventsManager.CurrentEventIndex - 1; i++)
             {
-                EventsManager.ApplyEvent(EventsManager.Events[i], frameBuffer);
+                BitmapEventsManager.ApplyEvent(BitmapEventsManager.Events[i], frameBuffer);
             }
         }
         else
         {
             // Full Replay
             BitmapRenderer.ClearBitmap(frameBuffer, BackgroundColor);
-            for (var i = 0; i < EventsManager.CurrentEventIndex; i++)
+            for (var i = 0; i < BitmapEventsManager.CurrentEventIndex; i++)
             {
-                EventsManager.ApplyEvent(EventsManager.Events[i], frameBuffer);
+                BitmapEventsManager.ApplyEvent(BitmapEventsManager.Events[i], frameBuffer);
             }
         }
 
-        EventsManager.CurrentEventIndex -= 1;
+        BitmapEventsManager.CurrentEventIndex -= 1;
     }
 
     public void RedoLastOperation()
     {
-        var eventsCount = EventsManager.Events.Count;
-        if (eventsCount == 0 || EventsManager.CurrentEventIndex >= eventsCount - 1) return;
+        var eventsCount = BitmapEventsManager.Events.Count;
+        if (eventsCount == 0 || BitmapEventsManager.CurrentEventIndex >= eventsCount - 1) return;
 
         using var frameBuffer = WhiteboardBitmap.Lock();
 
-        EventsManager.CurrentEventIndex += 1;
-        var @eventToApply = EventsManager.Events[EventsManager.CurrentEventIndex];
-        EventsManager.ApplyEvent(@eventToApply, frameBuffer);
+        BitmapEventsManager.CurrentEventIndex += 1;
+        var @eventToApply = BitmapEventsManager.Events[BitmapEventsManager.CurrentEventIndex];
+        BitmapEventsManager.ApplyEvent(@eventToApply, frameBuffer);
     }
 
     public void UpdateCanvasSnapshot()
@@ -156,7 +156,7 @@ public partial class MainViewModel : ViewModelBase
             Buffer.MemoryCopy(srcBuffer.Address.ToPointer(), checkpointBuffer.Address.ToPointer(), dstSize, srcSize);
         }
 
-        CheckpointIndex = EventsManager.CurrentEventIndex;
+        CheckpointIndex = BitmapEventsManager.CurrentEventIndex;
     }
 
     public void InvalidateCanvasSnapshot()

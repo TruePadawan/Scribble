@@ -4,7 +4,7 @@ using Scribble.ViewModels;
 
 namespace Scribble.Lib;
 
-public class EventsManager(MainViewModel viewModel)
+public class BitmapEventsManager(MainViewModel viewModel)
 {
     public List<Event> Events { get; } = [];
     public int CurrentEventIndex = -1;

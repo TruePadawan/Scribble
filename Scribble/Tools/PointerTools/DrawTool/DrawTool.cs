@@ -47,7 +47,7 @@ public class DrawTool : PointerToolsBase
         if (_currentStrokePoints.Count == 1)
         {
             // Dealing with a mouse/pointer click
-            ViewModel.EventsManager.Apply(new PointDrawn(_currentStrokePoints[0], _strokeColor, _strokeWidth), true);
+            ViewModel.BitmapEventsManager.Apply(new PointDrawn(_currentStrokePoints[0], _strokeColor, _strokeWidth), true);
         }
         else
         {
@@ -63,7 +63,7 @@ public class DrawTool : PointerToolsBase
             }
 
             var fullStrokeEvent = new PointsDrawn([.._currentStrokePoints], _strokeColor, _strokeWidth);
-            ViewModel.EventsManager.Apply(fullStrokeEvent, skipRendering: true);
+            ViewModel.BitmapEventsManager.Apply(fullStrokeEvent, skipRendering: true);
         }
     }
 
