@@ -8,6 +8,7 @@
     <!-- Important: keep version in sync! -->
     <PackageVersion Include="Avalonia" Version="11.3.4" />
     <PackageVersion Include="Avalonia.Controls.ColorPicker" Version="11.3.4" />
+    <PackageVersion Include="Avalonia.Skia" Version="11.3.4" />
     <PackageVersion Include="Avalonia.Themes.Fluent" Version="11.3.4" />
     <PackageVersion Include="Avalonia.Fonts.Inter" Version="11.3.4" />
     <PackageVersion Include="Avalonia.Diagnostics" Version="11.3.4" />
