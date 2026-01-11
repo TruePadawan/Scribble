@@ -9,4 +9,9 @@ public static class Utilities
     {
         return new SKColor(color.R, color.G, color.B, color.A);
     }
+
+    public static Color FromSkColor(SKColor color)
+    {
+        return new Color(color.Alpha, color.Red, color.Green, color.Blue);
+    }
 }

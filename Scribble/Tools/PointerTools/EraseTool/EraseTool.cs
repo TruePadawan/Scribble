@@ -45,7 +45,7 @@ public class EraseTool : PointerToolsBase
     public override bool RenderOptions(Panel parent)
     {
         // Render a slider for controlling the eraser thickness
-        Slider slider = new Slider
+        var slider = new Slider
         {
             TickFrequency = 5,
             IsSnapToTickEnabled = true,
