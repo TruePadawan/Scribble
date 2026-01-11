@@ -54,7 +54,7 @@ public class DrawTool : PointerToolsBase
             IsSnapToTickEnabled = true,
             Minimum = 1,
             Maximum = 10,
-            Value = 1
+            Value = _strokePaint.StrokeWidth
         };
         slider.ValueChanged += ((sender, args) => { _strokePaint.StrokeWidth = (float)args.NewValue; });
         slider.Padding = new Thickness(8, 0);

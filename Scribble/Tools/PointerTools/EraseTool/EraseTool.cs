@@ -51,7 +51,7 @@ public class EraseTool : PointerToolsBase
             IsSnapToTickEnabled = true,
             Minimum = 1,
             Maximum = 40,
-            Value = 5
+            Value = _strokePaint.StrokeWidth
         };
         slider.ValueChanged += ((sender, args) => { _strokePaint.StrokeWidth = (float)args.NewValue; });
         slider.Padding = new Thickness(8, 0);
