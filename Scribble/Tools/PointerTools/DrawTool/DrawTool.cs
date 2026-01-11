@@ -1,7 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
-using Avalonia.Media;
 using Scribble.Lib;
 using Scribble.Utils;
 using Scribble.ViewModels;
@@ -48,20 +47,22 @@ public class DrawTool : PointerToolsBase
     public override bool RenderOptions(Panel parent)
     {
         // Render a slider for controlling the stroke width and a color picker for stroke color
-        Slider slider = new Slider
+        var slider = new Slider
         {
             TickFrequency = 1,
             IsSnapToTickEnabled = true,
             Minimum = 1,
             Maximum = 10,
-            Value = 1
+            Value = _strokePaint.StrokeWidth
         };
         slider.ValueChanged += ((sender, args) => { _strokePaint.StrokeWidth = (float)args.NewValue; });
         slider.Padding = new Thickness(8, 0);
 
-        ColorPicker colorPicker = new ColorPicker
+        var colorPicker = new ColorPicker
         {
-            Color = Colors.Red
+            Color = Utilities.FromSkColor(_strokePaint.Color),
+            IsColorSpectrumSliderVisible = false,
+            Width = 164
         };
         colorPicker.ColorChanged += (sender, args) =>
         {
