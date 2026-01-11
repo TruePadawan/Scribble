@@ -46,6 +46,8 @@ public partial class MainView : UserControl
             RegisterPointerTool(new DrawTool("DrawToolButton", viewModel));
             RegisterPointerTool(new EraseTool("EraseTool", viewModel));
             RegisterPointerTool(new PanningTool("PanningTool", viewModel, CanvasScrollViewer));
+
+            _viewModel.RequestInvalidateCanvas += () => MainCanvas.InvalidateVisual();
         }
     }
 
@@ -127,7 +129,6 @@ public partial class MainView : UserControl
         if (e.Properties.IsLeftButtonPressed && hasLastCoordinates)
         {
             _activePointerTool?.HandlePointerMove(_prevCoord, pointerCoordinates);
-            WhiteboardRenderer.InvalidateVisual();
         }
 
         _prevCoord = pointerCoordinates;
@@ -140,7 +141,6 @@ public partial class MainView : UserControl
         {
             _prevCoord = pointerCoordinates;
             _activePointerTool?.HandlePointerClick(pointerCoordinates);
-            WhiteboardRenderer.InvalidateVisual();
         }
     }
 
@@ -152,7 +152,6 @@ public partial class MainView : UserControl
         if (e.InitialPressMouseButton == MouseButton.Left)
         {
             _activePointerTool?.HandlePointerRelease(_prevCoord, pointerCoordinates);
-            WhiteboardRenderer.InvalidateVisual();
         }
 
         // Reset the last coordinates when the mouse is released
@@ -195,17 +194,5 @@ public partial class MainView : UserControl
 
         // Stop the scroll viewer from applying its own scrolling logic
         e.Handled = true;
-    }
-
-    public void Undo()
-    {
-        _viewModel?.UndoLastOperation();
-        WhiteboardRenderer.InvalidateVisual();
-    }
-
-    public void Redo()
-    {
-        _viewModel?.RedoLastOperation();
-        WhiteboardRenderer.InvalidateVisual();
     }
 }

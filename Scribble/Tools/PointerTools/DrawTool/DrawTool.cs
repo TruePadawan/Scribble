@@ -1,70 +1,48 @@
-using System.Collections.Generic;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Media;
 using Scribble.Lib;
+using Scribble.Utils;
 using Scribble.ViewModels;
+using SkiaSharp;
 
 namespace Scribble.Tools.PointerTools.DrawTool;
 
 public class DrawTool : PointerToolsBase
 {
-    private Color _strokeColor = Colors.Red;
-    private int _strokeWidth = 1;
-    private readonly List<Point> _currentStrokePoints = [];
+    private Stroke _currentStroke = new();
+    private readonly SKPaint _strokePaint;
 
     public DrawTool(string name, MainViewModel viewModel) : base(name, viewModel,
         LoadToolBitmap(typeof(DrawTool), "draw.png"))
     {
         Cursor = new Cursor(ToolIcon, new PixelPoint(0, 50));
+        _strokePaint = new SKPaint
+        {
+            IsAntialias = true,
+            IsStroke = true,
+            StrokeCap = SKStrokeCap.Round,
+            StrokeWidth = 1,
+            Color = SKColors.Red
+        };
     }
 
     public override void HandlePointerMove(Point prevCoord, Point currentCoord)
     {
-        // Draw but don't save any event till the mouse/pointer is released
-        using var frameBuffer = ViewModel.WhiteboardBitmap.Lock();
-        ViewModel.BitmapRenderer.DrawStroke(frameBuffer, prevCoord, currentCoord, _strokeColor, _strokeWidth);
-
-        // Accumulate points for the stroke
-        _currentStrokePoints.Add(currentCoord);
+        _currentStroke.Path.LineTo((float)currentCoord.X, (float)currentCoord.Y);
+        ViewModel.TriggerCanvasRedraw();
     }
 
     public override void HandlePointerClick(Point coord)
     {
-        _currentStrokePoints.Clear();
-
-        using var frameBuffer = ViewModel.WhiteboardBitmap.Lock();
-        ViewModel.BitmapRenderer.DrawSinglePoint(frameBuffer, coord, _strokeColor, _strokeWidth);
-
-        _currentStrokePoints.Add(coord);
-    }
-
-    public override void HandlePointerRelease(Point prevCoord, Point currentCoord)
-    {
-        if (_currentStrokePoints.Count == 0) return;
-
-        if (_currentStrokePoints.Count == 1)
+        _currentStroke = new Stroke
         {
-            // Dealing with a mouse/pointer click
-            ViewModel.BitmapEventsManager.Apply(new PointDrawn(_currentStrokePoints[0], _strokeColor, _strokeWidth), true);
-        }
-        else
-        {
-            // Dealing with click + drag
+            Paint = _strokePaint.Clone()
+        };
+        _currentStroke.Path.MoveTo((float)coord.X, (float)coord.Y);
 
-            // Add a final dab if the line is long enough
-            double dx = currentCoord.X - prevCoord.X;
-            double dy = currentCoord.Y - prevCoord.Y;
-            double dist2 = dx * dx + dy * dy;
-            if (dist2 > 1e-4)
-            {
-                _currentStrokePoints.Add(currentCoord);
-            }
-
-            var fullStrokeEvent = new PointsDrawn([.._currentStrokePoints], _strokeColor, _strokeWidth);
-            ViewModel.BitmapEventsManager.Apply(fullStrokeEvent, skipRendering: true);
-        }
+        ViewModel.AddStroke(_currentStroke);
     }
 
     public override bool RenderOptions(Panel parent)
@@ -76,16 +54,20 @@ public class DrawTool : PointerToolsBase
             IsSnapToTickEnabled = true,
             Minimum = 1,
             Maximum = 10,
-            Value = _strokeWidth
+            Value = 1
         };
-        slider.ValueChanged += ((sender, args) => { _strokeWidth = (int)args.NewValue; });
+        slider.ValueChanged += ((sender, args) => { _strokePaint.StrokeWidth = (float)args.NewValue; });
         slider.Padding = new Thickness(8, 0);
 
         ColorPicker colorPicker = new ColorPicker
         {
-            Color = _strokeColor
+            Color = Colors.Red
         };
-        colorPicker.ColorChanged += (sender, args) => { _strokeColor = args.NewColor; };
+        colorPicker.ColorChanged += (sender, args) =>
+        {
+            var newColor = args.NewColor;
+            _strokePaint.Color = Utilities.ToSkColor(newColor);
+        };
 
         parent.Children.Add(CreateOptionControl(colorPicker, "Color"));
         parent.Children.Add(CreateOptionControl(slider, "Thickness"));
