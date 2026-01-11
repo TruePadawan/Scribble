@@ -1,43 +1,31 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Linq;
 using Avalonia;
 using Avalonia.Media;
-using Avalonia.Media.Imaging;
-using Avalonia.Platform;
+using CommunityToolkit.Mvvm.ComponentModel;
 using Scribble.Lib;
-using Scribble.Lib.BitmapRenderer;
+using SkiaSharp;
 
 namespace Scribble.ViewModels;
 
 public partial class MainViewModel : ViewModelBase
 {
-    private readonly Vector _dpi = new(96, 96);
-    private const int CanvasWidth = 10000;
-    private const int CanvasHeight = 10000;
-    public const int CanvasSnapshotInterval = 10;
+    public static int CanvasWidth => 10000;
+    public static int CanvasHeight => 10000;
 
-    public Color BackgroundColor { get; }
-    private WriteableBitmap? _snapshotBitmap;
-    public int CheckpointIndex { get; private set; } = -1;
-
-    public WriteableBitmap WhiteboardBitmap { get; }
+    [ObservableProperty] private SKColor _backgroundColor;
     public ScaleTransform ScaleTransform { get; }
+    public ObservableCollection<Stroke> CanvasStrokes { get; } = [];
+    private readonly Stack<Stroke> _redoStack = [];
+    public event Action? RequestInvalidateCanvas;
 
-    public readonly BitmapEventsManager BitmapEventsManager;
-    public readonly BitmapRendererBase BitmapRenderer;
 
-
-    public MainViewModel(BitmapRendererBase bitmapRenderer)
+    public MainViewModel()
     {
-        BackgroundColor = Colors.Black;
+        BackgroundColor = SKColors.Black;
         ScaleTransform = new ScaleTransform(1, 1);
-        BitmapEventsManager = new BitmapEventsManager(this);
-        BitmapRenderer = bitmapRenderer;
-
-        // Initialize the bitmap with a large dimension
-        WhiteboardBitmap = new WriteableBitmap(new PixelSize(CanvasWidth, CanvasHeight), _dpi, PixelFormat.Bgra8888);
-
-        using var frameBuffer = WhiteboardBitmap.Lock();
-        BitmapRenderer.ClearBitmap(frameBuffer, BackgroundColor);
     }
 
     public Vector GetCanvasDimensions() => new Vector(CanvasWidth, CanvasHeight);
@@ -50,117 +38,33 @@ public partial class MainViewModel : ViewModelBase
         ScaleTransform.ScaleY = newScale;
     }
 
-    // // TODO: Should keep track of anti-aliased pixels and update them
-    // public unsafe void ChangeBackgroundColor(Color color)
-    // {
-    //     if (color == BackgroundColor) return;
-    //
-    //     using var frame = WhiteboardBitmap.Lock();
-    //     var address = frame.Address;
-    //     int stride = frame.RowBytes;
-    //     var bitmapPtr = (byte*)address.ToPointer();
-    //
-    //     int width = WhiteboardBitmap.PixelSize.Width;
-    //     int height = WhiteboardBitmap.PixelSize.Height;
-    //     for (int y = 0; y < height; ++y)
-    //     {
-    //         for (int x = 0; x < width; ++x)
-    //         {
-    //             long offset = (long)y * stride + (long)x * BytesPerPixel;
-    //             // Update all pixels that are the color of the previous background color to the new one
-    //             var b = bitmapPtr[offset];
-    //             var g = bitmapPtr[offset + 1];
-    //             var r = bitmapPtr[offset + 2];
-    //             var a = bitmapPtr[offset + 3];
-    //             if (b != BackgroundColor.B || g != BackgroundColor.G || r != BackgroundColor.R ||
-    //                 a != BackgroundColor.A) continue;
-    //             bitmapPtr[offset] = color.B;
-    //             bitmapPtr[offset + 1] = color.G;
-    //             bitmapPtr[offset + 2] = color.R;
-    //             bitmapPtr[offset + 3] = color.A;
-    //         }
-    //     }
-    // }
-
-    public void UndoLastOperation()
+    public void TriggerCanvasRedraw()
     {
-        if (BitmapEventsManager.Events.Count == 0 || BitmapEventsManager.CurrentEventIndex == -1) return;
-
-        using var frameBuffer = WhiteboardBitmap.Lock();
-        // Fast Undo: Use checkpoint if the target state is after our saved checkpoint
-        if (CheckpointIndex != -1 && BitmapEventsManager.CurrentEventIndex - 1 >= CheckpointIndex)
-        {
-            using var checkpointBuffer = _snapshotBitmap!.Lock();
-            var size = WhiteboardBitmap.PixelSize;
-            var srcSize = checkpointBuffer.RowBytes * size.Height;
-            var dstSize = frameBuffer.RowBytes * size.Height;
-
-            unsafe
-            {
-                Buffer.MemoryCopy(checkpointBuffer.Address.ToPointer(), frameBuffer.Address.ToPointer(), dstSize,
-                    srcSize);
-            }
-
-            // Replay the remaining small events
-            for (int i = CheckpointIndex + 1; i <= BitmapEventsManager.CurrentEventIndex - 1; i++)
-            {
-                BitmapEventsManager.ApplyEvent(BitmapEventsManager.Events[i], frameBuffer);
-            }
-        }
-        else
-        {
-            // Full Replay
-            BitmapRenderer.ClearBitmap(frameBuffer, BackgroundColor);
-            for (var i = 0; i < BitmapEventsManager.CurrentEventIndex; i++)
-            {
-                BitmapEventsManager.ApplyEvent(BitmapEventsManager.Events[i], frameBuffer);
-            }
-        }
-
-        BitmapEventsManager.CurrentEventIndex -= 1;
+        RequestInvalidateCanvas?.Invoke();
     }
 
-    public void RedoLastOperation()
+    public void Undo()
     {
-        var eventsCount = BitmapEventsManager.Events.Count;
-        if (eventsCount == 0 || BitmapEventsManager.CurrentEventIndex >= eventsCount - 1) return;
-
-        using var frameBuffer = WhiteboardBitmap.Lock();
-
-        BitmapEventsManager.CurrentEventIndex += 1;
-        var @eventToApply = BitmapEventsManager.Events[BitmapEventsManager.CurrentEventIndex];
-        BitmapEventsManager.ApplyEvent(@eventToApply, frameBuffer);
+        if (CanvasStrokes.Count > 0)
+        {
+            var lastStroke = CanvasStrokes.Last();
+            CanvasStrokes.Remove(lastStroke);
+            _redoStack.Push(lastStroke);
+        }
     }
 
-    public void UpdateCanvasSnapshot()
+    public void Redo()
     {
-        var size = WhiteboardBitmap.PixelSize;
-        var dpi = WhiteboardBitmap.Dpi;
-
-        // Lazy initialization
-        if (_snapshotBitmap == null || _snapshotBitmap.PixelSize != size)
+        if (_redoStack.Count > 0)
         {
-            _snapshotBitmap?.Dispose();
-            // Create the backup bitmap
-            _snapshotBitmap = new WriteableBitmap(size, dpi, PixelFormat.Bgra8888);
+            var nextStroke = _redoStack.Pop();
+            CanvasStrokes.Add(nextStroke);
         }
-
-        // copy screen to checkpoint
-        using var srcBuffer = WhiteboardBitmap.Lock();
-        using var checkpointBuffer = _snapshotBitmap.Lock();
-        var srcSize = srcBuffer.RowBytes * size.Height;
-        var dstSize = checkpointBuffer.RowBytes * size.Height;
-
-        unsafe
-        {
-            Buffer.MemoryCopy(srcBuffer.Address.ToPointer(), checkpointBuffer.Address.ToPointer(), dstSize, srcSize);
-        }
-
-        CheckpointIndex = BitmapEventsManager.CurrentEventIndex;
     }
 
-    public void InvalidateCanvasSnapshot()
+    public void AddStroke(Stroke newStroke)
     {
-        CheckpointIndex = -1;
+        CanvasStrokes.Add(newStroke);
+        _redoStack.Clear();
     }
 }

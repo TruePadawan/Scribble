@@ -3,6 +3,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="clr-namespace:Scribble.ViewModels"
+             xmlns:controls="using:Scribble.Controls"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:Class="Scribble.Views.MainView"
              x:DataType="vm:MainViewModel"
@@ -13,24 +14,25 @@
         <vm:MainViewModel />
     </Design.DataContext>
     <UserControl.KeyBindings>
-        <KeyBinding Gesture="Ctrl+Z" Command="{Binding #Root.Undo}" />
-        <KeyBinding Gesture="Ctrl+Shift+Z" Command="{Binding #Root.Redo}" />
+        <KeyBinding Gesture="Ctrl+Z" Command="{Binding Undo}" />
+        <KeyBinding Gesture="Ctrl+Shift+Z" Command="{Binding Redo}" />
     </UserControl.KeyBindings>
     <!-- Simulate a wide canvas -->
     <!-- Use a RenderTransformOrigin to tell the ScrollViewer to scale from top left -->
     <Panel>
         <ScrollViewer Name="CanvasScrollViewer" HorizontalScrollBarVisibility="Auto">
             <LayoutTransformControl Name="MainCanvasLayoutTransform" LayoutTransform="{Binding ScaleTransform}">
-                <Border HorizontalAlignment="Left" Name="MainCanvas"
-                        Width="{Binding WhiteboardBitmap.PixelSize.Width}"
-                        Height="{Binding WhiteboardBitmap.PixelSize.Height}"
-                        PointerMoved="MainCanvas_OnPointerMoved"
-                        PointerReleased="MainCanvas_OnPointerReleased"
-                        PointerPressed="MainCanvas_OnPointerPressed"
-                        PointerWheelChanged="MainCanvas_OnPointerWheelChanged"
-                        RenderTransformOrigin="0 0">
-                    <Image Name="WhiteboardRenderer" Source="{Binding WhiteboardBitmap}" />
-                </Border>
+                <controls:SkiaCanvas Name="MainCanvas"
+                                     HorizontalAlignment="Left"
+                                     CanvasBackground="{Binding BackgroundColor}"
+                                     Width="{Binding CanvasWidth}"
+                                     Height="{Binding CanvasHeight}"
+                                     PointerPressed="MainCanvas_OnPointerPressed"
+                                     PointerMoved="MainCanvas_OnPointerMoved"
+                                     PointerReleased="MainCanvas_OnPointerReleased"
+                                     PointerWheelChanged="MainCanvas_OnPointerWheelChanged"
+                                     Strokes="{Binding CanvasStrokes}"
+                                     RenderTransformOrigin="0 0" />
             </LayoutTransformControl>
         </ScrollViewer>
         <Border Name="ToolbarContainer"
