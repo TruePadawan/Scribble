@@ -23,5 +23,5 @@ public record StrokeOperation : Event
     public StrokeOperationType Type { get; init; }
     public Guid StrokeId { get; init; }
     public SKPoint? NewPosition { get; init; }
-    public Stroke? NewStrokeData { get; init; } // Only for "Add"
+    public DrawStroke? NewStrokeData { get; init; } // Only for "Add"
 }

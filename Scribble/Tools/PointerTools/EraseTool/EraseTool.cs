@@ -10,7 +10,7 @@ namespace Scribble.Tools.PointerTools.EraseTool;
 public class EraseTool : PointerToolsBase
 {
     private readonly SKPaint _strokePaint;
-    private Stroke _eraserStroke = new(true);
+    private DrawStroke _eraserDrawStroke = new(true);
 
     public EraseTool(string name, MainViewModel viewModel)
         : base(name, viewModel, LoadToolBitmap(typeof(EraseTool), "eraser.png"))
@@ -27,19 +27,19 @@ public class EraseTool : PointerToolsBase
 
     public override void HandlePointerMove(Point prevCoord, Point currentCoord)
     {
-        _eraserStroke.Path.LineTo((float)currentCoord.X, (float)currentCoord.Y);
+        _eraserDrawStroke.Path.LineTo((float)currentCoord.X, (float)currentCoord.Y);
         ViewModel.TriggerCanvasRedraw();
     }
 
     public override void HandlePointerClick(Point coord)
     {
-        _eraserStroke = new Stroke
+        _eraserDrawStroke = new DrawStroke
         {
             Paint = _strokePaint.Clone()
         };
-        _eraserStroke.Path.MoveTo((float)coord.X, (float)coord.Y);
+        _eraserDrawStroke.Path.MoveTo((float)coord.X, (float)coord.Y);
 
-        ViewModel.AddStroke(_eraserStroke);
+        ViewModel.AddStroke(_eraserDrawStroke);
     }
 
     public override bool RenderOptions(Panel parent)

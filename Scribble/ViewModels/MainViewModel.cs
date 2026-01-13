@@ -17,8 +17,8 @@ public partial class MainViewModel : ViewModelBase
 
     [ObservableProperty] private SKColor _backgroundColor;
     public ScaleTransform ScaleTransform { get; }
-    public ObservableCollection<Stroke> CanvasStrokes { get; } = [];
-    private readonly Stack<Stroke> _redoStack = [];
+    public ObservableCollection<DrawStroke> CanvasStrokes { get; } = [];
+    private readonly Stack<DrawStroke> _redoStack = [];
     public event Action? RequestInvalidateCanvas;
 
 
@@ -62,9 +62,9 @@ public partial class MainViewModel : ViewModelBase
         }
     }
 
-    public void AddStroke(Stroke newStroke)
+    public void AddStroke(DrawStroke newDrawStroke)
     {
-        CanvasStrokes.Add(newStroke);
+        CanvasStrokes.Add(newDrawStroke);
         _redoStack.Clear();
     }
 }

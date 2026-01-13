@@ -3,7 +3,7 @@ using SkiaSharp;
 
 namespace Scribble.Lib;
 
-public record Stroke(bool IsErasingStroke = false)
+public record DrawStroke(bool IsErasingStroke = false)
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public SKPath Path { get; } = new();

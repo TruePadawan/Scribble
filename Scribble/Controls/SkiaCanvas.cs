@@ -15,10 +15,10 @@ namespace Scribble.Controls;
 
 public class SkiaCanvas : Control
 {
-    public static readonly StyledProperty<ObservableCollection<Stroke>> StrokesProperty =
-        AvaloniaProperty.Register<SkiaCanvas, ObservableCollection<Stroke>>(nameof(Strokes));
+    public static readonly StyledProperty<ObservableCollection<DrawStroke>> StrokesProperty =
+        AvaloniaProperty.Register<SkiaCanvas, ObservableCollection<DrawStroke>>(nameof(Strokes));
 
-    public ObservableCollection<Stroke> Strokes
+    public ObservableCollection<DrawStroke> Strokes
     {
         get => GetValue(StrokesProperty);
         set => SetValue(StrokesProperty, value);
@@ -46,12 +46,13 @@ public class SkiaCanvas : Control
             new SkiaDrawOperation(bounds, canvas => { DrawContent(canvas, strokesToDraw, bgColor); }));
     }
 
-    private void DrawContent(SKCanvas canvas, IEnumerable<Stroke> strokesToDraw, SKColor bgColor)
+    private void DrawContent(SKCanvas canvas, IEnumerable<DrawStroke> strokesToDraw, SKColor bgColor)
     {
         canvas.Clear(bgColor);
 
         foreach (var stroke in strokesToDraw)
         {
+            // stroke.Path.
             if (stroke.IsErasingStroke)
             {
                 stroke.Paint.Color = bgColor;

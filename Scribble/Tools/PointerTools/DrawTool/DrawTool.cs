@@ -10,7 +10,7 @@ namespace Scribble.Tools.PointerTools.DrawTool;
 
 public class DrawTool : PointerToolsBase
 {
-    private Stroke _currentStroke = new();
+    private DrawStroke _currentDrawStroke = new();
     private readonly SKPaint _strokePaint;
 
     public DrawTool(string name, MainViewModel viewModel) : base(name, viewModel,
@@ -29,19 +29,19 @@ public class DrawTool : PointerToolsBase
 
     public override void HandlePointerMove(Point prevCoord, Point currentCoord)
     {
-        _currentStroke.Path.LineTo((float)currentCoord.X, (float)currentCoord.Y);
+        _currentDrawStroke.Path.LineTo((float)currentCoord.X, (float)currentCoord.Y);
         ViewModel.TriggerCanvasRedraw();
     }
 
     public override void HandlePointerClick(Point coord)
     {
-        _currentStroke = new Stroke
+        _currentDrawStroke = new DrawStroke
         {
             Paint = _strokePaint.Clone()
         };
-        _currentStroke.Path.MoveTo((float)coord.X, (float)coord.Y);
+        _currentDrawStroke.Path.MoveTo((float)coord.X, (float)coord.Y);
 
-        ViewModel.AddStroke(_currentStroke);
+        ViewModel.AddStroke(_currentDrawStroke);
     }
 
     public override bool RenderOptions(Panel parent)
