@@ -55,10 +55,14 @@ public partial class MainViewModel : ViewModelBase
                 break;
             }
 
-            if (CanvasEvents[latestEventIdx] is TriggerEraseEvent && CanvasEvents[i] is EndDrawStrokeEvent)
+            if (CanvasEvents[latestEventIdx] is TriggerEraseEvent)
             {
-                _currentEventIndex = i;
-                break;
+                if (CanvasEvents[i] is EndDrawStrokeEvent || CanvasEvents[i] is TriggerEraseEvent)
+                {
+
+       _currentEventIndex = i;
+                    break;
+                }
             }
         }
 
@@ -100,6 +104,8 @@ public partial class MainViewModel : ViewModelBase
         var drawStrokes = new Dictionary<Guid, DrawStroke>();
         var eraserStrokes = new Dictionary<Guid, EraserStroke>();
         var staleEraseStrokes = new List<Guid>();
+        var eraserHeads = new Dictionary<Guid, SKPoint>();
+
         for (var i = 0; i <= _currentEventIndex; i++)
         {
             var canvasEvent = CanvasEvents[i];
@@ -122,15 +128,11 @@ public partial class MainViewModel : ViewModelBase
                         Path = eraserPath
                     };
 
+                    // Keep track of the eraser heads for linear interpolation
+                    eraserHeads[ev.StrokeId] = ev.StartPoint;
+
                     // Find all targets for erasing
-                    foreach (var keyValuePair in drawStrokes)
-                    {
-                        if (keyValuePair.Value.Path.Contains(ev.StartPoint.X, ev.StartPoint.Y))
-                        {
-                            keyValuePair.Value.IsToBeErased = true;
-                            newEraserStroke.Targets.Add(keyValuePair.Key);
-                        }
-                    }
+                    CheckAndErase(ev.StartPoint, drawStrokes, newEraserStroke);
 
                     eraserStrokes[ev.StrokeId] = newEraserStroke;
                     break;
@@ -144,17 +146,24 @@ public partial class MainViewModel : ViewModelBase
                 case EraseStrokeLineToEvent ev:
                     if (eraserStrokes.ContainsKey(ev.StrokeId))
                     {
-                        // Find all targets for erasing
-                        foreach (var keyValuePair in drawStrokes)
+                        var currentEraserStroke = eraserStrokes[ev.StrokeId];
+                        // Use interpolation to find all targets for erasing
+                        var start = eraserHeads[ev.StrokeId];
+                        var end = ev.Point;
+                        var distance = Math.Sqrt(Math.Pow(end.X - start.X, 2) + Math.Pow(end.Y - start.Y, 2));
+
+                        var stepSize = 5.0;
+                        var steps = (int)Math.Ceiling(distance / stepSize);
+                        for (int s = 1; s <= steps; s++)
                         {
-                            if (keyValuePair.Value.Path.Contains(ev.Point.X, ev.Point.Y))
-                            {
-                                keyValuePair.Value.IsToBeErased = true;
-                                eraserStrokes[ev.StrokeId].Targets.Add(keyValuePair.Key);
-                            }
+                            var completionPercentage = s / stepSize;
+                            var checkX = start.X + (end.X - start.X) * completionPercentage;
+                            var checkY = start.Y + (end.Y - start.Y) * completionPercentage;
+                            CheckAndErase(new SKPoint((float)checkX, (float)checkY), drawStrokes, currentEraserStroke);
                         }
 
-                        eraserStrokes[ev.StrokeId].Path.LineTo(ev.Point);
+                        currentEraserStroke.Path.LineTo(ev.Point);
+                        eraserHeads[ev.StrokeId] = ev.Point;
                     }
 
                     break;
@@ -190,5 +199,17 @@ public partial class MainViewModel : ViewModelBase
 
 
         CanvasStrokes = new List<Stroke>(drawStrokes.Values.ToList());
+    }
+
+    private void CheckAndErase(SKPoint startPoint, Dictionary<Guid, DrawStroke> drawStrokes, EraserStroke eraserStroke)
+    {
+        foreach (var keyValuePair in drawStrokes)
+        {
+            if (keyValuePair.Value.Path.Contains(startPoint.X, startPoint.Y))
+            {
+                keyValuePair.Value.IsToBeErased = true;
+                eraserStroke.Targets.Add(keyValuePair.Key);
+            }
+        }
     }
 }
