@@ -15,10 +15,10 @@ namespace Scribble.Controls;
 
 public class SkiaCanvas : Control
 {
-    public static readonly StyledProperty<ObservableCollection<Stroke>> StrokesProperty =
-        AvaloniaProperty.Register<SkiaCanvas, ObservableCollection<Stroke>>(nameof(Strokes));
+    public static readonly StyledProperty<List<Stroke>> StrokesProperty =
+        AvaloniaProperty.Register<SkiaCanvas, List<Stroke>>(nameof(Strokes));
 
-    public ObservableCollection<Stroke> Strokes
+    public List<Stroke> Strokes
     {
         get => GetValue(StrokesProperty);
         set => SetValue(StrokesProperty, value);
@@ -52,19 +52,33 @@ public class SkiaCanvas : Control
 
         foreach (var stroke in strokesToDraw)
         {
-            if (stroke.IsErasingStroke)
+            switch (stroke)
             {
-                stroke.Paint.Color = bgColor;
-            }
+                case DrawStroke drawStroke:
+                    var paintToUse = drawStroke.Paint;
+                    IDisposable? disposablePaintClone = null;
+                    if (drawStroke.IsToBeErased)
+                    {
+                        // Dispose clone of paint to prevent memory leaks
+                        paintToUse = drawStroke.Paint.Clone();
+                        paintToUse.Color = paintToUse.Color.WithAlpha(80);
+                        disposablePaintClone = paintToUse;
+                    }
 
-            if (stroke.Path.PointCount == 1)
-            {
-                var firstPoint = stroke.Path.Points[0];
-                canvas.DrawPoint(firstPoint, stroke.Paint);
-            }
-            else
-            {
-                canvas.DrawPath(stroke.Path, stroke.Paint);
+                    if (stroke.Path.PointCount == 1)
+                    {
+                        var firstPoint = stroke.Path.Points[0];
+                        canvas.DrawPoint(firstPoint, paintToUse);
+                    }
+                    else
+                    {
+                        canvas.DrawPath(stroke.Path, paintToUse);
+                    }
+
+                    disposablePaintClone?.Dispose();
+                    break;
+                case EraserStroke eraserStroke:
+                    break;
             }
         }
     }

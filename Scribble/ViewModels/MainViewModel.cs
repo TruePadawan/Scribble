@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.Linq;
 using Avalonia;
 using Avalonia.Media;
@@ -17,9 +16,10 @@ public partial class MainViewModel : ViewModelBase
 
     [ObservableProperty] private SKColor _backgroundColor;
     public ScaleTransform ScaleTransform { get; }
-    public ObservableCollection<Stroke> CanvasStrokes { get; } = [];
-    private readonly Stack<Stroke> _redoStack = [];
+    [ObservableProperty] private List<Stroke> _canvasStrokes = [];
     public event Action? RequestInvalidateCanvas;
+    private List<StrokeEvent> CanvasEvents { get; } = [];
+    private int _currentEventIndex = -1;
 
 
     public MainViewModel()
@@ -45,26 +45,171 @@ public partial class MainViewModel : ViewModelBase
 
     public void Undo()
     {
-        if (CanvasStrokes.Count > 0)
+        if (CanvasEvents.Count == 0) return;
+        int latestEventIdx = _currentEventIndex;
+        for (int i = _currentEventIndex - 1; i >= 0; i--)
         {
-            var lastStroke = CanvasStrokes.Last();
-            CanvasStrokes.Remove(lastStroke);
-            _redoStack.Push(lastStroke);
+            if (CanvasEvents[latestEventIdx] is EndDrawStrokeEvent && CanvasEvents[i] is NewDrawStrokeEvent)
+            {
+                _currentEventIndex = i - 1;
+                break;
+            }
+
+            if (CanvasEvents[latestEventIdx] is TriggerEraseEvent)
+            {
+                if (CanvasEvents[i] is EndDrawStrokeEvent || CanvasEvents[i] is TriggerEraseEvent)
+                {
+
+       _currentEventIndex = i;
+                    break;
+                }
+            }
         }
+
+        ReplayEvents();
     }
 
     public void Redo()
     {
-        if (_redoStack.Count > 0)
+        if (CanvasEvents.Count == 0 || _currentEventIndex == CanvasEvents.Count - 1) return;
+        for (int i = _currentEventIndex + 1; i < CanvasEvents.Count; i++)
         {
-            var nextStroke = _redoStack.Pop();
-            CanvasStrokes.Add(nextStroke);
+            if (CanvasEvents[i] is TriggerEraseEvent || CanvasEvents[i] is EndDrawStrokeEvent)
+            {
+                _currentEventIndex = i;
+                break;
+            }
         }
+
+        ReplayEvents();
     }
 
-    public void AddStroke(Stroke newStroke)
+    public void ApplyStrokeEvent(StrokeEvent @event)
     {
-        CanvasStrokes.Add(newStroke);
-        _redoStack.Clear();
+        var eventsCount = CanvasEvents.Count;
+        // Remove all stale events if we branch off
+        if (eventsCount > 0 && _currentEventIndex < eventsCount - 1)
+        {
+            CanvasEvents.RemoveRange(_currentEventIndex + 1, eventsCount - _currentEventIndex - 1);
+        }
+
+        CanvasEvents.Add(@event);
+        _currentEventIndex = CanvasEvents.Count - 1;
+        if (@event is EndDrawStrokeEvent) return;
+        ReplayEvents();
+    }
+
+    private void ReplayEvents()
+    {
+        var drawStrokes = new Dictionary<Guid, DrawStroke>();
+        var eraserStrokes = new Dictionary<Guid, EraserStroke>();
+        var staleEraseStrokes = new List<Guid>();
+        var eraserHeads = new Dictionary<Guid, SKPoint>();
+
+        for (var i = 0; i <= _currentEventIndex; i++)
+        {
+            var canvasEvent = CanvasEvents[i];
+            switch (canvasEvent)
+            {
+                case NewDrawStrokeEvent ev:
+                    var newPath = new SKPath();
+                    newPath.MoveTo(ev.StartPoint);
+                    drawStrokes[ev.StrokeId] = new DrawStroke
+                    {
+                        Paint = ev.StrokePaint,
+                        Path = newPath
+                    };
+                    break;
+                case NewEraseStrokeEvent ev:
+                    var eraserPath = new SKPath();
+                    eraserPath.MoveTo(ev.StartPoint);
+                    var newEraserStroke = new EraserStroke
+                    {
+                        Path = eraserPath
+                    };
+
+                    // Keep track of the eraser heads for linear interpolation
+                    eraserHeads[ev.StrokeId] = ev.StartPoint;
+
+                    // Find all targets for erasing
+                    CheckAndErase(ev.StartPoint, drawStrokes, newEraserStroke);
+
+                    eraserStrokes[ev.StrokeId] = newEraserStroke;
+                    break;
+                case DrawStrokeLineToEvent ev:
+                    if (drawStrokes.ContainsKey(ev.StrokeId))
+                    {
+                        drawStrokes[ev.StrokeId].Path.LineTo(ev.Point);
+                    }
+
+                    break;
+                case EraseStrokeLineToEvent ev:
+                    if (eraserStrokes.ContainsKey(ev.StrokeId))
+                    {
+                        var currentEraserStroke = eraserStrokes[ev.StrokeId];
+                        // Use interpolation to find all targets for erasing
+                        var start = eraserHeads[ev.StrokeId];
+                        var end = ev.Point;
+                        var distance = Math.Sqrt(Math.Pow(end.X - start.X, 2) + Math.Pow(end.Y - start.Y, 2));
+
+                        var stepSize = 5.0;
+                        var steps = (int)Math.Ceiling(distance / stepSize);
+                        for (int s = 1; s <= steps; s++)
+                        {
+                            var completionPercentage = s / stepSize;
+                            var checkX = start.X + (end.X - start.X) * completionPercentage;
+                            var checkY = start.Y + (end.Y - start.Y) * completionPercentage;
+                            CheckAndErase(new SKPoint((float)checkX, (float)checkY), drawStrokes, currentEraserStroke);
+                        }
+
+                        currentEraserStroke.Path.LineTo(ev.Point);
+                        eraserHeads[ev.StrokeId] = ev.Point;
+                    }
+
+                    break;
+                case TriggerEraseEvent ev:
+                    if (eraserStrokes.ContainsKey(ev.StrokeId))
+                    {
+                        // Erase all targets
+                        foreach (var targetId in eraserStrokes[ev.StrokeId].Targets)
+                        {
+                            drawStrokes.Remove(targetId);
+                        }
+
+                        if (eraserStrokes[ev.StrokeId].Targets.Count == 0)
+                        {
+                            staleEraseStrokes.Add(ev.StrokeId);
+                        }
+                    }
+
+                    break;
+            }
+        }
+
+        // Remove erase events that don't actually erase anything
+        if (staleEraseStrokes.Count > 0)
+        {
+            foreach (var staleEraseStrokeId in staleEraseStrokes)
+            {
+                CanvasEvents.RemoveAll(ev => ev.StrokeId == staleEraseStrokeId);
+            }
+
+            _currentEventIndex = CanvasEvents.Count - 1;
+        }
+
+
+        CanvasStrokes = new List<Stroke>(drawStrokes.Values.ToList());
+    }
+
+    private void CheckAndErase(SKPoint startPoint, Dictionary<Guid, DrawStroke> drawStrokes, EraserStroke eraserStroke)
+    {
+        foreach (var keyValuePair in drawStrokes)
+        {
+            if (keyValuePair.Value.Path.Contains(startPoint.X, startPoint.Y))
+            {
+                keyValuePair.Value.IsToBeErased = true;
+                eraserStroke.Targets.Add(keyValuePair.Key);
+            }
+        }
     }
 }

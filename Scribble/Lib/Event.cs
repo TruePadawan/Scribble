@@ -11,17 +11,16 @@ public abstract record Event
     public DateTime TimeStamp { get; init; } = DateTime.UtcNow;
 }
 
-public record StrokeOperation : Event
-{
-    public enum StrokeOperationType
-    {
-        Add,
-        Remove,
-        Move
-    }
+public abstract record StrokeEvent(Guid StrokeId) : Event;
 
-    public StrokeOperationType Type { get; init; }
-    public Guid StrokeId { get; init; }
-    public SKPoint? NewPosition { get; init; }
-    public Stroke? NewStrokeData { get; init; } // Only for "Add"
-}
+public record NewDrawStrokeEvent(Guid StrokeId, SKPoint StartPoint, SKPaint StrokePaint) : StrokeEvent(StrokeId);
+
+public record DrawStrokeLineToEvent(Guid StrokeId, SKPoint Point) : StrokeEvent(StrokeId);
+
+public record EndDrawStrokeEvent(Guid StrokeId) : StrokeEvent(StrokeId);
+
+public record NewEraseStrokeEvent(Guid StrokeId, SKPoint StartPoint) : StrokeEvent(StrokeId);
+
+public record EraseStrokeLineToEvent(Guid StrokeId, SKPoint Point) : StrokeEvent(StrokeId);
+
+public record TriggerEraseEvent(Guid StrokeId) : StrokeEvent(StrokeId);

@@ -1,3 +1,4 @@
+using System;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
@@ -10,8 +11,8 @@ namespace Scribble.Tools.PointerTools.DrawTool;
 
 public class DrawTool : PointerToolsBase
 {
-    private Stroke _currentStroke = new();
     private readonly SKPaint _strokePaint;
+    private Guid _currentStrokeId = Guid.NewGuid();
 
     public DrawTool(string name, MainViewModel viewModel) : base(name, viewModel,
         LoadToolBitmap(typeof(DrawTool), "draw.png"))
@@ -29,19 +30,20 @@ public class DrawTool : PointerToolsBase
 
     public override void HandlePointerMove(Point prevCoord, Point currentCoord)
     {
-        _currentStroke.Path.LineTo((float)currentCoord.X, (float)currentCoord.Y);
-        ViewModel.TriggerCanvasRedraw();
+        var nextPoint = new SKPoint((float)currentCoord.X, (float)currentCoord.Y);
+        ViewModel.ApplyStrokeEvent(new DrawStrokeLineToEvent(_currentStrokeId, nextPoint));
     }
 
     public override void HandlePointerClick(Point coord)
     {
-        _currentStroke = new Stroke
-        {
-            Paint = _strokePaint.Clone()
-        };
-        _currentStroke.Path.MoveTo((float)coord.X, (float)coord.Y);
+        var startPoint = new SKPoint((float)coord.X, (float)coord.Y);
+        _currentStrokeId = Guid.NewGuid();
+        ViewModel.ApplyStrokeEvent(new NewDrawStrokeEvent(_currentStrokeId, startPoint, _strokePaint.Clone()));
+    }
 
-        ViewModel.AddStroke(_currentStroke);
+    public override void HandlePointerRelease(Point prevCoord, Point currentCoord)
+    {
+        ViewModel.ApplyStrokeEvent(new EndDrawStrokeEvent(_currentStrokeId));
     }
 
     public override bool RenderOptions(Panel parent)
