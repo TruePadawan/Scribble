@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.Linq;
 using Avalonia;
 using Avalonia.Media;
@@ -47,8 +46,6 @@ public partial class MainViewModel : ViewModelBase
     public void Undo()
     {
         if (CanvasEvents.Count == 0) return;
-        // I either want to revert to the last EndDrawStrokeEvent (when the current event idx is a TriggerEraseEvent)
-        // Or to a EndDrawStrokeEvent (when the latest event is a EndDrawStrokeEvent
         int latestEventIdx = _currentEventIndex;
         for (int i = _currentEventIndex - 1; i >= 0; i--)
         {
@@ -71,7 +68,6 @@ public partial class MainViewModel : ViewModelBase
     public void Redo()
     {
         if (CanvasEvents.Count == 0 || _currentEventIndex == CanvasEvents.Count - 1) return;
-        // I either want to fast-forward to the latest event that is a TriggerEraseEvent Or EndDrawStrokeEvent
         for (int i = _currentEventIndex + 1; i < CanvasEvents.Count; i++)
         {
             if (CanvasEvents[i] is TriggerEraseEvent || CanvasEvents[i] is EndDrawStrokeEvent)

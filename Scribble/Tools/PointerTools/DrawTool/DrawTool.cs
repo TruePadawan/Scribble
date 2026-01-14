@@ -11,7 +11,6 @@ namespace Scribble.Tools.PointerTools.DrawTool;
 
 public class DrawTool : PointerToolsBase
 {
-    // private DrawStroke _currentDrawStroke = new();
     private readonly SKPaint _strokePaint;
     private Guid _currentStrokeId = Guid.NewGuid();
 
@@ -33,8 +32,6 @@ public class DrawTool : PointerToolsBase
     {
         var nextPoint = new SKPoint((float)currentCoord.X, (float)currentCoord.Y);
         ViewModel.ApplyStrokeEvent(new DrawStrokeLineToEvent(_currentStrokeId, nextPoint));
-        // _currentDrawStroke.Path.LineTo((float)currentCoord.X, (float)currentCoord.Y);
-        // ViewModel.TriggerCanvasRedraw();
     }
 
     public override void HandlePointerClick(Point coord)
@@ -42,16 +39,6 @@ public class DrawTool : PointerToolsBase
         var startPoint = new SKPoint((float)coord.X, (float)coord.Y);
         _currentStrokeId = Guid.NewGuid();
         ViewModel.ApplyStrokeEvent(new NewDrawStrokeEvent(_currentStrokeId, startPoint, _strokePaint.Clone()));
-        // _currentDrawStroke = new DrawStroke
-        // {
-        //     Paint = _strokePaint.Clone()
-        // };
-        // _currentDrawStroke.Path.MoveTo((float)coord.X, (float)coord.Y);
-        // _currentEventId = Guid.NewGuid();
-        // var strokeEvent = new DrawStrokeEvent(_currentEventId, _currentDrawStroke);
-        // ViewModel.ApplyStrokeEvent(strokeEvent);
-        //
-        // ViewModel.AddStroke(_currentDrawStroke);
     }
 
     public override void HandlePointerRelease(Point prevCoord, Point currentCoord)
