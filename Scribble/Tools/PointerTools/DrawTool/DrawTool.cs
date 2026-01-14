@@ -32,7 +32,7 @@ public class DrawTool : PointerToolsBase
     public override void HandlePointerMove(Point prevCoord, Point currentCoord)
     {
         var nextPoint = new SKPoint((float)currentCoord.X, (float)currentCoord.Y);
-        ViewModel.ApplyEvent(new DrawStrokeLineToEvent(_currentStrokeId, nextPoint));
+        ViewModel.ApplyStrokeEvent(new DrawStrokeLineToEvent(_currentStrokeId, nextPoint));
         // _currentDrawStroke.Path.LineTo((float)currentCoord.X, (float)currentCoord.Y);
         // ViewModel.TriggerCanvasRedraw();
     }
@@ -41,7 +41,7 @@ public class DrawTool : PointerToolsBase
     {
         var startPoint = new SKPoint((float)coord.X, (float)coord.Y);
         _currentStrokeId = Guid.NewGuid();
-        ViewModel.ApplyEvent(new NewDrawStrokeEvent(_currentStrokeId, startPoint, _strokePaint.Clone()));
+        ViewModel.ApplyStrokeEvent(new NewDrawStrokeEvent(_currentStrokeId, startPoint, _strokePaint.Clone()));
         // _currentDrawStroke = new DrawStroke
         // {
         //     Paint = _strokePaint.Clone()
@@ -49,9 +49,14 @@ public class DrawTool : PointerToolsBase
         // _currentDrawStroke.Path.MoveTo((float)coord.X, (float)coord.Y);
         // _currentEventId = Guid.NewGuid();
         // var strokeEvent = new DrawStrokeEvent(_currentEventId, _currentDrawStroke);
-        // ViewModel.ApplyEvent(strokeEvent);
+        // ViewModel.ApplyStrokeEvent(strokeEvent);
         //
         // ViewModel.AddStroke(_currentDrawStroke);
+    }
+
+    public override void HandlePointerRelease(Point prevCoord, Point currentCoord)
+    {
+        ViewModel.ApplyStrokeEvent(new EndDrawStrokeEvent(_currentStrokeId));
     }
 
     public override bool RenderOptions(Panel parent)

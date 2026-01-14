@@ -17,10 +17,10 @@ public partial class MainViewModel : ViewModelBase
 
     [ObservableProperty] private SKColor _backgroundColor;
     public ScaleTransform ScaleTransform { get; }
-    [ObservableProperty] private ObservableCollection<Stroke> _canvasStrokes = [];
-    private readonly Stack<Stroke> _redoStack = [];
+    [ObservableProperty] private List<Stroke> _canvasStrokes = [];
     public event Action? RequestInvalidateCanvas;
-    private List<Event> CanvasEvents { get; } = [];
+    private List<StrokeEvent> CanvasEvents { get; } = [];
+    private int _currentEventIndex = -1;
 
 
     public MainViewModel()
@@ -46,32 +46,56 @@ public partial class MainViewModel : ViewModelBase
 
     public void Undo()
     {
-        if (CanvasStrokes.Count > 0)
+        if (CanvasEvents.Count == 0) return;
+        // I either want to revert to the last EndDrawStrokeEvent (when the current event idx is a TriggerEraseEvent)
+        // Or to a EndDrawStrokeEvent (when the latest event is a EndDrawStrokeEvent
+        int latestEventIdx = _currentEventIndex;
+        for (int i = _currentEventIndex - 1; i >= 0; i--)
         {
-            var lastStroke = CanvasStrokes.Last();
-            CanvasStrokes.Remove(lastStroke);
-            _redoStack.Push(lastStroke);
+            if (CanvasEvents[latestEventIdx] is EndDrawStrokeEvent && CanvasEvents[i] is NewDrawStrokeEvent)
+            {
+                _currentEventIndex = i - 1;
+                break;
+            }
+
+            if (CanvasEvents[latestEventIdx] is TriggerEraseEvent && CanvasEvents[i] is EndDrawStrokeEvent)
+            {
+                _currentEventIndex = i;
+                break;
+            }
         }
+
+        ReplayEvents();
     }
 
     public void Redo()
     {
-        if (_redoStack.Count > 0)
+        if (CanvasEvents.Count == 0 || _currentEventIndex == CanvasEvents.Count - 1) return;
+        // I either want to fast-forward to the latest event that is a TriggerEraseEvent Or EndDrawStrokeEvent
+        for (int i = _currentEventIndex + 1; i < CanvasEvents.Count; i++)
         {
-            var nextStroke = _redoStack.Pop();
-            CanvasStrokes.Add(nextStroke);
+            if (CanvasEvents[i] is TriggerEraseEvent || CanvasEvents[i] is EndDrawStrokeEvent)
+            {
+                _currentEventIndex = i;
+                break;
+            }
         }
+
+        ReplayEvents();
     }
 
-    public void AddStroke(Stroke newDrawStroke)
+    public void ApplyStrokeEvent(StrokeEvent @event)
     {
-        CanvasStrokes.Add(newDrawStroke);
-        _redoStack.Clear();
-    }
+        var eventsCount = CanvasEvents.Count;
+        // Remove all stale events if we branch off
+        if (eventsCount > 0 && _currentEventIndex < eventsCount - 1)
+        {
+            CanvasEvents.RemoveRange(_currentEventIndex + 1, eventsCount - _currentEventIndex - 1);
+        }
 
-    public void ApplyEvent(Event @event)
-    {
         CanvasEvents.Add(@event);
+        _currentEventIndex = CanvasEvents.Count - 1;
+        if (@event is EndDrawStrokeEvent) return;
         ReplayEvents();
     }
 
@@ -79,8 +103,10 @@ public partial class MainViewModel : ViewModelBase
     {
         var drawStrokes = new Dictionary<Guid, DrawStroke>();
         var eraserStrokes = new Dictionary<Guid, EraserStroke>();
-        foreach (var canvasEvent in CanvasEvents)
+        var staleEraseStrokes = new List<Guid>();
+        for (var i = 0; i <= _currentEventIndex; i++)
         {
+            var canvasEvent = CanvasEvents[i];
             switch (canvasEvent)
             {
                 case NewDrawStrokeEvent ev:
@@ -145,15 +171,28 @@ public partial class MainViewModel : ViewModelBase
                             drawStrokes.Remove(targetId);
                         }
 
-                        eraserStrokes.Remove(ev.StrokeId);
+                        if (eraserStrokes[ev.StrokeId].Targets.Count == 0)
+                        {
+                            staleEraseStrokes.Add(ev.StrokeId);
+                        }
                     }
 
                     break;
             }
         }
 
-        CanvasStrokes = new ObservableCollection<Stroke>(drawStrokes.Values.ToList());
+        // Remove erase events that don't actually erase anything
+        if (staleEraseStrokes.Count > 0)
+        {
+            foreach (var staleEraseStrokeId in staleEraseStrokes)
+            {
+                CanvasEvents.RemoveAll(ev => ev.StrokeId == staleEraseStrokeId);
+            }
 
-        TriggerCanvasRedraw();
+            _currentEventIndex = CanvasEvents.Count - 1;
+        }
+
+
+        CanvasStrokes = new List<Stroke>(drawStrokes.Values.ToList());
     }
 }

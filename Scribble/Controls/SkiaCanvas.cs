@@ -15,10 +15,10 @@ namespace Scribble.Controls;
 
 public class SkiaCanvas : Control
 {
-    public static readonly StyledProperty<ObservableCollection<Stroke>> StrokesProperty =
-        AvaloniaProperty.Register<SkiaCanvas, ObservableCollection<Stroke>>(nameof(Strokes));
+    public static readonly StyledProperty<List<Stroke>> StrokesProperty =
+        AvaloniaProperty.Register<SkiaCanvas, List<Stroke>>(nameof(Strokes));
 
-    public ObservableCollection<Stroke> Strokes
+    public List<Stroke> Strokes
     {
         get => GetValue(StrokesProperty);
         set => SetValue(StrokesProperty, value);
@@ -61,7 +61,7 @@ public class SkiaCanvas : Control
                     {
                         // Dispose clone of paint to prevent memory leaks
                         paintToUse = drawStroke.Paint.Clone();
-                        drawStroke.Paint.Color = paintToUse.Color.WithAlpha(80);
+                        paintToUse.Color = paintToUse.Color.WithAlpha(80);
                         disposablePaintClone = paintToUse;
                     }
 
