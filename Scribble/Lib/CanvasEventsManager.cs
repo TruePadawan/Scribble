@@ -4,7 +4,7 @@ using Scribble.ViewModels;
 
 namespace Scribble.Lib;
 
-public class CanvasEventsManager(MainViewModel viewModel)
+public class CanvasEventsManager()
 {
     public List<Event> Events { get; } = [];
     public int CurrentEventIndex = -1;
@@ -45,33 +45,27 @@ public class CanvasEventsManager(MainViewModel viewModel)
     //     }
     // }
     //
-    // public void Apply(Event @event, bool skipRendering = false)
-    // {
-    //     if (!skipRendering)
-    //     {
-    //         using var frameBuffer = viewModel.WhiteboardBitmap.Lock();
-    //         ApplyEvent(@event, frameBuffer);
-    //     }
-    //
-    //     // Truncate all stale events if we branch off
-    //     if (Events.Count > 0 && CurrentEventIndex < Events.Count - 1)
-    //     {
-    //         Events.RemoveRange(CurrentEventIndex + 1, Events.Count - CurrentEventIndex - 1);
-    //
-    //         // If we go back past the checkpoint, the checkpoint is now from an invalid future
-    //         if (viewModel.CheckpointIndex > CurrentEventIndex)
-    //         {
-    //             viewModel.InvalidateCanvasSnapshot();
-    //         }
-    //     }
-    //
-    //     Events.Add(@event);
-    //     CurrentEventIndex = Events.Count - 1;
-    //
-    //     // Update the checkpoint periodically to keep undo fast
-    //     if (CurrentEventIndex > 0 && CurrentEventIndex % MainViewModel.CanvasSnapshotInterval == 0)
-    //     {
-    //         viewModel.UpdateCanvasSnapshot();
-    //     }
-    // }
+    public void Apply(Event @event)
+    {
+        // Truncate all stale events if we branch off
+        if (Events.Count > 0 && CurrentEventIndex < Events.Count - 1)
+        {
+            Events.RemoveRange(CurrentEventIndex + 1, Events.Count - CurrentEventIndex - 1);
+
+            // If we go back past the checkpoint, the checkpoint is now from an invalid future
+            // if (viewModel.CheckpointIndex > CurrentEventIndex)
+            // {
+            //     viewModel.InvalidateCanvasSnapshot();
+            // }
+        }
+
+        Events.Add(@event);
+        CurrentEventIndex = Events.Count - 1;
+
+        // Update the checkpoint periodically to keep undo fast
+        // if (CurrentEventIndex > 0 && CurrentEventIndex % MainViewModel.CanvasSnapshotInterval == 0)
+        // {
+        //     viewModel.UpdateCanvasSnapshot();
+        // }
+    }
 }

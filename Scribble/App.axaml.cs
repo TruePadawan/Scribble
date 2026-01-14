@@ -4,6 +4,7 @@ using Avalonia.Data.Core;
 using Avalonia.Data.Core.Plugins;
 using System.Linq;
 using Avalonia.Markup.Xaml;
+using Scribble.Lib;
 using Scribble.Lib.BitmapRenderer;
 using Scribble.ViewModels;
 using Scribble.Views;

@@ -1,3 +1,5 @@
+using System;
+using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
@@ -9,54 +11,58 @@ namespace Scribble.Tools.PointerTools.EraseTool;
 
 public class EraseTool : PointerToolsBase
 {
-    private readonly SKPaint _strokePaint;
-    private DrawStroke _eraserDrawStroke = new(true);
+    // private EraserStroke _eraserStroke = new();
+    private Guid _currentStrokeId = Guid.NewGuid();
 
     public EraseTool(string name, MainViewModel viewModel)
         : base(name, viewModel, LoadToolBitmap(typeof(EraseTool), "eraser.png"))
     {
         Cursor = new Cursor(ToolIcon, new PixelPoint(10, 40));
-        _strokePaint = new SKPaint
-        {
-            IsAntialias = false,
-            IsStroke = true,
-            StrokeCap = SKStrokeCap.Round,
-            StrokeWidth = 5,
-        };
     }
 
     public override void HandlePointerMove(Point prevCoord, Point currentCoord)
     {
-        _eraserDrawStroke.Path.LineTo((float)currentCoord.X, (float)currentCoord.Y);
-        ViewModel.TriggerCanvasRedraw();
+        var nextPoint = new SKPoint((float)currentCoord.X, (float)currentCoord.Y);
+        ViewModel.ApplyEvent(new EraseStrokeLineToEvent(_currentStrokeId, nextPoint));
+        // _eraserStroke.Path.LineTo((float)currentCoord.X, (float)currentCoord.Y);
+        // ViewModel.TriggerCanvasRedraw();
     }
 
     public override void HandlePointerClick(Point coord)
     {
-        _eraserDrawStroke = new DrawStroke
-        {
-            Paint = _strokePaint.Clone()
-        };
-        _eraserDrawStroke.Path.MoveTo((float)coord.X, (float)coord.Y);
-
-        ViewModel.AddStroke(_eraserDrawStroke);
+        var startPoint = new SKPoint((float)coord.X, (float)coord.Y);
+        _currentStrokeId = Guid.NewGuid();
+        ViewModel.ApplyEvent(new NewEraseStrokeEvent(_currentStrokeId, startPoint));
+        // _eraserStroke = new EraserStroke();
+        // _eraserStroke.Path.MoveTo((float)coord.X, (float)coord.Y);
+        //
+        // ViewModel.AddStroke(_eraserStroke);
     }
 
-    public override bool RenderOptions(Panel parent)
+    public override void HandlePointerRelease(Point prevCoord, Point currentCoord)
     {
-        // Render a slider for controlling the eraser thickness
-        var slider = new Slider
-        {
-            TickFrequency = 5,
-            IsSnapToTickEnabled = true,
-            Minimum = 1,
-            Maximum = 40,
-            Value = _strokePaint.StrokeWidth
-        };
-        slider.ValueChanged += ((sender, args) => { _strokePaint.StrokeWidth = (float)args.NewValue; });
-        slider.Padding = new Thickness(8, 0);
-
-        parent.Children.Add(CreateOptionControl(slider, "Thickness"));
-        return true;
+        ViewModel.ApplyEvent(new TriggerEraseEvent(_currentStrokeId));
+        // ViewModel.CanvasStrokes.Remove(_eraserStroke);
+        //
+        // _eraserStroke.Path.Dispose();
+        // _eraserStroke.Paint.Dispose();
     }
+
+    // public override bool RenderOptions(Panel parent)
+    // {
+    //     // Render a slider for controlling the eraser thickness
+    //     var slider = new Slider
+    //     {
+    //         TickFrequency = 5,
+    //         IsSnapToTickEnabled = true,
+    //         Minimum = 1,
+    //         Maximum = 40,
+    //         Value = _strokePaint.StrokeWidth
+    //     };
+    //     slider.ValueChanged += ((sender, args) => { _strokePaint.StrokeWidth = (float)args.NewValue; });
+    //     slider.Padding = new Thickness(8, 0);
+    //
+    //     parent.Children.Add(CreateOptionControl(slider, "Thickness"));
+    //     return true;
+    // }
 }

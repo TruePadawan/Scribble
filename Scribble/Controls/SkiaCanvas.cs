@@ -15,10 +15,10 @@ namespace Scribble.Controls;
 
 public class SkiaCanvas : Control
 {
-    public static readonly StyledProperty<ObservableCollection<DrawStroke>> StrokesProperty =
-        AvaloniaProperty.Register<SkiaCanvas, ObservableCollection<DrawStroke>>(nameof(Strokes));
+    public static readonly StyledProperty<ObservableCollection<Stroke>> StrokesProperty =
+        AvaloniaProperty.Register<SkiaCanvas, ObservableCollection<Stroke>>(nameof(Strokes));
 
-    public ObservableCollection<DrawStroke> Strokes
+    public ObservableCollection<Stroke> Strokes
     {
         get => GetValue(StrokesProperty);
         set => SetValue(StrokesProperty, value);
@@ -46,26 +46,39 @@ public class SkiaCanvas : Control
             new SkiaDrawOperation(bounds, canvas => { DrawContent(canvas, strokesToDraw, bgColor); }));
     }
 
-    private void DrawContent(SKCanvas canvas, IEnumerable<DrawStroke> strokesToDraw, SKColor bgColor)
+    private void DrawContent(SKCanvas canvas, IEnumerable<Stroke> strokesToDraw, SKColor bgColor)
     {
         canvas.Clear(bgColor);
 
         foreach (var stroke in strokesToDraw)
         {
-            // stroke.Path.
-            if (stroke.IsErasingStroke)
+            switch (stroke)
             {
-                stroke.Paint.Color = bgColor;
-            }
+                case DrawStroke drawStroke:
+                    var paintToUse = drawStroke.Paint;
+                    IDisposable? disposablePaintClone = null;
+                    if (drawStroke.IsToBeErased)
+                    {
+                        // Dispose clone of paint to prevent memory leaks
+                        paintToUse = drawStroke.Paint.Clone();
+                        drawStroke.Paint.Color = paintToUse.Color.WithAlpha(80);
+                        disposablePaintClone = paintToUse;
+                    }
 
-            if (stroke.Path.PointCount == 1)
-            {
-                var firstPoint = stroke.Path.Points[0];
-                canvas.DrawPoint(firstPoint, stroke.Paint);
-            }
-            else
-            {
-                canvas.DrawPath(stroke.Path, stroke.Paint);
+                    if (stroke.Path.PointCount == 1)
+                    {
+                        var firstPoint = stroke.Path.Points[0];
+                        canvas.DrawPoint(firstPoint, paintToUse);
+                    }
+                    else
+                    {
+                        canvas.DrawPath(stroke.Path, paintToUse);
+                    }
+
+                    disposablePaintClone?.Dispose();
+                    break;
+                case EraserStroke eraserStroke:
+                    break;
             }
         }
     }

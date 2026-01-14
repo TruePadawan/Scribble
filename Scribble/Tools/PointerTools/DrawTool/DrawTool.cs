@@ -1,3 +1,4 @@
+using System;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
@@ -10,8 +11,9 @@ namespace Scribble.Tools.PointerTools.DrawTool;
 
 public class DrawTool : PointerToolsBase
 {
-    private DrawStroke _currentDrawStroke = new();
+    // private DrawStroke _currentDrawStroke = new();
     private readonly SKPaint _strokePaint;
+    private Guid _currentStrokeId = Guid.NewGuid();
 
     public DrawTool(string name, MainViewModel viewModel) : base(name, viewModel,
         LoadToolBitmap(typeof(DrawTool), "draw.png"))
@@ -29,19 +31,27 @@ public class DrawTool : PointerToolsBase
 
     public override void HandlePointerMove(Point prevCoord, Point currentCoord)
     {
-        _currentDrawStroke.Path.LineTo((float)currentCoord.X, (float)currentCoord.Y);
-        ViewModel.TriggerCanvasRedraw();
+        var nextPoint = new SKPoint((float)currentCoord.X, (float)currentCoord.Y);
+        ViewModel.ApplyEvent(new DrawStrokeLineToEvent(_currentStrokeId, nextPoint));
+        // _currentDrawStroke.Path.LineTo((float)currentCoord.X, (float)currentCoord.Y);
+        // ViewModel.TriggerCanvasRedraw();
     }
 
     public override void HandlePointerClick(Point coord)
     {
-        _currentDrawStroke = new DrawStroke
-        {
-            Paint = _strokePaint.Clone()
-        };
-        _currentDrawStroke.Path.MoveTo((float)coord.X, (float)coord.Y);
-
-        ViewModel.AddStroke(_currentDrawStroke);
+        var startPoint = new SKPoint((float)coord.X, (float)coord.Y);
+        _currentStrokeId = Guid.NewGuid();
+        ViewModel.ApplyEvent(new NewDrawStrokeEvent(_currentStrokeId, startPoint, _strokePaint.Clone()));
+        // _currentDrawStroke = new DrawStroke
+        // {
+        //     Paint = _strokePaint.Clone()
+        // };
+        // _currentDrawStroke.Path.MoveTo((float)coord.X, (float)coord.Y);
+        // _currentEventId = Guid.NewGuid();
+        // var strokeEvent = new DrawStrokeEvent(_currentEventId, _currentDrawStroke);
+        // ViewModel.ApplyEvent(strokeEvent);
+        //
+        // ViewModel.AddStroke(_currentDrawStroke);
     }
 
     public override bool RenderOptions(Panel parent)
