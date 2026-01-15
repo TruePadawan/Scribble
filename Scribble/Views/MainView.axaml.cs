@@ -9,6 +9,7 @@ using Scribble.Behaviours;
 using Scribble.Tools.PointerTools;
 using Scribble.Tools.PointerTools.DrawTool;
 using Scribble.Tools.PointerTools.EraseTool;
+using Scribble.Tools.PointerTools.LineTool;
 using Scribble.Tools.PointerTools.PanningTool;
 using Scribble.ViewModels;
 
@@ -46,6 +47,7 @@ public partial class MainView : UserControl
             RegisterPointerTool(new DrawTool("DrawToolButton", viewModel));
             RegisterPointerTool(new EraseTool("EraseTool", viewModel));
             RegisterPointerTool(new PanningTool("PanningTool", viewModel, CanvasScrollViewer));
+            RegisterPointerTool(new LineTool("LineTool", viewModel));
 
             _viewModel.RequestInvalidateCanvas += () => MainCanvas.InvalidateVisual();
         }

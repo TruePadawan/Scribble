@@ -49,7 +49,7 @@ public partial class MainViewModel : ViewModelBase
         int latestEventIdx = _currentEventIndex;
         for (int i = _currentEventIndex - 1; i >= 0; i--)
         {
-            if (CanvasEvents[latestEventIdx] is EndDrawStrokeEvent && CanvasEvents[i] is NewDrawStrokeEvent)
+            if (CanvasEvents[latestEventIdx] is EndStrokeEvent && CanvasEvents[i] is StartStrokeEvent)
             {
                 _currentEventIndex = i - 1;
                 break;
@@ -57,10 +57,9 @@ public partial class MainViewModel : ViewModelBase
 
             if (CanvasEvents[latestEventIdx] is TriggerEraseEvent)
             {
-                if (CanvasEvents[i] is EndDrawStrokeEvent || CanvasEvents[i] is TriggerEraseEvent)
+                if (CanvasEvents[i] is EndStrokeEvent || CanvasEvents[i] is TriggerEraseEvent)
                 {
-
-       _currentEventIndex = i;
+                    _currentEventIndex = i;
                     break;
                 }
             }
@@ -74,7 +73,7 @@ public partial class MainViewModel : ViewModelBase
         if (CanvasEvents.Count == 0 || _currentEventIndex == CanvasEvents.Count - 1) return;
         for (int i = _currentEventIndex + 1; i < CanvasEvents.Count; i++)
         {
-            if (CanvasEvents[i] is TriggerEraseEvent || CanvasEvents[i] is EndDrawStrokeEvent)
+            if (CanvasEvents[i] is TriggerEraseEvent || CanvasEvents[i] is EndStrokeEvent)
             {
                 _currentEventIndex = i;
                 break;
@@ -112,12 +111,12 @@ public partial class MainViewModel : ViewModelBase
             switch (canvasEvent)
             {
                 case NewDrawStrokeEvent ev:
-                    var newPath = new SKPath();
-                    newPath.MoveTo(ev.StartPoint);
+                    var newDrawPath = new SKPath();
+                    newDrawPath.MoveTo(ev.StartPoint);
                     drawStrokes[ev.StrokeId] = new DrawStroke
                     {
                         Paint = ev.StrokePaint,
-                        Path = newPath
+                        Path = newDrawPath
                     };
                     break;
                 case NewEraseStrokeEvent ev:
@@ -183,6 +182,25 @@ public partial class MainViewModel : ViewModelBase
                     }
 
                     break;
+                case NewLineStrokeEvent ev:
+                    var newLinePath = new SKPath();
+                    newLinePath.MoveTo(ev.StartPoint);
+                    drawStrokes[ev.StrokeId] = new DrawStroke
+                    {
+                        Paint = ev.StrokePaint,
+                        Path = newLinePath
+                    };
+                    break;
+                case LineStrokeLineToEvent ev:
+                    if (drawStrokes.ContainsKey(ev.StrokeId))
+                    {
+                        var lineStartPoint = drawStrokes[ev.StrokeId].Path.Points[0];
+                        drawStrokes[ev.StrokeId].Path.Reset();
+                        drawStrokes[ev.StrokeId].Path.MoveTo(lineStartPoint);
+                        drawStrokes[ev.StrokeId].Path.LineTo(ev.EndPoint);
+                    }
+
+                    break;
             }
         }
 
@@ -201,15 +219,54 @@ public partial class MainViewModel : ViewModelBase
         CanvasStrokes = new List<Stroke>(drawStrokes.Values.ToList());
     }
 
-    private void CheckAndErase(SKPoint startPoint, Dictionary<Guid, DrawStroke> drawStrokes, EraserStroke eraserStroke)
+    private void CheckAndErase(SKPoint eraserPoint, Dictionary<Guid, DrawStroke> drawStrokes, EraserStroke eraserStroke)
     {
         foreach (var keyValuePair in drawStrokes)
         {
-            if (keyValuePair.Value.Path.Contains(startPoint.X, startPoint.Y))
+            // Find and erase strokes that the eraser is touching
+            var stroke = keyValuePair.Value;
+            // Check if the erase point is visually on the line
+            if (stroke.Path.GetLine() is { } endPoints)
             {
-                keyValuePair.Value.IsToBeErased = true;
+                if (IsPointNearLine(eraserPoint, endPoints, 10.0f))
+                {
+                    stroke.IsToBeErased = true;
+                    eraserStroke.Targets.Add(keyValuePair.Key);
+                }
+            }
+            else if (stroke.Path.Contains(eraserPoint.X, eraserPoint.Y))
+            {
+                stroke.IsToBeErased = true;
                 eraserStroke.Targets.Add(keyValuePair.Key);
             }
         }
+    }
+
+    private bool IsPointNearLine(SKPoint point, SKPoint[] lineEndPoints, float tolerance)
+    {
+        var start = lineEndPoints[0];
+        var end = lineEndPoints[1];
+
+        float lineLenSq = float.Pow(end.X - start.X, 2) + float.Pow(end.Y - start.Y, 2);
+
+        // Check if the 'line' is actually just a point
+        if (lineLenSq == 0)
+        {
+            return SKPoint.Distance(point, start) < tolerance;
+        }
+
+        float t = ((point.X - start.X) * (end.X - start.X) +
+                   (point.Y - start.Y) * (end.Y - start.Y)) / lineLenSq;
+
+        // Clamp t to the segment [0, 1] to handle the endpoints correctly
+        t = float.Clamp(t, 0f, 1f);
+
+        // Find the closest point on the line segment
+        var closest = new SKPoint(
+            start.X + t * (end.X - start.X),
+            start.Y + t * (end.Y - start.Y)
+        );
+
+        return SKPoint.Distance(point, closest) < tolerance;
     }
 }
