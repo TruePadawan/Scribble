@@ -49,7 +49,7 @@ public partial class MainViewModel : ViewModelBase
         int latestEventIdx = _currentEventIndex;
         for (int i = _currentEventIndex - 1; i >= 0; i--)
         {
-            if (CanvasEvents[latestEventIdx] is EndDrawStrokeEvent && CanvasEvents[i] is NewDrawStrokeEvent)
+            if (CanvasEvents[latestEventIdx] is EndStrokeEvent && CanvasEvents[i] is StartStrokeEvent)
             {
                 _currentEventIndex = i - 1;
                 break;
@@ -57,10 +57,9 @@ public partial class MainViewModel : ViewModelBase
 
             if (CanvasEvents[latestEventIdx] is TriggerEraseEvent)
             {
-                if (CanvasEvents[i] is EndDrawStrokeEvent || CanvasEvents[i] is TriggerEraseEvent)
+                if (CanvasEvents[i] is EndStrokeEvent || CanvasEvents[i] is TriggerEraseEvent)
                 {
-
-       _currentEventIndex = i;
+                    _currentEventIndex = i;
                     break;
                 }
             }
@@ -74,7 +73,7 @@ public partial class MainViewModel : ViewModelBase
         if (CanvasEvents.Count == 0 || _currentEventIndex == CanvasEvents.Count - 1) return;
         for (int i = _currentEventIndex + 1; i < CanvasEvents.Count; i++)
         {
-            if (CanvasEvents[i] is TriggerEraseEvent || CanvasEvents[i] is EndDrawStrokeEvent)
+            if (CanvasEvents[i] is TriggerEraseEvent || CanvasEvents[i] is EndStrokeEvent)
             {
                 _currentEventIndex = i;
                 break;
@@ -112,12 +111,12 @@ public partial class MainViewModel : ViewModelBase
             switch (canvasEvent)
             {
                 case NewDrawStrokeEvent ev:
-                    var newPath = new SKPath();
-                    newPath.MoveTo(ev.StartPoint);
+                    var newDrawPath = new SKPath();
+                    newDrawPath.MoveTo(ev.StartPoint);
                     drawStrokes[ev.StrokeId] = new DrawStroke
                     {
                         Paint = ev.StrokePaint,
-                        Path = newPath
+                        Path = newDrawPath
                     };
                     break;
                 case NewEraseStrokeEvent ev:
@@ -180,6 +179,25 @@ public partial class MainViewModel : ViewModelBase
                         {
                             staleEraseStrokes.Add(ev.StrokeId);
                         }
+                    }
+
+                    break;
+                case NewLineStrokeEvent ev:
+                    var newLinePath = new SKPath();
+                    newLinePath.MoveTo(ev.StartPoint);
+                    drawStrokes[ev.StrokeId] = new DrawStroke
+                    {
+                        Paint = ev.StrokePaint,
+                        Path = newLinePath
+                    };
+                    break;
+                case LineStrokeLineToEvent ev:
+                    if (drawStrokes.ContainsKey(ev.StrokeId))
+                    {
+                        var lineStartPoint = drawStrokes[ev.StrokeId].Path.Points[0];
+                        drawStrokes[ev.StrokeId].Path.Reset();
+                        drawStrokes[ev.StrokeId].Path.MoveTo(lineStartPoint);
+                        drawStrokes[ev.StrokeId].Path.LineTo(ev.EndPoint);
                     }
 
                     break;
