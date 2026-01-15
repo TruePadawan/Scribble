@@ -219,15 +219,54 @@ public partial class MainViewModel : ViewModelBase
         CanvasStrokes = new List<Stroke>(drawStrokes.Values.ToList());
     }
 
-    private void CheckAndErase(SKPoint startPoint, Dictionary<Guid, DrawStroke> drawStrokes, EraserStroke eraserStroke)
+    private void CheckAndErase(SKPoint eraserPoint, Dictionary<Guid, DrawStroke> drawStrokes, EraserStroke eraserStroke)
     {
         foreach (var keyValuePair in drawStrokes)
         {
-            if (keyValuePair.Value.Path.Contains(startPoint.X, startPoint.Y))
+            // Find and erase strokes that the eraser is touching
+            var stroke = keyValuePair.Value;
+            // Check if the erase point is visually on the line
+            if (stroke.Path.GetLine() is { } endPoints)
             {
-                keyValuePair.Value.IsToBeErased = true;
+                if (IsPointNearLine(eraserPoint, endPoints, 10.0f))
+                {
+                    stroke.IsToBeErased = true;
+                    eraserStroke.Targets.Add(keyValuePair.Key);
+                }
+            }
+            else if (stroke.Path.Contains(eraserPoint.X, eraserPoint.Y))
+            {
+                stroke.IsToBeErased = true;
                 eraserStroke.Targets.Add(keyValuePair.Key);
             }
         }
+    }
+
+    private bool IsPointNearLine(SKPoint point, SKPoint[] lineEndPoints, float tolerance)
+    {
+        var start = lineEndPoints[0];
+        var end = lineEndPoints[1];
+
+        float lineLenSq = float.Pow(end.X - start.X, 2) + float.Pow(end.Y - start.Y, 2);
+
+        // Check if the 'line' is actually just a point
+        if (lineLenSq == 0)
+        {
+            return SKPoint.Distance(point, start) < tolerance;
+        }
+
+        float t = ((point.X - start.X) * (end.X - start.X) +
+                   (point.Y - start.Y) * (end.Y - start.Y)) / lineLenSq;
+
+        // Clamp t to the segment [0, 1] to handle the endpoints correctly
+        t = float.Clamp(t, 0f, 1f);
+
+        // Find the closest point on the line segment
+        var closest = new SKPoint(
+            start.X + t * (end.X - start.X),
+            start.Y + t * (end.Y - start.Y)
+        );
+
+        return SKPoint.Distance(point, closest) < tolerance;
     }
 }
