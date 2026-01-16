@@ -38,7 +38,7 @@ public class DrawTool : PointerToolsBase
     {
         var startPoint = new SKPoint((float)coord.X, (float)coord.Y);
         _currentStrokeId = Guid.NewGuid();
-        ViewModel.ApplyStrokeEvent(new NewDrawStrokeEvent(_currentStrokeId, startPoint, _strokePaint.Clone()));
+        ViewModel.ApplyStrokeEvent(new StartStrokeEvent(_currentStrokeId, startPoint, _strokePaint.Clone(), StrokeTool.Pencil));
     }
 
     public override void HandlePointerRelease(Point prevCoord, Point currentCoord)

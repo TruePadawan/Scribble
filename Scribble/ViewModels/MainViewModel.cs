@@ -111,13 +111,14 @@ public partial class MainViewModel : ViewModelBase
             var canvasEvent = CanvasEvents[i];
             switch (canvasEvent)
             {
-                case NewDrawStrokeEvent ev:
-                    var newDrawPath = new SKPath();
-                    newDrawPath.MoveTo(ev.StartPoint);
+                case StartStrokeEvent ev:
+                    var newLinePath = new SKPath();
+                    newLinePath.MoveTo(ev.StartPoint);
                     drawStrokes[ev.StrokeId] = new DrawStroke
                     {
                         Paint = ev.StrokePaint,
-                        Path = newDrawPath
+                        Path = newLinePath,
+                        ToolType = ev.ToolType
                     };
                     break;
                 case NewEraseStrokeEvent ev:
@@ -183,15 +184,6 @@ public partial class MainViewModel : ViewModelBase
                     }
 
                     break;
-                case NewLineStrokeEvent ev:
-                    var newLinePath = new SKPath();
-                    newLinePath.MoveTo(ev.StartPoint);
-                    drawStrokes[ev.StrokeId] = new DrawStroke
-                    {
-                        Paint = ev.StrokePaint,
-                        Path = newLinePath
-                    };
-                    break;
                 case LineStrokeLineToEvent ev:
                     if (drawStrokes.ContainsKey(ev.StrokeId))
                     {
@@ -206,7 +198,6 @@ public partial class MainViewModel : ViewModelBase
                     if (drawStrokes.ContainsKey(ev.StrokeId))
                     {
                         var stroke = drawStrokes[ev.StrokeId];
-                        stroke.IsArrow = true;
                         var lineStartPoint = stroke.Path.Points[0];
                         stroke.Path.Reset();
                         stroke.Path.MoveTo(lineStartPoint);
@@ -248,7 +239,7 @@ public partial class MainViewModel : ViewModelBase
             // Find and erase strokes that the eraser is touching
             var stroke = keyValuePair.Value;
             // Check if the erase point is visually on the line
-            if (stroke.Path.IsLine || stroke.IsArrow)
+            if (stroke.Path.IsLine || stroke.ToolType == StrokeTool.Arrow)
             {
                 var endPoints = new[] { stroke.Path[0], stroke.Path[1] };
                 if (IsPointNearLine(eraserPoint, endPoints, 10.0f))

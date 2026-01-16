@@ -37,7 +37,7 @@ public class ArrowTool : PointerToolsBase
     {
         _startPoint = new SKPoint((float)coord.X, (float)coord.Y);
         _strokeId = Guid.NewGuid();
-        ViewModel.ApplyStrokeEvent(new NewLineStrokeEvent(_strokeId, _startPoint.Value, _strokePaint.Clone()));
+        ViewModel.ApplyStrokeEvent(new StartStrokeEvent(_strokeId, _startPoint.Value, _strokePaint.Clone(), StrokeTool.Arrow));
     }
 
     public override void HandlePointerMove(Point prevCoord, Point currentCoord)
