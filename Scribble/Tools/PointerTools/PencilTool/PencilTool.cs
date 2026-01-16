@@ -7,15 +7,15 @@ using Scribble.Utils;
 using Scribble.ViewModels;
 using SkiaSharp;
 
-namespace Scribble.Tools.PointerTools.DrawTool;
+namespace Scribble.Tools.PointerTools.PencilTool;
 
-public class DrawTool : PointerToolsBase
+public class PencilTool : PointerToolsBase
 {
     private readonly SKPaint _strokePaint;
     private Guid _currentStrokeId = Guid.NewGuid();
 
-    public DrawTool(string name, MainViewModel viewModel) : base(name, viewModel,
-        LoadToolBitmap(typeof(DrawTool), "draw.png"))
+    public PencilTool(string name, MainViewModel viewModel) : base(name, viewModel,
+        LoadToolBitmap(typeof(PencilTool), "pencil.png"))
     {
         Cursor = new Cursor(ToolIcon, new PixelPoint(0, 50));
         _strokePaint = new SKPaint
@@ -31,7 +31,7 @@ public class DrawTool : PointerToolsBase
     public override void HandlePointerMove(Point prevCoord, Point currentCoord)
     {
         var nextPoint = new SKPoint((float)currentCoord.X, (float)currentCoord.Y);
-        ViewModel.ApplyStrokeEvent(new DrawStrokeLineToEvent(_currentStrokeId, nextPoint));
+        ViewModel.ApplyStrokeEvent(new PencilStrokeLineToEvent(_currentStrokeId, nextPoint));
     }
 
     public override void HandlePointerClick(Point coord)

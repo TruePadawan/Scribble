@@ -177,7 +177,7 @@ public partial class MainViewModel : ViewModelBase
                     }
 
                     break;
-                case DrawStrokeLineToEvent ev:
+                case PencilStrokeLineToEvent ev:
                     if (drawStrokes.ContainsKey(ev.StrokeId))
                     {
                         drawStrokes[ev.StrokeId].Path.LineTo(ev.Point);
