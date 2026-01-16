@@ -41,3 +41,6 @@ public record NewLineStrokeEvent(Guid StrokeId, SKPoint StartPoint, SKPaint Stro
 public record LineStrokeLineToEvent(Guid StrokeId, SKPoint EndPoint) : StrokeLineToEvent(StrokeId, EndPoint);
 
 public record EndLineStrokeEvent(Guid StrokeId) : EndStrokeEvent(StrokeId);
+
+// ARROW TOOL
+public record ArrowStrokeLineToEvent(Guid StrokeId, SKPoint EndPoint) : StrokeLineToEvent(StrokeId, EndPoint);
