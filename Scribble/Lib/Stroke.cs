@@ -15,7 +15,8 @@ public enum StrokeTool
     Pencil,
     Line,
     Arrow,
-    Ellipse
+    Ellipse,
+    Rectangle
 }
 
 public class DrawStroke : Stroke

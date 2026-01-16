@@ -9,16 +9,16 @@ using Scribble.Utils;
 using Scribble.ViewModels;
 using SkiaSharp;
 
-namespace Scribble.Tools.PointerTools.EllipseTool;
+namespace Scribble.Tools.PointerTools.RectangleTool;
 
-public class EllipseTool : PointerToolsBase
+public class RectangleTool : PointerToolsBase
 {
     private readonly SKPaint _strokePaint;
     private SKPoint? _startPoint;
     private Guid _strokeId = Guid.NewGuid();
 
-    public EllipseTool(string name, MainViewModel viewModel) : base(name, viewModel,
-        LoadToolBitmap(typeof(EllipseTool), "ellipse.png"))
+    public RectangleTool(string name, MainViewModel viewModel) : base(name, viewModel,
+        LoadToolBitmap(typeof(RectangleTool), "rectangle.png"))
     {
         var plusBitmap = new Bitmap(AssetLoader.Open(new Uri("avares://Scribble/Assets/plus.png")));
         Cursor = new Cursor(plusBitmap, new PixelPoint(12, 12));
@@ -38,7 +38,7 @@ public class EllipseTool : PointerToolsBase
         _startPoint = new SKPoint((float)coord.X, (float)coord.Y);
         _strokeId = Guid.NewGuid();
         ViewModel.ApplyStrokeEvent(new StartStrokeEvent(_strokeId, _startPoint.Value, _strokePaint.Clone(),
-            StrokeTool.Ellipse));
+            StrokeTool.Rectangle));
     }
 
 

@@ -7,6 +7,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using Scribble.Lib;
 using Scribble.Tools.PointerTools.ArrowTool;
 using Scribble.Tools.PointerTools.EllipseTool;
+using Scribble.Utils;
 using SkiaSharp;
 
 namespace Scribble.ViewModels;
@@ -232,11 +233,11 @@ public partial class MainViewModel : ViewModelBase
         {
             switch (stroke.ToolType)
             {
-                case StrokeTool.Ellipse:
+                case StrokeTool.Ellipse or StrokeTool.Rectangle:
                 {
                     var start = stroke.Path[0];
                     var end = stroke.Path[1];
-                    var rect = SKRect.Create(start, EllipseTool.GetEllipseSize(start, end));
+                    var rect = SKRect.Create(start, Utilities.GetSize(start, end));
                     var tolerance = 10.0f;
 
                     // Quick bounds check
@@ -245,7 +246,14 @@ public partial class MainViewModel : ViewModelBase
                     if (!bounds.Contains(eraserPoint)) continue;
 
                     using var path = new SKPath();
-                    path.AddOval(rect);
+                    if (stroke.ToolType == StrokeTool.Rectangle)
+                    {
+                        path.AddRect(rect);
+                    }
+                    else
+                    {
+                        path.AddOval(rect);
+                    }
 
                     using var paint = new SKPaint();
                     paint.Style = SKPaintStyle.Stroke;
