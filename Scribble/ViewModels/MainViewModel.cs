@@ -121,7 +121,7 @@ public partial class MainViewModel : ViewModelBase
                         ToolType = ev.ToolType
                     };
                     break;
-                case NewEraseStrokeEvent ev:
+                case StartEraseStrokeEvent ev:
                     var eraserPath = new SKPath();
                     eraserPath.MoveTo(ev.StartPoint);
                     var newEraserStroke = new EraserStroke

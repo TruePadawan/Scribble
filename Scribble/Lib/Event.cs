@@ -24,7 +24,7 @@ public record EndStrokeEvent(Guid StrokeId) : StrokeEvent(StrokeId);
 public record PencilStrokeLineToEvent(Guid StrokeId, SKPoint Point) : StrokeLineToEvent(StrokeId, Point);
 
 // ERASE TOOL
-public record NewEraseStrokeEvent(Guid StrokeId, SKPoint StartPoint) : StrokeEvent(StrokeId);
+public record StartEraseStrokeEvent(Guid StrokeId, SKPoint StartPoint) : StrokeEvent(StrokeId);
 
 public record EraseStrokeLineToEvent(Guid StrokeId, SKPoint Point) : StrokeEvent(StrokeId);
 
