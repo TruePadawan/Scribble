@@ -30,8 +30,5 @@ public record EraseStrokeLineToEvent(Guid StrokeId, SKPoint Point) : StrokeEvent
 
 public record TriggerEraseEvent(Guid StrokeId) : StrokeEvent(StrokeId);
 
-// LINE TOOL
+// LINE + ARROW TOOL
 public record LineStrokeLineToEvent(Guid StrokeId, SKPoint EndPoint) : StrokeLineToEvent(StrokeId, EndPoint);
-
-// ARROW TOOL
-public record ArrowStrokeLineToEvent(Guid StrokeId, SKPoint EndPoint) : StrokeLineToEvent(StrokeId, EndPoint);

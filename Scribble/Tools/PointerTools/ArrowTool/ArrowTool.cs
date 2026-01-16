@@ -37,13 +37,14 @@ public class ArrowTool : PointerToolsBase
     {
         _startPoint = new SKPoint((float)coord.X, (float)coord.Y);
         _strokeId = Guid.NewGuid();
-        ViewModel.ApplyStrokeEvent(new StartStrokeEvent(_strokeId, _startPoint.Value, _strokePaint.Clone(), StrokeTool.Arrow));
+        ViewModel.ApplyStrokeEvent(new StartStrokeEvent(_strokeId, _startPoint.Value, _strokePaint.Clone(),
+            StrokeTool.Arrow));
     }
 
     public override void HandlePointerMove(Point prevCoord, Point currentCoord)
     {
         var endPoint = new SKPoint((float)currentCoord.X, (float)currentCoord.Y);
-        ViewModel.ApplyStrokeEvent(new ArrowStrokeLineToEvent(_strokeId, endPoint));
+        ViewModel.ApplyStrokeEvent(new LineStrokeLineToEvent(_strokeId, endPoint));
     }
 
     public override void HandlePointerRelease(Point prevCoord, Point currentCoord)

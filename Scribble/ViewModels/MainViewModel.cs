@@ -137,13 +137,6 @@ public partial class MainViewModel : ViewModelBase
 
                     eraserStrokes[ev.StrokeId] = newEraserStroke;
                     break;
-                case DrawStrokeLineToEvent ev:
-                    if (drawStrokes.ContainsKey(ev.StrokeId))
-                    {
-                        drawStrokes[ev.StrokeId].Path.LineTo(ev.Point);
-                    }
-
-                    break;
                 case EraseStrokeLineToEvent ev:
                     if (eraserStrokes.ContainsKey(ev.StrokeId))
                     {
@@ -184,17 +177,14 @@ public partial class MainViewModel : ViewModelBase
                     }
 
                     break;
-                case LineStrokeLineToEvent ev:
+                case DrawStrokeLineToEvent ev:
                     if (drawStrokes.ContainsKey(ev.StrokeId))
                     {
-                        var lineStartPoint = drawStrokes[ev.StrokeId].Path.Points[0];
-                        drawStrokes[ev.StrokeId].Path.Reset();
-                        drawStrokes[ev.StrokeId].Path.MoveTo(lineStartPoint);
-                        drawStrokes[ev.StrokeId].Path.LineTo(ev.EndPoint);
+                        drawStrokes[ev.StrokeId].Path.LineTo(ev.Point);
                     }
 
                     break;
-                case ArrowStrokeLineToEvent ev:
+                case LineStrokeLineToEvent ev:
                     if (drawStrokes.ContainsKey(ev.StrokeId))
                     {
                         var stroke = drawStrokes[ev.StrokeId];
@@ -203,14 +193,17 @@ public partial class MainViewModel : ViewModelBase
                         stroke.Path.MoveTo(lineStartPoint);
                         stroke.Path.LineTo(ev.EndPoint);
 
-                        var (p1, p2) =
-                            ArrowTool.GetArrowHeadPoints(lineStartPoint, ev.EndPoint, stroke.Paint.StrokeWidth);
+                        if (stroke.ToolType == StrokeTool.Arrow)
+                        {
+                            var (p1, p2) =
+                                ArrowTool.GetArrowHeadPoints(lineStartPoint, ev.EndPoint, stroke.Paint.StrokeWidth);
 
-                        stroke.Path.MoveTo(ev.EndPoint);
-                        stroke.Path.LineTo(p1);
+                            stroke.Path.MoveTo(ev.EndPoint);
+                            stroke.Path.LineTo(p1);
 
-                        stroke.Path.MoveTo(ev.EndPoint);
-                        stroke.Path.LineTo(p2);
+                            stroke.Path.MoveTo(ev.EndPoint);
+                            stroke.Path.LineTo(p2);
+                        }
                     }
 
                     break;
