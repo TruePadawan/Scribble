@@ -1,3 +1,4 @@
+using System;
 using Avalonia.Media;
 using SkiaSharp;
 
@@ -13,5 +14,10 @@ public static class Utilities
     public static Color FromSkColor(SKColor color)
     {
         return new Color(color.Alpha, color.Red, color.Green, color.Blue);
+    }
+
+    public static SKSize GetSize(SKPoint start, SKPoint end)
+    {
+        return new SKSize(Math.Abs(start.X - end.X), Math.Abs(start.Y - end.Y));
     }
 }

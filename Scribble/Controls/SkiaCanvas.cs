@@ -9,6 +9,7 @@ using Avalonia.Rendering.SceneGraph;
 using Avalonia.Skia;
 using Scribble.Lib;
 using Scribble.Tools.PointerTools.EllipseTool;
+using Scribble.Utils;
 using SkiaSharp;
 
 namespace Scribble.Controls;
@@ -77,7 +78,18 @@ public class SkiaCanvas : Control
                             case StrokeTool.Ellipse:
                                 var start = drawStroke.Path[0];
                                 var end = drawStroke.Path[1];
-                                canvas.DrawOval(start, EllipseTool.GetEllipseSize(start, end), paintToUse);
+                                var ellipseLeft = Math.Min(start.X, end.X);
+                                var ellipseTop = Math.Min(start.Y, end.Y);
+                                var ellipseRect = SKRect.Create(new SKPoint(ellipseLeft, ellipseTop), Utilities.GetSize(start, end));
+                                canvas.DrawOval(ellipseRect, paintToUse);
+                                break;
+                            case StrokeTool.Rectangle:
+                                var rectOrigin = drawStroke.Path[0];
+                                var rectEnd = drawStroke.Path[1];
+                                var left = Math.Min(rectOrigin.X, rectEnd.X);
+                                var top = Math.Min(rectOrigin.Y, rectEnd.Y);
+                                var rect = SKRect.Create(new SKPoint(left, top), Utilities.GetSize(rectOrigin, rectEnd));
+                                canvas.DrawRect(rect, paintToUse);
                                 break;
                             default:
                                 canvas.DrawPath(drawStroke.Path, paintToUse);
