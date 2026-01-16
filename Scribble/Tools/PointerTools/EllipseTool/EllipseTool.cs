@@ -9,16 +9,16 @@ using Scribble.Utils;
 using Scribble.ViewModels;
 using SkiaSharp;
 
-namespace Scribble.Tools.PointerTools.LineTool;
+namespace Scribble.Tools.PointerTools.EllipseTool;
 
-public class LineTool : PointerToolsBase
+public class EllipseTool : PointerToolsBase
 {
     private readonly SKPaint _strokePaint;
     private SKPoint? _startPoint;
     private Guid _strokeId = Guid.NewGuid();
 
-    public LineTool(string name, MainViewModel viewModel) : base(name, viewModel,
-        LoadToolBitmap(typeof(LineTool), "line.png"))
+    public EllipseTool(string name, MainViewModel viewModel) : base(name, viewModel,
+        LoadToolBitmap(typeof(EllipseTool), "ellipse.png"))
     {
         var plusBitmap = new Bitmap(AssetLoader.Open(new Uri("avares://Scribble/Assets/plus.png")));
         Cursor = new Cursor(plusBitmap, new PixelPoint(12, 12));
@@ -37,8 +37,10 @@ public class LineTool : PointerToolsBase
     {
         _startPoint = new SKPoint((float)coord.X, (float)coord.Y);
         _strokeId = Guid.NewGuid();
-        ViewModel.ApplyStrokeEvent(new StartStrokeEvent(_strokeId, _startPoint.Value, _strokePaint.Clone(), StrokeTool.Line));
+        ViewModel.ApplyStrokeEvent(new StartStrokeEvent(_strokeId, _startPoint.Value, _strokePaint.Clone(),
+            StrokeTool.Ellipse));
     }
+
 
     public override void HandlePointerMove(Point prevCoord, Point currentCoord)
     {
@@ -81,5 +83,10 @@ public class LineTool : PointerToolsBase
         parent.Children.Add(CreateOptionControl(slider, "Thickness"));
         parent.Width = 180;
         return true;
+    }
+
+    public static SKSize GetEllipseSize(SKPoint start, SKPoint end)
+    {
+        return new SKSize(Math.Abs(start.X - end.X), Math.Abs(start.Y - end.Y));
     }
 }

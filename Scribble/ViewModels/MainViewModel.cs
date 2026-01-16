@@ -6,6 +6,7 @@ using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Scribble.Lib;
 using Scribble.Tools.PointerTools.ArrowTool;
+using Scribble.Tools.PointerTools.EllipseTool;
 using SkiaSharp;
 
 namespace Scribble.ViewModels;
@@ -95,7 +96,7 @@ public partial class MainViewModel : ViewModelBase
 
         CanvasEvents.Add(@event);
         _currentEventIndex = CanvasEvents.Count - 1;
-        if (@event is EndDrawStrokeEvent) return;
+        if (@event is EndStrokeEvent) return;
         ReplayEvents();
     }
 
@@ -111,16 +112,17 @@ public partial class MainViewModel : ViewModelBase
             var canvasEvent = CanvasEvents[i];
             switch (canvasEvent)
             {
-                case NewDrawStrokeEvent ev:
-                    var newDrawPath = new SKPath();
-                    newDrawPath.MoveTo(ev.StartPoint);
+                case StartStrokeEvent ev:
+                    var newLinePath = new SKPath();
+                    newLinePath.MoveTo(ev.StartPoint);
                     drawStrokes[ev.StrokeId] = new DrawStroke
                     {
                         Paint = ev.StrokePaint,
-                        Path = newDrawPath
+                        Path = newLinePath,
+                        ToolType = ev.ToolType
                     };
                     break;
-                case NewEraseStrokeEvent ev:
+                case StartEraseStrokeEvent ev:
                     var eraserPath = new SKPath();
                     eraserPath.MoveTo(ev.StartPoint);
                     var newEraserStroke = new EraserStroke
@@ -135,13 +137,6 @@ public partial class MainViewModel : ViewModelBase
                     CheckAndErase(ev.StartPoint, drawStrokes, newEraserStroke);
 
                     eraserStrokes[ev.StrokeId] = newEraserStroke;
-                    break;
-                case DrawStrokeLineToEvent ev:
-                    if (drawStrokes.ContainsKey(ev.StrokeId))
-                    {
-                        drawStrokes[ev.StrokeId].Path.LineTo(ev.Point);
-                    }
-
                     break;
                 case EraseStrokeLineToEvent ev:
                     if (eraserStrokes.ContainsKey(ev.StrokeId))
@@ -183,43 +178,33 @@ public partial class MainViewModel : ViewModelBase
                     }
 
                     break;
-                case NewLineStrokeEvent ev:
-                    var newLinePath = new SKPath();
-                    newLinePath.MoveTo(ev.StartPoint);
-                    drawStrokes[ev.StrokeId] = new DrawStroke
+                case PencilStrokeLineToEvent ev:
+                    if (drawStrokes.ContainsKey(ev.StrokeId))
                     {
-                        Paint = ev.StrokePaint,
-                        Path = newLinePath
-                    };
+                        drawStrokes[ev.StrokeId].Path.LineTo(ev.Point);
+                    }
+
                     break;
                 case LineStrokeLineToEvent ev:
                     if (drawStrokes.ContainsKey(ev.StrokeId))
                     {
-                        var lineStartPoint = drawStrokes[ev.StrokeId].Path.Points[0];
-                        drawStrokes[ev.StrokeId].Path.Reset();
-                        drawStrokes[ev.StrokeId].Path.MoveTo(lineStartPoint);
-                        drawStrokes[ev.StrokeId].Path.LineTo(ev.EndPoint);
-                    }
-
-                    break;
-                case ArrowStrokeLineToEvent ev:
-                    if (drawStrokes.ContainsKey(ev.StrokeId))
-                    {
                         var stroke = drawStrokes[ev.StrokeId];
-                        stroke.IsArrow = true;
                         var lineStartPoint = stroke.Path.Points[0];
                         stroke.Path.Reset();
                         stroke.Path.MoveTo(lineStartPoint);
                         stroke.Path.LineTo(ev.EndPoint);
 
-                        var (p1, p2) =
-                            ArrowTool.GetArrowHeadPoints(lineStartPoint, ev.EndPoint, stroke.Paint.StrokeWidth);
+                        if (stroke.ToolType == StrokeTool.Arrow)
+                        {
+                            var (p1, p2) =
+                                ArrowTool.GetArrowHeadPoints(lineStartPoint, ev.EndPoint, stroke.Paint.StrokeWidth);
 
-                        stroke.Path.MoveTo(ev.EndPoint);
-                        stroke.Path.LineTo(p1);
+                            stroke.Path.MoveTo(ev.EndPoint);
+                            stroke.Path.LineTo(p1);
 
-                        stroke.Path.MoveTo(ev.EndPoint);
-                        stroke.Path.LineTo(p2);
+                            stroke.Path.MoveTo(ev.EndPoint);
+                            stroke.Path.LineTo(p2);
+                        }
                     }
 
                     break;
@@ -243,24 +228,61 @@ public partial class MainViewModel : ViewModelBase
 
     private void CheckAndErase(SKPoint eraserPoint, Dictionary<Guid, DrawStroke> drawStrokes, EraserStroke eraserStroke)
     {
-        foreach (var keyValuePair in drawStrokes)
+        foreach (var (strokeId, stroke) in drawStrokes)
         {
-            // Find and erase strokes that the eraser is touching
-            var stroke = keyValuePair.Value;
-            // Check if the erase point is visually on the line
-            if (stroke.Path.IsLine || stroke.IsArrow)
+            switch (stroke.ToolType)
             {
-                var endPoints = new[] { stroke.Path[0], stroke.Path[1] };
-                if (IsPointNearLine(eraserPoint, endPoints, 10.0f))
+                case StrokeTool.Ellipse:
                 {
-                    stroke.IsToBeErased = true;
-                    eraserStroke.Targets.Add(keyValuePair.Key);
+                    var start = stroke.Path[0];
+                    var end = stroke.Path[1];
+                    var rect = SKRect.Create(start, EllipseTool.GetEllipseSize(start, end));
+                    var tolerance = 10.0f;
+
+                    // Quick bounds check
+                    var bounds = rect;
+                    bounds.Inflate(tolerance, tolerance);
+                    if (!bounds.Contains(eraserPoint)) continue;
+
+                    using var path = new SKPath();
+                    path.AddOval(rect);
+
+                    using var paint = new SKPaint();
+                    paint.Style = SKPaintStyle.Stroke;
+                    paint.StrokeWidth = tolerance * 2;
+                    using var strokePath = new SKPath();
+                    paint.GetFillPath(path, strokePath);
+
+                    if (strokePath.Contains(eraserPoint.X, eraserPoint.Y))
+                    {
+                        stroke.IsToBeErased = true;
+                        eraserStroke.Targets.Add(strokeId);
+                    }
+
+                    break;
                 }
-            }
-            else if (stroke.Path.Contains(eraserPoint.X, eraserPoint.Y))
-            {
-                stroke.IsToBeErased = true;
-                eraserStroke.Targets.Add(keyValuePair.Key);
+                // Check if the erase point is visually on the line
+                case StrokeTool.Line or StrokeTool.Arrow:
+                {
+                    var endPoints = new[] { stroke.Path[0], stroke.Path[1] };
+                    if (IsPointNearLine(eraserPoint, endPoints, 10.0f))
+                    {
+                        stroke.IsToBeErased = true;
+                        eraserStroke.Targets.Add(strokeId);
+                    }
+
+                    break;
+                }
+                default:
+                {
+                    if (stroke.Path.Contains(eraserPoint.X, eraserPoint.Y))
+                    {
+                        stroke.IsToBeErased = true;
+                        eraserStroke.Targets.Add(strokeId);
+                    }
+
+                    break;
+                }
             }
         }
     }

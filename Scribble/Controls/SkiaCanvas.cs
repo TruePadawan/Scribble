@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using Avalonia;
 using Avalonia.Controls;
@@ -9,6 +8,7 @@ using Avalonia.Platform;
 using Avalonia.Rendering.SceneGraph;
 using Avalonia.Skia;
 using Scribble.Lib;
+using Scribble.Tools.PointerTools.EllipseTool;
 using SkiaSharp;
 
 namespace Scribble.Controls;
@@ -65,14 +65,24 @@ public class SkiaCanvas : Control
                         disposablePaintClone = paintToUse;
                     }
 
-                    if (stroke.Path.PointCount == 1)
+                    if (drawStroke.Path.PointCount == 1)
                     {
-                        var firstPoint = stroke.Path.Points[0];
+                        var firstPoint = drawStroke.Path.Points[0];
                         canvas.DrawPoint(firstPoint, paintToUse);
                     }
                     else
                     {
-                        canvas.DrawPath(stroke.Path, paintToUse);
+                        switch (drawStroke.ToolType)
+                        {
+                            case StrokeTool.Ellipse:
+                                var start = drawStroke.Path[0];
+                                var end = drawStroke.Path[1];
+                                canvas.DrawOval(start, EllipseTool.GetEllipseSize(start, end), paintToUse);
+                                break;
+                            default:
+                                canvas.DrawPath(drawStroke.Path, paintToUse);
+                                break;
+                        }
                     }
 
                     disposablePaintClone?.Dispose();

@@ -8,10 +8,11 @@ using Avalonia.Threading;
 using Scribble.Behaviours;
 using Scribble.Tools.PointerTools;
 using Scribble.Tools.PointerTools.ArrowTool;
-using Scribble.Tools.PointerTools.DrawTool;
+using Scribble.Tools.PointerTools.EllipseTool;
 using Scribble.Tools.PointerTools.EraseTool;
 using Scribble.Tools.PointerTools.LineTool;
 using Scribble.Tools.PointerTools.PanningTool;
+using Scribble.Tools.PointerTools.PencilTool;
 using Scribble.ViewModels;
 
 namespace Scribble.Views;
@@ -45,11 +46,12 @@ public partial class MainView : UserControl
             CanvasScrollViewer.Offset = new Vector(canvasWidth / 2, canvasHeight / 2);
 
             // Register pointer tools
-            RegisterPointerTool(new DrawTool("DrawToolButton", viewModel));
+            RegisterPointerTool(new PencilTool("PencilTool", viewModel));
             RegisterPointerTool(new EraseTool("EraseTool", viewModel));
             RegisterPointerTool(new PanningTool("PanningTool", viewModel, CanvasScrollViewer));
             RegisterPointerTool(new LineTool("LineTool", viewModel));
             RegisterPointerTool(new ArrowTool("ArrowTool", viewModel));
+            RegisterPointerTool(new EllipseTool("EllipseTool", viewModel));
 
             _viewModel.RequestInvalidateCanvas += () => MainCanvas.InvalidateVisual();
         }

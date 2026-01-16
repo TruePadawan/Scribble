@@ -10,10 +10,18 @@ public abstract class Stroke
     public SKPath Path { get; init; } = new();
 }
 
+public enum StrokeTool
+{
+    Pencil,
+    Line,
+    Arrow,
+    Ellipse
+}
+
 public class DrawStroke : Stroke
 {
     public bool IsToBeErased = false;
-    public bool IsArrow = false;
+    public StrokeTool ToolType;
     public SKPaint Paint { get; init; } = new();
 }
 

@@ -27,7 +27,7 @@ public class EraseTool : PointerToolsBase
     {
         var startPoint = new SKPoint((float)coord.X, (float)coord.Y);
         _currentStrokeId = Guid.NewGuid();
-        ViewModel.ApplyStrokeEvent(new NewEraseStrokeEvent(_currentStrokeId, startPoint));
+        ViewModel.ApplyStrokeEvent(new StartEraseStrokeEvent(_currentStrokeId, startPoint));
     }
 
     public override void HandlePointerRelease(Point prevCoord, Point currentCoord)
