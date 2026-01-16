@@ -95,7 +95,7 @@ public partial class MainViewModel : ViewModelBase
 
         CanvasEvents.Add(@event);
         _currentEventIndex = CanvasEvents.Count - 1;
-        if (@event is EndDrawStrokeEvent) return;
+        if (@event is EndStrokeEvent) return;
         ReplayEvents();
     }
 

@@ -18,12 +18,10 @@ public record StartStrokeEvent(Guid StrokeId, SKPoint StartPoint, SKPaint Stroke
 
 public abstract record StrokeLineToEvent(Guid StrokeId, SKPoint Point) : StrokeEvent(StrokeId);
 
-public abstract record EndStrokeEvent(Guid StrokeId) : StrokeEvent(StrokeId);
+public record EndStrokeEvent(Guid StrokeId) : StrokeEvent(StrokeId);
 
 // PENCIL TOOL
 public record DrawStrokeLineToEvent(Guid StrokeId, SKPoint Point) : StrokeLineToEvent(StrokeId, Point);
-
-public record EndDrawStrokeEvent(Guid StrokeId) : EndStrokeEvent(StrokeId);
 
 // ERASE TOOL
 public record NewEraseStrokeEvent(Guid StrokeId, SKPoint StartPoint) : StrokeEvent(StrokeId);
@@ -34,8 +32,6 @@ public record TriggerEraseEvent(Guid StrokeId) : StrokeEvent(StrokeId);
 
 // LINE TOOL
 public record LineStrokeLineToEvent(Guid StrokeId, SKPoint EndPoint) : StrokeLineToEvent(StrokeId, EndPoint);
-
-public record EndLineStrokeEvent(Guid StrokeId) : EndStrokeEvent(StrokeId);
 
 // ARROW TOOL
 public record ArrowStrokeLineToEvent(Guid StrokeId, SKPoint EndPoint) : StrokeLineToEvent(StrokeId, EndPoint);

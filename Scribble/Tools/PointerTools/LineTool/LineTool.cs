@@ -48,7 +48,7 @@ public class LineTool : PointerToolsBase
 
     public override void HandlePointerRelease(Point prevCoord, Point currentCoord)
     {
-        ViewModel.ApplyStrokeEvent(new EndLineStrokeEvent(_strokeId));
+        ViewModel.ApplyStrokeEvent(new EndStrokeEvent(_strokeId));
     }
 
     public override bool RenderOptions(Panel parent)

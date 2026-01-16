@@ -43,7 +43,7 @@ public class DrawTool : PointerToolsBase
 
     public override void HandlePointerRelease(Point prevCoord, Point currentCoord)
     {
-        ViewModel.ApplyStrokeEvent(new EndDrawStrokeEvent(_currentStrokeId));
+        ViewModel.ApplyStrokeEvent(new EndStrokeEvent(_currentStrokeId));
     }
 
     public override bool RenderOptions(Panel parent)
