@@ -5,6 +5,7 @@ using Avalonia;
 using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Scribble.Lib;
+using Scribble.Tools.PointerTools.ArrowTool;
 using SkiaSharp;
 
 namespace Scribble.ViewModels;
@@ -201,6 +202,27 @@ public partial class MainViewModel : ViewModelBase
                     }
 
                     break;
+                case ArrowStrokeLineToEvent ev:
+                    if (drawStrokes.ContainsKey(ev.StrokeId))
+                    {
+                        var stroke = drawStrokes[ev.StrokeId];
+                        stroke.IsArrow = true;
+                        var lineStartPoint = stroke.Path.Points[0];
+                        stroke.Path.Reset();
+                        stroke.Path.MoveTo(lineStartPoint);
+                        stroke.Path.LineTo(ev.EndPoint);
+
+                        var (p1, p2) =
+                            ArrowTool.GetArrowHeadPoints(lineStartPoint, ev.EndPoint, stroke.Paint.StrokeWidth);
+
+                        stroke.Path.MoveTo(ev.EndPoint);
+                        stroke.Path.LineTo(p1);
+
+                        stroke.Path.MoveTo(ev.EndPoint);
+                        stroke.Path.LineTo(p2);
+                    }
+
+                    break;
             }
         }
 
@@ -226,8 +248,9 @@ public partial class MainViewModel : ViewModelBase
             // Find and erase strokes that the eraser is touching
             var stroke = keyValuePair.Value;
             // Check if the erase point is visually on the line
-            if (stroke.Path.GetLine() is { } endPoints)
+            if (stroke.Path.IsLine || stroke.IsArrow)
             {
+                var endPoints = new[] { stroke.Path[0], stroke.Path[1] };
                 if (IsPointNearLine(eraserPoint, endPoints, 10.0f))
                 {
                     stroke.IsToBeErased = true;

@@ -13,6 +13,7 @@ public abstract class Stroke
 public class DrawStroke : Stroke
 {
     public bool IsToBeErased = false;
+    public bool IsArrow = false;
     public SKPaint Paint { get; init; } = new();
 }
 
