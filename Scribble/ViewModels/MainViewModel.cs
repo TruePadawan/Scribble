@@ -6,6 +6,7 @@ using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Scribble.Lib;
 using Scribble.Tools.PointerTools.ArrowTool;
+using Scribble.Tools.PointerTools.EllipseTool;
 using SkiaSharp;
 
 namespace Scribble.ViewModels;
@@ -227,24 +228,61 @@ public partial class MainViewModel : ViewModelBase
 
     private void CheckAndErase(SKPoint eraserPoint, Dictionary<Guid, DrawStroke> drawStrokes, EraserStroke eraserStroke)
     {
-        foreach (var keyValuePair in drawStrokes)
+        foreach (var (strokeId, stroke) in drawStrokes)
         {
-            // Find and erase strokes that the eraser is touching
-            var stroke = keyValuePair.Value;
-            // Check if the erase point is visually on the line
-            if (stroke.Path.IsLine || stroke.ToolType == StrokeTool.Arrow)
+            switch (stroke.ToolType)
             {
-                var endPoints = new[] { stroke.Path[0], stroke.Path[1] };
-                if (IsPointNearLine(eraserPoint, endPoints, 10.0f))
+                case StrokeTool.Ellipse:
                 {
-                    stroke.IsToBeErased = true;
-                    eraserStroke.Targets.Add(keyValuePair.Key);
+                    var start = stroke.Path[0];
+                    var end = stroke.Path[1];
+                    var rect = SKRect.Create(start, EllipseTool.GetEllipseSize(start, end));
+                    var tolerance = 10.0f;
+
+                    // Quick bounds check
+                    var bounds = rect;
+                    bounds.Inflate(tolerance, tolerance);
+                    if (!bounds.Contains(eraserPoint)) continue;
+
+                    using var path = new SKPath();
+                    path.AddOval(rect);
+
+                    using var paint = new SKPaint();
+                    paint.Style = SKPaintStyle.Stroke;
+                    paint.StrokeWidth = tolerance * 2;
+                    using var strokePath = new SKPath();
+                    paint.GetFillPath(path, strokePath);
+
+                    if (strokePath.Contains(eraserPoint.X, eraserPoint.Y))
+                    {
+                        stroke.IsToBeErased = true;
+                        eraserStroke.Targets.Add(strokeId);
+                    }
+
+                    break;
                 }
-            }
-            else if (stroke.Path.Contains(eraserPoint.X, eraserPoint.Y))
-            {
-                stroke.IsToBeErased = true;
-                eraserStroke.Targets.Add(keyValuePair.Key);
+                // Check if the erase point is visually on the line
+                case StrokeTool.Line or StrokeTool.Arrow:
+                {
+                    var endPoints = new[] { stroke.Path[0], stroke.Path[1] };
+                    if (IsPointNearLine(eraserPoint, endPoints, 10.0f))
+                    {
+                        stroke.IsToBeErased = true;
+                        eraserStroke.Targets.Add(strokeId);
+                    }
+
+                    break;
+                }
+                default:
+                {
+                    if (stroke.Path.Contains(eraserPoint.X, eraserPoint.Y))
+                    {
+                        stroke.IsToBeErased = true;
+                        eraserStroke.Targets.Add(strokeId);
+                    }
+
+                    break;
+                }
             }
         }
     }
