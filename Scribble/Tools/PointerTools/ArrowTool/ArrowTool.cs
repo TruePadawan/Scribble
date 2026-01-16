@@ -85,7 +85,7 @@ public class ArrowTool : PointerToolsBase
 
     public static (SKPoint, SKPoint) GetArrowHeadPoints(SKPoint start, SKPoint end, float strokeWidth)
     {
-        float arrowLength = strokeWidth * 4.0f;
+        float arrowLength = strokeWidth * 8.0f;
         float arrowAngle = (float)(Math.PI / 6);
 
         // Calculate the angle of the main line
