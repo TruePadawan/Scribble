@@ -77,8 +77,6 @@ public class SkiaCanvas : Control
 
                     disposablePaintClone?.Dispose();
                     break;
-                case EraserStroke eraserStroke:
-                    break;
             }
         }
     }
