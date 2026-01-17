@@ -23,6 +23,7 @@ public class TextTool : PointerToolsBase
         LoadToolBitmap(typeof(TextTool), "text.png"))
     {
         _canvasContainer = canvasContainer;
+        _canvasContainer.Focusable = true;
         var plusBitmap = new Bitmap(AssetLoader.Open(new Uri("avares://Scribble/Assets/plus.png")));
         Cursor = new Cursor(plusBitmap, new PixelPoint(12, 12));
         _strokePaint = new SKPaint
@@ -37,7 +38,7 @@ public class TextTool : PointerToolsBase
     {
         if (_currentTextBox != null)
         {
-            FinalizeText();
+            FinalizeText(true);
             return;
         }
 
@@ -45,8 +46,8 @@ public class TextTool : PointerToolsBase
         {
             MinWidth = 100,
             Background = Brushes.Transparent,
-            BorderBrush = Brushes.BlueViolet,
-            Foreground = Brushes.White,
+            Foreground = new SolidColorBrush(Utilities.FromSkColor(_strokePaint.Color)),
+            FontSize = _strokePaint.TextSize,
             BorderThickness = new Thickness(1),
             AcceptsReturn = true
         };
@@ -63,18 +64,24 @@ public class TextTool : PointerToolsBase
             // Commit when the only Enter key is pressed, don't accept Shift + Enter (used for new line)
             if (args.Key == Key.Enter && (args.KeyModifiers & KeyModifiers.Shift) == 0)
             {
-                FinalizeText();
+                _currentTextBox.LostFocus -= TextboxLostFocusHandler;
+                FinalizeText(true);
                 // Mark as handled to prevent the newline character
                 args.Handled = true;
             }
         }, RoutingStrategies.Tunnel);
 
-        _currentTextBox.LostFocus += (sender, args) => FinalizeText();
+        _currentTextBox.LostFocus += TextboxLostFocusHandler;
         _canvasContainer.Children.Add(_currentTextBox);
         _currentTextBox.Focus();
     }
 
-    private void FinalizeText()
+    private void TextboxLostFocusHandler(object? sender, RoutedEventArgs args)
+    {
+        FinalizeText(false);
+    }
+
+    private void FinalizeText(bool restoreFocus)
     {
         if (_currentTextBox == null) return;
 
@@ -84,14 +91,16 @@ public class TextTool : PointerToolsBase
             var textboxPos = new SKPoint((float)Canvas.GetLeft(_currentTextBox), (float)Canvas.GetTop(_currentTextBox));
             textboxPos.Y += _strokePaint.TextSize;
             var strokeId = Guid.NewGuid();
-            // ViewModel.ApplyStrokeEvent(
-            //     new StartStrokeEvent(strokeId, textboxPos, _strokePaint.Clone(), StrokeTool.Text));
             ViewModel.ApplyStrokeEvent(new AddTextEvent(strokeId, textboxPos, text, _strokePaint.Clone()));
-            // ViewModel.ApplyStrokeEvent(new EndStrokeEvent(strokeId));
+            ViewModel.ApplyStrokeEvent(new EndStrokeEvent(strokeId));
         }
 
         _canvasContainer.Children.Remove(_currentTextBox);
         _currentTextBox = null;
+        if (restoreFocus)
+        {
+            _canvasContainer.Focus();
+        }
     }
 
     public override bool RenderOptions(Panel parent)

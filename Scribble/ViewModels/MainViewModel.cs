@@ -52,7 +52,8 @@ public partial class MainViewModel : ViewModelBase
         int latestEventIdx = _currentEventIndex;
         for (int i = _currentEventIndex - 1; i >= 0; i--)
         {
-            if (CanvasEvents[latestEventIdx] is EndStrokeEvent && CanvasEvents[i] is StartStrokeEvent)
+            if (CanvasEvents[latestEventIdx] is EndStrokeEvent &&
+                (CanvasEvents[i] is StartStrokeEvent || CanvasEvents[i] is AddTextEvent))
             {
                 _currentEventIndex = i - 1;
                 break;

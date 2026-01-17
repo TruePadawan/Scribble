@@ -38,7 +38,11 @@
                                          PointerWheelChanged="MainCanvas_OnPointerWheelChanged"
                                          Strokes="{Binding CanvasStrokes}"
                                          RenderTransformOrigin="0 0" />
-
+                    <Canvas.Styles>
+                        <Style Selector="TextBox:focus /template/ Border">
+                            <Setter Property="BorderBrush" Value="Gray" />
+                        </Style>
+                    </Canvas.Styles>
                 </Canvas>
             </LayoutTransformControl>
         </ScrollViewer>
