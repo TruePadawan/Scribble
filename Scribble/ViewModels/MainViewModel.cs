@@ -209,6 +209,17 @@ public partial class MainViewModel : ViewModelBase
                     }
 
                     break;
+                case AddTextEvent ev:
+                    var textPath = new SKPath();
+                    textPath.MoveTo(ev.Position);
+                    drawStrokes[ev.StrokeId] = new TextStroke
+                    {
+                        Paint = ev.Paint,
+                        Path = textPath,
+                        ToolType = StrokeTool.Text,
+                        Text = ev.Text
+                    };
+                    break;
             }
         }
 
@@ -233,6 +244,18 @@ public partial class MainViewModel : ViewModelBase
         {
             switch (stroke.ToolType)
             {
+                case StrokeTool.Text:
+                    if (stroke.Path.PointCount > 0)
+                    {
+                        var pos = stroke.Path[0];
+                        if (SKPoint.Distance(eraserPoint, pos) < 30)
+                        {
+                            stroke.IsToBeErased = true;
+                            eraserStroke.Targets.Add(strokeId);
+                        }
+                    }
+
+                    break;
                 case StrokeTool.Ellipse or StrokeTool.Rectangle:
                 {
                     var start = stroke.Path[0];

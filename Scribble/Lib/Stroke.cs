@@ -16,7 +16,8 @@ public enum StrokeTool
     Line,
     Arrow,
     Ellipse,
-    Rectangle
+    Rectangle,
+    Text
 }
 
 public class DrawStroke : Stroke
@@ -29,4 +30,9 @@ public class DrawStroke : Stroke
 public class EraserStroke : Stroke
 {
     public HashSet<Guid> Targets = [];
+}
+
+public class TextStroke : DrawStroke
+{
+    public string Text { get; set; } = string.Empty;
 }

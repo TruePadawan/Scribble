@@ -30,3 +30,6 @@ public record TriggerEraseEvent(Guid StrokeId) : StrokeEvent(StrokeId);
 
 // LINE + ARROW TOOL
 public record LineStrokeLineToEvent(Guid StrokeId, SKPoint EndPoint) : StrokeEvent(StrokeId);
+
+// TEXT TOOL
+public record AddTextEvent(Guid StrokeId, SKPoint Position, string Text, SKPaint Paint) : StrokeEvent(StrokeId);
