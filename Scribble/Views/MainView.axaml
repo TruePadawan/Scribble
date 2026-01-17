@@ -22,17 +22,28 @@
     <Panel>
         <ScrollViewer Name="CanvasScrollViewer" HorizontalScrollBarVisibility="Auto">
             <LayoutTransformControl Name="MainCanvasLayoutTransform" LayoutTransform="{Binding ScaleTransform}">
-                <controls:SkiaCanvas Name="MainCanvas"
-                                     HorizontalAlignment="Left"
-                                     CanvasBackground="{Binding BackgroundColor}"
-                                     Width="{Binding CanvasWidth}"
-                                     Height="{Binding CanvasHeight}"
-                                     PointerPressed="MainCanvas_OnPointerPressed"
-                                     PointerMoved="MainCanvas_OnPointerMoved"
-                                     PointerReleased="MainCanvas_OnPointerReleased"
-                                     PointerWheelChanged="MainCanvas_OnPointerWheelChanged"
-                                     Strokes="{Binding CanvasStrokes}"
-                                     RenderTransformOrigin="0 0" />
+                <Canvas Name="CanvasContainer"
+                        Width="{Binding CanvasWidth}"
+                        Height="{Binding CanvasHeight}"
+                        HorizontalAlignment="Left"
+                        Background="Transparent">
+                    <controls:SkiaCanvas Name="MainCanvas"
+                                         HorizontalAlignment="Left"
+                                         CanvasBackground="{Binding BackgroundColor}"
+                                         Width="{Binding CanvasWidth}"
+                                         Height="{Binding CanvasHeight}"
+                                         PointerPressed="MainCanvas_OnPointerPressed"
+                                         PointerMoved="MainCanvas_OnPointerMoved"
+                                         PointerReleased="MainCanvas_OnPointerReleased"
+                                         PointerWheelChanged="MainCanvas_OnPointerWheelChanged"
+                                         Strokes="{Binding CanvasStrokes}"
+                                         RenderTransformOrigin="0 0" />
+                    <Canvas.Styles>
+                        <Style Selector="TextBox:focus /template/ Border">
+                            <Setter Property="BorderBrush" Value="Gray" />
+                        </Style>
+                    </Canvas.Styles>
+                </Canvas>
             </LayoutTransformControl>
         </ScrollViewer>
         <Border Name="ToolbarContainer"

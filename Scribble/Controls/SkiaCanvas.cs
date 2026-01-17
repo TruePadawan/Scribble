@@ -68,8 +68,15 @@ public class SkiaCanvas : Control
 
                     if (drawStroke.Path.PointCount == 1)
                     {
-                        var firstPoint = drawStroke.Path.Points[0];
-                        canvas.DrawPoint(firstPoint, paintToUse);
+                        if (drawStroke is TextStroke textStroke)
+                        {
+                            canvas.DrawText(textStroke.Text, textStroke.Path.LastPoint, paintToUse);
+                        }
+                        else
+                        {
+                            var firstPoint = drawStroke.Path.Points[0];
+                            canvas.DrawPoint(firstPoint, paintToUse);
+                        }
                     }
                     else
                     {
@@ -80,7 +87,8 @@ public class SkiaCanvas : Control
                                 var end = drawStroke.Path[1];
                                 var ellipseLeft = Math.Min(start.X, end.X);
                                 var ellipseTop = Math.Min(start.Y, end.Y);
-                                var ellipseRect = SKRect.Create(new SKPoint(ellipseLeft, ellipseTop), Utilities.GetSize(start, end));
+                                var ellipseRect = SKRect.Create(new SKPoint(ellipseLeft, ellipseTop),
+                                    Utilities.GetSize(start, end));
                                 canvas.DrawOval(ellipseRect, paintToUse);
                                 break;
                             case StrokeTool.Rectangle:
@@ -88,7 +96,8 @@ public class SkiaCanvas : Control
                                 var rectEnd = drawStroke.Path[1];
                                 var left = Math.Min(rectOrigin.X, rectEnd.X);
                                 var top = Math.Min(rectOrigin.Y, rectEnd.Y);
-                                var rect = SKRect.Create(new SKPoint(left, top), Utilities.GetSize(rectOrigin, rectEnd));
+                                var rect = SKRect.Create(new SKPoint(left, top),
+                                    Utilities.GetSize(rectOrigin, rectEnd));
                                 canvas.DrawRect(rect, paintToUse);
                                 break;
                             default:
