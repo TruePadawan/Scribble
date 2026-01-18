@@ -14,6 +14,7 @@ using Scribble.Tools.PointerTools.LineTool;
 using Scribble.Tools.PointerTools.PanningTool;
 using Scribble.Tools.PointerTools.PencilTool;
 using Scribble.Tools.PointerTools.RectangleTool;
+using Scribble.Tools.PointerTools.SelectTool;
 using Scribble.Tools.PointerTools.TextTool;
 using Scribble.ViewModels;
 
@@ -56,6 +57,7 @@ public partial class MainView : UserControl
             RegisterPointerTool(new EllipseTool("EllipseTool", viewModel));
             RegisterPointerTool(new RectangleTool("RectangleTool", viewModel));
             RegisterPointerTool(new TextTool("TextTool", viewModel, CanvasContainer));
+            RegisterPointerTool(new SelectTool("SelectTool", viewModel, CanvasContainer));
 
             _viewModel.RequestInvalidateCanvas += () => MainCanvas.InvalidateVisual();
         }

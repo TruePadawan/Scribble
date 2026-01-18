@@ -19,6 +19,7 @@ public partial class MainViewModel : ViewModelBase
     [ObservableProperty] private SKColor _backgroundColor;
     public ScaleTransform ScaleTransform { get; }
     [ObservableProperty] private List<Stroke> _canvasStrokes = [];
+    public Dictionary<Guid, List<Guid>> SelectionTargets { get; private set; } = new();
     public event Action? RequestInvalidateCanvas;
     private List<StrokeEvent> CanvasEvents { get; } = [];
     private int _currentEventIndex = -1;
@@ -60,7 +61,18 @@ public partial class MainViewModel : ViewModelBase
 
             if (CanvasEvents[latestEventIdx] is TriggerEraseEvent)
             {
-                if (CanvasEvents[i] is EndStrokeEvent || CanvasEvents[i] is TriggerEraseEvent)
+                if (CanvasEvents[i] is EndStrokeEvent || CanvasEvents[i] is TriggerEraseEvent ||
+                    CanvasEvents[i] is EndSelectionEvent)
+                {
+                    _currentEventIndex = i;
+                    break;
+                }
+            }
+
+            if (CanvasEvents[latestEventIdx] is EndSelectionEvent)
+            {
+                if (CanvasEvents[i] is EndStrokeEvent || CanvasEvents[i] is TriggerEraseEvent ||
+                    CanvasEvents[i] is EndSelectionEvent)
                 {
                     _currentEventIndex = i;
                     break;
@@ -76,7 +88,8 @@ public partial class MainViewModel : ViewModelBase
         if (CanvasEvents.Count == 0 || _currentEventIndex == CanvasEvents.Count - 1) return;
         for (int i = _currentEventIndex + 1; i < CanvasEvents.Count; i++)
         {
-            if (CanvasEvents[i] is TriggerEraseEvent || CanvasEvents[i] is EndStrokeEvent)
+            if (CanvasEvents[i] is TriggerEraseEvent || CanvasEvents[i] is EndStrokeEvent ||
+                CanvasEvents[i] is EndSelectionEvent)
             {
                 _currentEventIndex = i;
                 break;
@@ -107,6 +120,8 @@ public partial class MainViewModel : ViewModelBase
         var eraserStrokes = new Dictionary<Guid, EraserStroke>();
         var staleEraseStrokes = new List<Guid>();
         var eraserHeads = new Dictionary<Guid, SKPoint>();
+        var selectionBounds = new Dictionary<Guid, SelectionBound>();
+        var staleSelectionBounds = new List<Guid>();
 
         for (var i = 0; i <= _currentEventIndex; i++)
         {
@@ -118,6 +133,7 @@ public partial class MainViewModel : ViewModelBase
                     newLinePath.MoveTo(ev.StartPoint);
                     drawStrokes[ev.StrokeId] = new DrawStroke
                     {
+                        Id = ev.StrokeId,
                         Paint = ev.StrokePaint,
                         Path = newLinePath,
                         ToolType = ev.ToolType
@@ -214,11 +230,45 @@ public partial class MainViewModel : ViewModelBase
                     textPath.MoveTo(ev.Position);
                     drawStrokes[ev.StrokeId] = new TextStroke
                     {
+                        Id = ev.StrokeId,
                         Paint = ev.Paint,
                         Path = textPath,
                         ToolType = StrokeTool.Text,
                         Text = ev.Text
                     };
+                    break;
+                case CreateSelectionBoundEvent ev:
+                    var selectionPath = new SKPath();
+                    selectionPath.MoveTo(ev.StartPoint);
+                    var selectionBound = new SelectionBound
+                    {
+                        Path = selectionPath
+                    };
+                    selectionBounds[ev.BoundId] = selectionBound;
+                    break;
+                case IncreaseSelectionBoundEvent ev:
+                    if (selectionBounds.ContainsKey(ev.BoundId))
+                    {
+                        var bound = selectionBounds[ev.BoundId];
+                        var boundOrigin = bound.Path.Points[0];
+                        bound.Path.Reset();
+                        bound.Path.MoveTo(boundOrigin);
+                        bound.Path.LineTo(ev.Point);
+
+                        // Check for strokes that are within this bound
+                        var top = Math.Min(boundOrigin.Y, ev.Point.Y);
+                        var left = Math.Min(boundOrigin.X, ev.Point.X);
+                        var boundRect = SKRect.Create(new SKPoint(left, top), Utilities.GetSize(boundOrigin, ev.Point));
+                        CheckAndSelect(boundRect, bound, drawStrokes);
+                    }
+
+                    break;
+                case EndSelectionEvent ev:
+                    if (selectionBounds.ContainsKey(ev.BoundId) && selectionBounds[ev.BoundId].Targets.Count == 0)
+                    {
+                        staleSelectionBounds.Add(ev.BoundId);
+                    }
+
                     break;
             }
         }
@@ -234,8 +284,20 @@ public partial class MainViewModel : ViewModelBase
             _currentEventIndex = CanvasEvents.Count - 1;
         }
 
+        // Remove selection events that don't select anything
+        if (staleSelectionBounds.Count > 0)
+        {
+            foreach (var staleBoundId in staleSelectionBounds)
+            {
+                CanvasEvents.RemoveAll(ev => ev.StrokeId == staleBoundId);
+            }
+
+            _currentEventIndex = CanvasEvents.Count - 1;
+        }
+
 
         CanvasStrokes = new List<Stroke>(drawStrokes.Values.ToList());
+        SelectionTargets = selectionBounds.ToDictionary(k => k.Key, v => v.Value.Targets.ToList());
     }
 
     private void CheckAndErase(SKPoint eraserPoint, Dictionary<Guid, DrawStroke> drawStrokes, EraserStroke eraserStroke)
@@ -349,5 +411,32 @@ public partial class MainViewModel : ViewModelBase
         );
 
         return SKPoint.Distance(point, closest) < tolerance;
+    }
+
+    private void CheckAndSelect(SKRect boundRect, SelectionBound bound, Dictionary<Guid, DrawStroke> drawStrokes)
+    {
+        bound.Targets.Clear();
+        foreach (var (id, stroke) in drawStrokes)
+        {
+            SKRect strokeBounds;
+
+            if (stroke.ToolType == StrokeTool.Text && stroke is TextStroke textStroke && stroke.Path.PointCount > 0)
+            {
+                var pos = stroke.Path[0];
+                var bounds = new SKRect();
+                textStroke.Paint.MeasureText(textStroke.Text, ref bounds);
+                bounds.Offset(pos);
+                strokeBounds = bounds;
+            }
+            else
+            {
+                strokeBounds = stroke.Path.Bounds;
+            }
+
+            if (boundRect.Contains(strokeBounds))
+            {
+                bound.Targets.Add(id);
+            }
+        }
     }
 }

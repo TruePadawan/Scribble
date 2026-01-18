@@ -1,4 +1,5 @@
 using System;
+using Avalonia;
 using Avalonia.Media;
 using SkiaSharp;
 
@@ -19,5 +20,10 @@ public static class Utilities
     public static SKSize GetSize(SKPoint start, SKPoint end)
     {
         return new SKSize(Math.Abs(start.X - end.X), Math.Abs(start.Y - end.Y));
+    }
+
+    public static SKPoint ToSkPoint(Point coord)
+    {
+        return new SKPoint((float)coord.X, (float)coord.Y);
     }
 }

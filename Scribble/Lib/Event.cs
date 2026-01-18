@@ -28,8 +28,15 @@ public record EraseStrokeLineToEvent(Guid StrokeId, SKPoint Point) : StrokeEvent
 
 public record TriggerEraseEvent(Guid StrokeId) : StrokeEvent(StrokeId);
 
-// LINE + ARROW TOOL
+// LINE + ARROW + RECTANGLE TOOL
 public record LineStrokeLineToEvent(Guid StrokeId, SKPoint EndPoint) : StrokeEvent(StrokeId);
 
 // TEXT TOOL
 public record AddTextEvent(Guid StrokeId, SKPoint Position, string Text, SKPaint Paint) : StrokeEvent(StrokeId);
+
+// SELECT TOOL
+public record CreateSelectionBoundEvent(Guid BoundId, SKPoint StartPoint) : StrokeEvent(BoundId);
+
+public record IncreaseSelectionBoundEvent(Guid BoundId, SKPoint Point) : StrokeEvent(BoundId);
+
+public record EndSelectionEvent(Guid BoundId) : StrokeEvent(BoundId);
