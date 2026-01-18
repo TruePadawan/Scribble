@@ -27,6 +27,8 @@ class SelectTool : PointerToolsBase
 
     public override void HandlePointerClick(Point coord)
     {
+        ClearSelectionVisualization();
+
         _selectionBorder = new Border
         {
             BorderThickness = new Thickness(1),
@@ -126,5 +128,18 @@ class SelectTool : PointerToolsBase
         {
             overlay.IsVisible = false;
         }
+    }
+
+    private void ClearSelectionVisualization()
+    {
+        if (_canvasContainer.Children.FirstOrDefault(c => c is StackPanel sp && sp.Name == "SelectionOverlay") is StackPanel overlay)
+        {
+            overlay.IsVisible = false;
+        }
+    }
+
+    public override void Dispose()
+    {
+        ClearSelectionVisualization();
     }
 }
