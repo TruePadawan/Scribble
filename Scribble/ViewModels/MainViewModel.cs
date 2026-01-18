@@ -6,7 +6,6 @@ using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Scribble.Lib;
 using Scribble.Tools.PointerTools.ArrowTool;
-using Scribble.Tools.PointerTools.EllipseTool;
 using Scribble.Utils;
 using SkiaSharp;
 
@@ -246,10 +245,15 @@ public partial class MainViewModel : ViewModelBase
             switch (stroke.ToolType)
             {
                 case StrokeTool.Text:
-                    if (stroke.Path.PointCount > 0)
+                    if (stroke is TextStroke textStroke && stroke.Path.PointCount > 0)
                     {
                         var pos = stroke.Path[0];
-                        if (SKPoint.Distance(eraserPoint, pos) < 30)
+                        var bounds = new SKRect();
+                        textStroke.Paint.MeasureText(textStroke.Text, ref bounds);
+                        bounds.Offset(pos);
+                        bounds.Inflate(10, 10);
+
+                        if (bounds.Contains(eraserPoint))
                         {
                             stroke.IsToBeErased = true;
                             eraserStroke.Targets.Add(strokeId);
