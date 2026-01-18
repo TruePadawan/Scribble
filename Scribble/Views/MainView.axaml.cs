@@ -89,25 +89,30 @@ public partial class MainView : UserControl
         ToggleButtonGroup.SetGroupName(toggleButton, "PointerTools");
         toggleButton.IsCheckedChanged += (object? sender, RoutedEventArgs e) =>
         {
-            if (toggleButton.IsChecked != true) return;
-            _activePointerTool = tool;
+            if (toggleButton.IsChecked == true)
+            {
+                _activePointerTool?.Dispose();
+                _activePointerTool = tool;
 
-            // Render tool options
-            ToolOptions.Children.Clear();
-            if (tool.RenderOptions(ToolOptions))
-            {
-                ToolOptionsContainer.IsVisible = true;
-                ToolOptionsContainer.Opacity = 1;
-            }
-            else
-            {
-                ToolOptionsContainer.IsVisible = false;
+                // Render tool options
+                ToolOptions.Children.Clear();
+                if (tool.RenderOptions(ToolOptions))
+                {
+                    ToolOptionsContainer.IsVisible = true;
+                    ToolOptionsContainer.Opacity = 1;
+                }
+                else
+                {
+                    ToolOptionsContainer.IsVisible = false;
+                }
+
+                if (tool.Cursor != null)
+                {
+                    MainCanvas.Cursor = tool.Cursor;
+                }
             }
 
-            if (tool.Cursor != null)
-            {
-                MainCanvas.Cursor = tool.Cursor;
-            }
+            ;
         };
 
         var toolIcon = new Image
