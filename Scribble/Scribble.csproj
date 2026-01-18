@@ -26,8 +26,4 @@
         </PackageReference>
         <PackageReference Include="CommunityToolkit.Mvvm"/>
     </ItemGroup>
-
-    <ItemGroup>
-      <Folder Include="Tools\PointerTools\SelectTool\" />
-    </ItemGroup>
 </Project>
