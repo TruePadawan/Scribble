@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
@@ -6,6 +7,7 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
 using Scribble.Behaviours;
+using Scribble.Lib;
 using Scribble.Tools.PointerTools;
 using Scribble.Tools.PointerTools.ArrowTool;
 using Scribble.Tools.PointerTools.EllipseTool;
@@ -16,7 +18,9 @@ using Scribble.Tools.PointerTools.PencilTool;
 using Scribble.Tools.PointerTools.RectangleTool;
 using Scribble.Tools.PointerTools.SelectTool;
 using Scribble.Tools.PointerTools.TextTool;
+using Scribble.Utils;
 using Scribble.ViewModels;
+using SkiaSharp;
 
 namespace Scribble.Views;
 
@@ -36,11 +40,17 @@ public partial class MainView : UserControl
 
     protected override void OnDataContextChanged(EventArgs e)
     {
+        if (_viewModel != null)
+        {
+            _viewModel.RequestInvalidateSelection -= VisualizeSelection;
+        }
+
         base.OnDataContextChanged(e);
 
         if (DataContext is MainViewModel viewModel)
         {
             _viewModel = viewModel;
+            _viewModel.RequestInvalidateSelection += VisualizeSelection;
 
             Toolbar.Children.Clear();
 
@@ -58,6 +68,8 @@ public partial class MainView : UserControl
             RegisterPointerTool(new RectangleTool("RectangleTool", viewModel));
             RegisterPointerTool(new TextTool("TextTool", viewModel, CanvasContainer));
             RegisterPointerTool(new SelectTool("SelectTool", viewModel, CanvasContainer));
+
+            VisualizeSelection();
         }
     }
 
@@ -92,11 +104,6 @@ public partial class MainView : UserControl
                 _activePointerTool?.Dispose();
                 _activePointerTool = tool;
 
-                if (_activePointerTool is SelectTool selectTool)
-                {
-                    selectTool.SubscribeToSelectionChanges();
-                }
-
                 // Render tool options
                 ToolOptions.Children.Clear();
                 if (tool.RenderOptions(ToolOptions))
@@ -114,8 +121,6 @@ public partial class MainView : UserControl
                     MainCanvas.Cursor = tool.Cursor;
                 }
             }
-
-            ;
         };
 
         var toolIcon = new Image
@@ -126,6 +131,65 @@ public partial class MainView : UserControl
         toggleButton.Content = toolIcon;
 
         Toolbar.Children.Add(toggleButton);
+    }
+
+    private void VisualizeSelection()
+    {
+        if (_viewModel == null) return;
+
+        var allSelectedIds = _viewModel.SelectionTargets.Values.SelectMany(x => x).Distinct().ToList();
+
+        if (allSelectedIds.Count > 0)
+        {
+            var selectedStrokes = _viewModel.CanvasStrokes
+                .Where(stroke => allSelectedIds.Contains(stroke.Id) && stroke is DrawStroke)
+                .Cast<DrawStroke>()
+                .ToList();
+            if (selectedStrokes.Count == 0)
+            {
+                SelectionOverlay.IsVisible = false;
+                return;
+            }
+
+            SKRect combinedBounds = SKRect.Empty;
+
+            foreach (var stroke in selectedStrokes)
+            {
+                SKRect strokeBounds;
+                if (stroke is TextStroke textStroke && stroke.Path.PointCount > 0)
+                {
+                    var pos = textStroke.Path[0];
+                    var bounds = new SKRect();
+                    textStroke.Paint.MeasureText(textStroke.Text, ref bounds);
+                    bounds.Offset(pos);
+                    strokeBounds = bounds;
+                }
+                else
+                {
+                    strokeBounds = stroke.Path.Bounds;
+                }
+
+                if (combinedBounds == SKRect.Empty)
+                {
+                    combinedBounds = strokeBounds;
+                }
+                else
+                {
+                    combinedBounds.Union(strokeBounds);
+                }
+            }
+
+            Canvas.SetLeft(SelectionOverlay, combinedBounds.Left);
+            Canvas.SetTop(SelectionOverlay, combinedBounds.Top - 15 - 6);
+
+            SelectionBorder.Width = combinedBounds.Width;
+            SelectionBorder.Height = combinedBounds.Height;
+            SelectionOverlay.IsVisible = true;
+        }
+        else
+        {
+            SelectionOverlay.IsVisible = false;
+        }
     }
 
     private Point GetPointerPosition(PointerEventArgs e)

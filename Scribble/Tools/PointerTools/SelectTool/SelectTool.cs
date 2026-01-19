@@ -27,8 +27,6 @@ class SelectTool : PointerToolsBase
 
     public override void HandlePointerClick(Point coord)
     {
-        ClearSelectionVisualization();
-
         _selectionBorder = new Border
         {
             BorderThickness = new Thickness(1),
@@ -41,7 +39,7 @@ class SelectTool : PointerToolsBase
         _startPoint = coord;
         _canvasContainer.Children.Add(_selectionBorder);
         _boundId = Guid.NewGuid();
-        ViewModel.ApplyStrokeEvent(new CreateSelectionBoundEvent(_boundId,
+        ViewModel.ApplyEvent(new CreateSelectionBoundEvent(_boundId,
             new SKPoint((float)coord.X, (float)coord.Y)));
     }
 
@@ -53,8 +51,7 @@ class SelectTool : PointerToolsBase
 
         Canvas.SetLeft(_selectionBorder, Math.Min(_startPoint.X, currentCoord.X));
         Canvas.SetTop(_selectionBorder, Math.Min(_startPoint.Y, currentCoord.Y));
-        ViewModel.ApplyStrokeEvent(new IncreaseSelectionBoundEvent(_boundId, Utilities.ToSkPoint(currentCoord)));
-        VisualizeSelection();
+        ViewModel.ApplyEvent(new IncreaseSelectionBoundEvent(_boundId, Utilities.ToSkPoint(currentCoord)));
     }
 
     public override void HandlePointerRelease(Point prevCoord, Point currentCoord)
@@ -63,100 +60,10 @@ class SelectTool : PointerToolsBase
 
         _canvasContainer.Children.Remove(_selectionBorder);
         _selectionBorder = null;
-        ViewModel.ApplyStrokeEvent(new EndSelectionEvent(_boundId));
-        VisualizeSelection();
-    }
-
-    private void VisualizeSelection()
-    {
-        if (_canvasContainer.Children.FirstOrDefault(child => child is StackPanel { Name: "SelectionOverlay" }) is not
-            StackPanel overlay) return;
-        if (overlay.Children.FirstOrDefault(child => child is Border { Name: "SelectionBorder" }) is not Border border)
-            return;
-
-        // If we are not currently dragging a selection, sync with the latest selection in the view model
-        if (_selectionBorder == null && ViewModel.SelectionTargets.Count > 0)
-        {
-            _boundId = ViewModel.SelectionTargets.Keys.Last();
-        }
-
-        if (ViewModel.SelectionTargets.TryGetValue(_boundId, out var selectedIds) && selectedIds.Count > 0)
-        {
-            var selectedStrokes = ViewModel.CanvasStrokes
-                .Where(stroke => selectedIds.Contains(stroke.Id) && stroke is DrawStroke)
-                .Cast<DrawStroke>()
-                .ToList();
-            if (selectedStrokes.Count == 0)
-            {
-                overlay.IsVisible = false;
-                return;
-            }
-
-            SKRect combinedBounds = SKRect.Empty;
-            // bool first = true;
-
-            foreach (var stroke in selectedStrokes)
-            {
-                SKRect strokeBounds;
-                if (stroke is TextStroke textStroke && stroke.Path.PointCount > 0)
-                {
-                    var pos = textStroke.Path[0];
-                    var bounds = new SKRect();
-                    textStroke.Paint.MeasureText(textStroke.Text, ref bounds);
-                    bounds.Offset(pos);
-                    strokeBounds = bounds;
-                }
-                else
-                {
-                    strokeBounds = stroke.Path.Bounds;
-                }
-
-                if (combinedBounds == SKRect.Empty)
-                {
-                    combinedBounds = strokeBounds;
-                }
-                else
-                {
-                    combinedBounds.Union(strokeBounds);
-                }
-            }
-
-            Canvas.SetLeft(overlay, combinedBounds.Left);
-            Canvas.SetTop(overlay, combinedBounds.Top - 15 - 6);
-
-            border.Width = combinedBounds.Width;
-            border.Height = combinedBounds.Height;
-            overlay.IsVisible = true;
-        }
-        else
-        {
-            overlay.IsVisible = false;
-        }
-    }
-
-    private void ClearSelectionVisualization()
-    {
-        if (_canvasContainer.Children.FirstOrDefault(c => c is StackPanel sp && sp.Name == "SelectionOverlay") is
-            StackPanel overlay)
-        {
-            overlay.IsVisible = false;
-        }
+        ViewModel.ApplyEvent(new EndSelectionEvent(_boundId));
     }
 
     public override void Dispose()
     {
-        ClearSelectionVisualization();
-        // ViewModel.RequestInvalidateSelection -= OnSelectionChanged;
-    }
-
-    public void SubscribeToSelectionChanges()
-    {
-        ViewModel.RequestInvalidateSelection += OnSelectionChanged;
-        // OnSelectionChanged();
-    }
-
-    private void OnSelectionChanged()
-    {
-        VisualizeSelection();
     }
 }

@@ -20,18 +20,18 @@ public class EraseTool : PointerToolsBase
     public override void HandlePointerMove(Point prevCoord, Point currentCoord)
     {
         var nextPoint = new SKPoint((float)currentCoord.X, (float)currentCoord.Y);
-        ViewModel.ApplyStrokeEvent(new EraseStrokeLineToEvent(_currentStrokeId, nextPoint));
+        ViewModel.ApplyEvent(new EraseStrokeLineToEvent(_currentStrokeId, nextPoint));
     }
 
     public override void HandlePointerClick(Point coord)
     {
         var startPoint = new SKPoint((float)coord.X, (float)coord.Y);
         _currentStrokeId = Guid.NewGuid();
-        ViewModel.ApplyStrokeEvent(new StartEraseStrokeEvent(_currentStrokeId, startPoint));
+        ViewModel.ApplyEvent(new StartEraseStrokeEvent(_currentStrokeId, startPoint));
     }
 
     public override void HandlePointerRelease(Point prevCoord, Point currentCoord)
     {
-        ViewModel.ApplyStrokeEvent(new TriggerEraseEvent(_currentStrokeId));
+        ViewModel.ApplyEvent(new TriggerEraseEvent(_currentStrokeId));
     }
 }

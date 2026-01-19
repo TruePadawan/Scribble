@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using SkiaSharp;
 
 namespace Scribble.Lib;
@@ -11,12 +12,14 @@ public abstract record Event
     public DateTime TimeStamp { get; init; } = DateTime.UtcNow;
 }
 
+public interface ITerminalEvent { }
+
 public abstract record StrokeEvent(Guid StrokeId) : Event;
 
 public record StartStrokeEvent(Guid StrokeId, SKPoint StartPoint, SKPaint StrokePaint, StrokeTool ToolType)
     : StrokeEvent(StrokeId);
 
-public record EndStrokeEvent(Guid StrokeId) : StrokeEvent(StrokeId);
+public record EndStrokeEvent(Guid StrokeId) : StrokeEvent(StrokeId), ITerminalEvent;
 
 // PENCIL TOOL
 public record PencilStrokeLineToEvent(Guid StrokeId, SKPoint Point) : StrokeEvent(StrokeId);
@@ -26,17 +29,19 @@ public record StartEraseStrokeEvent(Guid StrokeId, SKPoint StartPoint) : StrokeE
 
 public record EraseStrokeLineToEvent(Guid StrokeId, SKPoint Point) : StrokeEvent(StrokeId);
 
-public record TriggerEraseEvent(Guid StrokeId) : StrokeEvent(StrokeId);
+public record TriggerEraseEvent(Guid StrokeId) : StrokeEvent(StrokeId), ITerminalEvent;
 
 // LINE + ARROW + RECTANGLE TOOL
 public record LineStrokeLineToEvent(Guid StrokeId, SKPoint EndPoint) : StrokeEvent(StrokeId);
 
 // TEXT TOOL
-public record AddTextEvent(Guid StrokeId, SKPoint Position, string Text, SKPaint Paint) : StrokeEvent(StrokeId);
+public record AddTextEvent(Guid StrokeId, SKPoint Position, string Text, SKPaint Paint) : StrokeEvent(StrokeId), ITerminalEvent;
 
 // SELECT TOOL
 public record CreateSelectionBoundEvent(Guid BoundId, SKPoint StartPoint) : StrokeEvent(BoundId);
 
 public record IncreaseSelectionBoundEvent(Guid BoundId, SKPoint Point) : StrokeEvent(BoundId);
 
-public record EndSelectionEvent(Guid BoundId) : StrokeEvent(BoundId);
+public record EndSelectionEvent(Guid BoundId) : StrokeEvent(BoundId), ITerminalEvent;
+
+public record SelectionChangedEvent(List<Guid> SelectedIds) : Event, ITerminalEvent;

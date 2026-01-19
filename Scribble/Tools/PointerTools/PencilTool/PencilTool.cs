@@ -31,19 +31,19 @@ public class PencilTool : PointerToolsBase
     public override void HandlePointerMove(Point prevCoord, Point currentCoord)
     {
         var nextPoint = new SKPoint((float)currentCoord.X, (float)currentCoord.Y);
-        ViewModel.ApplyStrokeEvent(new PencilStrokeLineToEvent(_currentStrokeId, nextPoint));
+        ViewModel.ApplyEvent(new PencilStrokeLineToEvent(_currentStrokeId, nextPoint));
     }
 
     public override void HandlePointerClick(Point coord)
     {
         var startPoint = new SKPoint((float)coord.X, (float)coord.Y);
         _currentStrokeId = Guid.NewGuid();
-        ViewModel.ApplyStrokeEvent(new StartStrokeEvent(_currentStrokeId, startPoint, _strokePaint.Clone(), StrokeTool.Pencil));
+        ViewModel.ApplyEvent(new StartStrokeEvent(_currentStrokeId, startPoint, _strokePaint.Clone(), StrokeTool.Pencil));
     }
 
     public override void HandlePointerRelease(Point prevCoord, Point currentCoord)
     {
-        ViewModel.ApplyStrokeEvent(new EndStrokeEvent(_currentStrokeId));
+        ViewModel.ApplyEvent(new EndStrokeEvent(_currentStrokeId));
     }
 
     public override bool RenderOptions(Panel parent)
