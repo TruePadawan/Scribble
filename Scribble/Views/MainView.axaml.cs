@@ -92,6 +92,11 @@ public partial class MainView : UserControl
                 _activePointerTool?.Dispose();
                 _activePointerTool = tool;
 
+                if (_activePointerTool is SelectTool selectTool)
+                {
+                    selectTool.SubscribeToSelectionChanges();
+                }
+
                 // Render tool options
                 ToolOptions.Children.Clear();
                 if (tool.RenderOptions(ToolOptions))

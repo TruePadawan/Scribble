@@ -16,7 +16,7 @@ class SelectTool : PointerToolsBase
     private Border? _selectionBorder;
     private readonly Canvas _canvasContainer;
     private Point _startPoint;
-    private readonly Guid _boundId = Guid.NewGuid();
+    private Guid _boundId = Guid.NewGuid();
 
     public SelectTool(string name, MainViewModel viewModel, Canvas canvasContainer) : base(name, viewModel,
         LoadToolBitmap(typeof(SelectTool), "cursor.png"))
@@ -40,6 +40,7 @@ class SelectTool : PointerToolsBase
         Canvas.SetTop(_selectionBorder, coord.Y);
         _startPoint = coord;
         _canvasContainer.Children.Add(_selectionBorder);
+        _boundId = Guid.NewGuid();
         ViewModel.ApplyStrokeEvent(new CreateSelectionBoundEvent(_boundId,
             new SKPoint((float)coord.X, (float)coord.Y)));
     }
@@ -68,13 +69,16 @@ class SelectTool : PointerToolsBase
 
     private void VisualizeSelection()
     {
-        var overlay =
-            _canvasContainer.Children.FirstOrDefault(child => child is StackPanel { Name: "SelectionOverlay" }) as
-                StackPanel;
-        if (overlay == null) return;
-        var border =
-            overlay.Children.FirstOrDefault(child => child is Border { Name: "SelectionBorder" }) as Border;
-        if (border == null) return;
+        if (_canvasContainer.Children.FirstOrDefault(child => child is StackPanel { Name: "SelectionOverlay" }) is not
+            StackPanel overlay) return;
+        if (overlay.Children.FirstOrDefault(child => child is Border { Name: "SelectionBorder" }) is not Border border)
+            return;
+
+        // If we are not currently dragging a selection, sync with the latest selection in the view model
+        if (_selectionBorder == null && ViewModel.SelectionTargets.Count > 0)
+        {
+            _boundId = ViewModel.SelectionTargets.Keys.Last();
+        }
 
         if (ViewModel.SelectionTargets.TryGetValue(_boundId, out var selectedIds) && selectedIds.Count > 0)
         {
@@ -132,7 +136,8 @@ class SelectTool : PointerToolsBase
 
     private void ClearSelectionVisualization()
     {
-        if (_canvasContainer.Children.FirstOrDefault(c => c is StackPanel sp && sp.Name == "SelectionOverlay") is StackPanel overlay)
+        if (_canvasContainer.Children.FirstOrDefault(c => c is StackPanel sp && sp.Name == "SelectionOverlay") is
+            StackPanel overlay)
         {
             overlay.IsVisible = false;
         }
@@ -141,5 +146,17 @@ class SelectTool : PointerToolsBase
     public override void Dispose()
     {
         ClearSelectionVisualization();
+        // ViewModel.RequestInvalidateSelection -= OnSelectionChanged;
+    }
+
+    public void SubscribeToSelectionChanges()
+    {
+        ViewModel.RequestInvalidateSelection += OnSelectionChanged;
+        // OnSelectionChanged();
+    }
+
+    private void OnSelectionChanged()
+    {
+        VisualizeSelection();
     }
 }

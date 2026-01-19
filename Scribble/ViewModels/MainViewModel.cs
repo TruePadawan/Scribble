@@ -20,6 +20,7 @@ public partial class MainViewModel : ViewModelBase
     public ScaleTransform ScaleTransform { get; }
     [ObservableProperty] private List<Stroke> _canvasStrokes = [];
     public Dictionary<Guid, List<Guid>> SelectionTargets { get; private set; } = new();
+    public event Action? RequestInvalidateSelection;
     private List<StrokeEvent> CanvasEvents { get; } = [];
     private int _currentEventIndex = -1;
 
@@ -236,6 +237,7 @@ public partial class MainViewModel : ViewModelBase
                     selectionPath.MoveTo(ev.StartPoint);
                     var selectionBound = new SelectionBound
                     {
+                        Id = ev.BoundId,
                         Path = selectionPath
                     };
                     selectionBounds[ev.BoundId] = selectionBound;
@@ -292,6 +294,7 @@ public partial class MainViewModel : ViewModelBase
 
         CanvasStrokes = new List<Stroke>(drawStrokes.Values.ToList());
         SelectionTargets = selectionBounds.ToDictionary(k => k.Key, v => v.Value.Targets.ToList());
+        RequestInvalidateSelection?.Invoke();
     }
 
     private void CheckAndErase(SKPoint eraserPoint, Dictionary<Guid, DrawStroke> drawStrokes, EraserStroke eraserStroke)
