@@ -43,5 +43,3 @@ public record CreateSelectionBoundEvent(Guid BoundId, SKPoint StartPoint) : Stro
 public record IncreaseSelectionBoundEvent(Guid BoundId, SKPoint Point) : StrokeEvent(BoundId);
 
 public record EndSelectionEvent(Guid BoundId) : StrokeEvent(BoundId), ITerminalEvent;
-
-public record SelectionChangedEvent(List<Guid> SelectedIds) : Event, ITerminalEvent;

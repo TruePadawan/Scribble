@@ -271,23 +271,13 @@ public partial class MainViewModel : ViewModelBase
                 case EndSelectionEvent ev:
                     if (selectionBounds.ContainsKey(ev.BoundId))
                     {
-                        if (selectionBounds[ev.BoundId].Targets.Count == 0 && !clearsSomething.GetValueOrDefault(ev.BoundId))
+                        if (selectionBounds[ev.BoundId].Targets.Count == 0 &&
+                            !clearsSomething.GetValueOrDefault(ev.BoundId))
                         {
                             staleSelectionBounds.Add(ev.BoundId);
                         }
                     }
 
-                    break;
-                case SelectionChangedEvent ev:
-                    selectionBounds.Clear();
-                    if (ev.SelectedIds.Count > 0)
-                    {
-                        var toolBoundId = Guid.NewGuid();
-                        selectionBounds[toolBoundId] = new SelectionBound
-                        {
-                            Targets = new HashSet<Guid>(ev.SelectedIds)
-                        };
-                    }
                     break;
             }
         }
