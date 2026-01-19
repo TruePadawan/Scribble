@@ -20,7 +20,6 @@ public partial class MainViewModel : ViewModelBase
     public ScaleTransform ScaleTransform { get; }
     [ObservableProperty] private List<Stroke> _canvasStrokes = [];
     public Dictionary<Guid, List<Guid>> SelectionTargets { get; private set; } = new();
-    public event Action? RequestInvalidateCanvas;
     private List<StrokeEvent> CanvasEvents { get; } = [];
     private int _currentEventIndex = -1;
 
@@ -39,11 +38,6 @@ public partial class MainViewModel : ViewModelBase
     {
         ScaleTransform.ScaleX = newScale;
         ScaleTransform.ScaleY = newScale;
-    }
-
-    public void TriggerCanvasRedraw()
-    {
-        RequestInvalidateCanvas?.Invoke();
     }
 
     public void Undo()
