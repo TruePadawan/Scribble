@@ -6,7 +6,7 @@ namespace Scribble.Lib;
 
 public abstract class Stroke
 {
-    // public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid Id { get; set; } = Guid.NewGuid();
     public SKPath Path { get; init; } = new();
 }
 
@@ -35,4 +35,9 @@ public class EraserStroke : Stroke
 public class TextStroke : DrawStroke
 {
     public string Text { get; set; } = string.Empty;
+}
+
+public class SelectionBound : Stroke
+{
+    public HashSet<Guid> Targets = [];
 }

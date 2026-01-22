@@ -37,7 +37,7 @@ public class EllipseTool : PointerToolsBase
     {
         _startPoint = new SKPoint((float)coord.X, (float)coord.Y);
         _strokeId = Guid.NewGuid();
-        ViewModel.ApplyStrokeEvent(new StartStrokeEvent(_strokeId, _startPoint.Value, _strokePaint.Clone(),
+        ViewModel.ApplyEvent(new StartStrokeEvent(_strokeId, _startPoint.Value, _strokePaint.Clone(),
             StrokeTool.Ellipse));
     }
 
@@ -45,12 +45,12 @@ public class EllipseTool : PointerToolsBase
     public override void HandlePointerMove(Point prevCoord, Point currentCoord)
     {
         var endPoint = new SKPoint((float)currentCoord.X, (float)currentCoord.Y);
-        ViewModel.ApplyStrokeEvent(new LineStrokeLineToEvent(_strokeId, endPoint));
+        ViewModel.ApplyEvent(new LineStrokeLineToEvent(_strokeId, endPoint));
     }
 
     public override void HandlePointerRelease(Point prevCoord, Point currentCoord)
     {
-        ViewModel.ApplyStrokeEvent(new EndStrokeEvent(_strokeId));
+        ViewModel.ApplyEvent(new EndStrokeEvent(_strokeId));
     }
 
     public override bool RenderOptions(Panel parent)

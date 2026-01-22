@@ -1,11 +1,15 @@
 using System;
+using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Media.Imaging;
+using Avalonia.Platform;
 using Avalonia.Threading;
 using Scribble.Behaviours;
+using Scribble.Lib;
 using Scribble.Tools.PointerTools;
 using Scribble.Tools.PointerTools.ArrowTool;
 using Scribble.Tools.PointerTools.EllipseTool;
@@ -14,8 +18,11 @@ using Scribble.Tools.PointerTools.LineTool;
 using Scribble.Tools.PointerTools.PanningTool;
 using Scribble.Tools.PointerTools.PencilTool;
 using Scribble.Tools.PointerTools.RectangleTool;
+using Scribble.Tools.PointerTools.SelectTool;
 using Scribble.Tools.PointerTools.TextTool;
+using Scribble.Utils;
 using Scribble.ViewModels;
+using SkiaSharp;
 
 namespace Scribble.Views;
 
@@ -26,20 +33,31 @@ public partial class MainView : UserControl
     private const double MaxZoom = 3f;
     private PointerToolsBase? _activePointerTool;
     private MainViewModel? _viewModel;
+    private Point _selectionMoveCoord;
 
     public MainView()
     {
         InitializeComponent();
         _prevCoord = new Point(-1, -1);
+        _selectionMoveCoord = new Point(-1, -1);
+
+        var moveIconBitmap = Bitmap.DecodeToWidth(AssetLoader.Open(new Uri("avares://Scribble/Assets/move.png")), 36);
+        SelectionBorder.Cursor = new Cursor(moveIconBitmap, new PixelPoint(18, 18));
     }
 
     protected override void OnDataContextChanged(EventArgs e)
     {
+        if (_viewModel != null)
+        {
+            _viewModel.RequestInvalidateSelection -= VisualizeSelection;
+        }
+
         base.OnDataContextChanged(e);
 
         if (DataContext is MainViewModel viewModel)
         {
             _viewModel = viewModel;
+            _viewModel.RequestInvalidateSelection += VisualizeSelection;
 
             Toolbar.Children.Clear();
 
@@ -56,8 +74,9 @@ public partial class MainView : UserControl
             RegisterPointerTool(new EllipseTool("EllipseTool", viewModel));
             RegisterPointerTool(new RectangleTool("RectangleTool", viewModel));
             RegisterPointerTool(new TextTool("TextTool", viewModel, CanvasContainer));
+            RegisterPointerTool(new SelectTool("SelectTool", viewModel, CanvasContainer));
 
-            _viewModel.RequestInvalidateCanvas += () => MainCanvas.InvalidateVisual();
+            VisualizeSelection();
         }
     }
 
@@ -87,24 +106,27 @@ public partial class MainView : UserControl
         ToggleButtonGroup.SetGroupName(toggleButton, "PointerTools");
         toggleButton.IsCheckedChanged += (object? sender, RoutedEventArgs e) =>
         {
-            if (toggleButton.IsChecked != true) return;
-            _activePointerTool = tool;
+            if (toggleButton.IsChecked == true)
+            {
+                _activePointerTool?.Dispose();
+                _activePointerTool = tool;
 
-            // Render tool options
-            ToolOptions.Children.Clear();
-            if (tool.RenderOptions(ToolOptions))
-            {
-                ToolOptionsContainer.IsVisible = true;
-                ToolOptionsContainer.Opacity = 1;
-            }
-            else
-            {
-                ToolOptionsContainer.IsVisible = false;
-            }
+                // Render tool options
+                ToolOptions.Children.Clear();
+                if (tool.RenderOptions(ToolOptions))
+                {
+                    ToolOptionsContainer.IsVisible = true;
+                    ToolOptionsContainer.Opacity = 1;
+                }
+                else
+                {
+                    ToolOptionsContainer.IsVisible = false;
+                }
 
-            if (tool.Cursor != null)
-            {
-                MainCanvas.Cursor = tool.Cursor;
+                if (tool.Cursor != null)
+                {
+                    MainCanvas.Cursor = tool.Cursor;
+                }
             }
         };
 
@@ -116,6 +138,65 @@ public partial class MainView : UserControl
         toggleButton.Content = toolIcon;
 
         Toolbar.Children.Add(toggleButton);
+    }
+
+    private void VisualizeSelection()
+    {
+        if (_viewModel == null) return;
+
+        var allSelectedIds = _viewModel.SelectionTargets.Values.SelectMany(x => x).Distinct().ToList();
+
+        if (allSelectedIds.Count > 0)
+        {
+            var selectedStrokes = _viewModel.CanvasStrokes
+                .Where(stroke => allSelectedIds.Contains(stroke.Id) && stroke is DrawStroke)
+                .Cast<DrawStroke>()
+                .ToList();
+            if (selectedStrokes.Count == 0)
+            {
+                SelectionOverlay.IsVisible = false;
+                return;
+            }
+
+            SKRect combinedBounds = SKRect.Empty;
+
+            foreach (var stroke in selectedStrokes)
+            {
+                SKRect strokeBounds;
+                if (stroke is TextStroke textStroke && stroke.Path.PointCount > 0)
+                {
+                    var pos = textStroke.Path[0];
+                    var bounds = new SKRect();
+                    textStroke.Paint.MeasureText(textStroke.Text, ref bounds);
+                    bounds.Offset(pos);
+                    strokeBounds = bounds;
+                }
+                else
+                {
+                    strokeBounds = stroke.Path.Bounds;
+                }
+
+                if (combinedBounds == SKRect.Empty)
+                {
+                    combinedBounds = strokeBounds;
+                }
+                else
+                {
+                    combinedBounds.Union(strokeBounds);
+                }
+            }
+
+            Canvas.SetLeft(SelectionOverlay, combinedBounds.Left);
+            Canvas.SetTop(SelectionOverlay, combinedBounds.Top - 15 - 6);
+
+            SelectionBorder.Width = combinedBounds.Width;
+            SelectionBorder.Height = combinedBounds.Height;
+            SelectionOverlay.IsVisible = true;
+        }
+        else
+        {
+            SelectionOverlay.IsVisible = false;
+        }
     }
 
     private Point GetPointerPosition(PointerEventArgs e)
@@ -156,11 +237,9 @@ public partial class MainView : UserControl
 
     private void MainCanvas_OnPointerReleased(object? sender, PointerReleasedEventArgs e)
     {
-        var pointerCoordinates = GetPointerPosition(e);
-        // If the stroke was active with the left button, place a final round dab at the release point
-        // only if we didn't already place one there on the last move (to avoid over-darkening).
         if (e.InitialPressMouseButton == MouseButton.Left)
         {
+            var pointerCoordinates = GetPointerPosition(e);
             _activePointerTool?.HandlePointerRelease(_prevCoord, pointerCoordinates);
         }
 
@@ -204,5 +283,43 @@ public partial class MainView : UserControl
 
         // Stop the scroll viewer from applying its own scrolling logic
         e.Handled = true;
+    }
+
+    private void SelectionBorder_OnPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (e.Properties.IsLeftButtonPressed)
+        {
+            _selectionMoveCoord = GetPointerPosition(e);
+        }
+    }
+
+    private void SelectionBorder_OnPointerMoved(object? sender, PointerEventArgs e)
+    {
+        var pointerCoordinates = GetPointerPosition(e);
+        var hasLastCoordinates = !_selectionMoveCoord.Equals(new Point(-1, -1));
+        if (e.Properties.IsLeftButtonPressed && hasLastCoordinates && _viewModel != null)
+        {
+            // Move selected elements
+            Point delta = pointerCoordinates - _selectionMoveCoord;
+            foreach (var selection in _viewModel.SelectionTargets)
+            {
+                _viewModel.ApplyEvent(new MoveStrokesEvent(selection.Key, Utilities.ToSkPoint(delta)));
+            }
+        }
+
+        _selectionMoveCoord = pointerCoordinates;
+    }
+
+    private void SelectionBorder_OnPointerReleased(object? sender, PointerReleasedEventArgs e)
+    {
+        if (e.InitialPressMouseButton == MouseButton.Left && _viewModel != null)
+        {
+            foreach (var selection in _viewModel.SelectionTargets)
+            {
+                _viewModel.ApplyEvent(new EndStrokeEvent(selection.Key));
+            }
+        }
+
+        _selectionMoveCoord = new Point(-1, -1);
     }
 }

@@ -38,6 +38,16 @@
                                          PointerWheelChanged="MainCanvas_OnPointerWheelChanged"
                                          Strokes="{Binding CanvasStrokes}"
                                          RenderTransformOrigin="0 0" />
+                    <!-- COVERS SELECTED ELEMENTS -->
+                    <StackPanel Name="SelectionOverlay" Spacing="6" IsVisible="False">
+                        <Button CornerRadius="100" BorderThickness="2" BorderBrush="Gray" Height="15" Width="15"
+                                Background="Transparent" HorizontalAlignment="Center" />
+                        <Border Name="SelectionBorder" BorderThickness="2" BorderBrush="Gray" Width="300"
+                                Height="300" Background="Transparent" PointerPressed="SelectionBorder_OnPointerPressed"
+                                PointerMoved="SelectionBorder_OnPointerMoved"
+                                PointerReleased="SelectionBorder_OnPointerReleased">
+                        </Border>
+                    </StackPanel>
                     <Canvas.Styles>
                         <Style Selector="TextBox:focus /template/ Border">
                             <Setter Property="BorderBrush" Value="Gray" />

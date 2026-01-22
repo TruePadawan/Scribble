@@ -53,6 +53,11 @@ public abstract class PointerToolsBase(string name, MainViewModel viewModel, Bit
         return false;
     }
 
+    // This is called when the active tool is swapped out
+    public virtual void Dispose()
+    {
+    }
+
     protected StackPanel CreateOptionControl(Control actualControl, string optionLabel)
     {
         var stackPanel = new StackPanel

@@ -19,8 +19,9 @@ public partial class MainViewModel : ViewModelBase
     [ObservableProperty] private SKColor _backgroundColor;
     public ScaleTransform ScaleTransform { get; }
     [ObservableProperty] private List<Stroke> _canvasStrokes = [];
-    public event Action? RequestInvalidateCanvas;
-    private List<StrokeEvent> CanvasEvents { get; } = [];
+    public Dictionary<Guid, List<Guid>> SelectionTargets { get; private set; } = new();
+    public event Action? RequestInvalidateSelection;
+    private List<Event> CanvasEvents { get; } = [];
     private int _currentEventIndex = -1;
 
 
@@ -40,53 +41,46 @@ public partial class MainViewModel : ViewModelBase
         ScaleTransform.ScaleY = newScale;
     }
 
-    public void TriggerCanvasRedraw()
-    {
-        RequestInvalidateCanvas?.Invoke();
-    }
-
     public void Undo()
     {
-        if (CanvasEvents.Count == 0) return;
-        int latestEventIdx = _currentEventIndex;
-        for (int i = _currentEventIndex - 1; i >= 0; i--)
-        {
-            if (CanvasEvents[latestEventIdx] is EndStrokeEvent &&
-                (CanvasEvents[i] is StartStrokeEvent || CanvasEvents[i] is AddTextEvent))
-            {
-                _currentEventIndex = i - 1;
-                break;
-            }
+        if (CanvasEvents.Count == 0 || _currentEventIndex == -1) return;
 
-            if (CanvasEvents[latestEventIdx] is TriggerEraseEvent)
-            {
-                if (CanvasEvents[i] is EndStrokeEvent || CanvasEvents[i] is TriggerEraseEvent)
-                {
-                    _currentEventIndex = i;
-                    break;
-                }
-            }
+        // Move back to find the previous terminal event
+        int i = _currentEventIndex;
+
+        // If we are currently AT a terminal event, we want to go BEFORE it and find the next previous one
+        if (CanvasEvents[i] is ITerminalEvent)
+        {
+            i--;
         }
 
+        while (i >= 0 && CanvasEvents[i] is not ITerminalEvent)
+        {
+            i--;
+        }
+
+        _currentEventIndex = i;
         ReplayEvents();
     }
 
     public void Redo()
     {
         if (CanvasEvents.Count == 0 || _currentEventIndex == CanvasEvents.Count - 1) return;
-        for (int i = _currentEventIndex + 1; i < CanvasEvents.Count; i++)
+
+        int i = _currentEventIndex + 1;
+        while (i < CanvasEvents.Count && CanvasEvents[i] is not ITerminalEvent)
         {
-            if (CanvasEvents[i] is TriggerEraseEvent || CanvasEvents[i] is EndStrokeEvent)
-            {
-                _currentEventIndex = i;
-                break;
-            }
+            i++;
         }
 
-        ReplayEvents();
+        if (i < CanvasEvents.Count)
+        {
+            _currentEventIndex = i;
+            ReplayEvents();
+        }
     }
 
-    public void ApplyStrokeEvent(StrokeEvent @event)
+    public void ApplyEvent(Event @event)
     {
         var eventsCount = CanvasEvents.Count;
         // Remove all stale events if we branch off
@@ -97,16 +91,36 @@ public partial class MainViewModel : ViewModelBase
 
         CanvasEvents.Add(@event);
         _currentEventIndex = CanvasEvents.Count - 1;
+
         if (@event is EndStrokeEvent) return;
-        ReplayEvents();
+        var staleIds = ReplayEvents();
+
+        if (staleIds.Count > 0 && _currentEventIndex == CanvasEvents.Count - 1)
+        {
+            bool changed = false;
+            foreach (var id in staleIds)
+            {
+                int removed = CanvasEvents.RemoveAll(ev => ev is StrokeEvent { StrokeId: var sid } && sid == id);
+                if (removed > 0) changed = true;
+            }
+
+            if (changed)
+            {
+                _currentEventIndex = CanvasEvents.Count - 1;
+                ReplayEvents();
+            }
+        }
     }
 
-    private void ReplayEvents()
+    private List<Guid> ReplayEvents()
     {
         var drawStrokes = new Dictionary<Guid, DrawStroke>();
         var eraserStrokes = new Dictionary<Guid, EraserStroke>();
         var staleEraseStrokes = new List<Guid>();
         var eraserHeads = new Dictionary<Guid, SKPoint>();
+        var selectionBounds = new Dictionary<Guid, SelectionBound>();
+        var staleSelectionBounds = new List<Guid>();
+        var clearsSomething = new Dictionary<Guid, bool>();
 
         for (var i = 0; i <= _currentEventIndex; i++)
         {
@@ -118,6 +132,7 @@ public partial class MainViewModel : ViewModelBase
                     newLinePath.MoveTo(ev.StartPoint);
                     drawStrokes[ev.StrokeId] = new DrawStroke
                     {
+                        Id = ev.StrokeId,
                         Paint = ev.StrokePaint,
                         Path = newLinePath,
                         ToolType = ev.ToolType
@@ -214,28 +229,82 @@ public partial class MainViewModel : ViewModelBase
                     textPath.MoveTo(ev.Position);
                     drawStrokes[ev.StrokeId] = new TextStroke
                     {
+                        Id = ev.StrokeId,
                         Paint = ev.Paint,
                         Path = textPath,
                         ToolType = StrokeTool.Text,
                         Text = ev.Text
                     };
                     break;
+                case CreateSelectionBoundEvent ev:
+                    var selectionPath = new SKPath();
+                    selectionPath.MoveTo(ev.StartPoint);
+
+                    // Track if there's any active selection before clearing
+                    clearsSomething[ev.BoundId] = selectionBounds.Any(sb => sb.Value.Targets.Count > 0);
+                    selectionBounds.Clear();
+
+                    var selectionBound = new SelectionBound
+                    {
+                        Id = ev.BoundId,
+                        Path = selectionPath
+                    };
+                    selectionBounds[ev.BoundId] = selectionBound;
+                    break;
+                case IncreaseSelectionBoundEvent ev:
+                    if (selectionBounds.ContainsKey(ev.BoundId))
+                    {
+                        var bound = selectionBounds[ev.BoundId];
+                        var boundOrigin = bound.Path.Points[0];
+                        bound.Path.Reset();
+                        bound.Path.MoveTo(boundOrigin);
+                        bound.Path.LineTo(ev.Point);
+
+                        // Check for strokes that are within this bound
+                        var top = Math.Min(boundOrigin.Y, ev.Point.Y);
+                        var left = Math.Min(boundOrigin.X, ev.Point.X);
+                        var boundRect = SKRect.Create(new SKPoint(left, top), Utilities.GetSize(boundOrigin, ev.Point));
+                        CheckAndSelect(boundRect, bound, drawStrokes);
+                    }
+
+                    break;
+                case EndSelectionEvent ev:
+                    if (selectionBounds.ContainsKey(ev.BoundId))
+                    {
+                        if (selectionBounds[ev.BoundId].Targets.Count == 0 &&
+                            !clearsSomething.GetValueOrDefault(ev.BoundId))
+                        {
+                            staleSelectionBounds.Add(ev.BoundId);
+                        }
+                    }
+
+                    break;
+                case MoveStrokesEvent ev:
+                    if (selectionBounds.ContainsKey(ev.BoundId))
+                    {
+                        var bound = selectionBounds[ev.BoundId];
+                        foreach (var boundTargetId in bound.Targets)
+                        {
+                            if (drawStrokes.ContainsKey(boundTargetId))
+                            {
+                                var stroke = drawStrokes[boundTargetId];
+                                stroke.Path.Transform(SKMatrix.CreateTranslation(ev.Delta.X, ev.Delta.Y));
+                            }
+                        }
+                    }
+
+                    break;
             }
         }
-
-        // Remove erase events that don't actually erase anything
-        if (staleEraseStrokes.Count > 0)
-        {
-            foreach (var staleEraseStrokeId in staleEraseStrokes)
-            {
-                CanvasEvents.RemoveAll(ev => ev.StrokeId == staleEraseStrokeId);
-            }
-
-            _currentEventIndex = CanvasEvents.Count - 1;
-        }
-
 
         CanvasStrokes = new List<Stroke>(drawStrokes.Values.ToList());
+        SelectionTargets = selectionBounds.ToDictionary(k => k.Key, v => v.Value.Targets.ToList());
+        RequestInvalidateSelection?.Invoke();
+
+        var allStale = new List<Guid>();
+        allStale.AddRange(staleEraseStrokes);
+        allStale.AddRange(staleSelectionBounds);
+        return allStale;
     }
 
     private void CheckAndErase(SKPoint eraserPoint, Dictionary<Guid, DrawStroke> drawStrokes, EraserStroke eraserStroke)
@@ -349,5 +418,32 @@ public partial class MainViewModel : ViewModelBase
         );
 
         return SKPoint.Distance(point, closest) < tolerance;
+    }
+
+    private void CheckAndSelect(SKRect boundRect, SelectionBound bound, Dictionary<Guid, DrawStroke> drawStrokes)
+    {
+        bound.Targets.Clear();
+        foreach (var (id, stroke) in drawStrokes)
+        {
+            SKRect strokeBounds;
+
+            if (stroke.ToolType == StrokeTool.Text && stroke is TextStroke textStroke && stroke.Path.PointCount > 0)
+            {
+                var pos = stroke.Path[0];
+                var bounds = new SKRect();
+                textStroke.Paint.MeasureText(textStroke.Text, ref bounds);
+                bounds.Offset(pos);
+                strokeBounds = bounds;
+            }
+            else
+            {
+                strokeBounds = stroke.Path.Bounds;
+            }
+
+            if (boundRect.Contains(strokeBounds))
+            {
+                bound.Targets.Add(id);
+            }
+        }
     }
 }

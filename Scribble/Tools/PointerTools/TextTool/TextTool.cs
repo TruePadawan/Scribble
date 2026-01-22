@@ -91,8 +91,8 @@ public class TextTool : PointerToolsBase
             var textboxPos = new SKPoint((float)Canvas.GetLeft(_currentTextBox), (float)Canvas.GetTop(_currentTextBox));
             textboxPos.Y += _strokePaint.TextSize;
             var strokeId = Guid.NewGuid();
-            ViewModel.ApplyStrokeEvent(new AddTextEvent(strokeId, textboxPos, text, _strokePaint.Clone()));
-            ViewModel.ApplyStrokeEvent(new EndStrokeEvent(strokeId));
+            ViewModel.ApplyEvent(new AddTextEvent(strokeId, textboxPos, text, _strokePaint.Clone()));
+            ViewModel.ApplyEvent(new EndStrokeEvent(strokeId));
         }
 
         _canvasContainer.Children.Remove(_currentTextBox);
