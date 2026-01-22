@@ -1,6 +1,6 @@
 ## Scribble
 
-<img width="1916" height="1012" alt="Screenshot_2026-01-03_20-23-46" src="https://github.com/user-attachments/assets/5dd9b889-a7a6-43ce-9458-c0ba9542b422" />
+<img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/b48e97ab-129e-4466-8df5-fdab73ac8b98" />
 
 ### Building for Android
 
