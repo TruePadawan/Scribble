@@ -5,6 +5,8 @@ using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Media.Imaging;
+using Avalonia.Platform;
 using Avalonia.Threading;
 using Scribble.Behaviours;
 using Scribble.Lib;
@@ -18,7 +20,6 @@ using Scribble.Tools.PointerTools.PencilTool;
 using Scribble.Tools.PointerTools.RectangleTool;
 using Scribble.Tools.PointerTools.SelectTool;
 using Scribble.Tools.PointerTools.TextTool;
-using Scribble.Utils;
 using Scribble.ViewModels;
 using SkiaSharp;
 
@@ -36,6 +37,9 @@ public partial class MainView : UserControl
     {
         InitializeComponent();
         _prevCoord = new Point(-1, -1);
+
+        var moveIconBitmap = Bitmap.DecodeToWidth(AssetLoader.Open(new Uri("avares://Scribble/Assets/move.png")), 36);
+        SelectionBorder.Cursor = new Cursor(moveIconBitmap, new PixelPoint(18, 18));
     }
 
     protected override void OnDataContextChanged(EventArgs e)
@@ -136,6 +140,7 @@ public partial class MainView : UserControl
     private void VisualizeSelection()
     {
         if (_viewModel == null) return;
+        // SelectionBorder.Cursor = new Cursor(StandardCursorType.DragMove);
 
         var allSelectedIds = _viewModel.SelectionTargets.Values.SelectMany(x => x).Distinct().ToList();
 
