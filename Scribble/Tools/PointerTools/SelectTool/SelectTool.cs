@@ -1,5 +1,4 @@
 using System;
-using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
@@ -29,8 +28,8 @@ class SelectTool : PointerToolsBase
     {
         _selectionBorder = new Border
         {
-            BorderThickness = new Thickness(1),
-            BorderBrush = Brushes.Aquamarine,
+            BorderThickness = new Thickness(2),
+            BorderBrush = Brushes.Gray,
             Width = 0,
             Height = 0
         };
@@ -61,9 +60,5 @@ class SelectTool : PointerToolsBase
         _canvasContainer.Children.Remove(_selectionBorder);
         _selectionBorder = null;
         ViewModel.ApplyEvent(new EndSelectionEvent(_boundId));
-    }
-
-    public override void Dispose()
-    {
     }
 }
