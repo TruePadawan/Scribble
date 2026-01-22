@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using SkiaSharp;
 
 namespace Scribble.Lib;
@@ -43,3 +42,7 @@ public record CreateSelectionBoundEvent(Guid BoundId, SKPoint StartPoint) : Stro
 public record IncreaseSelectionBoundEvent(Guid BoundId, SKPoint Point) : StrokeEvent(BoundId);
 
 public record EndSelectionEvent(Guid BoundId) : StrokeEvent(BoundId), ITerminalEvent;
+
+public record MoveStrokesEvent(Guid BoundId, SKPoint Delta): StrokeEvent(BoundId);
+
+// public record EndMoveStrokesEvent(Guid BoundId): StrokeEvent(BoundId), ITerminalEvent;

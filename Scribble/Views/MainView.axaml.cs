@@ -20,6 +20,7 @@ using Scribble.Tools.PointerTools.PencilTool;
 using Scribble.Tools.PointerTools.RectangleTool;
 using Scribble.Tools.PointerTools.SelectTool;
 using Scribble.Tools.PointerTools.TextTool;
+using Scribble.Utils;
 using Scribble.ViewModels;
 using SkiaSharp;
 
@@ -32,11 +33,13 @@ public partial class MainView : UserControl
     private const double MaxZoom = 3f;
     private PointerToolsBase? _activePointerTool;
     private MainViewModel? _viewModel;
+    private Point _selectionMoveCoord;
 
     public MainView()
     {
         InitializeComponent();
         _prevCoord = new Point(-1, -1);
+        _selectionMoveCoord = new Point(-1, -1);
 
         var moveIconBitmap = Bitmap.DecodeToWidth(AssetLoader.Open(new Uri("avares://Scribble/Assets/move.png")), 36);
         SelectionBorder.Cursor = new Cursor(moveIconBitmap, new PixelPoint(18, 18));
@@ -140,7 +143,6 @@ public partial class MainView : UserControl
     private void VisualizeSelection()
     {
         if (_viewModel == null) return;
-        // SelectionBorder.Cursor = new Cursor(StandardCursorType.DragMove);
 
         var allSelectedIds = _viewModel.SelectionTargets.Values.SelectMany(x => x).Distinct().ToList();
 
@@ -235,11 +237,9 @@ public partial class MainView : UserControl
 
     private void MainCanvas_OnPointerReleased(object? sender, PointerReleasedEventArgs e)
     {
-        var pointerCoordinates = GetPointerPosition(e);
-        // If the stroke was active with the left button, place a final round dab at the release point
-        // only if we didn't already place one there on the last move (to avoid over-darkening).
         if (e.InitialPressMouseButton == MouseButton.Left)
         {
+            var pointerCoordinates = GetPointerPosition(e);
             _activePointerTool?.HandlePointerRelease(_prevCoord, pointerCoordinates);
         }
 
@@ -283,5 +283,43 @@ public partial class MainView : UserControl
 
         // Stop the scroll viewer from applying its own scrolling logic
         e.Handled = true;
+    }
+
+    private void SelectionBorder_OnPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (e.Properties.IsLeftButtonPressed)
+        {
+            _selectionMoveCoord = GetPointerPosition(e);
+        }
+    }
+
+    private void SelectionBorder_OnPointerMoved(object? sender, PointerEventArgs e)
+    {
+        var pointerCoordinates = GetPointerPosition(e);
+        var hasLastCoordinates = !_selectionMoveCoord.Equals(new Point(-1, -1));
+        if (e.Properties.IsLeftButtonPressed && hasLastCoordinates && _viewModel != null)
+        {
+            // Move selected elements
+            Point delta = pointerCoordinates - _selectionMoveCoord;
+            foreach (var selection in _viewModel.SelectionTargets)
+            {
+                _viewModel.ApplyEvent(new MoveStrokesEvent(selection.Key, Utilities.ToSkPoint(delta)));
+            }
+        }
+
+        _selectionMoveCoord = pointerCoordinates;
+    }
+
+    private void SelectionBorder_OnPointerReleased(object? sender, PointerReleasedEventArgs e)
+    {
+        if (e.InitialPressMouseButton == MouseButton.Left && _viewModel != null)
+        {
+            foreach (var selection in _viewModel.SelectionTargets)
+            {
+                _viewModel.ApplyEvent(new EndStrokeEvent(selection.Key));
+            }
+        }
+
+        _selectionMoveCoord = new Point(-1, -1);
     }
 }

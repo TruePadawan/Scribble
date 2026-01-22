@@ -279,6 +279,21 @@ public partial class MainViewModel : ViewModelBase
                     }
 
                     break;
+                case MoveStrokesEvent ev:
+                    if (selectionBounds.ContainsKey(ev.BoundId))
+                    {
+                        var bound = selectionBounds[ev.BoundId];
+                        foreach (var boundTargetId in bound.Targets)
+                        {
+                            if (drawStrokes.ContainsKey(boundTargetId))
+                            {
+                                var stroke = drawStrokes[boundTargetId];
+                                stroke.Path.Transform(SKMatrix.CreateTranslation(ev.Delta.X, ev.Delta.Y));
+                            }
+                        }
+                    }
+
+                    break;
             }
         }
 
