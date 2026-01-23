@@ -34,15 +34,24 @@ public partial class MainView : UserControl
     private PointerToolsBase? _activePointerTool;
     private MainViewModel? _viewModel;
     private Point _selectionMoveCoord;
+    private double _selectionRotationAngle;
+    private SKRect _selectionBounds;
+    private Point _selectionCenter;
 
     public MainView()
     {
         InitializeComponent();
         _prevCoord = new Point(-1, -1);
         _selectionMoveCoord = new Point(-1, -1);
+        _selectionRotationAngle = double.NaN;
+        _selectionBounds = SKRect.Empty;
+        _selectionCenter = new Point(-1, -1);
 
         var moveIconBitmap = Bitmap.DecodeToWidth(AssetLoader.Open(new Uri("avares://Scribble/Assets/move.png")), 36);
+        var rotateIconBitmap =
+            Bitmap.DecodeToWidth(AssetLoader.Open(new Uri("avares://Scribble/Assets/rotate.png")), 24);
         SelectionBorder.Cursor = new Cursor(moveIconBitmap, new PixelPoint(18, 18));
+        SelectionRotationBtn.Cursor = new Cursor(rotateIconBitmap, new PixelPoint(12, 12));
     }
 
     protected override void OnDataContextChanged(EventArgs e)
@@ -192,10 +201,17 @@ public partial class MainView : UserControl
             SelectionBorder.Width = combinedBounds.Width;
             SelectionBorder.Height = combinedBounds.Height;
             SelectionOverlay.IsVisible = true;
+            _selectionBounds = combinedBounds;
+            bool isRotating = !double.IsNaN(_selectionRotationAngle);
+            if (isRotating)
+            {
+                SelectionOverlay.IsVisible = false;
+            }
         }
         else
         {
             SelectionOverlay.IsVisible = false;
+            _selectionBounds = SKRect.Empty;
         }
     }
 
@@ -321,5 +337,69 @@ public partial class MainView : UserControl
         }
 
         _selectionMoveCoord = new Point(-1, -1);
+    }
+
+    private void SelectionRotationBtn_OnPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (e.Properties.IsLeftButtonPressed)
+        {
+            if (_selectionBounds.IsEmpty)
+            {
+                _selectionRotationAngle = double.NaN;
+                return;
+            }
+
+            var pointerCoordinates = GetPointerPosition(e);
+            _selectionCenter = new Point(_selectionBounds.Left + (_selectionBounds.Width / 2),
+                _selectionBounds.Top + (_selectionBounds.Height / 2));
+            _selectionRotationAngle = Math.Atan2(pointerCoordinates.Y - _selectionCenter.Y,
+                pointerCoordinates.X - _selectionCenter.X);
+        }
+    }
+
+    private void SelectionRotationBtn_OnPointerMoved(object? sender, PointerEventArgs e)
+    {
+        var pointerCoordinates = GetPointerPosition(e);
+        var hasLastAngle = !double.IsNaN(_selectionRotationAngle);
+
+        if (e.Properties.IsLeftButtonPressed && hasLastAngle && _viewModel != null && !_selectionBounds.IsEmpty)
+        {
+            var angleRad = Math.Atan2(pointerCoordinates.Y - _selectionCenter.Y,
+                pointerCoordinates.X - _selectionCenter.X);
+            var deltaRad = angleRad - _selectionRotationAngle;
+
+            // Keep delta in [-pi, pi] to avoid jumps across the wrap boundary.
+            if (deltaRad > Math.PI)
+            {
+                deltaRad -= Math.PI * 2;
+            }
+            else if (deltaRad < -Math.PI)
+            {
+                deltaRad += Math.PI * 2;
+            }
+
+            foreach (var selection in _viewModel.SelectionTargets)
+            {
+                _viewModel.ApplyEvent(new RotateStrokesEvent(selection.Key, (float)deltaRad,
+                    Utilities.ToSkPoint(_selectionCenter)));
+            }
+
+            _selectionRotationAngle = angleRad;
+        }
+    }
+
+    private void SelectionRotationBtn_OnPointerReleased(object? sender, PointerReleasedEventArgs e)
+    {
+        if (e.InitialPressMouseButton == MouseButton.Left && _viewModel != null)
+        {
+            foreach (var selection in _viewModel.SelectionTargets)
+            {
+                _viewModel.ApplyEvent(new EndStrokeEvent(selection.Key));
+            }
+        }
+
+        _selectionRotationAngle = double.NaN;
+        _selectionCenter = new Point(-1, -1);
+        VisualizeSelection();
     }
 }

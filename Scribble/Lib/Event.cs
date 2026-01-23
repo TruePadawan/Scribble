@@ -11,7 +11,9 @@ public abstract record Event
     public DateTime TimeStamp { get; init; } = DateTime.UtcNow;
 }
 
-public interface ITerminalEvent { }
+public interface ITerminalEvent
+{
+}
 
 public abstract record StrokeEvent(Guid StrokeId) : Event;
 
@@ -34,7 +36,8 @@ public record TriggerEraseEvent(Guid StrokeId) : StrokeEvent(StrokeId), ITermina
 public record LineStrokeLineToEvent(Guid StrokeId, SKPoint EndPoint) : StrokeEvent(StrokeId);
 
 // TEXT TOOL
-public record AddTextEvent(Guid StrokeId, SKPoint Position, string Text, SKPaint Paint) : StrokeEvent(StrokeId), ITerminalEvent;
+public record AddTextEvent(Guid StrokeId, SKPoint Position, string Text, SKPaint Paint)
+    : StrokeEvent(StrokeId), ITerminalEvent;
 
 // SELECT TOOL
 public record CreateSelectionBoundEvent(Guid BoundId, SKPoint StartPoint) : StrokeEvent(BoundId);
@@ -43,6 +46,8 @@ public record IncreaseSelectionBoundEvent(Guid BoundId, SKPoint Point) : StrokeE
 
 public record EndSelectionEvent(Guid BoundId) : StrokeEvent(BoundId), ITerminalEvent;
 
-public record MoveStrokesEvent(Guid BoundId, SKPoint Delta): StrokeEvent(BoundId);
+public record MoveStrokesEvent(Guid BoundId, SKPoint Delta) : StrokeEvent(BoundId);
+
+public record RotateStrokesEvent(Guid BoundId, float DegreesRad, SKPoint Center) : StrokeEvent(BoundId);
 
 // public record EndMoveStrokesEvent(Guid BoundId): StrokeEvent(BoundId), ITerminalEvent;

@@ -294,6 +294,21 @@ public partial class MainViewModel : ViewModelBase
                     }
 
                     break;
+                case RotateStrokesEvent ev:
+                    if (selectionBounds.ContainsKey(ev.BoundId))
+                    {
+                        var bound = selectionBounds[ev.BoundId];
+                        foreach (var boundTargetId in bound.Targets)
+                        {
+                            if (drawStrokes.ContainsKey(boundTargetId))
+                            {
+                                var stroke = drawStrokes[boundTargetId];
+                                stroke.Path.Transform(SKMatrix.CreateRotation(ev.DegreesRad, ev.Center.X, ev.Center.Y));
+                            }
+                        }
+                    }
+
+                    break;
             }
         }
 
