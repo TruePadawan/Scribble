@@ -27,7 +27,7 @@ public partial class MainViewModel : ViewModelBase
 
     public MainViewModel()
     {
-        BackgroundColor = SKColors.Black;
+        BackgroundColor = SKColors.Transparent;
         ScaleTransform = new ScaleTransform(1, 1);
     }
 
