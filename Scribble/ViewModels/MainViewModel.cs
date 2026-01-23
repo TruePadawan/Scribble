@@ -309,6 +309,21 @@ public partial class MainViewModel : ViewModelBase
                     }
 
                     break;
+                case ScaleStrokesEvent ev:
+                    if (selectionBounds.ContainsKey(ev.BoundId))
+                    {
+                        var bound = selectionBounds[ev.BoundId];
+                        foreach (var boundTargetId in bound.Targets)
+                        {
+                            if (drawStrokes.ContainsKey(boundTargetId))
+                            {
+                                var stroke = drawStrokes[boundTargetId];
+                                stroke.Path.Transform(SKMatrix.CreateScale(ev.Scale.X, ev.Scale.Y, ev.Center.X, ev.Center.Y));
+                            }
+                        }
+                    }
+
+                    break;
             }
         }
 

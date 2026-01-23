@@ -50,4 +50,6 @@ public record MoveStrokesEvent(Guid BoundId, SKPoint Delta) : StrokeEvent(BoundI
 
 public record RotateStrokesEvent(Guid BoundId, float DegreesRad, SKPoint Center) : StrokeEvent(BoundId);
 
+public record ScaleStrokesEvent(Guid BoundId, SKPoint Scale, SKPoint Center) : StrokeEvent(BoundId);
+
 // public record EndMoveStrokesEvent(Guid BoundId): StrokeEvent(BoundId), ITerminalEvent;

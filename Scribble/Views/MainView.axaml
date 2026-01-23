@@ -42,15 +42,42 @@
                     <StackPanel Name="SelectionOverlay" Spacing="6" IsVisible="False">
                         <Border Name="SelectionRotationBtn" CornerRadius="100" BorderThickness="2" BorderBrush="Gray"
                                 Height="15" Width="15"
-                                Background="Transparent" HorizontalAlignment="Center"
+                                Background="Gray" HorizontalAlignment="Center"
                                 PointerPressed="SelectionRotationBtn_OnPointerPressed"
                                 PointerMoved="SelectionRotationBtn_OnPointerMoved"
                                 PointerReleased="SelectionRotationBtn_OnPointerReleased" />
-                        <Border Name="SelectionBorder" BorderThickness="2" BorderBrush="Gray" Width="300"
-                                Height="300" Background="Transparent" PointerPressed="SelectionBorder_OnPointerPressed"
-                                PointerMoved="SelectionBorder_OnPointerMoved"
-                                PointerReleased="SelectionBorder_OnPointerReleased">
-                        </Border>
+                        <Grid Name="SelectionBoxContainer">
+                            <Border Name="SelectionBorder" BorderThickness="2" BorderBrush="Gray"
+                                    HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+                                    Background="Transparent" PointerPressed="SelectionBorder_OnPointerPressed"
+                                    PointerMoved="SelectionBorder_OnPointerMoved"
+                                    PointerReleased="SelectionBorder_OnPointerReleased">
+                            </Border>
+                            <Border Name="ScaleHandleTl" Width="10" Height="10" Background="White" BorderBrush="Gray"
+                                    BorderThickness="1" CornerRadius="5" HorizontalAlignment="Left"
+                                    VerticalAlignment="Top" Cursor="TopLeftCorner" Margin="-5,-5,0,0"
+                                    PointerPressed="ScaleHandle_OnPointerPressed"
+                                    PointerMoved="ScaleHandle_OnPointerMoved"
+                                    PointerReleased="ScaleHandle_OnPointerReleased" />
+                            <Border Name="ScaleHandleTr" Width="10" Height="10" Background="White" BorderBrush="Gray"
+                                    BorderThickness="1" CornerRadius="5" HorizontalAlignment="Right"
+                                    VerticalAlignment="Top" Cursor="TopRightCorner" Margin="0,-5,-5,0"
+                                    PointerPressed="ScaleHandle_OnPointerPressed"
+                                    PointerMoved="ScaleHandle_OnPointerMoved"
+                                    PointerReleased="ScaleHandle_OnPointerReleased" />
+                            <Border Name="ScaleHandleBl" Width="10" Height="10" Background="White" BorderBrush="Gray"
+                                    BorderThickness="1" CornerRadius="5" HorizontalAlignment="Left"
+                                    VerticalAlignment="Bottom" Cursor="BottomLeftCorner" Margin="-5,0,0,-5"
+                                    PointerPressed="ScaleHandle_OnPointerPressed"
+                                    PointerMoved="ScaleHandle_OnPointerMoved"
+                                    PointerReleased="ScaleHandle_OnPointerReleased" />
+                            <Border Name="ScaleHandleBr" Width="10" Height="10" Background="White" BorderBrush="Gray"
+                                    BorderThickness="1" CornerRadius="5" HorizontalAlignment="Right"
+                                    VerticalAlignment="Bottom" Cursor="BottomRightCorner" Margin="0,0,-5,-5"
+                                    PointerPressed="ScaleHandle_OnPointerPressed"
+                                    PointerMoved="ScaleHandle_OnPointerMoved"
+                                    PointerReleased="ScaleHandle_OnPointerReleased" />
+                        </Grid>
                     </StackPanel>
                     <Canvas.Styles>
                         <Style Selector="TextBox:focus /template/ Border">

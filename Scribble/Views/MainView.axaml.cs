@@ -37,6 +37,9 @@ public partial class MainView : UserControl
     private double _selectionRotationAngle;
     private SKRect _selectionBounds;
     private Point _selectionCenter;
+    private Point _scalePivot;
+    private Point _scalePrevCoord;
+    private string? _activeScaleHandle;
 
     public MainView()
     {
@@ -46,6 +49,8 @@ public partial class MainView : UserControl
         _selectionRotationAngle = double.NaN;
         _selectionBounds = SKRect.Empty;
         _selectionCenter = new Point(-1, -1);
+        _scalePivot = new Point(-1, -1);
+        _scalePrevCoord = new Point(-1, -1);
 
         var moveIconBitmap = Bitmap.DecodeToWidth(AssetLoader.Open(new Uri("avares://Scribble/Assets/move.png")), 36);
         var rotateIconBitmap =
@@ -198,12 +203,13 @@ public partial class MainView : UserControl
             Canvas.SetLeft(SelectionOverlay, combinedBounds.Left);
             Canvas.SetTop(SelectionOverlay, combinedBounds.Top - 15 - 6);
 
-            SelectionBorder.Width = combinedBounds.Width;
-            SelectionBorder.Height = combinedBounds.Height;
+            SelectionBoxContainer.Width = combinedBounds.Width;
+            SelectionBoxContainer.Height = combinedBounds.Height;
             SelectionOverlay.IsVisible = true;
             _selectionBounds = combinedBounds;
             bool isRotating = !double.IsNaN(_selectionRotationAngle);
-            if (isRotating)
+            bool isScaling = _activeScaleHandle != null;
+            if (isRotating || isScaling)
             {
                 SelectionOverlay.IsVisible = false;
             }
@@ -401,5 +407,80 @@ public partial class MainView : UserControl
         _selectionRotationAngle = double.NaN;
         _selectionCenter = new Point(-1, -1);
         VisualizeSelection();
+    }
+
+    private void ScaleHandle_OnPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (e.Properties.IsLeftButtonPressed && sender is Control control && _viewModel != null)
+        {
+            _activeScaleHandle = control.Name;
+            _scalePrevCoord = GetPointerPosition(e);
+
+            // Determine pivot based on the handle (opposite corner)
+            // _selectionBounds contains the current bounds in Canvas coordinates
+            switch (_activeScaleHandle)
+            {
+                case "ScaleHandleTl":
+                    _scalePivot = new Point(_selectionBounds.Right, _selectionBounds.Bottom);
+                    break;
+                case "ScaleHandleTr":
+                    _scalePivot = new Point(_selectionBounds.Left, _selectionBounds.Bottom);
+                    break;
+                case "ScaleHandleBl":
+                    _scalePivot = new Point(_selectionBounds.Right, _selectionBounds.Top);
+                    break;
+                case "ScaleHandleBr":
+                    _scalePivot = new Point(_selectionBounds.Left, _selectionBounds.Top);
+                    break;
+            }
+
+            e.Handled = true;
+        }
+    }
+
+    private void ScaleHandle_OnPointerMoved(object? sender, PointerEventArgs e)
+    {
+        if (e.Properties.IsLeftButtonPressed && _activeScaleHandle != null && _viewModel != null)
+        {
+            var currentCoord = GetPointerPosition(e);
+            var prevVector = _scalePrevCoord - _scalePivot;
+            var currVector = currentCoord - _scalePivot;
+
+            // Avoid division by zero
+            if (Math.Abs(prevVector.X) < 0.1 || Math.Abs(prevVector.Y) < 0.1)
+            {
+                _scalePrevCoord = currentCoord;
+                return;
+            }
+
+            var scaleX = currVector.X / prevVector.X;
+            var scaleY = currVector.Y / prevVector.Y;
+
+            foreach (var selection in _viewModel.SelectionTargets)
+            {
+                _viewModel.ApplyEvent(new ScaleStrokesEvent(selection.Key, new SKPoint((float)scaleX, (float)scaleY),
+                    Utilities.ToSkPoint(_scalePivot)));
+            }
+
+            _scalePrevCoord = currentCoord;
+            e.Handled = true;
+        }
+    }
+
+    private void ScaleHandle_OnPointerReleased(object? sender, PointerReleasedEventArgs e)
+    {
+        if (e.InitialPressMouseButton == MouseButton.Left && _viewModel != null && _activeScaleHandle != null)
+        {
+            foreach (var selection in _viewModel.SelectionTargets)
+            {
+                _viewModel.ApplyEvent(new EndStrokeEvent(selection.Key));
+            }
+
+            _activeScaleHandle = null;
+            _scalePivot = new Point(-1, -1);
+            _scalePrevCoord = new Point(-1, -1);
+            VisualizeSelection();
+            e.Handled = true;
+        }
     }
 }
