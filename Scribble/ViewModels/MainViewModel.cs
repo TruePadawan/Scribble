@@ -343,8 +343,9 @@ public partial class MainViewModel : ViewModelBase
                         {
                             if (drawStrokes.ContainsKey(boundTargetId))
                             {
-                                var stroke = drawStrokes[boundTargetId];
-                                stroke.Path.Transform(SKMatrix.CreateScale(ev.Scale.X, ev.Scale.Y, ev.Center.X, ev.Center.Y));
+                                drawStrokes[boundTargetId].Path
+                                    .Transform(SKMatrix.CreateScale(ev.Scale.X, ev.Scale.Y, ev.Center.X,
+                                        ev.Center.Y));
                             }
                         }
                     }

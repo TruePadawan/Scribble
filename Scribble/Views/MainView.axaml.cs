@@ -433,10 +433,10 @@ public partial class MainView : UserControl
             var prevVector = _scalePrevCoord - _scalePivot;
             var currVector = currentCoord - _scalePivot;
 
-            // Avoid division by zero
-            if (Math.Abs(prevVector.X) < 0.1 || Math.Abs(prevVector.Y) < 0.1)
+            // Avoid division by zero and extremely small scales that collapse geometry
+            if (Math.Abs(prevVector.X) < 1 || Math.Abs(prevVector.Y) < 1 ||
+                Math.Abs(currVector.X) < 1 || Math.Abs(currVector.Y) < 1)
             {
-                _scalePrevCoord = currentCoord;
                 return;
             }
 
