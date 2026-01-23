@@ -68,15 +68,7 @@ public class SkiaCanvas : Control
 
                     if (drawStroke.Path.PointCount == 1)
                     {
-                        if (drawStroke is TextStroke textStroke)
-                        {
-                            canvas.DrawText(textStroke.Text, textStroke.Path.LastPoint, paintToUse);
-                        }
-                        else
-                        {
-                            var firstPoint = drawStroke.Path.Points[0];
-                            canvas.DrawPoint(firstPoint, paintToUse);
-                        }
+                        canvas.DrawPoint(drawStroke.Path.Points[0], paintToUse);
                     }
                     else
                     {

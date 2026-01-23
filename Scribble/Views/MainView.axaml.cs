@@ -176,20 +176,7 @@ public partial class MainView : UserControl
 
             foreach (var stroke in selectedStrokes)
             {
-                SKRect strokeBounds;
-                if (stroke is TextStroke textStroke && stroke.Path.PointCount > 0)
-                {
-                    var pos = textStroke.Path[0];
-                    var bounds = new SKRect();
-                    textStroke.Paint.MeasureText(textStroke.Text, ref bounds);
-                    bounds.Offset(pos);
-                    strokeBounds = bounds;
-                }
-                else
-                {
-                    strokeBounds = stroke.Path.Bounds;
-                }
-
+                SKRect strokeBounds = stroke.Path.Bounds;
                 if (combinedBounds == SKRect.Empty)
                 {
                     combinedBounds = strokeBounds;

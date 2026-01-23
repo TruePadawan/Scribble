@@ -236,7 +236,8 @@ public partial class MainViewModel : ViewModelBase
                             if (stroke.ToolType == StrokeTool.Arrow)
                             {
                                 var (p1, p2) =
-                                    ArrowTool.GetArrowHeadPoints(lineStartPoint, lineEndPoint, stroke.Paint.StrokeWidth);
+                                    ArrowTool.GetArrowHeadPoints(lineStartPoint, lineEndPoint,
+                                        stroke.Paint.StrokeWidth);
 
                                 stroke.Path.MoveTo(lineEndPoint);
                                 stroke.Path.LineTo(p1);
@@ -251,6 +252,7 @@ public partial class MainViewModel : ViewModelBase
                 case AddTextEvent ev:
                     var textPath = new SKPath();
                     textPath.MoveTo(ev.Position);
+                    textPath.AddPath(ev.Paint.GetTextPath(ev.Text, ev.Position.X, ev.Position.Y));
                     drawStrokes[ev.StrokeId] = new TextStroke
                     {
                         Id = ev.StrokeId,
@@ -367,23 +369,6 @@ public partial class MainViewModel : ViewModelBase
         {
             switch (stroke.ToolType)
             {
-                case StrokeTool.Text:
-                    if (stroke is TextStroke textStroke && stroke.Path.PointCount > 0)
-                    {
-                        var pos = stroke.Path[0];
-                        var bounds = new SKRect();
-                        textStroke.Paint.MeasureText(textStroke.Text, ref bounds);
-                        bounds.Offset(pos);
-                        bounds.Inflate(10, 10);
-
-                        if (bounds.Contains(eraserPoint))
-                        {
-                            stroke.IsToBeErased = true;
-                            eraserStroke.Targets.Add(strokeId);
-                        }
-                    }
-
-                    break;
                 case StrokeTool.Line or StrokeTool.Arrow:
                 {
                     var endPoints = new[] { stroke.Path[0], stroke.Path[1] };
@@ -442,20 +427,7 @@ public partial class MainViewModel : ViewModelBase
         bound.Targets.Clear();
         foreach (var (id, stroke) in drawStrokes)
         {
-            SKRect strokeBounds;
-
-            if (stroke.ToolType == StrokeTool.Text && stroke is TextStroke textStroke && stroke.Path.PointCount > 0)
-            {
-                var pos = stroke.Path[0];
-                var bounds = new SKRect();
-                textStroke.Paint.MeasureText(textStroke.Text, ref bounds);
-                bounds.Offset(pos);
-                strokeBounds = bounds;
-            }
-            else
-            {
-                strokeBounds = stroke.Path.Bounds;
-            }
+            SKRect strokeBounds = stroke.Path.Bounds;
 
             if (boundRect.Contains(strokeBounds))
             {
