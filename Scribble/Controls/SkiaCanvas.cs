@@ -80,30 +80,7 @@ public class SkiaCanvas : Control
                     }
                     else
                     {
-                        switch (drawStroke.ToolType)
-                        {
-                            case StrokeTool.Ellipse:
-                                var start = drawStroke.Path[0];
-                                var end = drawStroke.Path[1];
-                                var ellipseLeft = Math.Min(start.X, end.X);
-                                var ellipseTop = Math.Min(start.Y, end.Y);
-                                var ellipseRect = SKRect.Create(new SKPoint(ellipseLeft, ellipseTop),
-                                    Utilities.GetSize(start, end));
-                                canvas.DrawOval(ellipseRect, paintToUse);
-                                break;
-                            case StrokeTool.Rectangle:
-                                var rectOrigin = drawStroke.Path[0];
-                                var rectEnd = drawStroke.Path[1];
-                                var left = Math.Min(rectOrigin.X, rectEnd.X);
-                                var top = Math.Min(rectOrigin.Y, rectEnd.Y);
-                                var rect = SKRect.Create(new SKPoint(left, top),
-                                    Utilities.GetSize(rectOrigin, rectEnd));
-                                canvas.DrawRect(rect, paintToUse);
-                                break;
-                            default:
-                                canvas.DrawPath(drawStroke.Path, paintToUse);
-                                break;
-                        }
+                        canvas.DrawPath(drawStroke.Path, paintToUse);
                     }
 
                     disposablePaintClone?.Dispose();

@@ -206,20 +206,44 @@ public partial class MainViewModel : ViewModelBase
                     {
                         var stroke = drawStrokes[ev.StrokeId];
                         var lineStartPoint = stroke.Path.Points[0];
+                        var lineEndPoint = ev.EndPoint;
+
                         stroke.Path.Reset();
-                        stroke.Path.MoveTo(lineStartPoint);
-                        stroke.Path.LineTo(ev.EndPoint);
 
-                        if (stroke.ToolType == StrokeTool.Arrow)
+                        if (stroke.ToolType == StrokeTool.Rectangle)
                         {
-                            var (p1, p2) =
-                                ArrowTool.GetArrowHeadPoints(lineStartPoint, ev.EndPoint, stroke.Paint.StrokeWidth);
+                            stroke.Path.MoveTo(lineStartPoint);
+                            var left = Math.Min(lineStartPoint.X, lineEndPoint.X);
+                            var top = Math.Min(lineStartPoint.Y, lineEndPoint.Y);
+                            var rect = SKRect.Create(new SKPoint(left, top),
+                                Utilities.GetSize(lineStartPoint, lineEndPoint));
+                            stroke.Path.AddRect(rect);
+                        }
+                        else if (stroke.ToolType == StrokeTool.Ellipse)
+                        {
+                            stroke.Path.MoveTo(lineStartPoint);
+                            var left = Math.Min(lineStartPoint.X, lineEndPoint.X);
+                            var top = Math.Min(lineStartPoint.Y, lineEndPoint.Y);
+                            var rect = SKRect.Create(new SKPoint(left, top),
+                                Utilities.GetSize(lineStartPoint, lineEndPoint));
+                            stroke.Path.AddOval(rect);
+                        }
+                        else
+                        {
+                            stroke.Path.MoveTo(lineStartPoint);
+                            stroke.Path.LineTo(lineEndPoint);
 
-                            stroke.Path.MoveTo(ev.EndPoint);
-                            stroke.Path.LineTo(p1);
+                            if (stroke.ToolType == StrokeTool.Arrow)
+                            {
+                                var (p1, p2) =
+                                    ArrowTool.GetArrowHeadPoints(lineStartPoint, lineEndPoint, stroke.Paint.StrokeWidth);
 
-                            stroke.Path.MoveTo(ev.EndPoint);
-                            stroke.Path.LineTo(p2);
+                                stroke.Path.MoveTo(lineEndPoint);
+                                stroke.Path.LineTo(p1);
+
+                                stroke.Path.MoveTo(lineEndPoint);
+                                stroke.Path.LineTo(p2);
+                            }
                         }
                     }
 
@@ -360,43 +384,6 @@ public partial class MainViewModel : ViewModelBase
                     }
 
                     break;
-                case StrokeTool.Ellipse or StrokeTool.Rectangle:
-                {
-                    var start = stroke.Path[0];
-                    var end = stroke.Path[1];
-                    var rect = SKRect.Create(start, Utilities.GetSize(start, end));
-                    var tolerance = 10.0f;
-
-                    // Quick bounds check
-                    var bounds = rect;
-                    bounds.Inflate(tolerance, tolerance);
-                    if (!bounds.Contains(eraserPoint)) continue;
-
-                    using var path = new SKPath();
-                    if (stroke.ToolType == StrokeTool.Rectangle)
-                    {
-                        path.AddRect(rect);
-                    }
-                    else
-                    {
-                        path.AddOval(rect);
-                    }
-
-                    using var paint = new SKPaint();
-                    paint.Style = SKPaintStyle.Stroke;
-                    paint.StrokeWidth = tolerance * 2;
-                    using var strokePath = new SKPath();
-                    paint.GetFillPath(path, strokePath);
-
-                    if (strokePath.Contains(eraserPoint.X, eraserPoint.Y))
-                    {
-                        stroke.IsToBeErased = true;
-                        eraserStroke.Targets.Add(strokeId);
-                    }
-
-                    break;
-                }
-                // Check if the erase point is visually on the line
                 case StrokeTool.Line or StrokeTool.Arrow:
                 {
                     var endPoints = new[] { stroke.Path[0], stroke.Path[1] };
