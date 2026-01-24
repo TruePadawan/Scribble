@@ -13,7 +13,7 @@ public class PanningTool : PointerToolsBase
         : base(name, viewModel, LoadToolBitmap(typeof(PanningTool), "hand.png"))
     {
         _scrollViewer = scrollViewer;
-        Cursor = new Cursor(ToolIcon, new PixelPoint(25, 25));
+        Cursor = new Cursor(ToolIcon.CreateScaledBitmap(new PixelSize(30, 30)), new PixelPoint(15, 15));
     }
 
     public override void HandlePointerMove(Point prevCoord, Point currentCoord)

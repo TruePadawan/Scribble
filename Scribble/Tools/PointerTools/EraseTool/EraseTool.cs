@@ -14,7 +14,7 @@ public class EraseTool : PointerToolsBase
     public EraseTool(string name, MainViewModel viewModel)
         : base(name, viewModel, LoadToolBitmap(typeof(EraseTool), "eraser.png"))
     {
-        Cursor = new Cursor(ToolIcon, new PixelPoint(10, 40));
+        Cursor = new Cursor(ToolIcon.CreateScaledBitmap(new PixelSize(36, 36)), new PixelPoint(10, 30));
     }
 
     public override void HandlePointerMove(Point prevCoord, Point currentCoord)

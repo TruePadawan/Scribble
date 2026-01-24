@@ -17,7 +17,7 @@ public class PencilTool : PointerToolsBase
     public PencilTool(string name, MainViewModel viewModel) : base(name, viewModel,
         LoadToolBitmap(typeof(PencilTool), "pencil.png"))
     {
-        Cursor = new Cursor(ToolIcon, new PixelPoint(0, 50));
+        Cursor = new Cursor(ToolIcon.CreateScaledBitmap(new PixelSize(36, 36)), new PixelPoint(0, 36));
         _strokePaint = new SKPaint
         {
             IsAntialias = true,
@@ -38,7 +38,8 @@ public class PencilTool : PointerToolsBase
     {
         var startPoint = new SKPoint((float)coord.X, (float)coord.Y);
         _currentStrokeId = Guid.NewGuid();
-        ViewModel.ApplyEvent(new StartStrokeEvent(_currentStrokeId, startPoint, _strokePaint.Clone(), StrokeTool.Pencil));
+        ViewModel.ApplyEvent(
+            new StartStrokeEvent(_currentStrokeId, startPoint, _strokePaint.Clone(), StrokeTool.Pencil));
     }
 
     public override void HandlePointerRelease(Point prevCoord, Point currentCoord)
