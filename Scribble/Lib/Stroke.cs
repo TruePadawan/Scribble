@@ -48,3 +48,9 @@ public enum StrokeStyle
     Dash,
     Dotted
 }
+
+public enum EdgeType
+{
+    Sharp,
+    Rounded
+}

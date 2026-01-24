@@ -217,7 +217,14 @@ public partial class MainViewModel : ViewModelBase
                             var top = Math.Min(lineStartPoint.Y, lineEndPoint.Y);
                             var rect = SKRect.Create(new SKPoint(left, top),
                                 Utilities.GetSize(lineStartPoint, lineEndPoint));
-                            stroke.Path.AddRect(rect);
+                            if (stroke.Paint.StrokeJoin == SKStrokeJoin.Miter)
+                            {
+                                stroke.Path.AddRect(rect);
+                            }
+                            else
+                            {
+                                stroke.Path.AddRoundRect(rect, 24f, 24f);
+                            }
                         }
                         else if (stroke.ToolType == StrokeTool.Ellipse)
                         {

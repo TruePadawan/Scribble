@@ -21,6 +21,7 @@ public class RectangleTool : PointerToolsBase
     private SKPoint? _startPoint;
     private Guid _strokeId = Guid.NewGuid();
     private StrokeStyle _strokeStyle = StrokeStyle.Solid;
+    private EdgeType _edgeType = EdgeType.Sharp;
 
     public RectangleTool(string name, MainViewModel viewModel) : base(name, viewModel,
         LoadToolBitmap(typeof(RectangleTool), "rectangle.png"))
@@ -85,8 +86,58 @@ public class RectangleTool : PointerToolsBase
             _strokePaint.Color = Utilities.ToSkColor(newColor);
         };
 
+        parent.Children.Add(CreateOptionControl(colorPicker, "Color"));
+        parent.Children.Add(CreateOptionControl(slider, "Thickness"));
+        parent.Children.Add(CreateOptionControl(GetStrokeStyleOption(), "Stroke style"));
+        parent.Children.Add(CreateOptionControl(GetEdgesOption(), "Edges"));
+        parent.Width = 180;
+        return true;
+    }
+
+    private void StrokeStyleChangeHandler(object? sender, RoutedEventArgs args)
+    {
+        if (sender is ToggleButton { IsChecked: true } toggleButton)
+        {
+            switch (toggleButton.Name)
+            {
+                case "Solid":
+                    _strokePaint.PathEffect = null;
+                    _strokeStyle = StrokeStyle.Solid;
+                    break;
+                case "Dashed":
+                    _strokePaint.PathEffect = SKPathEffect.CreateDash([8f, 14f], 0);
+                    _strokeStyle = StrokeStyle.Dash;
+                    break;
+                case "Dotted":
+                    _strokePaint.PathEffect = SKPathEffect.CreateDash([0f, 16f], 0);
+                    _strokeStyle = StrokeStyle.Dotted;
+                    break;
+            }
+        }
+    }
+
+    private void EdgeTypeChangeHandler(object? sender, RoutedEventArgs args)
+    {
+        if (sender is ToggleButton { IsChecked: true } toggleButton)
+        {
+            switch (toggleButton.Name)
+            {
+                case "Sharp":
+                    _edgeType = EdgeType.Sharp;
+                    _strokePaint.StrokeJoin = SKStrokeJoin.Miter;
+                    break;
+                case "Rounded":
+                    _edgeType = EdgeType.Rounded;
+                    _strokePaint.StrokeJoin = SKStrokeJoin.Round;
+                    break;
+            }
+        }
+    }
+
+    private StackPanel GetStrokeStyleOption()
+    {
         // Stroke style option
-        var stackPanel = new StackPanel
+        var strokeStylePanel = new StackPanel
         {
             Orientation = Orientation.Horizontal,
             Spacing = 8f
@@ -131,34 +182,47 @@ public class RectangleTool : PointerToolsBase
         };
         dottedStyle.IsCheckedChanged += StrokeStyleChangeHandler;
         ToggleButtonGroup.SetGroupName(dottedStyle, "LineStyle");
-
-        stackPanel.Children.AddRange([solidStyle, dashedStyle, dottedStyle]);
-        parent.Children.Add(CreateOptionControl(colorPicker, "Color"));
-        parent.Children.Add(CreateOptionControl(slider, "Thickness"));
-        parent.Children.Add(CreateOptionControl(stackPanel, "Stroke style"));
-        parent.Width = 180;
-        return true;
+        strokeStylePanel.Children.AddRange([solidStyle, dashedStyle, dottedStyle]);
+        return strokeStylePanel;
     }
 
-    private void StrokeStyleChangeHandler(object? sender, RoutedEventArgs args)
+    private StackPanel GetEdgesOption()
     {
-        if (sender is ToggleButton { IsChecked: true } toggleButton)
+        var edgesPanel = new StackPanel
         {
-            switch (toggleButton.Name)
-            {
-                case "Solid":
-                    _strokePaint.PathEffect = null;
-                    _strokeStyle = StrokeStyle.Solid;
-                    break;
-                case "Dashed":
-                    _strokePaint.PathEffect = SKPathEffect.CreateDash([8f, 14f], 0);
-                    _strokeStyle = StrokeStyle.Dash;
-                    break;
-                case "Dotted":
-                    _strokePaint.PathEffect = SKPathEffect.CreateDash([0f, 16f], 0);
-                    _strokeStyle = StrokeStyle.Dotted;
-                    break;
-            }
-        }
+            Orientation = Orientation.Horizontal,
+            Spacing = 8f
+        };
+
+        var sharpEdgesIcon =
+            Bitmap.DecodeToWidth(
+                AssetLoader.Open(new Uri("avares://Scribble/Tools/PointerTools/RectangleTool/sharp_edge.png")), 20);
+        var roundedEdgesIcon =
+            Bitmap.DecodeToWidth(
+                AssetLoader.Open(new Uri("avares://Scribble/Tools/PointerTools/RectangleTool/rounded_edge.png")), 20);
+        var sharpEdgeBtn = new ToggleButton
+        {
+            Name = "Sharp",
+            Width = 36,
+            Height = 36,
+            IsChecked = _edgeType == EdgeType.Sharp,
+            Content = new Image { Source = sharpEdgesIcon }
+        };
+        ToggleButtonGroup.SetGroupName(sharpEdgeBtn, "EdgeStyle");
+        sharpEdgeBtn.IsCheckedChanged += EdgeTypeChangeHandler;
+
+        var roundedEdgeBtn = new ToggleButton
+        {
+            Name = "Rounded",
+            Width = 36,
+            Height = 36,
+            IsChecked = _edgeType == EdgeType.Rounded,
+            Content = new Image { Source = roundedEdgesIcon }
+        };
+        ToggleButtonGroup.SetGroupName(roundedEdgeBtn, "EdgeStyle");
+        roundedEdgeBtn.IsCheckedChanged += EdgeTypeChangeHandler;
+
+        edgesPanel.Children.AddRange([sharpEdgeBtn, roundedEdgeBtn]);
+        return edgesPanel;
     }
 }
