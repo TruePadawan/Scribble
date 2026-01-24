@@ -1,9 +1,13 @@
 using System;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Input;
+using Avalonia.Interactivity;
+using Avalonia.Layout;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
+using Scribble.Behaviours;
 using Scribble.Lib;
 using Scribble.Utils;
 using Scribble.ViewModels;
@@ -16,6 +20,7 @@ public class EllipseTool : PointerToolsBase
     private readonly SKPaint _strokePaint;
     private SKPoint? _startPoint;
     private Guid _strokeId = Guid.NewGuid();
+    private StrokeStyle _strokeStyle = StrokeStyle.Solid;
 
     public EllipseTool(string name, MainViewModel viewModel) : base(name, viewModel,
         LoadToolBitmap(typeof(EllipseTool), "ellipse.png"))
@@ -55,7 +60,7 @@ public class EllipseTool : PointerToolsBase
 
     public override bool RenderOptions(Panel parent)
     {
-        // Render a slider for controlling the stroke width and a color picker for stroke color
+        // Thickness slider option
         var slider = new Slider
         {
             TickFrequency = 1,
@@ -67,6 +72,7 @@ public class EllipseTool : PointerToolsBase
         slider.ValueChanged += ((sender, args) => { _strokePaint.StrokeWidth = (float)args.NewValue; });
         slider.Padding = new Thickness(8, 0);
 
+        // Color picker option
         var colorPicker = new ColorPicker
         {
             Color = Utilities.FromSkColor(_strokePaint.Color),
@@ -79,9 +85,80 @@ public class EllipseTool : PointerToolsBase
             _strokePaint.Color = Utilities.ToSkColor(newColor);
         };
 
+        // Stroke style option
+        var stackPanel = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 8f
+        };
+        var solidStyleIcon =
+            Bitmap.DecodeToWidth(AssetLoader.Open(new Uri("avares://Scribble/Tools/PointerTools/LineTool/line.png")),
+                20);
+        var dashedStyleIcon =
+            Bitmap.DecodeToWidth(
+                AssetLoader.Open(new Uri("avares://Scribble/Tools/PointerTools/LineTool/dashed_line.png")),
+                20);
+        var dottedStyleIcon =
+            Bitmap.DecodeToWidth(
+                AssetLoader.Open(new Uri("avares://Scribble/Tools/PointerTools/LineTool/dotted_line.png")), 20);
+        var solidStyle = new ToggleButton
+        {
+            Name = "Solid",
+            Width = 36,
+            Height = 36,
+            IsChecked = _strokeStyle == StrokeStyle.Solid,
+            Content = new Image { Source = solidStyleIcon }
+        };
+        ToggleButtonGroup.SetGroupName(solidStyle, "LineStyle");
+        solidStyle.IsCheckedChanged += StrokeStyleChangeHandler;
+        var dashedStyle = new ToggleButton
+        {
+            Name = "Dashed",
+            Width = 36,
+            Height = 36,
+            IsChecked = _strokeStyle == StrokeStyle.Dash,
+            Content = new Image { Source = dashedStyleIcon }
+        };
+        dashedStyle.IsCheckedChanged += StrokeStyleChangeHandler;
+        ToggleButtonGroup.SetGroupName(dashedStyle, "LineStyle");
+        var dottedStyle = new ToggleButton
+        {
+            Name = "Dotted",
+            Width = 36,
+            Height = 36,
+            IsChecked = _strokeStyle == StrokeStyle.Dotted,
+            Content = new Image { Source = dottedStyleIcon }
+        };
+        dottedStyle.IsCheckedChanged += StrokeStyleChangeHandler;
+        ToggleButtonGroup.SetGroupName(dottedStyle, "LineStyle");
+
+        stackPanel.Children.AddRange([solidStyle, dashedStyle, dottedStyle]);
         parent.Children.Add(CreateOptionControl(colorPicker, "Color"));
         parent.Children.Add(CreateOptionControl(slider, "Thickness"));
+        parent.Children.Add(CreateOptionControl(stackPanel, "Stroke style"));
         parent.Width = 180;
         return true;
+    }
+
+    private void StrokeStyleChangeHandler(object? sender, RoutedEventArgs args)
+    {
+        if (sender is ToggleButton { IsChecked: true } toggleButton)
+        {
+            switch (toggleButton.Name)
+            {
+                case "Solid":
+                    _strokePaint.PathEffect = null;
+                    _strokeStyle = StrokeStyle.Solid;
+                    break;
+                case "Dashed":
+                    _strokePaint.PathEffect = SKPathEffect.CreateDash([8f, 14f], 0);
+                    _strokeStyle = StrokeStyle.Dash;
+                    break;
+                case "Dotted":
+                    _strokePaint.PathEffect = SKPathEffect.CreateDash([0f, 16f], 0);
+                    _strokeStyle = StrokeStyle.Dotted;
+                    break;
+            }
+        }
     }
 }
