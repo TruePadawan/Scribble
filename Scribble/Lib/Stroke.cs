@@ -41,3 +41,10 @@ public class SelectionBound : Stroke
 {
     public HashSet<Guid> Targets = [];
 }
+
+public enum StrokeStyle
+{
+    Solid,
+    Dash,
+    Dotted
+}
