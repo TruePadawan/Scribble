@@ -32,7 +32,7 @@ public class LineTool : PointerToolsBase
             IsAntialias = true,
             IsStroke = true,
             StrokeCap = SKStrokeCap.Round,
-            StrokeWidth = 1,
+            StrokeWidth = 4,
             Color = SKColors.Red,
         };
         _startPoint = null;
