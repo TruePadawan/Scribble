@@ -106,16 +106,6 @@ public class TextTool : PointerToolsBase
     public override bool RenderOptions(Panel parent)
     {
         // Render a slider for controlling the font size and a color picker for text color
-        var slider = new Slider
-        {
-            TickFrequency = 1,
-            IsSnapToTickEnabled = true,
-            Minimum = 10,
-            Maximum = 40,
-            Value = _strokePaint.TextSize
-        };
-        slider.ValueChanged += ((sender, args) => { _strokePaint.TextSize = (float)args.NewValue; });
-        slider.Padding = new Thickness(8, 0);
 
         var colorPicker = new ColorPicker
         {
@@ -129,9 +119,40 @@ public class TextTool : PointerToolsBase
             _strokePaint.Color = Utilities.ToSkColor(newColor);
         };
 
-        parent.Children.Add(CreateOptionControl(colorPicker, "Color"));
-        parent.Children.Add(CreateOptionControl(slider, "Font Size"));
+        parent.Children.Add(CreateOptionControl(GetFontColorOption(), "Font Color"));
+        parent.Children.Add(CreateOptionControl(GetFontSizeOption(), "Font Size"));
         parent.Width = 180;
         return true;
+    }
+
+    private Slider GetFontSizeOption()
+    {
+        var slider = new Slider
+        {
+            TickFrequency = 1,
+            IsSnapToTickEnabled = true,
+            Minimum = 10,
+            Maximum = 40,
+            Value = _strokePaint.TextSize
+        };
+        slider.ValueChanged += ((sender, args) => { _strokePaint.TextSize = (float)args.NewValue; });
+        slider.Padding = new Thickness(8, 0);
+        return slider;
+    }
+
+    private ColorPicker GetFontColorOption()
+    {
+        var colorPicker = new ColorPicker
+        {
+            Color = Utilities.FromSkColor(_strokePaint.Color),
+            IsColorSpectrumSliderVisible = false,
+            Width = 164
+        };
+        colorPicker.ColorChanged += (sender, args) =>
+        {
+            var newColor = args.NewColor;
+            _strokePaint.Color = Utilities.ToSkColor(newColor);
+        };
+        return colorPicker;
     }
 }

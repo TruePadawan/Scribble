@@ -59,82 +59,9 @@ public class ArrowTool : PointerToolsBase
 
     public override bool RenderOptions(Panel parent)
     {
-        // Thickness slider option
-        var slider = new Slider
-        {
-            TickFrequency = 1,
-            IsSnapToTickEnabled = true,
-            Minimum = 1,
-            Maximum = 10,
-            Value = _strokePaint.StrokeWidth
-        };
-        slider.ValueChanged += ((sender, args) => { _strokePaint.StrokeWidth = (float)args.NewValue; });
-        slider.Padding = new Thickness(8, 0);
-
-        // Color picker option
-        var colorPicker = new ColorPicker
-        {
-            Color = Utilities.FromSkColor(_strokePaint.Color),
-            IsColorSpectrumSliderVisible = false,
-            Width = 164
-        };
-        colorPicker.ColorChanged += (sender, args) =>
-        {
-            var newColor = args.NewColor;
-            _strokePaint.Color = Utilities.ToSkColor(newColor);
-        };
-
-        // Stroke style option
-        var stackPanel = new StackPanel
-        {
-            Orientation = Orientation.Horizontal,
-            Spacing = 8f
-        };
-        var solidStyleIcon =
-            Bitmap.DecodeToWidth(AssetLoader.Open(new Uri("avares://Scribble/Tools/PointerTools/LineTool/line.png")),
-                20);
-        var dashedStyleIcon =
-            Bitmap.DecodeToWidth(
-                AssetLoader.Open(new Uri("avares://Scribble/Tools/PointerTools/LineTool/dashed_line.png")),
-                20);
-        var dottedStyleIcon =
-            Bitmap.DecodeToWidth(
-                AssetLoader.Open(new Uri("avares://Scribble/Tools/PointerTools/LineTool/dotted_line.png")), 20);
-        var solidStyle = new ToggleButton
-        {
-            Name = "Solid",
-            Width = 36,
-            Height = 36,
-            IsChecked = _strokeStyle == StrokeStyle.Solid,
-            Content = new Image { Source = solidStyleIcon }
-        };
-        ToggleButtonGroup.SetGroupName(solidStyle, "ArrowLineStyle");
-        solidStyle.IsCheckedChanged += StrokeStyleChangeHandler;
-        var dashedStyle = new ToggleButton
-        {
-            Name = "Dashed",
-            Width = 36,
-            Height = 36,
-            IsChecked = _strokeStyle == StrokeStyle.Dash,
-            Content = new Image { Source = dashedStyleIcon }
-        };
-        dashedStyle.IsCheckedChanged += StrokeStyleChangeHandler;
-        ToggleButtonGroup.SetGroupName(dashedStyle, "ArrowLineStyle");
-        var dottedStyle = new ToggleButton
-        {
-            Name = "Dotted",
-            Width = 36,
-            Height = 36,
-            IsChecked = _strokeStyle == StrokeStyle.Dotted,
-            Content = new Image { Source = dottedStyleIcon }
-        };
-        dottedStyle.IsCheckedChanged += StrokeStyleChangeHandler;
-        ToggleButtonGroup.SetGroupName(dottedStyle, "ArrowLineStyle");
-
-        stackPanel.Children.AddRange([solidStyle, dashedStyle, dottedStyle]);
-        parent.Children.Add(CreateOptionControl(colorPicker, "Color"));
-        parent.Children.Add(CreateOptionControl(slider, "Thickness"));
-        parent.Children.Add(CreateOptionControl(stackPanel, "Stroke style"));
+        parent.Children.Add(CreateOptionControl(GetStrokeColorOption(), "Stroke Color"));
+        parent.Children.Add(CreateOptionControl(GetStrokeThicknessOption(), "Stroke Thickness"));
+        parent.Children.Add(CreateOptionControl(GetStrokeStyleOption(), "Stroke style"));
         parent.Width = 180;
         return true;
     }
@@ -159,6 +86,84 @@ public class ArrowTool : PointerToolsBase
                     break;
             }
         }
+    }
+
+    private StackPanel GetStrokeStyleOption()
+    {
+        var strokeStylePanel = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 8f
+        };
+        var solidStyleIcon =
+            Bitmap.DecodeToWidth(AssetLoader.Open(new Uri("avares://Scribble/Assets/line.png")), 20);
+        var dashedStyleIcon =
+            Bitmap.DecodeToWidth(AssetLoader.Open(new Uri("avares://Scribble/Assets/dashed_line.png")), 20);
+        var dottedStyleIcon =
+            Bitmap.DecodeToWidth(AssetLoader.Open(new Uri("avares://Scribble/Assets/dotted_line.png")), 20);
+        var solidStyle = new ToggleButton
+        {
+            Name = "Solid",
+            Width = 36,
+            Height = 36,
+            IsChecked = _strokeStyle == StrokeStyle.Solid,
+            Content = new Image { Source = solidStyleIcon }
+        };
+        ToggleButtonGroup.SetGroupName(solidStyle, "LineStyle");
+        solidStyle.IsCheckedChanged += StrokeStyleChangeHandler;
+        var dashedStyle = new ToggleButton
+        {
+            Name = "Dashed",
+            Width = 36,
+            Height = 36,
+            IsChecked = _strokeStyle == StrokeStyle.Dash,
+            Content = new Image { Source = dashedStyleIcon }
+        };
+        dashedStyle.IsCheckedChanged += StrokeStyleChangeHandler;
+        ToggleButtonGroup.SetGroupName(dashedStyle, "LineStyle");
+        var dottedStyle = new ToggleButton
+        {
+            Name = "Dotted",
+            Width = 36,
+            Height = 36,
+            IsChecked = _strokeStyle == StrokeStyle.Dotted,
+            Content = new Image { Source = dottedStyleIcon }
+        };
+        dottedStyle.IsCheckedChanged += StrokeStyleChangeHandler;
+        ToggleButtonGroup.SetGroupName(dottedStyle, "LineStyle");
+        strokeStylePanel.Children.AddRange([solidStyle, dashedStyle, dottedStyle]);
+        return strokeStylePanel;
+    }
+
+    private ColorPicker GetStrokeColorOption()
+    {
+        var colorPicker = new ColorPicker
+        {
+            Color = Utilities.FromSkColor(_strokePaint.Color),
+            IsColorSpectrumSliderVisible = false,
+            Width = 164
+        };
+        colorPicker.ColorChanged += (sender, args) =>
+        {
+            var newColor = args.NewColor;
+            _strokePaint.Color = Utilities.ToSkColor(newColor);
+        };
+        return colorPicker;
+    }
+
+    private Slider GetStrokeThicknessOption()
+    {
+        var slider = new Slider
+        {
+            TickFrequency = 1,
+            IsSnapToTickEnabled = true,
+            Minimum = 1,
+            Maximum = 10,
+            Value = _strokePaint.StrokeWidth
+        };
+        slider.ValueChanged += (sender, args) => { _strokePaint.StrokeWidth = (float)args.NewValue; };
+        slider.Padding = new Thickness(8, 0);
+        return slider;
     }
 
     public static (SKPoint, SKPoint) GetArrowHeadPoints(SKPoint start, SKPoint end, float strokeWidth)

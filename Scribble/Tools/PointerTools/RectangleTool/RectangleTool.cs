@@ -61,33 +61,8 @@ public class RectangleTool : PointerToolsBase
 
     public override bool RenderOptions(Panel parent)
     {
-        // Thickness slider option
-        var slider = new Slider
-        {
-            TickFrequency = 1,
-            IsSnapToTickEnabled = true,
-            Minimum = 1,
-            Maximum = 10,
-            Value = _strokePaint.StrokeWidth
-        };
-        slider.ValueChanged += ((sender, args) => { _strokePaint.StrokeWidth = (float)args.NewValue; });
-        slider.Padding = new Thickness(8, 0);
-
-        // Color picker option
-        var colorPicker = new ColorPicker
-        {
-            Color = Utilities.FromSkColor(_strokePaint.Color),
-            IsColorSpectrumSliderVisible = false,
-            Width = 164
-        };
-        colorPicker.ColorChanged += (sender, args) =>
-        {
-            var newColor = args.NewColor;
-            _strokePaint.Color = Utilities.ToSkColor(newColor);
-        };
-
-        parent.Children.Add(CreateOptionControl(colorPicker, "Color"));
-        parent.Children.Add(CreateOptionControl(slider, "Thickness"));
+        parent.Children.Add(CreateOptionControl(GetStrokeColorOption(), "Stroke Color"));
+        parent.Children.Add(CreateOptionControl(GetStrokeThicknessOption(), "Stroke Thickness"));
         parent.Children.Add(CreateOptionControl(GetStrokeStyleOption(), "Stroke style"));
         parent.Children.Add(CreateOptionControl(GetEdgesOption(), "Edges"));
         parent.Width = 180;
@@ -143,15 +118,11 @@ public class RectangleTool : PointerToolsBase
             Spacing = 8f
         };
         var solidStyleIcon =
-            Bitmap.DecodeToWidth(AssetLoader.Open(new Uri("avares://Scribble/Tools/PointerTools/LineTool/line.png")),
-                20);
+            Bitmap.DecodeToWidth(AssetLoader.Open(new Uri("avares://Scribble/Assets/line.png")), 20);
         var dashedStyleIcon =
-            Bitmap.DecodeToWidth(
-                AssetLoader.Open(new Uri("avares://Scribble/Tools/PointerTools/LineTool/dashed_line.png")),
-                20);
+            Bitmap.DecodeToWidth(AssetLoader.Open(new Uri("avares://Scribble/Assets/dashed_line.png")), 20);
         var dottedStyleIcon =
-            Bitmap.DecodeToWidth(
-                AssetLoader.Open(new Uri("avares://Scribble/Tools/PointerTools/LineTool/dotted_line.png")), 20);
+            Bitmap.DecodeToWidth(AssetLoader.Open(new Uri("avares://Scribble/Assets/dotted_line.png")), 20);
         var solidStyle = new ToggleButton
         {
             Name = "Solid",
@@ -224,5 +195,36 @@ public class RectangleTool : PointerToolsBase
 
         edgesPanel.Children.AddRange([sharpEdgeBtn, roundedEdgeBtn]);
         return edgesPanel;
+    }
+
+    private ColorPicker GetStrokeColorOption()
+    {
+        var colorPicker = new ColorPicker
+        {
+            Color = Utilities.FromSkColor(_strokePaint.Color),
+            IsColorSpectrumSliderVisible = false,
+            Width = 164
+        };
+        colorPicker.ColorChanged += (sender, args) =>
+        {
+            var newColor = args.NewColor;
+            _strokePaint.Color = Utilities.ToSkColor(newColor);
+        };
+        return colorPicker;
+    }
+
+    private Slider GetStrokeThicknessOption()
+    {
+        var slider = new Slider
+        {
+            TickFrequency = 1,
+            IsSnapToTickEnabled = true,
+            Minimum = 1,
+            Maximum = 10,
+            Value = _strokePaint.StrokeWidth
+        };
+        slider.ValueChanged += (sender, args) => { _strokePaint.StrokeWidth = (float)args.NewValue; };
+        slider.Padding = new Thickness(8, 0);
+        return slider;
     }
 }

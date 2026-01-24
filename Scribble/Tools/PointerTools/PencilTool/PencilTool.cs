@@ -49,18 +49,14 @@ public class PencilTool : PointerToolsBase
 
     public override bool RenderOptions(Panel parent)
     {
-        // Render a slider for controlling the stroke width and a color picker for stroke color
-        var slider = new Slider
-        {
-            TickFrequency = 1,
-            IsSnapToTickEnabled = true,
-            Minimum = 1,
-            Maximum = 10,
-            Value = _strokePaint.StrokeWidth
-        };
-        slider.ValueChanged += ((sender, args) => { _strokePaint.StrokeWidth = (float)args.NewValue; });
-        slider.Padding = new Thickness(8, 0);
+        parent.Children.Add(CreateOptionControl(GetStrokeColorOption(), "Stroke Color"));
+        parent.Children.Add(CreateOptionControl(GetStrokeThicknessOption(), "Stroke Thickness"));
+        parent.Width = 180;
+        return true;
+    }
 
+    private ColorPicker GetStrokeColorOption()
+    {
         var colorPicker = new ColorPicker
         {
             Color = Utilities.FromSkColor(_strokePaint.Color),
@@ -72,10 +68,21 @@ public class PencilTool : PointerToolsBase
             var newColor = args.NewColor;
             _strokePaint.Color = Utilities.ToSkColor(newColor);
         };
+        return colorPicker;
+    }
 
-        parent.Children.Add(CreateOptionControl(colorPicker, "Color"));
-        parent.Children.Add(CreateOptionControl(slider, "Thickness"));
-        parent.Width = 180;
-        return true;
+    private Slider GetStrokeThicknessOption()
+    {
+        var slider = new Slider
+        {
+            TickFrequency = 1,
+            IsSnapToTickEnabled = true,
+            Minimum = 1,
+            Maximum = 10,
+            Value = _strokePaint.StrokeWidth
+        };
+        slider.ValueChanged += (sender, args) => { _strokePaint.StrokeWidth = (float)args.NewValue; };
+        slider.Padding = new Thickness(8, 0);
+        return slider;
     }
 }

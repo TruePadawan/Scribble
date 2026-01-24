@@ -46,7 +46,6 @@ public class EllipseTool : PointerToolsBase
             StrokeTool.Ellipse));
     }
 
-
     public override void HandlePointerMove(Point prevCoord, Point currentCoord)
     {
         var endPoint = new SKPoint((float)currentCoord.X, (float)currentCoord.Y);
@@ -60,47 +59,48 @@ public class EllipseTool : PointerToolsBase
 
     public override bool RenderOptions(Panel parent)
     {
-        // Thickness slider option
-        var slider = new Slider
-        {
-            TickFrequency = 1,
-            IsSnapToTickEnabled = true,
-            Minimum = 1,
-            Maximum = 10,
-            Value = _strokePaint.StrokeWidth
-        };
-        slider.ValueChanged += ((sender, args) => { _strokePaint.StrokeWidth = (float)args.NewValue; });
-        slider.Padding = new Thickness(8, 0);
+        parent.Children.Add(CreateOptionControl(GetStrokeColorOption(), "Stroke Color"));
+        parent.Children.Add(CreateOptionControl(GetStrokeThicknessOption(), "Stroke Thickness"));
+        parent.Children.Add(CreateOptionControl(GetStrokeStyleOption(), "Stroke style"));
+        parent.Width = 180;
+        return true;
+    }
 
-        // Color picker option
-        var colorPicker = new ColorPicker
+    private void StrokeStyleChangeHandler(object? sender, RoutedEventArgs args)
+    {
+        if (sender is ToggleButton { IsChecked: true } toggleButton)
         {
-            Color = Utilities.FromSkColor(_strokePaint.Color),
-            IsColorSpectrumSliderVisible = false,
-            Width = 164
-        };
-        colorPicker.ColorChanged += (sender, args) =>
-        {
-            var newColor = args.NewColor;
-            _strokePaint.Color = Utilities.ToSkColor(newColor);
-        };
+            switch (toggleButton.Name)
+            {
+                case "Solid":
+                    _strokePaint.PathEffect = null;
+                    _strokeStyle = StrokeStyle.Solid;
+                    break;
+                case "Dashed":
+                    _strokePaint.PathEffect = SKPathEffect.CreateDash([8f, 14f], 0);
+                    _strokeStyle = StrokeStyle.Dash;
+                    break;
+                case "Dotted":
+                    _strokePaint.PathEffect = SKPathEffect.CreateDash([0f, 16f], 0);
+                    _strokeStyle = StrokeStyle.Dotted;
+                    break;
+            }
+        }
+    }
 
-        // Stroke style option
-        var stackPanel = new StackPanel
+    private StackPanel GetStrokeStyleOption()
+    {
+        var strokeStylePanel = new StackPanel
         {
             Orientation = Orientation.Horizontal,
             Spacing = 8f
         };
         var solidStyleIcon =
-            Bitmap.DecodeToWidth(AssetLoader.Open(new Uri("avares://Scribble/Tools/PointerTools/LineTool/line.png")),
-                20);
+            Bitmap.DecodeToWidth(AssetLoader.Open(new Uri("avares://Scribble/Assets/line.png")), 20);
         var dashedStyleIcon =
-            Bitmap.DecodeToWidth(
-                AssetLoader.Open(new Uri("avares://Scribble/Tools/PointerTools/LineTool/dashed_line.png")),
-                20);
+            Bitmap.DecodeToWidth(AssetLoader.Open(new Uri("avares://Scribble/Assets/dashed_line.png")), 20);
         var dottedStyleIcon =
-            Bitmap.DecodeToWidth(
-                AssetLoader.Open(new Uri("avares://Scribble/Tools/PointerTools/LineTool/dotted_line.png")), 20);
+            Bitmap.DecodeToWidth(AssetLoader.Open(new Uri("avares://Scribble/Assets/dotted_line.png")), 20);
         var solidStyle = new ToggleButton
         {
             Name = "Solid",
@@ -131,34 +131,38 @@ public class EllipseTool : PointerToolsBase
         };
         dottedStyle.IsCheckedChanged += StrokeStyleChangeHandler;
         ToggleButtonGroup.SetGroupName(dottedStyle, "LineStyle");
-
-        stackPanel.Children.AddRange([solidStyle, dashedStyle, dottedStyle]);
-        parent.Children.Add(CreateOptionControl(colorPicker, "Color"));
-        parent.Children.Add(CreateOptionControl(slider, "Thickness"));
-        parent.Children.Add(CreateOptionControl(stackPanel, "Stroke style"));
-        parent.Width = 180;
-        return true;
+        strokeStylePanel.Children.AddRange([solidStyle, dashedStyle, dottedStyle]);
+        return strokeStylePanel;
     }
 
-    private void StrokeStyleChangeHandler(object? sender, RoutedEventArgs args)
+    private ColorPicker GetStrokeColorOption()
     {
-        if (sender is ToggleButton { IsChecked: true } toggleButton)
+        var colorPicker = new ColorPicker
         {
-            switch (toggleButton.Name)
-            {
-                case "Solid":
-                    _strokePaint.PathEffect = null;
-                    _strokeStyle = StrokeStyle.Solid;
-                    break;
-                case "Dashed":
-                    _strokePaint.PathEffect = SKPathEffect.CreateDash([8f, 14f], 0);
-                    _strokeStyle = StrokeStyle.Dash;
-                    break;
-                case "Dotted":
-                    _strokePaint.PathEffect = SKPathEffect.CreateDash([0f, 16f], 0);
-                    _strokeStyle = StrokeStyle.Dotted;
-                    break;
-            }
-        }
+            Color = Utilities.FromSkColor(_strokePaint.Color),
+            IsColorSpectrumSliderVisible = false,
+            Width = 164
+        };
+        colorPicker.ColorChanged += (sender, args) =>
+        {
+            var newColor = args.NewColor;
+            _strokePaint.Color = Utilities.ToSkColor(newColor);
+        };
+        return colorPicker;
+    }
+
+    private Slider GetStrokeThicknessOption()
+    {
+        var slider = new Slider
+        {
+            TickFrequency = 1,
+            IsSnapToTickEnabled = true,
+            Minimum = 1,
+            Maximum = 10,
+            Value = _strokePaint.StrokeWidth
+        };
+        slider.ValueChanged += (sender, args) => { _strokePaint.StrokeWidth = (float)args.NewValue; };
+        slider.Padding = new Thickness(8, 0);
+        return slider;
     }
 }
