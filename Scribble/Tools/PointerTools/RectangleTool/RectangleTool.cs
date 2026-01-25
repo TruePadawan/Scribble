@@ -22,6 +22,7 @@ public class RectangleTool : PointerToolsBase
     private Guid _strokeId = Guid.NewGuid();
     private StrokeStyle _strokeStyle = StrokeStyle.Solid;
     private EdgeType _edgeType = EdgeType.Sharp;
+    private SKColor _fillColor = SKColors.Transparent;
 
     public RectangleTool(string name, MainViewModel viewModel) : base(name, viewModel,
         LoadToolBitmap(typeof(RectangleTool), "rectangle.png"))
@@ -44,7 +45,10 @@ public class RectangleTool : PointerToolsBase
         _startPoint = new SKPoint((float)coord.X, (float)coord.Y);
         _strokeId = Guid.NewGuid();
         ViewModel.ApplyEvent(new StartStrokeEvent(_strokeId, _startPoint.Value, _strokePaint.Clone(),
-            StrokeTool.Rectangle));
+            StrokeTool.Rectangle)
+        {
+            FIllColor = _fillColor
+        });
     }
 
 
@@ -62,6 +66,7 @@ public class RectangleTool : PointerToolsBase
     public override bool RenderOptions(Panel parent)
     {
         parent.Children.Add(CreateOptionControl(GetStrokeColorOption(), "Stroke Color"));
+        parent.Children.Add(CreateOptionControl(GetFillColorOption(), "Fill Color"));
         parent.Children.Add(CreateOptionControl(GetStrokeThicknessOption(), "Stroke Thickness"));
         parent.Children.Add(CreateOptionControl(GetStrokeStyleOption(), "Stroke style"));
         parent.Children.Add(CreateOptionControl(GetEdgesOption(), "Edges"));
@@ -111,7 +116,6 @@ public class RectangleTool : PointerToolsBase
 
     private StackPanel GetStrokeStyleOption()
     {
-        // Stroke style option
         var strokeStylePanel = new StackPanel
         {
             Orientation = Orientation.Horizontal,
@@ -226,5 +230,45 @@ public class RectangleTool : PointerToolsBase
         slider.ValueChanged += (sender, args) => { _strokePaint.StrokeWidth = (float)args.NewValue; };
         slider.Padding = new Thickness(8, 0);
         return slider;
+    }
+
+    private StackPanel GetFillColorOption()
+    {
+        var stackPanel = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 8f
+        };
+
+        var colorPicker = new ColorPicker
+        {
+            Color = Utilities.FromSkColor(_fillColor),
+            IsColorSpectrumSliderVisible = false,
+            Width = 124
+        };
+        colorPicker.ColorChanged += (sender, args) =>
+        {
+            var newColor = args.NewColor;
+            _fillColor = Utilities.ToSkColor(newColor);
+        };
+
+        var transparentImage = new Image
+        {
+            Source = new Bitmap(AssetLoader.Open(new Uri("avares://Scribble/Assets/transparent.png"))),
+        };
+        var transparentColorBtn = new Button
+        {
+            Content = transparentImage,
+            Width = 30,
+            Height = 30,
+            Padding = new Thickness(0)
+        };
+        transparentColorBtn.Click += (sender, args) =>
+        {
+            colorPicker.Color = Utilities.FromSkColor(SKColors.Transparent);
+        };
+
+        stackPanel.Children.AddRange([transparentColorBtn, colorPicker]);
+        return stackPanel;
     }
 }

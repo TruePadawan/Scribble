@@ -135,7 +135,8 @@ public partial class MainViewModel : ViewModelBase
                         Id = ev.StrokeId,
                         Paint = ev.StrokePaint,
                         Path = newLinePath,
-                        ToolType = ev.ToolType
+                        ToolType = ev.ToolType,
+                        FillColor = ev.FIllColor
                     };
                     break;
                 case StartEraseStrokeEvent ev:

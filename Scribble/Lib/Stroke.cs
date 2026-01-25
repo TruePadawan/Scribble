@@ -25,6 +25,7 @@ public class DrawStroke : Stroke
     public bool IsToBeErased = false;
     public StrokeTool ToolType;
     public SKPaint Paint { get; init; } = new();
+    public SKColor FillColor { get; set; } = SKColors.Transparent;
 }
 
 public class EraserStroke : Stroke
