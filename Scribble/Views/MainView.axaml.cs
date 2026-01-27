@@ -470,4 +470,16 @@ public partial class MainView : UserControl
             e.Handled = true;
         }
     }
+
+    private void MenuButton_OnClick(object? sender, RoutedEventArgs e)
+    {
+        MenuOptions.IsVisible = !MenuOptions.IsVisible;
+        MenuOverlay.IsVisible = MenuOptions.IsVisible;
+    }
+
+    private void MenuOverlay_OnPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        MenuOptions.IsVisible = false;
+        MenuOverlay.IsVisible = false;
+    }
 }

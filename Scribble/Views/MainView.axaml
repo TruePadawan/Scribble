@@ -87,6 +87,64 @@
                 </Canvas>
             </LayoutTransformControl>
         </ScrollViewer>
+
+        <!-- Overlay and Menu Container -->
+        <Panel VerticalAlignment="Stretch" HorizontalAlignment="Stretch">
+            <!-- Invisible Background that catches clicks -->
+            <Rectangle Name="MenuOverlay"
+                       Fill="Transparent"
+                       IsVisible="False"
+                       PointerPressed="MenuOverlay_OnPointerPressed" />
+
+            <StackPanel Spacing="6" Name="MenuStackPanel" HorizontalAlignment="Left" VerticalAlignment="Top"
+                        Margin="12, 12, 0, 0">
+
+                <!-- Hamburger Menu Button -->
+                <Button Name="MenuButton" Width="40" Height="40" CornerRadius="8" HorizontalAlignment="Left"
+                        Padding="8" Click="MenuButton_OnClick">
+                    <Image Source="avares://Scribble/Assets/menu.png" Margin="4" Width="24" Height="24" />
+                    <Button.Styles>
+                        <Style Selector="Button">
+                            <Setter Property="Background" Value="#2B2B2B" />
+                            <Setter Property="Transitions">
+                                <Transitions>
+                                    <BrushTransition Property="Background" Duration="0:0:0.15" />
+                                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.15" />
+                                </Transitions>
+                            </Setter>
+                        </Style>
+                        <Style Selector="Button:pointerover /template/ ContentPresenter">
+                            <Setter Property="Background" Value="#5b5b5b" />
+                        </Style>
+                    </Button.Styles>
+                </Button>
+
+                <Border Name="MenuOptions" Background="#2B2B2B" HorizontalAlignment="Left" CornerRadius="6" Padding="8"
+                        IsVisible="False">
+                    <StackPanel Spacing="4">
+                        <Button HorizontalAlignment="Stretch">
+                            <StackPanel Orientation="Horizontal" Spacing="4">
+                                <Image Source="avares://Scribble/Assets/open.png" Width="18" Height="18" />
+                                <Label FontSize="12">Open...</Label>
+                            </StackPanel>
+                        </Button>
+                        <Button Margin="0">
+                            <StackPanel Orientation="Horizontal" Spacing="4">
+                                <Image Source="avares://Scribble/Assets/save.png" Width="18" Height="18" />
+                                <Label FontSize="12">Save to file</Label>
+                            </StackPanel>
+                        </Button>
+                        <StackPanel.Styles>
+                            <Style Selector="Button">
+                                <Setter Property="Background" Value="#2B2B2B" />
+                                <Setter Property="Padding" Value="6" />
+                            </Style>
+                        </StackPanel.Styles>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </Panel>
+
         <Border Name="ToolbarContainer"
                 Background="#EE2B2B2B"
                 CornerRadius="16"
@@ -124,15 +182,16 @@
                         <Setter Property="Background" Value="#33FFFFFF" />
                     </Style>
                 </StackPanel.Styles>
+
             </StackPanel>
         </Border>
 
         <Border Name="ToolOptionsContainer"
                 Background="#EE2B2B2B"
                 CornerRadius="16"
-                HorizontalAlignment="Left"
+                HorizontalAlignment="Right"
                 VerticalAlignment="Top"
-                Margin="24, 80, 0, 0"
+                Margin="0, 80, 24, 0"
                 Padding="16"
                 BoxShadow="0 4 20 0 #60000000"
                 IsVisible="False"
