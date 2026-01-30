@@ -18,6 +18,9 @@ public class StrokePaint
     [JsonConverter(typeof(SkColorJsonConverter))]
     public SKColor Color { get; set; } = SKColors.Red;
 
+    [JsonConverter(typeof(SkColorJsonConverter))]
+    public SKColor FillColor { get; set; } = SKColors.Transparent;
+
     [JsonIgnore]
     private SKPathEffect? PathEffect
     {

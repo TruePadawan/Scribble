@@ -67,11 +67,11 @@ public class SkiaCanvas : Control
                 }
                 else
                 {
-                    if (drawStroke.FillColor.Alpha != 0)
+                    if (drawStroke.Paint.FillColor.Alpha != 0)
                     {
                         var strokeColor = paintToUse.Color;
                         paintToUse.Style = SKPaintStyle.StrokeAndFill;
-                        paintToUse.Color = drawStroke.FillColor;
+                        paintToUse.Color = drawStroke.Paint.FillColor;
                         canvas.DrawPath(drawStroke.Path, paintToUse);
                         paintToUse.Style = SKPaintStyle.Stroke;
                         paintToUse.Color = strokeColor;

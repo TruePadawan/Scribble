@@ -18,10 +18,7 @@ public interface ITerminalEvent
 public abstract record StrokeEvent(Guid StrokeId) : Event;
 
 public record StartStrokeEvent(Guid StrokeId, SKPoint StartPoint, StrokePaint StrokePaint, StrokeTool ToolType)
-    : StrokeEvent(StrokeId)
-{
-    public SKColor FIllColor { get; init; } = SKColors.Transparent;
-}
+    : StrokeEvent(StrokeId);
 
 public record EndStrokeEvent(Guid StrokeId) : StrokeEvent(StrokeId), ITerminalEvent;
 

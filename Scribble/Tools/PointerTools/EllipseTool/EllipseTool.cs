@@ -21,7 +21,6 @@ public class EllipseTool : PointerToolsBase
     private SKPoint? _startPoint;
     private Guid _strokeId = Guid.NewGuid();
     private StrokeStyle _strokeStyle = StrokeStyle.Solid;
-    private SKColor _fillColor = SKColors.Transparent;
 
     public EllipseTool(string name, MainViewModel viewModel) : base(name, viewModel,
         LoadToolBitmap(typeof(EllipseTool), "ellipse.png"))
@@ -43,10 +42,7 @@ public class EllipseTool : PointerToolsBase
         _startPoint = new SKPoint((float)coord.X, (float)coord.Y);
         _strokeId = Guid.NewGuid();
         ViewModel.ApplyEvent(new StartStrokeEvent(_strokeId, _startPoint.Value, _strokePaint.Clone(),
-            StrokeTool.Ellipse)
-        {
-            FIllColor = _fillColor
-        });
+            StrokeTool.Ellipse));
     }
 
     public override void HandlePointerMove(Point prevCoord, Point currentCoord)
@@ -180,14 +176,14 @@ public class EllipseTool : PointerToolsBase
 
         var colorPicker = new ColorPicker
         {
-            Color = Utilities.FromSkColor(_fillColor),
+            Color = Utilities.FromSkColor(_strokePaint.FillColor),
             IsColorSpectrumSliderVisible = false,
             Width = 124
         };
         colorPicker.ColorChanged += (sender, args) =>
         {
             var newColor = args.NewColor;
-            _fillColor = Utilities.ToSkColor(newColor);
+            _strokePaint.FillColor = Utilities.ToSkColor(newColor);
         };
 
         var transparentImage = new Image
