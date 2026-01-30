@@ -123,18 +123,28 @@
                 <Border Name="MenuOptions" Background="#2B2B2B" HorizontalAlignment="Left" CornerRadius="6" Padding="8"
                         IsVisible="False">
                     <StackPanel Spacing="4">
-                        <Button HorizontalAlignment="Stretch">
+                        <Button Name="OpenFileMenuOption" HorizontalAlignment="Stretch"
+                                Click="OpenFileMenuOption_OnClick">
                             <StackPanel Orientation="Horizontal" Spacing="4">
                                 <Image Source="avares://Scribble/Assets/open.png" Width="18" Height="18" />
                                 <Label FontSize="12">Open...</Label>
                             </StackPanel>
                         </Button>
-                        <Button Name="SaveToFileMenuOption" Margin="0" Click="SaveToFileMenuOption_OnClick">
+                        <Button Name="SaveToFileMenuOption" Margin="0" Click="SaveToFileMenuOption_OnClick"
+                                HorizontalAlignment="Stretch">
                             <StackPanel Orientation="Horizontal" Spacing="4">
                                 <Image Source="avares://Scribble/Assets/save.png" Width="18" Height="18" />
                                 <Label FontSize="12">Save to file</Label>
                             </StackPanel>
                         </Button>
+                        <Rectangle Height="2" Fill="#49808080" />
+                        <Button Name="ExitOption" Margin="0" Click="ExitOption_OnClick" HorizontalAlignment="Stretch">
+                            <StackPanel Orientation="Horizontal" Spacing="4">
+                                <Image Source="avares://Scribble/Assets/exit.png" Width="18" Height="18" />
+                                <Label FontSize="12">Exit</Label>
+                            </StackPanel>
+                        </Button>
+
                         <StackPanel.Styles>
                             <Style Selector="Button">
                                 <Setter Property="Background" Value="#2B2B2B" />

@@ -451,22 +451,55 @@ public partial class MainViewModel : ViewModelBase
 
     public async void SaveCanvasToFile(IStorageFile file)
     {
-        await using var stream = await file.OpenWriteAsync();
-        using var streamWriter = new StreamWriter(stream);
-
-        var serializerOptions = new JsonSerializerOptions { WriteIndented = true };
-        var jsonCanvasEvents = new JsonArray();
-        for (int i = 0; i < CanvasEvents.Count; i++)
+        try
         {
-            var @event = CanvasEvents[i];
-            jsonCanvasEvents.Add(JsonSerializer.SerializeToNode(@event, @event.GetType(), serializerOptions));
+            await using var stream = await file.OpenWriteAsync();
+            using var streamWriter = new StreamWriter(stream);
+
+            var serializerOptions = new JsonSerializerOptions { WriteIndented = true };
+            var jsonCanvasEvents = new JsonArray();
+            for (int i = 0; i < CanvasEvents.Count; i++)
+            {
+                var @event = CanvasEvents[i];
+                jsonCanvasEvents.Add(JsonSerializer.SerializeToNode(@event, serializerOptions));
+            }
+
+            var canvasState = new JsonObject
+            {
+                ["events"] = jsonCanvasEvents
+            };
+            await streamWriter.WriteAsync(canvasState.ToJsonString(serializerOptions));
         }
-
-        var canvasState = new JsonObject
+        catch (Exception e)
         {
-            ["events"] = jsonCanvasEvents
-        };
-        Console.WriteLine(canvasState.ToJsonString());
-        await streamWriter.WriteAsync(canvasState.ToJsonString(serializerOptions));
+            Console.WriteLine(e.Message);
+        }
+    }
+
+    public async void RestoreCanvasFromFile(IStorageFile file)
+    {
+        try
+        {
+            await using var stream = await file.OpenReadAsync();
+            using var streamReader = new StreamReader(stream);
+            var json = await streamReader.ReadToEndAsync();
+            var canvasState = JsonNode.Parse(json);
+            var events = canvasState?["events"]?.AsArray();
+            if (canvasState is null || events is null) return;
+
+            // TODO: Warn the user before clearing the Canvas if it is not empty
+            CanvasEvents.Clear();
+            foreach (var @event in events)
+            {
+                if (@event is null) throw new Exception("Invalid canvas file");
+                var deserializedEvent = JsonSerializer.Deserialize<Event>(@event.ToJsonString());
+                if (deserializedEvent is null) throw new Exception("Invalid canvas file");
+                ApplyEvent(deserializedEvent);
+            }
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e.Message);
+        }
     }
 }

@@ -8,8 +8,6 @@ using Avalonia.Platform;
 using Avalonia.Rendering.SceneGraph;
 using Avalonia.Skia;
 using Scribble.Lib;
-using Scribble.Tools.PointerTools.EllipseTool;
-using Scribble.Utils;
 using SkiaSharp;
 
 namespace Scribble.Controls;
