@@ -2,12 +2,16 @@ using System;
 using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
+using Avalonia.Platform.Storage;
 using Avalonia.Threading;
+using MsBox.Avalonia;
+using MsBox.Avalonia.Enums;
 using Scribble.Behaviours;
 using Scribble.Lib;
 using Scribble.Tools.PointerTools;
@@ -468,6 +472,95 @@ public partial class MainView : UserControl
             _scalePrevCoord = new Point(-1, -1);
             VisualizeSelection();
             e.Handled = true;
+        }
+    }
+
+    private void MenuButton_OnClick(object? sender, RoutedEventArgs e)
+    {
+        MenuOptions.IsVisible = !MenuOptions.IsVisible;
+        MenuOverlay.IsVisible = MenuOptions.IsVisible;
+    }
+
+    private void MenuOverlay_OnPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        CloseMenu();
+    }
+
+    private void CloseMenu()
+    {
+        MenuOptions.IsVisible = false;
+        MenuOverlay.IsVisible = false;
+    }
+
+    private async void SaveToFileMenuOption_OnClick(object? sender, RoutedEventArgs e)
+    {
+        var topLevel = TopLevel.GetTopLevel(this);
+        if (topLevel == null) return;
+
+        var file = await topLevel.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+        {
+            SuggestedFileName = "Scribble",
+            Title = "Save canvas state to file",
+            DefaultExtension = ".scribble",
+        });
+        if (file is not null)
+        {
+            _viewModel?.SaveCanvasToFile(file);
+        }
+
+        CloseMenu();
+    }
+
+    private async void OpenFileMenuOption_OnClick(object? sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var topLevel = TopLevel.GetTopLevel(this);
+            if (topLevel == null) return;
+
+            var files = await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+            {
+                SuggestedFileName = "Scribble",
+                Title = "Restore canvas state from file",
+                AllowMultiple = false,
+            });
+            if (files.Count == 1)
+            {
+                _viewModel?.RestoreCanvasFromFile(files[0]);
+            }
+
+            CloseMenu();
+        }
+        catch (Exception exception)
+        {
+            Console.WriteLine(exception.Message);
+        }
+    }
+
+    private async void ExitOption_OnClick(object? sender, RoutedEventArgs e)
+    {
+        try
+        {
+            if (_viewModel?.HasEvents() == true)
+            {
+                var box = MessageBoxManager
+                    .GetMessageBoxStandard("Warning",
+                        "All unsaved work will be lost. Are you sure you want to proceed?",
+                        ButtonEnum.YesNo,
+                        Icon.Warning);
+
+                var result = await box.ShowAsync();
+                if (result != ButtonResult.Yes) return;
+            }
+
+            if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+            {
+                desktop.Shutdown();
+            }
+        }
+        catch (Exception exception)
+        {
+            Console.WriteLine(exception.Message);
         }
     }
 }

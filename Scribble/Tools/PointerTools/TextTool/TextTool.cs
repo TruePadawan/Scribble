@@ -17,7 +17,7 @@ public class TextTool : PointerToolsBase
 {
     private readonly Canvas _canvasContainer;
     private TextBox? _currentTextBox;
-    private readonly SKPaint _strokePaint;
+    private readonly StrokePaint _strokePaint;
 
     public TextTool(string name, MainViewModel viewModel, Canvas canvasContainer) : base(name, viewModel,
         LoadToolBitmap(typeof(TextTool), "text.png"))
@@ -26,7 +26,7 @@ public class TextTool : PointerToolsBase
         _canvasContainer.Focusable = true;
         var plusBitmap = new Bitmap(AssetLoader.Open(new Uri("avares://Scribble/Assets/plus.png")));
         Cursor = new Cursor(plusBitmap, new PixelPoint(12, 12));
-        _strokePaint = new SKPaint
+        _strokePaint = new StrokePaint
         {
             Color = SKColors.White,
             TextSize = 15,

@@ -1,4 +1,5 @@
 using System;
+using System.Text.Json.Serialization;
 using SkiaSharp;
 
 namespace Scribble.Lib;
@@ -6,6 +7,20 @@ namespace Scribble.Lib;
 /// <summary>
 /// Represents the base class for all events in the application.
 /// </summary>
+[JsonDerivedType(typeof(StartStrokeEvent), typeDiscriminator: "StartStroke")]
+[JsonDerivedType(typeof(EndStrokeEvent), typeDiscriminator: "EndStroke")]
+[JsonDerivedType(typeof(PencilStrokeLineToEvent), typeDiscriminator: "PencilStrokeLineTo")]
+[JsonDerivedType(typeof(StartEraseStrokeEvent), typeDiscriminator: "StartEraseStroke")]
+[JsonDerivedType(typeof(EraseStrokeLineToEvent), typeDiscriminator: "EraseStrokeLineTo")]
+[JsonDerivedType(typeof(TriggerEraseEvent), typeDiscriminator: "TriggerErase")]
+[JsonDerivedType(typeof(LineStrokeLineToEvent), typeDiscriminator: "LineStrokeLineTo")]
+[JsonDerivedType(typeof(AddTextEvent), typeDiscriminator: "AddText")]
+[JsonDerivedType(typeof(CreateSelectionBoundEvent), typeDiscriminator: "CreateSelectionBound")]
+[JsonDerivedType(typeof(IncreaseSelectionBoundEvent), typeDiscriminator: "IncreaseSelectionBound")]
+[JsonDerivedType(typeof(EndSelectionEvent), typeDiscriminator: "EndSelection")]
+[JsonDerivedType(typeof(MoveStrokesEvent), typeDiscriminator: "MoveStrokes")]
+[JsonDerivedType(typeof(RotateStrokesEvent), typeDiscriminator: "RotateStrokes")]
+[JsonDerivedType(typeof(ScaleStrokesEvent), typeDiscriminator: "ScaleStrokes")]
 public abstract record Event
 {
     public DateTime TimeStamp { get; init; } = DateTime.UtcNow;
@@ -17,11 +32,8 @@ public interface ITerminalEvent
 
 public abstract record StrokeEvent(Guid StrokeId) : Event;
 
-public record StartStrokeEvent(Guid StrokeId, SKPoint StartPoint, SKPaint StrokePaint, StrokeTool ToolType)
-    : StrokeEvent(StrokeId)
-{
-    public SKColor FIllColor { get; init; } = SKColors.Transparent;
-}
+public record StartStrokeEvent(Guid StrokeId, SKPoint StartPoint, StrokePaint StrokePaint, StrokeTool ToolType)
+    : StrokeEvent(StrokeId);
 
 public record EndStrokeEvent(Guid StrokeId) : StrokeEvent(StrokeId), ITerminalEvent;
 
@@ -39,7 +51,7 @@ public record TriggerEraseEvent(Guid StrokeId) : StrokeEvent(StrokeId), ITermina
 public record LineStrokeLineToEvent(Guid StrokeId, SKPoint EndPoint) : StrokeEvent(StrokeId);
 
 // TEXT TOOL
-public record AddTextEvent(Guid StrokeId, SKPoint Position, string Text, SKPaint Paint)
+public record AddTextEvent(Guid StrokeId, SKPoint Position, string Text, StrokePaint Paint)
     : StrokeEvent(StrokeId), ITerminalEvent;
 
 // SELECT TOOL
@@ -54,5 +66,3 @@ public record MoveStrokesEvent(Guid BoundId, SKPoint Delta) : StrokeEvent(BoundI
 public record RotateStrokesEvent(Guid BoundId, float DegreesRad, SKPoint Center) : StrokeEvent(BoundId);
 
 public record ScaleStrokesEvent(Guid BoundId, SKPoint Scale, SKPoint Center) : StrokeEvent(BoundId);
-
-// public record EndMoveStrokesEvent(Guid BoundId): StrokeEvent(BoundId), ITerminalEvent;

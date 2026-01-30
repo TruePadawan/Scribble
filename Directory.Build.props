@@ -1,6 +1,6 @@
 <Project>
     <PropertyGroup>
-        <AndroidSdkDirectory>/home/hermes/android-sdk</AndroidSdkDirectory>
-        <JavaSdkDirectory>/home/hermes/jdk</JavaSdkDirectory>
+        <AndroidSdkDirectory>/home/hermes/Android/Sdk/</AndroidSdkDirectory>
+        <JavaSdkDirectory>/home/hermes/jdks/openjdk25/</JavaSdkDirectory>
     </PropertyGroup>
 </Project>

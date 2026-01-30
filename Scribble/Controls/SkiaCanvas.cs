@@ -8,8 +8,6 @@ using Avalonia.Platform;
 using Avalonia.Rendering.SceneGraph;
 using Avalonia.Skia;
 using Scribble.Lib;
-using Scribble.Tools.PointerTools.EllipseTool;
-using Scribble.Utils;
 using SkiaSharp;
 
 namespace Scribble.Controls;
@@ -53,39 +51,32 @@ public class SkiaCanvas : Control
 
         foreach (var stroke in strokesToDraw)
         {
-            switch (stroke)
+            if (stroke is DrawStroke drawStroke)
             {
-                case DrawStroke drawStroke:
-                    var paintToUse = drawStroke.Paint;
-                    IDisposable? disposablePaintClone = null;
-                    if (drawStroke.IsToBeErased)
-                    {
-                        // Dispose clone of paint to prevent memory leaks
-                        paintToUse = drawStroke.Paint.Clone();
-                        paintToUse.Color = paintToUse.Color.WithAlpha(80);
-                        disposablePaintClone = paintToUse;
-                    }
+                using var paintToUse = drawStroke.Paint.ToSkPaint();
+                if (drawStroke.IsToBeErased)
+                {
+                    paintToUse.Color = paintToUse.Color.WithAlpha(80);
+                }
 
-                    if (drawStroke.Path.PointCount == 1)
+                if (drawStroke.Path.PointCount == 1)
+                {
+                    canvas.DrawPoint(drawStroke.Path.Points[0], paintToUse);
+                }
+                else
+                {
+                    if (drawStroke.Paint.FillColor.Alpha != 0)
                     {
-                        canvas.DrawPoint(drawStroke.Path.Points[0], paintToUse);
-                    }
-                    else
-                    {
-                        if (drawStroke.FillColor.Alpha != 0)
-                        {
-                            var strokeColor = paintToUse.Color;
-                            paintToUse.Style = SKPaintStyle.StrokeAndFill;
-                            paintToUse.Color = drawStroke.FillColor;
-                            canvas.DrawPath(drawStroke.Path, paintToUse);
-                            paintToUse.Style = SKPaintStyle.Stroke;
-                            paintToUse.Color = strokeColor;
-                        }
+                        var strokeColor = paintToUse.Color;
+                        paintToUse.Style = SKPaintStyle.StrokeAndFill;
+                        paintToUse.Color = drawStroke.Paint.FillColor;
                         canvas.DrawPath(drawStroke.Path, paintToUse);
+                        paintToUse.Style = SKPaintStyle.Stroke;
+                        paintToUse.Color = strokeColor;
                     }
 
-                    disposablePaintClone?.Dispose();
-                    break;
+                    canvas.DrawPath(drawStroke.Path, paintToUse);
+                }
             }
         }
     }

@@ -17,18 +17,17 @@ namespace Scribble.Tools.PointerTools.EllipseTool;
 
 public class EllipseTool : PointerToolsBase
 {
-    private readonly SKPaint _strokePaint;
+    private readonly StrokePaint _strokePaint;
     private SKPoint? _startPoint;
     private Guid _strokeId = Guid.NewGuid();
     private StrokeStyle _strokeStyle = StrokeStyle.Solid;
-    private SKColor _fillColor = SKColors.Transparent;
 
     public EllipseTool(string name, MainViewModel viewModel) : base(name, viewModel,
         LoadToolBitmap(typeof(EllipseTool), "ellipse.png"))
     {
         var plusBitmap = new Bitmap(AssetLoader.Open(new Uri("avares://Scribble/Assets/plus.png")));
         Cursor = new Cursor(plusBitmap, new PixelPoint(12, 12));
-        _strokePaint = new SKPaint
+        _strokePaint = new StrokePaint
         {
             IsAntialias = true,
             IsStroke = true,
@@ -43,10 +42,7 @@ public class EllipseTool : PointerToolsBase
         _startPoint = new SKPoint((float)coord.X, (float)coord.Y);
         _strokeId = Guid.NewGuid();
         ViewModel.ApplyEvent(new StartStrokeEvent(_strokeId, _startPoint.Value, _strokePaint.Clone(),
-            StrokeTool.Ellipse)
-        {
-            FIllColor = _fillColor
-        });
+            StrokeTool.Ellipse));
     }
 
     public override void HandlePointerMove(Point prevCoord, Point currentCoord)
@@ -77,15 +73,15 @@ public class EllipseTool : PointerToolsBase
             switch (toggleButton.Name)
             {
                 case "Solid":
-                    _strokePaint.PathEffect = null;
+                    _strokePaint.DashIntervals = null;
                     _strokeStyle = StrokeStyle.Solid;
                     break;
                 case "Dashed":
-                    _strokePaint.PathEffect = SKPathEffect.CreateDash([8f, 14f], 0);
+                    _strokePaint.DashIntervals = [8f, 14f];
                     _strokeStyle = StrokeStyle.Dash;
                     break;
                 case "Dotted":
-                    _strokePaint.PathEffect = SKPathEffect.CreateDash([0f, 16f], 0);
+                    _strokePaint.DashIntervals = [0f, 16f];
                     _strokeStyle = StrokeStyle.Dotted;
                     break;
             }
@@ -180,14 +176,14 @@ public class EllipseTool : PointerToolsBase
 
         var colorPicker = new ColorPicker
         {
-            Color = Utilities.FromSkColor(_fillColor),
+            Color = Utilities.FromSkColor(_strokePaint.FillColor),
             IsColorSpectrumSliderVisible = false,
             Width = 124
         };
         colorPicker.ColorChanged += (sender, args) =>
         {
             var newColor = args.NewColor;
-            _fillColor = Utilities.ToSkColor(newColor);
+            _strokePaint.FillColor = Utilities.ToSkColor(newColor);
         };
 
         var transparentImage = new Image

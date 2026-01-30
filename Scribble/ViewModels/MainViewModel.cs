@@ -1,9 +1,16 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Text.Json;
+using System.Text.Json.Nodes;
+using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Media;
+using Avalonia.Platform.Storage;
 using CommunityToolkit.Mvvm.ComponentModel;
+using MsBox.Avalonia;
+using MsBox.Avalonia.Enums;
 using Scribble.Lib;
 using Scribble.Tools.PointerTools.ArrowTool;
 using Scribble.Utils;
@@ -136,7 +143,6 @@ public partial class MainViewModel : ViewModelBase
                         Paint = ev.StrokePaint,
                         Path = newLinePath,
                         ToolType = ev.ToolType,
-                        FillColor = ev.FIllColor
                     };
                     break;
                 case StartEraseStrokeEvent ev:
@@ -260,14 +266,15 @@ public partial class MainViewModel : ViewModelBase
                 case AddTextEvent ev:
                     var textPath = new SKPath();
                     textPath.MoveTo(ev.Position);
-                    textPath.AddPath(ev.Paint.GetTextPath(ev.Text, ev.Position.X, ev.Position.Y));
-                    drawStrokes[ev.StrokeId] = new TextStroke
+                    textPath.AddPath(
+                        new SKPaint { TextSize = ev.Paint.TextSize }.GetTextPath(ev.Text, ev.Position.X,
+                            ev.Position.Y));
+                    drawStrokes[ev.StrokeId] = new DrawStroke
                     {
                         Id = ev.StrokeId,
                         Paint = ev.Paint,
                         Path = textPath,
                         ToolType = StrokeTool.Text,
-                        Text = ev.Text
                     };
                     break;
                 case CreateSelectionBoundEvent ev:
@@ -442,6 +449,62 @@ public partial class MainViewModel : ViewModelBase
             {
                 bound.Targets.Add(id);
             }
+        }
+    }
+
+    public async Task SaveCanvasToFile(IStorageFile file)
+    {
+        await using var stream = await file.OpenWriteAsync();
+        using var streamWriter = new StreamWriter(stream);
+
+        var serializerOptions = new JsonSerializerOptions { WriteIndented = true };
+        var jsonCanvasEvents = new JsonArray();
+        for (int i = 0; i < CanvasEvents.Count; i++)
+        {
+            var @event = CanvasEvents[i];
+            jsonCanvasEvents.Add(JsonSerializer.SerializeToNode(@event, serializerOptions));
+        }
+
+        var canvasState = new JsonObject
+        {
+            ["events"] = jsonCanvasEvents
+        };
+        await streamWriter.WriteAsync(canvasState.ToJsonString(serializerOptions));
+    }
+
+    public bool HasEvents()
+    {
+        return CanvasEvents.Count > 0;
+    }
+
+    public async Task RestoreCanvasFromFile(IStorageFile file)
+    {
+        await using var stream = await file.OpenReadAsync();
+        using var streamReader = new StreamReader(stream);
+        var json = await streamReader.ReadToEndAsync();
+        var canvasState = JsonNode.Parse(json);
+        var events = canvasState?["events"]?.AsArray();
+        if (canvasState is null || events is null) return;
+
+        if (CanvasEvents.Count > 0)
+        {
+            var box = MessageBoxManager
+                .GetMessageBoxStandard("Warning",
+                    "This will clear your current canvas. Are you sure you want to proceed?",
+                    ButtonEnum.YesNo,
+                    Icon.Warning);
+
+            var result = await box.ShowAsync();
+            if (result != ButtonResult.Yes) return;
+        }
+
+        CanvasEvents.Clear();
+        foreach (var @event in events)
+        {
+            if (@event is null) throw new Exception("Invalid canvas file");
+            var deserializedEvent = JsonSerializer.Deserialize<Event>(@event.ToJsonString());
+            if (deserializedEvent is null) throw new Exception("Invalid canvas file");
+            ApplyEvent(deserializedEvent);
         }
     }
 }
