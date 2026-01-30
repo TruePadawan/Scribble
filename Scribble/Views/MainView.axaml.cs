@@ -10,6 +10,8 @@ using Avalonia.Media.Imaging;
 using Avalonia.Platform;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
+using MsBox.Avalonia;
+using MsBox.Avalonia.Enums;
 using Scribble.Behaviours;
 using Scribble.Lib;
 using Scribble.Tools.PointerTools;
@@ -535,11 +537,30 @@ public partial class MainView : UserControl
         }
     }
 
-    private void ExitOption_OnClick(object? sender, RoutedEventArgs e)
+    private async void ExitOption_OnClick(object? sender, RoutedEventArgs e)
     {
-        if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+        try
         {
-            desktop.Shutdown();
+            if (_viewModel?.HasEvents() == true)
+            {
+                var box = MessageBoxManager
+                    .GetMessageBoxStandard("Warning",
+                        "All unsaved work will be lost. Are you sure you want to proceed?",
+                        ButtonEnum.YesNo,
+                        Icon.Warning);
+
+                var result = await box.ShowAsync();
+                if (result != ButtonResult.Yes) return;
+            }
+
+            if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+            {
+                desktop.Shutdown();
+            }
+        }
+        catch (Exception exception)
+        {
+            Console.WriteLine(exception.Message);
         }
     }
 }
