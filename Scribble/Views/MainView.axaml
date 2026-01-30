@@ -119,6 +119,7 @@
                     </Button.Styles>
                 </Button>
 
+                <!-- Menu Options -->
                 <Border Name="MenuOptions" Background="#2B2B2B" HorizontalAlignment="Left" CornerRadius="6" Padding="8"
                         IsVisible="False">
                     <StackPanel Spacing="4">
@@ -128,7 +129,7 @@
                                 <Label FontSize="12">Open...</Label>
                             </StackPanel>
                         </Button>
-                        <Button Margin="0">
+                        <Button Name="SaveToFileMenuOption" Margin="0" Click="SaveToFileMenuOption_OnClick">
                             <StackPanel Orientation="Horizontal" Spacing="4">
                                 <Image Source="avares://Scribble/Assets/save.png" Width="18" Height="18" />
                                 <Label FontSize="12">Save to file</Label>

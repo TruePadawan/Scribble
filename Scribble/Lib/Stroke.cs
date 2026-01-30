@@ -24,18 +24,13 @@ public class DrawStroke : Stroke
 {
     public bool IsToBeErased = false;
     public StrokeTool ToolType;
-    public SKPaint Paint { get; init; } = new();
+    public StrokePaint Paint { get; init; } = new();
     public SKColor FillColor { get; set; } = SKColors.Transparent;
 }
 
 public class EraserStroke : Stroke
 {
     public HashSet<Guid> Targets = [];
-}
-
-public class TextStroke : DrawStroke
-{
-    public string Text { get; set; } = string.Empty;
 }
 
 public class SelectionBound : Stroke

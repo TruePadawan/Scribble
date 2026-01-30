@@ -11,14 +11,14 @@ namespace Scribble.Tools.PointerTools.PencilTool;
 
 public class PencilTool : PointerToolsBase
 {
-    private readonly SKPaint _strokePaint;
+    private readonly StrokePaint _strokePaint;
     private Guid _currentStrokeId = Guid.NewGuid();
 
     public PencilTool(string name, MainViewModel viewModel) : base(name, viewModel,
         LoadToolBitmap(typeof(PencilTool), "pencil.png"))
     {
         Cursor = new Cursor(ToolIcon.CreateScaledBitmap(new PixelSize(36, 36)), new PixelPoint(0, 36));
-        _strokePaint = new SKPaint
+        _strokePaint = new StrokePaint
         {
             IsAntialias = true,
             IsStroke = true,

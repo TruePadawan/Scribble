@@ -1,8 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 using Avalonia;
 using Avalonia.Media;
+using Avalonia.Platform.Storage;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Scribble.Lib;
 using Scribble.Tools.PointerTools.ArrowTool;
@@ -260,14 +264,15 @@ public partial class MainViewModel : ViewModelBase
                 case AddTextEvent ev:
                     var textPath = new SKPath();
                     textPath.MoveTo(ev.Position);
-                    textPath.AddPath(ev.Paint.GetTextPath(ev.Text, ev.Position.X, ev.Position.Y));
-                    drawStrokes[ev.StrokeId] = new TextStroke
+                    textPath.AddPath(
+                        new SKPaint { TextSize = ev.Paint.TextSize }.GetTextPath(ev.Text, ev.Position.X,
+                            ev.Position.Y));
+                    drawStrokes[ev.StrokeId] = new DrawStroke
                     {
                         Id = ev.StrokeId,
                         Paint = ev.Paint,
                         Path = textPath,
                         ToolType = StrokeTool.Text,
-                        Text = ev.Text
                     };
                     break;
                 case CreateSelectionBoundEvent ev:
@@ -443,5 +448,26 @@ public partial class MainViewModel : ViewModelBase
                 bound.Targets.Add(id);
             }
         }
+    }
+
+    public async void SaveCanvasToFile(IStorageFile file)
+    {
+        await using var stream = await file.OpenWriteAsync();
+        using var streamWriter = new StreamWriter(stream);
+
+        var serializerOptions = new JsonSerializerOptions { WriteIndented = true };
+        var jsonCanvasEvents = new JsonArray();
+        for (int i = 0; i < CanvasEvents.Count; i++)
+        {
+            var @event = CanvasEvents[i];
+            jsonCanvasEvents.Add(JsonSerializer.SerializeToNode(@event, @event.GetType(), serializerOptions));
+        }
+
+        var canvasState = new JsonObject
+        {
+            ["events"] = jsonCanvasEvents
+        };
+        Console.WriteLine(canvasState.ToJsonString());
+        await streamWriter.WriteAsync(canvasState.ToJsonString(serializerOptions));
     }
 }

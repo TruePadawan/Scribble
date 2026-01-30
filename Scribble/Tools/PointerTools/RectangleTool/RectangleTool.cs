@@ -17,7 +17,7 @@ namespace Scribble.Tools.PointerTools.RectangleTool;
 
 public class RectangleTool : PointerToolsBase
 {
-    private readonly SKPaint _strokePaint;
+    private readonly StrokePaint _strokePaint;
     private SKPoint? _startPoint;
     private Guid _strokeId = Guid.NewGuid();
     private StrokeStyle _strokeStyle = StrokeStyle.Solid;
@@ -29,7 +29,7 @@ public class RectangleTool : PointerToolsBase
     {
         var plusBitmap = new Bitmap(AssetLoader.Open(new Uri("avares://Scribble/Assets/plus.png")));
         Cursor = new Cursor(plusBitmap, new PixelPoint(12, 12));
-        _strokePaint = new SKPaint
+        _strokePaint = new StrokePaint
         {
             IsAntialias = true,
             IsStroke = true,
@@ -81,15 +81,15 @@ public class RectangleTool : PointerToolsBase
             switch (toggleButton.Name)
             {
                 case "Solid":
-                    _strokePaint.PathEffect = null;
+                    _strokePaint.DashIntervals = null;
                     _strokeStyle = StrokeStyle.Solid;
                     break;
                 case "Dashed":
-                    _strokePaint.PathEffect = SKPathEffect.CreateDash([8f, 14f], 0);
+                    _strokePaint.DashIntervals = [8f, 14f];
                     _strokeStyle = StrokeStyle.Dash;
                     break;
                 case "Dotted":
-                    _strokePaint.PathEffect = SKPathEffect.CreateDash([0f, 16f], 0);
+                    _strokePaint.DashIntervals = [0f, 16f];
                     _strokeStyle = StrokeStyle.Dotted;
                     break;
             }

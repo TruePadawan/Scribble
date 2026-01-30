@@ -7,6 +7,7 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
+using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using Scribble.Behaviours;
 using Scribble.Lib;
@@ -481,5 +482,20 @@ public partial class MainView : UserControl
     {
         MenuOptions.IsVisible = false;
         MenuOverlay.IsVisible = false;
+    }
+
+    private async void SaveToFileMenuOption_OnClick(object? sender, RoutedEventArgs e)
+    {
+        var topLevel = TopLevel.GetTopLevel(this);
+        var file = await topLevel.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+        {
+            SuggestedFileName = "Scribble",
+            Title = "Save canvas state to file",
+            DefaultExtension = ".scribble",
+        });
+        if (file is not null)
+        {
+            _viewModel?.SaveCanvasToFile(file);
+        }
     }
 }

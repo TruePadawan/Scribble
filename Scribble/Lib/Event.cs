@@ -17,7 +17,7 @@ public interface ITerminalEvent
 
 public abstract record StrokeEvent(Guid StrokeId) : Event;
 
-public record StartStrokeEvent(Guid StrokeId, SKPoint StartPoint, SKPaint StrokePaint, StrokeTool ToolType)
+public record StartStrokeEvent(Guid StrokeId, SKPoint StartPoint, StrokePaint StrokePaint, StrokeTool ToolType)
     : StrokeEvent(StrokeId)
 {
     public SKColor FIllColor { get; init; } = SKColors.Transparent;
@@ -39,7 +39,7 @@ public record TriggerEraseEvent(Guid StrokeId) : StrokeEvent(StrokeId), ITermina
 public record LineStrokeLineToEvent(Guid StrokeId, SKPoint EndPoint) : StrokeEvent(StrokeId);
 
 // TEXT TOOL
-public record AddTextEvent(Guid StrokeId, SKPoint Position, string Text, SKPaint Paint)
+public record AddTextEvent(Guid StrokeId, SKPoint Position, string Text, StrokePaint Paint)
     : StrokeEvent(StrokeId), ITerminalEvent;
 
 // SELECT TOOL
