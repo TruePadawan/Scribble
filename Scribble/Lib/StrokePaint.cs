@@ -15,10 +15,10 @@ public class StrokePaint
     public float TextSize { get; set; }
     public float[]? DashIntervals { get; set; }
 
-    [JsonConverter(typeof(SkColorJsonConverter))]
+    [JsonConverter(typeof(SKColorJsonConverter))]
     public SKColor Color { get; set; } = SKColors.Red;
 
-    [JsonConverter(typeof(SkColorJsonConverter))]
+    [JsonConverter(typeof(SKColorJsonConverter))]
     public SKColor FillColor { get; set; } = SKColors.Transparent;
 
     [JsonIgnore]
@@ -57,7 +57,7 @@ public class StrokePaint
     }
 }
 
-public class SkColorJsonConverter : JsonConverter<SKColor>
+public class SKColorJsonConverter : JsonConverter<SKColor>
 {
     public override SKColor Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
     {

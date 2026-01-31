@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Text.Json.Serialization;
 using SkiaSharp;
 
@@ -66,3 +67,6 @@ public record MoveStrokesEvent(Guid BoundId, SKPoint Delta) : StrokeEvent(BoundI
 public record RotateStrokesEvent(Guid BoundId, float DegreesRad, SKPoint Center) : StrokeEvent(BoundId);
 
 public record ScaleStrokesEvent(Guid BoundId, SKPoint Scale, SKPoint Center) : StrokeEvent(BoundId);
+
+// MISC
+public record RestoreCanvasEvent(List<Stroke> Strokes) : Event, ITerminalEvent;

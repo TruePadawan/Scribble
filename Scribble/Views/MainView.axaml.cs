@@ -490,6 +490,8 @@ public partial class MainView : UserControl
     {
         MenuOptions.IsVisible = false;
         MenuOverlay.IsVisible = false;
+
+        Dispatcher.UIThread.Post(() => CanvasContainer.Focus());
     }
 
     private async void SaveToFileMenuOption_OnClick(object? sender, RoutedEventArgs e)
@@ -524,9 +526,9 @@ public partial class MainView : UserControl
                 Title = "Restore canvas state from file",
                 AllowMultiple = false,
             });
-            if (files.Count == 1)
+            if (files.Count == 1 && _viewModel != null)
             {
-                _viewModel?.RestoreCanvasFromFile(files[0]);
+                await _viewModel.RestoreCanvasFromFile(files[0]);
             }
 
             CloseMenu();

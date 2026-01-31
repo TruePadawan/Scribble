@@ -366,6 +366,16 @@ public partial class MainViewModel : ViewModelBase
                     }
 
                     break;
+                case RestoreCanvasEvent ev:
+                    foreach (Stroke stroke in ev.Strokes)
+                    {
+                        if (stroke is DrawStroke drawStroke)
+                        {
+                            drawStrokes[drawStroke.Id] = drawStroke;
+                        }
+                    }
+
+                    break;
             }
         }
 
@@ -458,16 +468,16 @@ public partial class MainViewModel : ViewModelBase
         using var streamWriter = new StreamWriter(stream);
 
         var serializerOptions = new JsonSerializerOptions { WriteIndented = true };
-        var jsonCanvasEvents = new JsonArray();
-        for (int i = 0; i < CanvasEvents.Count; i++)
+        var jsonCanvasStrokes = new JsonArray();
+        for (int i = 0; i < CanvasStrokes.Count; i++)
         {
-            var @event = CanvasEvents[i];
-            jsonCanvasEvents.Add(JsonSerializer.SerializeToNode(@event, serializerOptions));
+            var stroke = CanvasStrokes[i];
+            jsonCanvasStrokes.Add(JsonSerializer.SerializeToNode(stroke, serializerOptions));
         }
 
         var canvasState = new JsonObject
         {
-            ["events"] = jsonCanvasEvents
+            ["strokes"] = jsonCanvasStrokes
         };
         await streamWriter.WriteAsync(canvasState.ToJsonString(serializerOptions));
     }
@@ -483,8 +493,8 @@ public partial class MainViewModel : ViewModelBase
         using var streamReader = new StreamReader(stream);
         var json = await streamReader.ReadToEndAsync();
         var canvasState = JsonNode.Parse(json);
-        var events = canvasState?["events"]?.AsArray();
-        if (canvasState is null || events is null) return;
+        var rawStrokes = canvasState?["strokes"]?.AsArray();
+        if (canvasState is null || rawStrokes is null) return;
 
         if (CanvasEvents.Count > 0)
         {
@@ -499,12 +509,15 @@ public partial class MainViewModel : ViewModelBase
         }
 
         CanvasEvents.Clear();
-        foreach (var @event in events)
+        List<Stroke> strokes = [];
+        foreach (var stroke in rawStrokes)
         {
-            if (@event is null) throw new Exception("Invalid canvas file");
-            var deserializedEvent = JsonSerializer.Deserialize<Event>(@event.ToJsonString());
+            if (stroke is null) throw new Exception("Invalid canvas file");
+            var deserializedEvent = JsonSerializer.Deserialize<Stroke>(stroke.ToJsonString());
             if (deserializedEvent is null) throw new Exception("Invalid canvas file");
-            ApplyEvent(deserializedEvent);
+            strokes.Add(deserializedEvent);
         }
+
+        ApplyEvent(new RestoreCanvasEvent(strokes));
     }
 }
