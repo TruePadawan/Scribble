@@ -137,6 +137,13 @@
                                 <Label FontSize="12">Save to file</Label>
                             </StackPanel>
                         </Button>
+                        <Button Name="ResetCanvasMenuOption" Margin="0" Click="ResetCanvasMenuOption_OnClick"
+                                HorizontalAlignment="Stretch">
+                            <StackPanel Orientation="Horizontal" Spacing="4">
+                                <Image Source="avares://Scribble/Assets/bin.png" Width="18" Height="18" />
+                                <Label FontSize="12">Reset canvas</Label>
+                            </StackPanel>
+                        </Button>
                         <Rectangle Height="2" Fill="#49808080" />
                         <Button Name="ExitOption" Margin="0" Click="ExitOption_OnClick" HorizontalAlignment="Stretch">
                             <StackPanel Orientation="Horizontal" Spacing="4">
@@ -197,45 +204,68 @@
             </StackPanel>
         </Border>
 
-        <Border Name="ToolOptionsContainer"
+        <StackPanel
+            HorizontalAlignment="Right"
+            VerticalAlignment="Top"
+            Margin="0, 80, 24, 0"
+            Spacing="4">
+            <Border
                 Background="#EE2B2B2B"
                 CornerRadius="16"
-                HorizontalAlignment="Right"
-                VerticalAlignment="Top"
-                Margin="0, 80, 24, 0"
                 Padding="16"
-                BoxShadow="0 4 20 0 #60000000"
-                IsVisible="False"
-                Opacity="0">
-            <Border.Transitions>
-                <Transitions>
-                    <DoubleTransition Property="Opacity" Duration="0:0:0.3" Easing="CubicEaseOut" />
-                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.3" Easing="CubicEaseOut" />
-                </Transitions>
-            </Border.Transitions>
-            <Border.Styles>
-                <Style Selector="Border[IsVisible=True]">
-                    <Setter Property="Opacity" Value="1" />
-                    <Setter Property="RenderTransform" Value="translate(0px, 0px)" />
-                </Style>
-                <Style Selector="Border[IsVisible=False]">
-                    <Setter Property="Opacity" Value="0" />
-                    <Setter Property="RenderTransform" Value="translate(-20px, 0px)" />
-                </Style>
+                BoxShadow="0 4 20 0 #60000000">
+                <StackPanel Margin="8" Spacing="2">
+                    <Label>Change canvas background</Label>
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <Button Width="30" Height="30" Padding="0" Click="TransparentCanvasButton_OnClick">
+                            <Image Source="avares://Scribble/Assets/transparent.png" />
+                        </Button>
+                        <ColorPicker Name="CanvasBackgroundColorView" Width="124" Color="Transparent"
+                                     ColorChanged="CanvasBackgroundColorView_OnColorChanged" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
 
-                <!-- Style for controls inside ToolOptions -->
+            <Border Name="ToolOptionsContainer"
+                    Background="#EE2B2B2B"
+                    CornerRadius="16"
+                    Padding="16"
+                    BoxShadow="0 4 20 0 #60000000"
+                    IsVisible="False"
+                    Opacity="0">
+                <Border.Transitions>
+                    <Transitions>
+                        <DoubleTransition Property="Opacity" Duration="0:0:0.3" Easing="CubicEaseOut" />
+                        <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.3"
+                                                       Easing="CubicEaseOut" />
+                    </Transitions>
+                </Border.Transitions>
+                <Border.Styles>
+                    <Style Selector="Border[IsVisible=True]">
+                        <Setter Property="Opacity" Value="1" />
+                        <Setter Property="RenderTransform" Value="translate(0px, 0px)" />
+                    </Style>
+                    <Style Selector="Border[IsVisible=False]">
+                        <Setter Property="Opacity" Value="0" />
+                        <Setter Property="RenderTransform" Value="translate(-20px, 0px)" />
+                    </Style>
+
+                    <Style Selector="Slider">
+                        <Setter Property="MinWidth" Value="120" />
+                    </Style>
+                </Border.Styles>
+                <StackPanel Name="ToolOptions"
+                            Spacing="12">
+                </StackPanel>
+            </Border>
+
+            <StackPanel.Styles>
                 <Style Selector="Label">
                     <Setter Property="FontSize" Value="12" />
                     <Setter Property="Foreground" Value="#AAAAAA" />
                     <Setter Property="Margin" Value="0,0,0,4" />
                 </Style>
-                <Style Selector="Slider">
-                    <Setter Property="MinWidth" Value="120" />
-                </Style>
-            </Border.Styles>
-            <StackPanel Name="ToolOptions"
-                        Spacing="12">
-            </StackPanel>
-        </Border>
+            </StackPanel.Styles>
+        </StackPanel>
     </Panel>
 </UserControl>
