@@ -478,7 +478,8 @@ public partial class MainViewModel : ViewModelBase
 
         var canvasState = new JsonObject
         {
-            ["strokes"] = jsonCanvasStrokes
+            ["strokes"] = jsonCanvasStrokes,
+            ["backgroundColor"] = BackgroundColor.ToString()
         };
         await streamWriter.WriteAsync(canvasState.ToJsonString(serializerOptions));
     }
@@ -519,6 +520,13 @@ public partial class MainViewModel : ViewModelBase
         }
 
         ApplyEvent(new RestoreCanvasEvent(strokes));
+
+        // Restore background color
+        var bgColor = canvasState["backgroundColor"]?.ToString();
+        if (bgColor != null)
+        {
+            BackgroundColor = SKColor.Parse(bgColor);
+        }
     }
 
     public async Task ResetCanvas()
