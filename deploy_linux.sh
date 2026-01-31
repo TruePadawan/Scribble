@@ -15,36 +15,66 @@ dotnet publish "./Scribble.Desktop/Scribble.Desktop.csproj" \
   --output "./out/linux-x64"  \
   /p:PublishSingleFile=true
 
-# create the staging directory
-mkdir staging
+# --- SHARED METADATA ---
+NAME="scribble"
+VERSION="1.0.0"
+MAINTAINER="Chisom Hermes Chigoziri <hermeschigoziri@gmail.com>"
+DESC="A cross-platform digital whiteboard engineered with C# and Avalonia UI"
+URL="https://github.com/TruePadawan/Scribble"
+ARCH="amd64"
 
-# Collect Debian control file
-# The control file describes general aspects of the program - name, version, author, etc
-mkdir ./staging/DEBIAN
-cp ./Scribble.Desktop/DEBIAN/control ./staging/DEBIAN
-
-# Collect starter script
-# This enables the app to be runnable from the terminal
+# 1. Prepare Staging
+rm -rf ./staging
 mkdir -p ./staging/usr/bin
-cp ./Scribble.Desktop/DEBIAN/scribble.sh ./staging/usr/bin/scribble
-chmod +x ./staging/usr/bin/scribble # set executable permissions to starter script
-
-# Deal with published files
 mkdir -p ./staging/usr/lib/scribble
-cp -f -a ./out/linux-x64/. ./staging/usr/lib/scribble # copy the files published by .NET
-chmod -R a+rX ./staging/usr/lib/scribble/ # set read permissions to all files
-chmod +x ./staging/usr/lib/scribble/Scribble.Desktop # set executable permissions to main executable
-
-# Desktop shortcuts
 mkdir -p ./staging/usr/share/applications
-cp ./Scribble.Desktop/DEBIAN/Scribble.desktop ./staging/usr/share/applications/Scribble.desktop
-
-# Desktop icon
-mkdir ./staging/usr/share/pixmaps
-cp ./Scribble.Desktop/DEBIAN/scribble.png ./staging/usr/share/pixmaps/scribble.png
-
-# Hicolor icons
+mkdir -p ./staging/usr/share/pixmaps
 mkdir -p ./staging/usr/share/icons/hicolor/scalable/apps
-cp ./Scribble.Desktop/DEBIAN/scribble.svg ./staging/usr/share/icons/hicolor/scalable/apps/scribble.svg
+mkdir ./releases
 
-dpkg-deb --root-owner-group --build ./staging/ ./scribble_amd64.deb
+# 2. Copy Files
+# Copy binary to lib
+cp -r ./out/linux-x64/* ./staging/usr/lib/scribble/
+# Copy wrapper script to bin
+cp ./Scribble.Desktop/DEBIAN/scribble.sh ./staging/usr/bin/scribble
+# Copy Desktop assets
+cp ./Scribble.Desktop/DEBIAN/Scribble.desktop ./staging/usr/share/applications/
+cp ./Scribble.Desktop/DEBIAN/scribble.png ./staging/usr/share/pixmaps/
+cp ./Scribble.Desktop/DEBIAN/scribble.svg ./staging/usr/share/icons/hicolor/scalable/apps/
+
+# 3. Set Permissions
+chmod +x ./staging/usr/bin/scribble
+chmod +x ./staging/usr/lib/scribble/Scribble.Desktop
+
+# 4. PACKAGE EVERYTHING
+echo "Packaging DEB..."
+fpm -s dir -t deb \
+    -n "$NAME" -v "$VERSION" -a "$ARCH" \
+    -m "$MAINTAINER" \
+    --description "$DESC" \
+    --url "$URL" \
+    -C ./staging \
+    -p ./releases/scribble_amd64.deb \
+    usr/
+
+echo "Packaging RPM..."
+fpm -s dir -t rpm \
+    -n "$NAME" -v "$VERSION" -a "x86_64" \
+    -m "$MAINTAINER" \
+    --description "$DESC" \
+    --url "$URL" \
+    -C ./staging \
+    -p ./releases/scribble.x86_64.rpm \
+    usr/
+
+echo "Packaging Pacman..."
+fpm -s dir -t pacman \
+    -n "$NAME" -v "$VERSION" -a "x86_64" \
+    -m "$MAINTAINER" \
+    --description "$DESC" \
+    --url "$URL" \
+    -C ./staging \
+    -p ./releases/scribble.pkg.tar.zst \
+    usr/
+
+echo "Done!"
