@@ -6,6 +6,7 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
 using Avalonia.Platform.Storage;
@@ -496,21 +497,28 @@ public partial class MainView : UserControl
 
     private async void SaveToFileMenuOption_OnClick(object? sender, RoutedEventArgs e)
     {
-        var topLevel = TopLevel.GetTopLevel(this);
-        if (topLevel == null) return;
+        try
+        {
+            var topLevel = TopLevel.GetTopLevel(this);
+            if (topLevel == null) return;
 
-        var file = await topLevel.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
-        {
-            SuggestedFileName = "Scribble",
-            Title = "Save canvas state to file",
-            DefaultExtension = ".scribble",
-        });
-        if (file is not null)
-        {
-            _viewModel?.SaveCanvasToFile(file);
+            var file = await topLevel.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+            {
+                SuggestedFileName = "Scribble",
+                Title = "Save canvas state to file",
+                DefaultExtension = ".scribble",
+            });
+            if (file is not null)
+            {
+                _viewModel?.SaveCanvasToFile(file);
+            }
+
+            CloseMenu();
         }
-
-        CloseMenu();
+        catch (Exception exception)
+        {
+            Console.WriteLine(exception.Message);
+        }
     }
 
     private async void OpenFileMenuOption_OnClick(object? sender, RoutedEventArgs e)
@@ -564,5 +572,20 @@ public partial class MainView : UserControl
         {
             Console.WriteLine(exception.Message);
         }
+    }
+
+    private void ResetCanvasMenuOption_OnClick(object? sender, RoutedEventArgs e)
+    {
+        _viewModel?.ResetCanvas();
+    }
+
+    private void CanvasBackgroundColorView_OnColorChanged(object? sender, ColorChangedEventArgs e)
+    {
+        _viewModel?.ChangeBackgroundColor(e.NewColor);
+    }
+
+    private void TransparentCanvasButton_OnClick(object? sender, RoutedEventArgs e)
+    {
+        CanvasBackgroundColorView.Color = Colors.Transparent;
     }
 }

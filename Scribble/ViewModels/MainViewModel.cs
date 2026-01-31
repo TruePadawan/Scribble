@@ -367,6 +367,7 @@ public partial class MainViewModel : ViewModelBase
 
                     break;
                 case RestoreCanvasEvent ev:
+                    drawStrokes.Clear();
                     foreach (Stroke stroke in ev.Strokes)
                     {
                         if (stroke is DrawStroke drawStroke)
@@ -508,7 +509,6 @@ public partial class MainViewModel : ViewModelBase
             if (result != ButtonResult.Yes) return;
         }
 
-        CanvasEvents.Clear();
         List<Stroke> strokes = [];
         foreach (var stroke in rawStrokes)
         {
@@ -519,5 +519,27 @@ public partial class MainViewModel : ViewModelBase
         }
 
         ApplyEvent(new RestoreCanvasEvent(strokes));
+    }
+
+    public async Task ResetCanvas()
+    {
+        if (CanvasEvents.Count > 0)
+        {
+            var box = MessageBoxManager
+                .GetMessageBoxStandard("Warning",
+                    "This will clear your current canvas. Are you sure you want to proceed?",
+                    ButtonEnum.YesNo,
+                    Icon.Warning);
+
+            var result = await box.ShowAsync();
+            if (result != ButtonResult.Yes) return;
+        }
+
+        ApplyEvent(new RestoreCanvasEvent([]));
+    }
+
+    public void ChangeBackgroundColor(Color color)
+    {
+        BackgroundColor = Utilities.ToSkColor(color);
     }
 }

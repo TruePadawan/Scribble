@@ -99,6 +99,10 @@ public class SkiaCanvas : Control
 
             InvalidateVisual();
         }
+        else if (change.Property == CanvasBackgroundProperty)
+        {
+            InvalidateVisual();
+        }
     }
 
     // runs when a stroke is added/removed from the strokes collection
