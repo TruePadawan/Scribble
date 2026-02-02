@@ -163,46 +163,61 @@
             </StackPanel>
         </Panel>
 
-        <Border Name="ToolbarContainer"
+        <!-- Toolbar -->
+        <StackPanel Orientation="Horizontal" Spacing="18" HorizontalAlignment="Center" VerticalAlignment="Bottom"
+                    Margin="0,0,0,24">
+            <Border
+                Name="ToolbarContainer"
                 Background="#EE2B2B2B"
                 CornerRadius="16"
-                HorizontalAlignment="Center"
-                VerticalAlignment="Bottom"
-                Margin="0,0,0,24"
                 Padding="8"
                 BoxShadow="0 4 20 0 #60000000">
-            <StackPanel Name="Toolbar"
-                        Orientation="Horizontal"
-                        Spacing="8">
-                <StackPanel.Styles>
-                    <Style Selector="ToggleButton">
-                        <Setter Property="CornerRadius" Value="10" />
-                        <Setter Property="Background" Value="Transparent" />
-                        <Setter Property="BorderThickness" Value="0" />
-                        <Setter Property="Padding" Value="8" />
-                        <Setter Property="Width" Value="48" />
-                        <Setter Property="Height" Value="48" />
-                        <Setter Property="Transitions">
-                            <Transitions>
-                                <BrushTransition Property="Background" Duration="0:0:0.15" />
-                                <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.15" />
-                            </Transitions>
-                        </Setter>
-                    </Style>
-                    <Style Selector="ToggleButton:pointerover">
-                        <Setter Property="Background" Value="#1AFFFFFF" />
-                        <Setter Property="RenderTransform" Value="scale(1.1)" />
-                    </Style>
-                    <Style Selector="ToggleButton:checked">
-                        <Setter Property="Background" Value="#33FFFFFF" />
-                    </Style>
-                    <Style Selector="ToggleButton:checked /template/ ContentPresenter">
-                        <Setter Property="Background" Value="#33FFFFFF" />
-                    </Style>
-                </StackPanel.Styles>
+                <StackPanel Name="Toolbar"
+                            Orientation="Horizontal"
+                            Spacing="8">
+                </StackPanel>
+            </Border>
 
-            </StackPanel>
-        </Border>
+            <Border
+                Background="#EE2B2B2B"
+                CornerRadius="16"
+                Padding="8"
+                BoxShadow="0 4 20 0 #60000000">
+                <Button Name="MultiUserDrawingButton">
+                    <Image Margin="4" Source="avares://Scribble/Assets/group.png" />
+                </Button>
+            </Border>
+
+            <StackPanel.Styles>
+                <Style Selector="ToggleButton, Button">
+                    <Setter Property="CornerRadius" Value="10" />
+                    <Setter Property="Background" Value="Transparent" />
+                    <Setter Property="BorderThickness" Value="0" />
+                    <Setter Property="Padding" Value="6" />
+                    <Setter Property="Margin" Value="4" />
+                    <Setter Property="Width" Value="44" />
+                    <Setter Property="Height" Value="44" />
+                    <Setter Property="Transitions">
+                        <Transitions>
+                            <BrushTransition Property="Background" Duration="0:0:0.15" />
+                            <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.15" />
+                        </Transitions>
+                    </Setter>
+                </Style>
+                <Style Selector="ToggleButton:pointerover, Button:pointerover">
+                    <Setter Property="Background" Value="#1AFFFFFF" />
+                    <Setter Property="RenderTransform" Value="scale(1.1)" />
+                </Style>
+                <Style Selector="ToggleButton:checked">
+                    <Setter Property="Background" Value="#33FFFFFF" />
+                </Style>
+                <Style Selector="ToggleButton:checked /template/ ContentPresenter">
+                    <Setter Property="Background" Value="#33FFFFFF" />
+                </Style>
+            </StackPanel.Styles>
+
+        </StackPanel>
+
 
         <StackPanel
             HorizontalAlignment="Right"
