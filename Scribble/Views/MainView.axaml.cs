@@ -14,7 +14,7 @@ using Avalonia.Threading;
 using MsBox.Avalonia;
 using MsBox.Avalonia.Enums;
 using Scribble.Behaviours;
-using Scribble.Lib;
+using Scribble.Shared.Lib;
 using Scribble.Tools.PointerTools;
 using Scribble.Tools.PointerTools.ArrowTool;
 using Scribble.Tools.PointerTools.EllipseTool;
@@ -118,9 +118,6 @@ public partial class MainView : UserControl
         var toggleButton = new ToggleButton
         {
             Name = tool.Name,
-            Width = 50,
-            Height = 50,
-            Margin = new Thickness(4),
         };
         ToggleButtonGroup.SetGroupName(toggleButton, "PointerTools");
         toggleButton.IsCheckedChanged += (object? sender, RoutedEventArgs e) =>

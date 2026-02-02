@@ -2,7 +2,7 @@ using System;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
-using Scribble.Lib;
+using Scribble.Shared.Lib;
 using Scribble.Utils;
 using Scribble.ViewModels;
 using SkiaSharp;

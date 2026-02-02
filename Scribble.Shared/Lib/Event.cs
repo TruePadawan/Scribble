@@ -1,9 +1,7 @@
-using System;
-using System.Collections.Generic;
 using System.Text.Json.Serialization;
 using SkiaSharp;
 
-namespace Scribble.Lib;
+namespace Scribble.Shared.Lib;
 
 /// <summary>
 /// Represents the base class for all events in the application.

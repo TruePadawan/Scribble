@@ -6,7 +6,7 @@ using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
-using Scribble.Lib;
+using Scribble.Shared.Lib;
 using Scribble.Utils;
 using Scribble.ViewModels;
 using SkiaSharp;

@@ -1,10 +1,8 @@
-using System;
-using System.Collections.Generic;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using SkiaSharp;
 
-namespace Scribble.Lib;
+namespace Scribble.Shared.Lib;
 
 [JsonDerivedType(typeof(DrawStroke), typeDiscriminator: "DrawStroke")]
 [JsonDerivedType(typeof(EraserStroke), typeDiscriminator: "EraserStroke")]

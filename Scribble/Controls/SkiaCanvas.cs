@@ -7,7 +7,7 @@ using Avalonia.Media;
 using Avalonia.Platform;
 using Avalonia.Rendering.SceneGraph;
 using Avalonia.Skia;
-using Scribble.Lib;
+using Scribble.Shared.Lib;
 using SkiaSharp;
 
 namespace Scribble.Controls;

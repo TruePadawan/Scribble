@@ -27,4 +27,8 @@
         <PackageReference Include="CommunityToolkit.Mvvm"/>
         <PackageReference Include="MessageBox.Avalonia" />
     </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\Scribble.Shared\Scribble.Shared.csproj" />
+    </ItemGroup>
 </Project>

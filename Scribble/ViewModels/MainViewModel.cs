@@ -11,7 +11,7 @@ using Avalonia.Platform.Storage;
 using CommunityToolkit.Mvvm.ComponentModel;
 using MsBox.Avalonia;
 using MsBox.Avalonia.Enums;
-using Scribble.Lib;
+using Scribble.Shared.Lib;
 using Scribble.Tools.PointerTools.ArrowTool;
 using Scribble.Utils;
 using SkiaSharp;
