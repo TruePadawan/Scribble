@@ -183,7 +183,7 @@
                 CornerRadius="16"
                 Padding="8"
                 BoxShadow="0 4 20 0 #60000000">
-                <Button Name="MultiUserDrawingButton">
+                <Button Name="LiveDrawingButton" Click="LiveDrawingButton_OnClick">
                     <Image Margin="4" Source="avares://Scribble/Assets/group.png" />
                 </Button>
             </Border>
@@ -218,7 +218,48 @@
 
         </StackPanel>
 
+        <!-- Multi-User Drawing Dialog -->
+        <Panel>
+            <!-- Invisible Background that catches clicks -->
+            <Rectangle Name="LiveDrawingWindowOverlay"
+                       Fill="Transparent"
+                       IsVisible="False" PointerPressed="LiveDrawingWindowOverlay_OnPointerPressed" />
 
+            <Border Name="LiveDrawingWindow" HorizontalAlignment="Center" VerticalAlignment="Center"
+                    Background="#2B2B2B"
+                    Padding="18"
+                    CornerRadius="12" IsVisible="False">
+                <StackPanel MinWidth="400" Spacing="12">
+                    <TextBlock HorizontalAlignment="Center" Foreground="#AAAAAA" Margin="0, 0, 0, 12">Live drawing</TextBlock>
+                    <TextBlock FontSize="12" TextWrapping="Wrap" Foreground="WhiteSmoke">
+                        If the room id doesn't belong to any active room, the room is automatically created
+                    </TextBlock>
+
+                    <Grid HorizontalAlignment="Stretch" ColumnDefinitions="40,*,40" ColumnSpacing="4">
+                        <Button Name="RoomIdGenerateButton" Grid.Column="0" Height="40"
+                                Click="RoomIdGenerateButton_OnClick">
+                            <Image Source="avares://Scribble/Assets/random.png" />
+                        </Button>
+                        <TextBox Grid.Column="1" Name="RoomIdTextBox" Watermark="Room ID"
+                                 KeyDown="RoomIdTextBox_OnKeyDown" TextChanged="RoomIdTextBox_OnTextChanged"
+                                 VerticalContentAlignment="Center" />
+                        <Button Name="RoomIdClipboardButton" Grid.Column="2" Height="40"
+                                Click="RoomIdClipboardButton_OnClick">
+                            <Image Source="avares://Scribble/Assets/clipboard.png" />
+                        </Button>
+                    </Grid>
+
+                    <Button Name="EnterRoomButton" HorizontalAlignment="Stretch" Foreground="WhiteSmoke" Padding="8"
+                            HorizontalContentAlignment="Center"
+                            Click="EnterRoomButton_OnClick">
+                        Enter room
+                    </Button>
+
+                </StackPanel>
+            </Border>
+        </Panel>
+
+        <!-- Change Background and Tool Options -->
         <StackPanel
             HorizontalAlignment="Right"
             VerticalAlignment="Top"

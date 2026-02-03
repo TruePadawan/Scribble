@@ -9,8 +9,10 @@ using Avalonia;
 using Avalonia.Media;
 using Avalonia.Platform.Storage;
 using CommunityToolkit.Mvvm.ComponentModel;
+using Microsoft.AspNetCore.SignalR.Client;
 using MsBox.Avalonia;
 using MsBox.Avalonia.Enums;
+using Scribble.Lib;
 using Scribble.Shared.Lib;
 using Scribble.Tools.PointerTools.ArrowTool;
 using Scribble.Utils;
@@ -30,12 +32,14 @@ public partial class MainViewModel : ViewModelBase
     public event Action? RequestInvalidateSelection;
     private List<Event> CanvasEvents { get; } = [];
     private int _currentEventIndex = -1;
+    private readonly LiveDrawingService _liveDrawingService;
 
 
     public MainViewModel()
     {
         BackgroundColor = SKColors.Transparent;
         ScaleTransform = new ScaleTransform(1, 1);
+        _liveDrawingService = new LiveDrawingService("https://localhost:7189/liveDrawingHub");
     }
 
     public Vector GetCanvasDimensions() => new Vector(CanvasWidth, CanvasHeight);
@@ -550,4 +554,20 @@ public partial class MainViewModel : ViewModelBase
     {
         BackgroundColor = Utilities.ToSkColor(color);
     }
+
+    public async Task JoinRoom(string roomId)
+    {
+        await _liveDrawingService.StartAsync();
+        await _liveDrawingService.JoinRoomAsync(roomId);
+    }
+
+    public async Task LeaveRoom()
+    {
+        if (_liveDrawingService.ConnectionState != HubConnectionState.Disconnected)
+        {
+            await _liveDrawingService.StopAsync();
+        }
+    }
+
+    public HubConnectionState GetLiveDrawingServiceConnectionState() => _liveDrawingService.ConnectionState;
 }

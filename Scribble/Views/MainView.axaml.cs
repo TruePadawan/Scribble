@@ -11,6 +11,7 @@ using Avalonia.Media.Imaging;
 using Avalonia.Platform;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
+using Microsoft.AspNetCore.SignalR.Client;
 using MsBox.Avalonia;
 using MsBox.Avalonia.Enums;
 using Scribble.Behaviours;
@@ -492,6 +493,14 @@ public partial class MainView : UserControl
         Dispatcher.UIThread.Post(() => CanvasContainer.Focus());
     }
 
+    private void CloseLiveDrawingWindow()
+    {
+        LiveDrawingWindow.IsVisible = false;
+        LiveDrawingWindowOverlay.IsVisible = false;
+
+        Dispatcher.UIThread.Post(() => CanvasContainer.Focus());
+    }
+
     private async void SaveToFileMenuOption_OnClick(object? sender, RoutedEventArgs e)
     {
         try
@@ -584,5 +593,94 @@ public partial class MainView : UserControl
     private void TransparentCanvasButton_OnClick(object? sender, RoutedEventArgs e)
     {
         CanvasBackgroundColorView.Color = Colors.Transparent;
+    }
+
+    private void LiveDrawingWindowOverlay_OnPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        CloseLiveDrawingWindow();
+    }
+
+    private void LiveDrawingButton_OnClick(object? sender, RoutedEventArgs e)
+    {
+        if (_viewModel == null) return;
+        LiveDrawingWindow.IsVisible = true;
+        LiveDrawingWindowOverlay.IsVisible = true;
+    }
+
+    private async void EnterRoomButton_OnClick(object? sender, RoutedEventArgs e)
+    {
+        try
+        {
+            EnterRoomButton.IsEnabled = false;
+            if (_viewModel == null || RoomIdTextBox.Text == null) return;
+            if (_viewModel.GetLiveDrawingServiceConnectionState() == HubConnectionState.Disconnected)
+            {
+                await _viewModel.JoinRoom(RoomIdTextBox.Text);
+                EnterRoomButton.Content = "Leave Room";
+                LiveDrawingButton.Background = new SolidColorBrush(Colors.Green);
+            }
+            else
+            {
+                await _viewModel.LeaveRoom();
+                EnterRoomButton.Content = "Enter Room";
+                LiveDrawingButton.Background = new SolidColorBrush(Colors.Transparent);
+            }
+        }
+        catch (Exception exception)
+        {
+            Console.WriteLine(exception);
+        }
+        finally
+        {
+            EnterRoomButton.IsEnabled = true;
+        }
+    }
+
+    private async void RoomIdClipboardButton_OnClick(object? sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var clipboard = TopLevel.GetTopLevel(this)?.Clipboard;
+            if (clipboard == null) return;
+            await clipboard.SetTextAsync(RoomIdTextBox.Text);
+        }
+        catch (Exception exception)
+        {
+            Console.WriteLine($"Failed to copy to clipboard - {exception.Message}");
+        }
+    }
+
+    private void RoomIdGenerateButton_OnClick(object? sender, RoutedEventArgs e)
+    {
+        if (_viewModel?.GetLiveDrawingServiceConnectionState() == HubConnectionState.Disconnected)
+        {
+            string roomId = Guid.NewGuid().ToString("N");
+            RoomIdTextBox.Text = roomId;
+        }
+    }
+
+    private void RoomIdTextBox_OnKeyDown(object? sender, KeyEventArgs e)
+    {
+        // Don't allow whitespace
+        if (e.Key == Key.Space)
+        {
+            e.Handled = true;
+        }
+    }
+
+    private void RoomIdTextBox_OnTextChanged(object? sender, TextChangedEventArgs e)
+    {
+        if (sender is TextBox textBox && textBox.Text != null)
+        {
+            if (textBox.Text.Any(char.IsWhiteSpace))
+            {
+                var caretIndex = textBox.CaretIndex;
+                var cleanText = textBox.Text.Replace(" ", "");
+                textBox.Text = cleanText;
+
+                // Restore the cursor position
+                textBox.CaretIndex = Math.Min(caretIndex, textBox.Text.Length);
+            }
+        }
     }
 }
