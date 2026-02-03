@@ -26,6 +26,7 @@
         </PackageReference>
         <PackageReference Include="CommunityToolkit.Mvvm"/>
         <PackageReference Include="MessageBox.Avalonia" />
+        <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" />
     </ItemGroup>
 
     <ItemGroup>
