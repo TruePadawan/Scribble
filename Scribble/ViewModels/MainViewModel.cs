@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Media;
 using Avalonia.Platform.Storage;
+using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Microsoft.AspNetCore.SignalR.Client;
 using MsBox.Avalonia;
@@ -33,6 +34,7 @@ public partial class MainViewModel : ViewModelBase
     private List<Event> CanvasEvents { get; } = [];
     private int _currentEventIndex = -1;
     private readonly LiveDrawingService _liveDrawingService;
+    private string? _joinedRoomId;
 
 
     public MainViewModel()
@@ -40,6 +42,32 @@ public partial class MainViewModel : ViewModelBase
         BackgroundColor = SKColors.Transparent;
         ScaleTransform = new ScaleTransform(1, 1);
         _liveDrawingService = new LiveDrawingService("https://localhost:7189/liveDrawingHub");
+
+        _liveDrawingService.EventReceived += OnNetworkEventReceived;
+        _liveDrawingService.CanvasStateReceived += OnCanvasStateReceived;
+        _liveDrawingService.CanvasStateRequested += OnCanvasStateRequested;
+    }
+
+    // Event handler for when another client in the room draws something
+    private void OnNetworkEventReceived(Event @event)
+    {
+        Dispatcher.UIThread.Post(() => { ApplyEventLocally(@event); });
+    }
+
+    // Event handler for sending canvas state to client that just joined the room
+    private void OnCanvasStateRequested(string targetConnectionId)
+    {
+        Dispatcher.UIThread.Post(async void () =>
+        {
+            var strokesSnapshot = CanvasStrokes.ToList();
+            await _liveDrawingService.SendCanvasStateToClientAsync(targetConnectionId, strokesSnapshot);
+        });
+    }
+
+    // Event handler for processing the canvas state snapshot received from room host
+    private void OnCanvasStateReceived(List<Stroke> strokes)
+    {
+        Dispatcher.UIThread.Post(() => { ApplyEventLocally(new RestoreCanvasEvent(strokes)); });
     }
 
     public Vector GetCanvasDimensions() => new Vector(CanvasWidth, CanvasHeight);
@@ -92,6 +120,16 @@ public partial class MainViewModel : ViewModelBase
     }
 
     public void ApplyEvent(Event @event)
+    {
+        ApplyEventLocally(@event);
+
+        if (!string.IsNullOrEmpty(_joinedRoomId))
+        {
+            _ = _liveDrawingService.BroadcastEventAsync(_joinedRoomId, @event);
+        }
+    }
+
+    private void ApplyEventLocally(Event @event)
     {
         var eventsCount = CanvasEvents.Count;
         // Remove all stale events if we branch off
@@ -557,6 +595,7 @@ public partial class MainViewModel : ViewModelBase
 
     public async Task JoinRoom(string roomId)
     {
+        _joinedRoomId = roomId;
         await _liveDrawingService.StartAsync();
         await _liveDrawingService.JoinRoomAsync(roomId);
     }
