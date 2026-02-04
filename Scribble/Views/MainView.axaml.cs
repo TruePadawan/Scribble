@@ -615,6 +615,22 @@ public partial class MainView : UserControl
             if (_viewModel == null || RoomIdTextBox.Text == null) return;
             if (_viewModel.GetLiveDrawingServiceConnectionState() == HubConnectionState.Disconnected)
             {
+                if (_viewModel.HasEvents())
+                {
+                    var box = MessageBoxManager
+                        .GetMessageBoxStandard("Warning",
+                            "This might clear your current canvas. Are you sure you want to proceed?",
+                            ButtonEnum.YesNo,
+                            Icon.Warning);
+
+                    var result = await box.ShowAsync();
+                    if (result != ButtonResult.Yes)
+                    {
+                        EnterRoomButton.IsEnabled = true;
+                        return;
+                    }
+                }
+
                 await _viewModel.JoinRoom(RoomIdTextBox.Text);
                 EnterRoomButton.Content = "Leave Room";
                 LiveDrawingButton.Background = new SolidColorBrush(Colors.Green);
