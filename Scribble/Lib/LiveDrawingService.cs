@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Text.Json;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.SignalR.Client;
 using Scribble.Shared.Lib;
@@ -21,13 +22,27 @@ public class LiveDrawingService(string serverUrl)
     public async Task StartAsync()
     {
         // Listen for draw events from others in the room
-        _connection.On<Event>("ReceiveEvent", ev => EventReceived?.Invoke(ev));
+        _connection.On<string>("ReceiveEvent", ev =>
+        {
+            var @event = JsonSerializer.Deserialize<Event>(ev);
+            if (@event != null)
+            {
+                EventReceived?.Invoke(@event);
+            }
+        });
 
         // Only relevant when this client is the host, listens for requests for the canvas state from other clients
         _connection.On<string>("RequestCanvasState", req => CanvasStateRequested?.Invoke(req));
 
         // We're a new client joining a room, listens for the response from the host carrying the canvas state
-        _connection.On<List<Stroke>>("ReceiveCanvasState", req => CanvasStateReceived?.Invoke(req));
+        _connection.On<string>("ReceiveCanvasState", (serializedStrokes) =>
+        {
+            var strokes = JsonSerializer.Deserialize<List<Stroke>>(serializedStrokes);
+            if (strokes != null)
+            {
+                CanvasStateReceived?.Invoke(strokes);
+            }
+        });
 
         await _connection.StartAsync();
         ConnectionStarted?.Invoke();
@@ -44,7 +59,6 @@ public class LiveDrawingService(string serverUrl)
         if (_connection.State == HubConnectionState.Connected)
         {
             await _connection.InvokeAsync("JoinRoom", roomId);
-            Console.WriteLine($"Joined room - {roomId}");
         }
         else
         {
@@ -56,7 +70,8 @@ public class LiveDrawingService(string serverUrl)
     {
         if (_connection.State == HubConnectionState.Connected)
         {
-            await _connection.InvokeAsync("SendEvent", roomId, evt);
+            var serializedEvent = JsonSerializer.Serialize(evt);
+            await _connection.InvokeAsync("SendEvent", roomId, serializedEvent);
         }
     }
 
@@ -64,7 +79,8 @@ public class LiveDrawingService(string serverUrl)
     {
         if (_connection.State == HubConnectionState.Connected)
         {
-            await _connection.InvokeAsync("SendCanvasStateToClient", targetId, strokes);
+            var serializedStrokes = JsonSerializer.Serialize(strokes);
+            await _connection.InvokeAsync("SendCanvasStateToClient", targetId, serializedStrokes);
         }
     }
 }

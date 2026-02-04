@@ -1,6 +1,5 @@
 using System.Collections.Concurrent;
 using Microsoft.AspNetCore.SignalR;
-using Scribble.Shared.Lib;
 
 namespace Scribble.Server.Hubs;
 
@@ -42,13 +41,13 @@ public class LiveDrawingHub : Hub
         }
     }
 
-    public async Task SendEvent(string roomId, Event canvasEvent)
+    public async Task SendEvent(string roomId, string serializedCanvasEvent)
     {
-        await Clients.OthersInGroup(roomId).SendAsync("ReceiveEvent", canvasEvent);
+        await Clients.OthersInGroup(roomId).SendAsync("ReceiveEvent", serializedCanvasEvent);
     }
 
-    public async Task SendCanvasStateToClient(string targetConnectionId, List<Stroke> currentStrokes)
+    public async Task SendCanvasStateToClient(string targetConnectionId, string serializedStrokes)
     {
-        await Clients.Client(targetConnectionId).SendAsync("ReceiveCanvasState", currentStrokes);
+        await Clients.Client(targetConnectionId).SendAsync("ReceiveCanvasState", serializedStrokes);
     }
 }

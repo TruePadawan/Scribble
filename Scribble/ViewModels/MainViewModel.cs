@@ -558,9 +558,9 @@ public partial class MainViewModel : ViewModelBase
         foreach (var stroke in rawStrokes)
         {
             if (stroke is null) throw new Exception("Invalid canvas file");
-            var deserializedEvent = JsonSerializer.Deserialize<Stroke>(stroke.ToJsonString());
-            if (deserializedEvent is null) throw new Exception("Invalid canvas file");
-            strokes.Add(deserializedEvent);
+            var deserializedStroke = JsonSerializer.Deserialize<Stroke>(stroke.ToJsonString());
+            if (deserializedStroke is null) throw new Exception("Invalid canvas file");
+            strokes.Add(deserializedStroke);
         }
 
         ApplyEvent(new RestoreCanvasEvent(strokes));
