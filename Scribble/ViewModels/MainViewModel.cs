@@ -32,7 +32,6 @@ public partial class MainViewModel : ViewModelBase
     public Dictionary<Guid, List<Guid>> SelectionTargets { get; private set; } = new();
     public event Action? RequestInvalidateSelection;
     private List<Event> CanvasEvents { get; } = [];
-    private int _currentEventIndex = -1;
     private readonly LiveDrawingService _liveDrawingService;
     private string? _joinedRoomId;
     private readonly Stack<Guid> _undoStack = new();
@@ -127,12 +126,11 @@ public partial class MainViewModel : ViewModelBase
         }
 
         CanvasEvents.Add(@event);
-        _currentEventIndex = CanvasEvents.Count - 1;
 
         if (@event is EndStrokeEvent) return;
         var staleIds = ReplayEvents();
 
-        if (staleIds.Count > 0 && _currentEventIndex == CanvasEvents.Count - 1)
+        if (staleIds.Count > 0)
         {
             bool changed = false;
             foreach (var id in staleIds)
@@ -143,7 +141,6 @@ public partial class MainViewModel : ViewModelBase
 
             if (changed)
             {
-                _currentEventIndex = CanvasEvents.Count - 1;
                 ReplayEvents();
             }
         }
@@ -172,9 +169,8 @@ public partial class MainViewModel : ViewModelBase
         var staleSelectionBounds = new List<Guid>();
         var clearsSomething = new Dictionary<Guid, bool>();
 
-        for (var i = 0; i <= _currentEventIndex; i++)
+        foreach (var canvasEvent in CanvasEvents)
         {
-            var canvasEvent = CanvasEvents[i];
             if (canvasEvent is StrokeEvent strokeEv && hiddenStrokeIds.Contains(strokeEv.StrokeId))
             {
                 continue;
