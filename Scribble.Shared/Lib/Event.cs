@@ -22,6 +22,7 @@ namespace Scribble.Shared.Lib;
 [JsonDerivedType(typeof(ScaleStrokesEvent), typeDiscriminator: "ScaleStrokes")]
 [JsonDerivedType(typeof(UndoEvent), typeDiscriminator: "Undo")]
 [JsonDerivedType(typeof(RedoEvent), typeDiscriminator: "Redo")]
+[JsonDerivedType(typeof(RestoreCanvasEvent), typeDiscriminator: "RestoreCanvasEvent")]
 public abstract record Event
 {
     public DateTime TimeStamp { get; init; } = DateTime.UtcNow;
