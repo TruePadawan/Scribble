@@ -29,13 +29,14 @@ public partial class MainViewModel : ViewModelBase
     [ObservableProperty] private SKColor _backgroundColor;
     public ScaleTransform ScaleTransform { get; }
     [ObservableProperty] private List<Stroke> _canvasStrokes = [];
-    public Dictionary<Guid, List<Guid>> SelectionTargets { get; private set; } = new();
+    public Dictionary<Guid, List<Guid>> SelectionTargets { get; private set; } = [];
     public event Action? RequestInvalidateSelection;
     private List<Event> CanvasEvents { get; } = [];
     private readonly LiveDrawingService _liveDrawingService;
     private string? _joinedRoomId;
-    private readonly Stack<Guid> _undoStack = new();
-    private readonly Stack<Guid> _redoStack = new();
+    private readonly Stack<Guid> _undoStack = [];
+    private readonly Stack<Guid> _redoStack = [];
+    private readonly HashSet<Guid> _mySelections = [];
 
 
     public MainViewModel()
@@ -105,6 +106,11 @@ public partial class MainViewModel : ViewModelBase
 
     public void ApplyEvent(Event @event, bool isLocalEvent = true)
     {
+        if (@event is CreateSelectionBoundEvent ev)
+        {
+            _mySelections.Add(ev.BoundId);
+        }
+
         ProcessEvent(@event, isLocalEvent);
 
         if (!string.IsNullOrEmpty(_joinedRoomId))
@@ -425,7 +431,9 @@ public partial class MainViewModel : ViewModelBase
         }
 
         CanvasStrokes = new List<Stroke>(drawStrokes.Values.ToList());
-        SelectionTargets = selectionBounds.ToDictionary(k => k.Key, v => v.Value.Targets.ToList());
+        // Show the selection only on the client that is doing the selection
+        SelectionTargets = selectionBounds.Where(pair => _mySelections.Contains(pair.Key))
+            .ToDictionary(k => k.Key, v => v.Value.Targets.ToList());
         RequestInvalidateSelection?.Invoke();
 
         var allStale = new List<Guid>();
