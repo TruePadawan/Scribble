@@ -35,6 +35,8 @@ public partial class MainViewModel : ViewModelBase
     private int _currentEventIndex = -1;
     private readonly LiveDrawingService _liveDrawingService;
     private string? _joinedRoomId;
+    private readonly Stack<Guid> _undoStack = new();
+    private readonly Stack<Guid> _redoStack = new();
 
 
     public MainViewModel()
@@ -51,7 +53,7 @@ public partial class MainViewModel : ViewModelBase
     // Event handler for when another client in the room draws something
     private void OnNetworkEventReceived(Event @event)
     {
-        Dispatcher.UIThread.Post(() => { ApplyEventLocally(@event); });
+        Dispatcher.UIThread.Post(() => { ProcessEvent(@event); });
     }
 
     // Event handler for sending canvas state to client that just joined the room
@@ -67,7 +69,7 @@ public partial class MainViewModel : ViewModelBase
     // Event handler for processing the canvas state snapshot received from room host
     private void OnCanvasStateReceived(List<Stroke> strokes)
     {
-        Dispatcher.UIThread.Post(() => { ApplyEventLocally(new RestoreCanvasEvent(strokes)); });
+        Dispatcher.UIThread.Post(() => { ProcessEvent(new RestoreCanvasEvent(strokes)); });
     }
 
     public Vector GetCanvasDimensions() => new Vector(CanvasWidth, CanvasHeight);
@@ -80,48 +82,31 @@ public partial class MainViewModel : ViewModelBase
         ScaleTransform.ScaleY = newScale;
     }
 
+    private void AddToMyHistory(Guid strokeId)
+    {
+        _undoStack.Push(strokeId);
+        _redoStack.Clear();
+    }
+
     public void Undo()
     {
-        if (CanvasEvents.Count == 0 || _currentEventIndex == -1) return;
-
-        // Move back to find the previous terminal event
-        int i = _currentEventIndex;
-
-        // If we are currently AT a terminal event, we want to go BEFORE it and find the next previous one
-        if (CanvasEvents[i] is ITerminalEvent)
-        {
-            i--;
-        }
-
-        while (i >= 0 && CanvasEvents[i] is not ITerminalEvent)
-        {
-            i--;
-        }
-
-        _currentEventIndex = i;
-        ReplayEvents();
+        if (_undoStack.Count == 0) return;
+        var strokeId = _undoStack.Pop();
+        _redoStack.Push(strokeId);
+        ApplyEvent(new UndoEvent(strokeId), isLocalEvent: true);
     }
 
     public void Redo()
     {
-        if (CanvasEvents.Count == 0 || _currentEventIndex == CanvasEvents.Count - 1) return;
-
-        int i = _currentEventIndex + 1;
-        while (i < CanvasEvents.Count && CanvasEvents[i] is not ITerminalEvent)
-        {
-            i++;
-        }
-
-        if (i < CanvasEvents.Count)
-        {
-            _currentEventIndex = i;
-            ReplayEvents();
-        }
+        if (_redoStack.Count == 0) return;
+        var strokeId = _redoStack.Pop();
+        _undoStack.Push(strokeId);
+        ApplyEvent(new RedoEvent(strokeId), isLocalEvent: true);
     }
 
-    public void ApplyEvent(Event @event)
+    public void ApplyEvent(Event @event, bool isLocalEvent = true)
     {
-        ApplyEventLocally(@event);
+        ProcessEvent(@event, isLocalEvent);
 
         if (!string.IsNullOrEmpty(_joinedRoomId))
         {
@@ -129,13 +114,16 @@ public partial class MainViewModel : ViewModelBase
         }
     }
 
-    private void ApplyEventLocally(Event @event)
+    private void ProcessEvent(Event @event, bool isLocalEvent = false)
     {
-        var eventsCount = CanvasEvents.Count;
-        // Remove all stale events if we branch off
-        if (eventsCount > 0 && _currentEventIndex < eventsCount - 1)
+        // Keep track of locally drawn strokes for undo/redo functionality
+        if (@event is StartStrokeEvent or StartEraseStrokeEvent or AddTextEvent)
         {
-            CanvasEvents.RemoveRange(_currentEventIndex + 1, eventsCount - _currentEventIndex - 1);
+            if (isLocalEvent)
+            {
+                var strokeId = ((StrokeEvent)@event).StrokeId;
+                AddToMyHistory(strokeId);
+            }
         }
 
         CanvasEvents.Add(@event);
@@ -163,6 +151,19 @@ public partial class MainViewModel : ViewModelBase
 
     private List<Guid> ReplayEvents()
     {
+        var hiddenStrokeIds = new HashSet<Guid>();
+        foreach (var canvasEvent in CanvasEvents)
+        {
+            if (canvasEvent is UndoEvent ev)
+            {
+                hiddenStrokeIds.Add(ev.TargetStrokeId);
+            }
+            else if (canvasEvent is RedoEvent redoEv)
+            {
+                hiddenStrokeIds.Remove(redoEv.TargetStrokeId);
+            }
+        }
+
         var drawStrokes = new Dictionary<Guid, DrawStroke>();
         var eraserStrokes = new Dictionary<Guid, EraserStroke>();
         var staleEraseStrokes = new List<Guid>();
@@ -174,6 +175,11 @@ public partial class MainViewModel : ViewModelBase
         for (var i = 0; i <= _currentEventIndex; i++)
         {
             var canvasEvent = CanvasEvents[i];
+            if (canvasEvent is StrokeEvent strokeEv && hiddenStrokeIds.Contains(strokeEv.StrokeId))
+            {
+                continue;
+            }
+
             switch (canvasEvent)
             {
                 case StartStrokeEvent ev:
@@ -595,9 +601,9 @@ public partial class MainViewModel : ViewModelBase
 
     public async Task JoinRoom(string roomId)
     {
-        _joinedRoomId = roomId;
         await _liveDrawingService.StartAsync();
         await _liveDrawingService.JoinRoomAsync(roomId);
+        _joinedRoomId = roomId;
     }
 
     public async Task LeaveRoom()

@@ -20,6 +20,8 @@ namespace Scribble.Shared.Lib;
 [JsonDerivedType(typeof(MoveStrokesEvent), typeDiscriminator: "MoveStrokes")]
 [JsonDerivedType(typeof(RotateStrokesEvent), typeDiscriminator: "RotateStrokes")]
 [JsonDerivedType(typeof(ScaleStrokesEvent), typeDiscriminator: "ScaleStrokes")]
+[JsonDerivedType(typeof(UndoEvent), typeDiscriminator: "Undo")]
+[JsonDerivedType(typeof(RedoEvent), typeDiscriminator: "Redo")]
 public abstract record Event
 {
     public DateTime TimeStamp { get; init; } = DateTime.UtcNow;
@@ -68,3 +70,7 @@ public record ScaleStrokesEvent(Guid BoundId, SKPoint Scale, SKPoint Center) : S
 
 // MISC
 public record RestoreCanvasEvent(List<Stroke> Strokes) : Event, ITerminalEvent;
+
+public record UndoEvent(Guid TargetStrokeId) : StrokeEvent(TargetStrokeId);
+
+public record RedoEvent(Guid TargetStrokeId) : StrokeEvent(TargetStrokeId);
