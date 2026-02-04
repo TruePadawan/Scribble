@@ -13,11 +13,14 @@ public class LiveDrawingService(string serverUrl)
         new HubConnectionBuilder().WithUrl(serverUrl).WithAutomaticReconnect().Build();
 
     public HubConnectionState ConnectionState => _connection.State;
+    public string? ConnectionId => _connection.ConnectionId;
     public event Action? ConnectionStarted;
     public event Action? ConnectionStopped;
     public event Action<Event>? EventReceived;
     public event Action<string>? CanvasStateRequested;
     public event Action<List<Stroke>>? CanvasStateReceived;
+    public event Action<string, List<string>> ClientJoinedRoom;
+    public event Action<string, List<string>> ClientLeftRoom;
 
     public async Task StartAsync()
     {
@@ -32,7 +35,7 @@ public class LiveDrawingService(string serverUrl)
         });
 
         // Only relevant when this client is the host, listens for requests for the canvas state from other clients
-        _connection.On<string>("RequestCanvasState", req => CanvasStateRequested?.Invoke(req));
+        _connection.On<string>("RequestCanvasState", clientId => CanvasStateRequested?.Invoke(clientId));
 
         // We're a new client joining a room, listens for the response from the host carrying the canvas state
         _connection.On<string>("ReceiveCanvasState", (serializedStrokes) =>
@@ -43,6 +46,12 @@ public class LiveDrawingService(string serverUrl)
                 CanvasStateReceived?.Invoke(strokes);
             }
         });
+
+        _connection.On<string, List<string>>("ClientJoined",
+            (clientId, usersInRoom) => ClientJoinedRoom?.Invoke(clientId, usersInRoom));
+
+        _connection.On<string, List<string>>("ClientLeft",
+            (clientId, usersInRoom) => ClientLeftRoom?.Invoke(clientId, usersInRoom));
 
         await _connection.StartAsync();
         ConnectionStarted?.Invoke();

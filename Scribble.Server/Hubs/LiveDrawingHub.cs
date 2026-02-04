@@ -27,6 +27,8 @@ public class LiveDrawingHub : Hub
             // Ask the room's host to send the canvas state to this new client
             await Clients.Client(hostId).SendAsync("RequestCanvasState", Context.ConnectionId);
         }
+
+        await Clients.Group(roomId).SendAsync("ClientJoined", Context.ConnectionId, usersInRoom);
     }
 
     public async Task LeaveRoom(string roomId)
@@ -38,6 +40,10 @@ public class LiveDrawingHub : Hub
         if (usersInRoom.Count == 0)
         {
             Rooms.TryRemove(roomId, out _);
+        }
+        else
+        {
+            await Clients.Group(roomId).SendAsync("ClientLeft", Context.ConnectionId, usersInRoom);
         }
     }
 
