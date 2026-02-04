@@ -32,12 +32,17 @@ public partial class MainViewModel : ViewModelBase
     public Dictionary<Guid, List<Guid>> SelectionTargets { get; private set; } = [];
     public event Action? RequestInvalidateSelection;
     private List<Event> CanvasEvents { get; } = [];
+
     private readonly LiveDrawingService _liveDrawingService;
-    private string? _joinedRoomId;
+
     private readonly Stack<Guid> _undoStack = [];
     private readonly Stack<Guid> _redoStack = [];
     private readonly HashSet<Guid> _mySelections = [];
 
+    [ObservableProperty] [NotifyPropertyChangedFor(nameof(CanResetCanvas))]
+    private LiveDrawingRoom? _room;
+
+    public bool CanResetCanvas => Room == null || Room.IsHost;
 
     public MainViewModel()
     {
@@ -48,6 +53,26 @@ public partial class MainViewModel : ViewModelBase
         _liveDrawingService.EventReceived += OnNetworkEventReceived;
         _liveDrawingService.CanvasStateReceived += OnCanvasStateReceived;
         _liveDrawingService.CanvasStateRequested += OnCanvasStateRequested;
+        _liveDrawingService.ClientJoinedRoom += OnClientJoinedRoom;
+        _liveDrawingService.ClientLeftRoom += OnClientLeftRoom;
+    }
+
+    private void OnClientJoinedRoom(string clientId, List<string> usersInRoom)
+    {
+        if (Room == null || _liveDrawingService.ConnectionId == null) return;
+        Room = new LiveDrawingRoom(Room.RoomId, _liveDrawingService.ConnectionId)
+        {
+            UsersInRoom = usersInRoom
+        };
+    }
+
+    private void OnClientLeftRoom(string clientId, List<string> usersInRoom)
+    {
+        if (Room == null || _liveDrawingService.ConnectionId == null) return;
+        Room = new LiveDrawingRoom(Room.RoomId, _liveDrawingService.ConnectionId)
+        {
+            UsersInRoom = usersInRoom
+        };
     }
 
     // Event handler for when another client in the room draws something
@@ -113,9 +138,9 @@ public partial class MainViewModel : ViewModelBase
 
         ProcessEvent(@event, isLocalEvent);
 
-        if (!string.IsNullOrEmpty(_joinedRoomId))
+        if (!string.IsNullOrEmpty(Room?.RoomId))
         {
-            _ = _liveDrawingService.BroadcastEventAsync(_joinedRoomId, @event);
+            _ = _liveDrawingService.BroadcastEventAsync(Room.RoomId, @event);
         }
     }
 
@@ -607,7 +632,10 @@ public partial class MainViewModel : ViewModelBase
     {
         await _liveDrawingService.StartAsync();
         await _liveDrawingService.JoinRoomAsync(roomId);
-        _joinedRoomId = roomId;
+        if (_liveDrawingService.ConnectionId != null)
+        {
+            Room = new LiveDrawingRoom(roomId, _liveDrawingService.ConnectionId);
+        }
     }
 
     public async Task LeaveRoom()

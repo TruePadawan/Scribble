@@ -138,6 +138,7 @@
                             </StackPanel>
                         </Button>
                         <Button Name="ResetCanvasMenuOption" Margin="0" Click="ResetCanvasMenuOption_OnClick"
+                                IsVisible="{Binding CanResetCanvas}"
                                 HorizontalAlignment="Stretch">
                             <StackPanel Orientation="Horizontal" Spacing="4">
                                 <Image Source="avares://Scribble/Assets/bin.png" Width="18" Height="18" />
