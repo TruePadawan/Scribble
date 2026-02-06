@@ -58,7 +58,7 @@ public class RectangleTool : PointerToolsBase
 
     public override void HandlePointerRelease(Point prevCoord, Point currentCoord)
     {
-        ViewModel.ApplyEvent(new EndStrokeEvent(_actionId, _strokeId));
+        ViewModel.ApplyEvent(new EndStrokeEvent(_actionId));
     }
 
     public override bool RenderOptions(Panel parent)

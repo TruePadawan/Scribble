@@ -320,7 +320,7 @@ public partial class MainView : UserControl
         {
             foreach (var selection in _viewModel.SelectionTargets)
             {
-                _viewModel.ApplyEvent(new EndStrokeEvent(_selection.MoveActionId, selection.Key));
+                _viewModel.ApplyEvent(new EndStrokeEvent(_selection.MoveActionId));
             }
         }
 
@@ -382,7 +382,7 @@ public partial class MainView : UserControl
         {
             foreach (var selection in _viewModel.SelectionTargets)
             {
-                _viewModel.ApplyEvent(new EndStrokeEvent(_selection.RotateActionId, selection.Key));
+                _viewModel.ApplyEvent(new EndStrokeEvent(_selection.RotateActionId));
             }
         }
 
@@ -441,7 +441,7 @@ public partial class MainView : UserControl
         {
             foreach (var selection in _viewModel.SelectionTargets)
             {
-                _viewModel.ApplyEvent(new EndStrokeEvent(_selection.ScaleActionId, selection.Key));
+                _viewModel.ApplyEvent(new EndStrokeEvent(_selection.ScaleActionId));
             }
 
             _selection.ActiveScaleHandle = null;

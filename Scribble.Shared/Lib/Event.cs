@@ -32,50 +32,46 @@ public interface ITerminalEvent
 {
 }
 
-public abstract record StrokeEvent(Guid ActionId, Guid StrokeId) : Event(ActionId);
-
 public record StartStrokeEvent(
     Guid ActionId,
     Guid StrokeId,
     SKPoint StartPoint,
     StrokePaint StrokePaint,
     StrokeTool ToolType)
-    : StrokeEvent(ActionId, StrokeId);
+    : Event(ActionId);
 
-public record EndStrokeEvent(Guid ActionId, Guid StrokeId) : StrokeEvent(ActionId, StrokeId), ITerminalEvent;
+public record EndStrokeEvent(Guid ActionId) : Event(ActionId), ITerminalEvent;
 
 // PENCIL TOOL
-public record PencilStrokeLineToEvent(Guid ActionId, Guid StrokeId, SKPoint Point) : StrokeEvent(ActionId, StrokeId);
+public record PencilStrokeLineToEvent(Guid ActionId, Guid StrokeId, SKPoint Point) : Event(ActionId);
 
 // ERASE TOOL
-public record StartEraseStrokeEvent(Guid ActionId, Guid StrokeId, SKPoint StartPoint) : StrokeEvent(ActionId, StrokeId);
+public record StartEraseStrokeEvent(Guid ActionId, Guid StrokeId, SKPoint StartPoint) : Event(ActionId);
 
-public record EraseStrokeLineToEvent(Guid ActionId, Guid StrokeId, SKPoint Point) : StrokeEvent(ActionId, StrokeId);
+public record EraseStrokeLineToEvent(Guid ActionId, Guid StrokeId, SKPoint Point) : Event(ActionId);
 
-public record TriggerEraseEvent(Guid ActionId, Guid StrokeId) : StrokeEvent(ActionId, StrokeId), ITerminalEvent;
+public record TriggerEraseEvent(Guid ActionId, Guid StrokeId) : Event(ActionId), ITerminalEvent;
 
 // LINE + ARROW + RECTANGLE TOOL
-public record LineStrokeLineToEvent(Guid ActionId, Guid StrokeId, SKPoint EndPoint) : StrokeEvent(ActionId, StrokeId);
+public record LineStrokeLineToEvent(Guid ActionId, Guid StrokeId, SKPoint EndPoint) : Event(ActionId);
 
 // TEXT TOOL
 public record AddTextEvent(Guid ActionId, Guid StrokeId, SKPoint Position, string Text, StrokePaint Paint)
-    : StrokeEvent(ActionId, StrokeId), ITerminalEvent;
+    : Event(ActionId), ITerminalEvent;
 
 // SELECT TOOL
-public record CreateSelectionBoundEvent(Guid ActionId, Guid BoundId, SKPoint StartPoint)
-    : StrokeEvent(ActionId, BoundId);
+public record CreateSelectionBoundEvent(Guid ActionId, Guid BoundId, SKPoint StartPoint) : Event(ActionId);
 
-public record IncreaseSelectionBoundEvent(Guid ActionId, Guid BoundId, SKPoint Point) : StrokeEvent(ActionId, BoundId);
+public record IncreaseSelectionBoundEvent(Guid ActionId, Guid BoundId, SKPoint Point) : Event(ActionId);
 
-public record EndSelectionEvent(Guid ActionId, Guid BoundId) : StrokeEvent(ActionId, BoundId), ITerminalEvent;
+public record EndSelectionEvent(Guid ActionId, Guid BoundId) : Event(ActionId), ITerminalEvent;
 
-public record MoveStrokesEvent(Guid ActionId, Guid BoundId, SKPoint Delta) : StrokeEvent(ActionId, BoundId);
+public record MoveStrokesEvent(Guid ActionId, Guid BoundId, SKPoint Delta) : Event(ActionId);
 
 public record RotateStrokesEvent(Guid ActionId, Guid BoundId, float DegreesRad, SKPoint Center)
-    : StrokeEvent(ActionId, BoundId);
+    : Event(ActionId);
 
-public record ScaleStrokesEvent(Guid ActionId, Guid BoundId, SKPoint Scale, SKPoint Center)
-    : StrokeEvent(ActionId, BoundId);
+public record ScaleStrokesEvent(Guid ActionId, Guid BoundId, SKPoint Scale, SKPoint Center) : Event(ActionId);
 
 // MISC
 public record RestoreCanvasEvent(Guid ActionId, List<Stroke> Strokes) : Event(ActionId), ITerminalEvent;
