@@ -23,51 +23,59 @@ namespace Scribble.Shared.Lib;
 [JsonDerivedType(typeof(UndoEvent), typeDiscriminator: "Undo")]
 [JsonDerivedType(typeof(RedoEvent), typeDiscriminator: "Redo")]
 [JsonDerivedType(typeof(RestoreCanvasEvent), typeDiscriminator: "RestoreCanvasEvent")]
-public abstract record Event
+public abstract record Event(Guid ActionId)
 {
     public DateTime TimeStamp { get; init; } = DateTime.UtcNow;
 }
 
-public abstract record StrokeEvent(Guid StrokeId) : Event;
+public abstract record StrokeEvent(Guid ActionId, Guid StrokeId) : Event(ActionId);
 
-public record StartStrokeEvent(Guid StrokeId, SKPoint StartPoint, StrokePaint StrokePaint, StrokeTool ToolType)
-    : StrokeEvent(StrokeId);
+public record StartStrokeEvent(
+    Guid ActionId,
+    Guid StrokeId,
+    SKPoint StartPoint,
+    StrokePaint StrokePaint,
+    StrokeTool ToolType)
+    : StrokeEvent(ActionId, StrokeId);
 
-public record EndStrokeEvent(Guid StrokeId) : StrokeEvent(StrokeId);
+public record EndStrokeEvent(Guid ActionId, Guid StrokeId) : StrokeEvent(ActionId, StrokeId);
 
 // PENCIL TOOL
-public record PencilStrokeLineToEvent(Guid StrokeId, SKPoint Point) : StrokeEvent(StrokeId);
+public record PencilStrokeLineToEvent(Guid ActionId, Guid StrokeId, SKPoint Point) : StrokeEvent(ActionId, StrokeId);
 
 // ERASE TOOL
-public record StartEraseStrokeEvent(Guid StrokeId, SKPoint StartPoint) : StrokeEvent(StrokeId);
+public record StartEraseStrokeEvent(Guid ActionId, Guid StrokeId, SKPoint StartPoint) : StrokeEvent(ActionId, StrokeId);
 
-public record EraseStrokeLineToEvent(Guid StrokeId, SKPoint Point) : StrokeEvent(StrokeId);
+public record EraseStrokeLineToEvent(Guid ActionId, Guid StrokeId, SKPoint Point) : StrokeEvent(ActionId, StrokeId);
 
-public record TriggerEraseEvent(Guid StrokeId) : StrokeEvent(StrokeId);
+public record TriggerEraseEvent(Guid ActionId, Guid StrokeId) : StrokeEvent(ActionId, StrokeId);
 
 // LINE + ARROW + RECTANGLE TOOL
-public record LineStrokeLineToEvent(Guid StrokeId, SKPoint EndPoint) : StrokeEvent(StrokeId);
+public record LineStrokeLineToEvent(Guid ActionId, Guid StrokeId, SKPoint EndPoint) : StrokeEvent(ActionId, StrokeId);
 
 // TEXT TOOL
-public record AddTextEvent(Guid StrokeId, SKPoint Position, string Text, StrokePaint Paint)
-    : StrokeEvent(StrokeId);
+public record AddTextEvent(Guid ActionId, Guid StrokeId, SKPoint Position, string Text, StrokePaint Paint)
+    : StrokeEvent(ActionId, StrokeId);
 
 // SELECT TOOL
-public record CreateSelectionBoundEvent(Guid BoundId, SKPoint StartPoint) : StrokeEvent(BoundId);
+public record CreateSelectionBoundEvent(Guid ActionId, Guid BoundId, SKPoint StartPoint)
+    : StrokeEvent(ActionId, BoundId);
 
-public record IncreaseSelectionBoundEvent(Guid BoundId, SKPoint Point) : StrokeEvent(BoundId);
+public record IncreaseSelectionBoundEvent(Guid ActionId, Guid BoundId, SKPoint Point) : StrokeEvent(ActionId, BoundId);
 
-public record EndSelectionEvent(Guid BoundId) : StrokeEvent(BoundId);
+public record EndSelectionEvent(Guid ActionId, Guid BoundId) : StrokeEvent(ActionId, BoundId);
 
-public record MoveStrokesEvent(Guid BoundId, SKPoint Delta) : StrokeEvent(BoundId);
+public record MoveStrokesEvent(Guid ActionId, Guid BoundId, SKPoint Delta) : StrokeEvent(ActionId, BoundId);
 
-public record RotateStrokesEvent(Guid BoundId, float DegreesRad, SKPoint Center) : StrokeEvent(BoundId);
+public record RotateStrokesEvent(Guid ActionId, Guid BoundId, float DegreesRad, SKPoint Center)
+    : StrokeEvent(ActionId, BoundId);
 
-public record ScaleStrokesEvent(Guid BoundId, SKPoint Scale, SKPoint Center) : StrokeEvent(BoundId);
+public record ScaleStrokesEvent(Guid ActionId, Guid BoundId, SKPoint Scale, SKPoint Center)
+    : StrokeEvent(ActionId, BoundId);
 
 // MISC
-public record RestoreCanvasEvent(List<Stroke> Strokes) : Event;
+public record RestoreCanvasEvent(Guid ActionId, List<Stroke> Strokes) : Event(ActionId);
 
-public record UndoEvent(Guid TargetStrokeId) : StrokeEvent(TargetStrokeId);
+public record UndoEvent(Guid ActionId, Guid TargetActionId) : Event(ActionId);
 
-public record RedoEvent(Guid TargetStrokeId) : StrokeEvent(TargetStrokeId);
+public record RedoEvent(Guid ActionId, Guid TargetActionId) : Event(ActionId);
