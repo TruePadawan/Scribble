@@ -81,7 +81,7 @@ public partial class MainViewModel : ViewModelBase
         Dispatcher.UIThread.Post(() => { ProcessEvent(@event); });
     }
 
-    // Event handler for sending canvas state to client that just joined the room
+    // Event handler for sending canvas state to clients that just joined the room
     private void OnCanvasStateRequested(string targetConnectionId)
     {
         Dispatcher.UIThread.Post(async void () =>
@@ -91,10 +91,10 @@ public partial class MainViewModel : ViewModelBase
         });
     }
 
-    // Event handler for processing the canvas state snapshot received from room host
+    // Event handler for processing the canvas state snapshot received from the room's host
     private void OnCanvasStateReceived(List<Stroke> strokes)
     {
-        Dispatcher.UIThread.Post(() => { ProcessEvent(new RestoreCanvasEvent(strokes)); });
+        Dispatcher.UIThread.Post(() => { ProcessEvent(new RestoreCanvasEvent(Guid.NewGuid(), strokes)); });
     }
 
     public Vector GetCanvasDimensions() => new Vector(CanvasWidth, CanvasHeight);
@@ -107,26 +107,26 @@ public partial class MainViewModel : ViewModelBase
         ScaleTransform.ScaleY = newScale;
     }
 
-    private void AddToMyHistory(Guid strokeId)
+    private void TrackAction(Guid actionId)
     {
-        _undoStack.Push(strokeId);
+        _undoStack.Push(actionId);
         _redoStack.Clear();
     }
 
     public void Undo()
     {
         if (_undoStack.Count == 0) return;
-        var strokeId = _undoStack.Pop();
-        _redoStack.Push(strokeId);
-        ApplyEvent(new UndoEvent(strokeId), isLocalEvent: true);
+        var actionId = _undoStack.Pop();
+        _redoStack.Push(actionId);
+        ApplyEvent(new UndoEvent(Guid.NewGuid(), actionId), isLocalEvent: true);
     }
 
     public void Redo()
     {
         if (_redoStack.Count == 0) return;
-        var strokeId = _redoStack.Pop();
-        _undoStack.Push(strokeId);
-        ApplyEvent(new RedoEvent(strokeId), isLocalEvent: true);
+        var actionId = _redoStack.Pop();
+        _undoStack.Push(actionId);
+        ApplyEvent(new RedoEvent(Guid.NewGuid(), actionId), isLocalEvent: true);
     }
 
     public void ApplyEvent(Event @event, bool isLocalEvent = true)
@@ -146,67 +146,54 @@ public partial class MainViewModel : ViewModelBase
 
     private void ProcessEvent(Event @event, bool isLocalEvent = false)
     {
-        // Keep track of locally drawn strokes for undo/redo functionality
-        if (@event is StartStrokeEvent or StartEraseStrokeEvent or AddTextEvent)
-        {
-            if (isLocalEvent)
-            {
-                var strokeId = ((StrokeEvent)@event).StrokeId;
-                AddToMyHistory(strokeId);
-            }
-        }
-
         CanvasEvents.Add(@event);
 
-        if (@event is EndStrokeEvent) return;
-        var staleIds = ReplayEvents();
-
-        if (staleIds.Count > 0)
+        var staleActionIds = ReplayEvents();
+        bool changed = false;
+        bool currentActionIsStale = false;
+        foreach (var id in staleActionIds)
         {
-            bool changed = false;
-            foreach (var id in staleIds)
-            {
-                int removed = CanvasEvents.RemoveAll(ev => ev is StrokeEvent { StrokeId: var sid } && sid == id);
-                if (removed > 0) changed = true;
-            }
+            int removed = CanvasEvents.RemoveAll(ev => ev.ActionId == id);
+            if (removed > 0) changed = true;
+            if (id == @event.ActionId) currentActionIsStale = true;
+        }
 
-            if (changed)
-            {
-                ReplayEvents();
-            }
+        if (changed)
+        {
+            ReplayEvents();
+        }
+
+        // Keep track of local non-stale actions for undo/redo functionality
+        if (@event is ITerminalEvent && isLocalEvent && !currentActionIsStale)
+        {
+            TrackAction(@event.ActionId);
         }
     }
 
     private List<Guid> ReplayEvents()
     {
-        var hiddenStrokeIds = new HashSet<Guid>();
+        var hiddenActionIds = new HashSet<Guid>();
         foreach (var canvasEvent in CanvasEvents)
         {
             if (canvasEvent is UndoEvent ev)
             {
-                hiddenStrokeIds.Add(ev.TargetStrokeId);
+                hiddenActionIds.Add(ev.TargetActionId);
             }
             else if (canvasEvent is RedoEvent redoEv)
             {
-                hiddenStrokeIds.Remove(redoEv.TargetStrokeId);
+                hiddenActionIds.Remove(redoEv.TargetActionId);
             }
         }
 
         var drawStrokes = new Dictionary<Guid, DrawStroke>();
         var eraserStrokes = new Dictionary<Guid, EraserStroke>();
-        var staleEraseStrokes = new List<Guid>();
         var eraserHeads = new Dictionary<Guid, SKPoint>();
         var selectionBounds = new Dictionary<Guid, SelectionBound>();
-        var staleSelectionBounds = new List<Guid>();
         var clearsSomething = new Dictionary<Guid, bool>();
+        var staleActionIds = new List<Guid>();
 
-        foreach (var canvasEvent in CanvasEvents)
+        foreach (var canvasEvent in CanvasEvents.Where(canvasEvent => !hiddenActionIds.Contains(canvasEvent.ActionId)))
         {
-            if (canvasEvent is StrokeEvent strokeEv && hiddenStrokeIds.Contains(strokeEv.StrokeId))
-            {
-                continue;
-            }
-
             switch (canvasEvent)
             {
                 case StartStrokeEvent ev:
@@ -271,7 +258,7 @@ public partial class MainViewModel : ViewModelBase
 
                         if (eraserStrokes[ev.StrokeId].Targets.Count == 0)
                         {
-                            staleEraseStrokes.Add(ev.StrokeId);
+                            staleActionIds.Add(ev.ActionId);
                         }
                     }
 
@@ -390,7 +377,7 @@ public partial class MainViewModel : ViewModelBase
                         if (selectionBounds[ev.BoundId].Targets.Count == 0 &&
                             !clearsSomething.GetValueOrDefault(ev.BoundId))
                         {
-                            staleSelectionBounds.Add(ev.BoundId);
+                            staleActionIds.Add(ev.ActionId);
                         }
                     }
 
@@ -461,10 +448,7 @@ public partial class MainViewModel : ViewModelBase
             .ToDictionary(k => k.Key, v => v.Value.Targets.ToList());
         RequestInvalidateSelection?.Invoke();
 
-        var allStale = new List<Guid>();
-        allStale.AddRange(staleEraseStrokes);
-        allStale.AddRange(staleSelectionBounds);
-        return allStale;
+        return staleActionIds;
     }
 
     private void CheckAndErase(SKPoint eraserPoint, Dictionary<Guid, DrawStroke> drawStrokes, EraserStroke eraserStroke)
@@ -596,7 +580,7 @@ public partial class MainViewModel : ViewModelBase
             strokes.Add(deserializedStroke);
         }
 
-        ApplyEvent(new RestoreCanvasEvent(strokes));
+        ApplyEvent(new RestoreCanvasEvent(Guid.NewGuid(), strokes));
 
         // Restore background color
         var bgColor = canvasState["backgroundColor"]?.ToString();
@@ -620,7 +604,7 @@ public partial class MainViewModel : ViewModelBase
             if (result != ButtonResult.Yes) return;
         }
 
-        ApplyEvent(new RestoreCanvasEvent([]));
+        ApplyEvent(new RestoreCanvasEvent(Guid.NewGuid(), []));
     }
 
     public void ChangeBackgroundColor(Color color)

@@ -94,7 +94,6 @@ public class TextTool : PointerToolsBase
             textboxPos.Y += _strokePaint.TextSize;
             var strokeId = Guid.NewGuid();
             ViewModel.ApplyEvent(new AddTextEvent(_actionId, strokeId, textboxPos, text, _strokePaint.Clone()));
-            ViewModel.ApplyEvent(new EndStrokeEvent(_actionId, strokeId));
         }
 
         _canvasContainer.Children.Remove(_currentTextBox);
@@ -108,7 +107,6 @@ public class TextTool : PointerToolsBase
     public override bool RenderOptions(Panel parent)
     {
         // Render a slider for controlling the font size and a color picker for text color
-
         var colorPicker = new ColorPicker
         {
             Color = Utilities.FromSkColor(_strokePaint.Color),
