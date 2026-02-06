@@ -16,6 +16,7 @@ class SelectTool : PointerToolsBase
     private readonly Canvas _canvasContainer;
     private Point _startPoint;
     private Guid _boundId = Guid.NewGuid();
+    private Guid _actionId = Guid.NewGuid();
 
     public SelectTool(string name, MainViewModel viewModel, Canvas canvasContainer) : base(name, viewModel,
         LoadToolBitmap(typeof(SelectTool), "cursor.png"))
@@ -38,7 +39,8 @@ class SelectTool : PointerToolsBase
         _startPoint = coord;
         _canvasContainer.Children.Add(_selectionBorder);
         _boundId = Guid.NewGuid();
-        ViewModel.ApplyEvent(new CreateSelectionBoundEvent(_boundId,
+        _actionId = Guid.NewGuid();
+        ViewModel.ApplyEvent(new CreateSelectionBoundEvent(_actionId, _boundId,
             new SKPoint((float)coord.X, (float)coord.Y)));
     }
 
@@ -50,7 +52,7 @@ class SelectTool : PointerToolsBase
 
         Canvas.SetLeft(_selectionBorder, Math.Min(_startPoint.X, currentCoord.X));
         Canvas.SetTop(_selectionBorder, Math.Min(_startPoint.Y, currentCoord.Y));
-        ViewModel.ApplyEvent(new IncreaseSelectionBoundEvent(_boundId, Utilities.ToSkPoint(currentCoord)));
+        ViewModel.ApplyEvent(new IncreaseSelectionBoundEvent(_actionId, _boundId, Utilities.ToSkPoint(currentCoord)));
     }
 
     public override void HandlePointerRelease(Point prevCoord, Point currentCoord)
@@ -59,6 +61,6 @@ class SelectTool : PointerToolsBase
 
         _canvasContainer.Children.Remove(_selectionBorder);
         _selectionBorder = null;
-        ViewModel.ApplyEvent(new EndSelectionEvent(_boundId));
+        ViewModel.ApplyEvent(new EndSelectionEvent(_actionId, _boundId));
     }
 }

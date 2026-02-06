@@ -12,7 +12,8 @@ namespace Scribble.Tools.PointerTools.PencilTool;
 public class PencilTool : PointerToolsBase
 {
     private readonly StrokePaint _strokePaint;
-    private Guid _currentStrokeId = Guid.NewGuid();
+    private Guid _strokeId = Guid.NewGuid();
+    private Guid _actionId = Guid.NewGuid();
 
     public PencilTool(string name, MainViewModel viewModel) : base(name, viewModel,
         LoadToolBitmap(typeof(PencilTool), "pencil.png"))
@@ -28,23 +29,24 @@ public class PencilTool : PointerToolsBase
         };
     }
 
-    public override void HandlePointerMove(Point prevCoord, Point currentCoord)
-    {
-        var nextPoint = new SKPoint((float)currentCoord.X, (float)currentCoord.Y);
-        ViewModel.ApplyEvent(new PencilStrokeLineToEvent(_currentStrokeId, nextPoint));
-    }
-
     public override void HandlePointerClick(Point coord)
     {
         var startPoint = new SKPoint((float)coord.X, (float)coord.Y);
-        _currentStrokeId = Guid.NewGuid();
+        _strokeId = Guid.NewGuid();
+        _actionId = Guid.NewGuid();
         ViewModel.ApplyEvent(
-            new StartStrokeEvent(_currentStrokeId, startPoint, _strokePaint.Clone(), StrokeTool.Pencil));
+            new StartStrokeEvent(_actionId, _strokeId, startPoint, _strokePaint.Clone(), StrokeTool.Pencil));
+    }
+
+    public override void HandlePointerMove(Point prevCoord, Point currentCoord)
+    {
+        var nextPoint = new SKPoint((float)currentCoord.X, (float)currentCoord.Y);
+        ViewModel.ApplyEvent(new PencilStrokeLineToEvent(_actionId, _strokeId, nextPoint));
     }
 
     public override void HandlePointerRelease(Point prevCoord, Point currentCoord)
     {
-        ViewModel.ApplyEvent(new EndStrokeEvent(_currentStrokeId));
+        ViewModel.ApplyEvent(new EndStrokeEvent(_actionId, _strokeId));
     }
 
     public override bool RenderOptions(Panel parent)
