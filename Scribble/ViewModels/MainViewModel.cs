@@ -31,7 +31,7 @@ public partial class MainViewModel : ViewModelBase
     [ObservableProperty] private List<Stroke> _canvasStrokes = [];
     public Dictionary<Guid, List<Guid>> SelectionTargets { get; private set; } = [];
     public event Action? RequestInvalidateSelection;
-    private List<Event> CanvasEvents { get; } = [];
+    private Queue<Event> CanvasEvents { get; set; } = [];
 
     private readonly LiveDrawingService _liveDrawingService;
 
@@ -146,17 +146,30 @@ public partial class MainViewModel : ViewModelBase
 
     private void ProcessEvent(Event @event, bool isLocalEvent = false)
     {
-        CanvasEvents.Add(@event);
+        CanvasEvents.Enqueue(@event);
 
         var staleActionIds = ReplayEvents();
         bool changed = false;
         bool currentActionIsStale = false;
-        foreach (var id in staleActionIds)
+
+        Queue<Event> nonStaleEvents = [];
+        foreach (var canvasEvent in CanvasEvents)
         {
-            int removed = CanvasEvents.RemoveAll(ev => ev.ActionId == id);
-            if (removed > 0) changed = true;
-            if (id == @event.ActionId) currentActionIsStale = true;
+            if (!staleActionIds.Contains(canvasEvent.ActionId))
+            {
+                nonStaleEvents.Enqueue(canvasEvent);
+            }
+            else
+            {
+                changed = true;
+                if (canvasEvent.ActionId == @event.ActionId)
+                {
+                    currentActionIsStale = true;
+                }
+            }
         }
+
+        CanvasEvents = nonStaleEvents;
 
         if (changed)
         {
