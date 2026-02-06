@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.SignalR.Client;
@@ -18,32 +19,25 @@ public class LiveDrawingService(string serverUrl)
     public event Action? ConnectionStopped;
     public event Action<Event>? EventReceived;
     public event Action<string>? CanvasStateRequested;
-    public event Action<List<Stroke>>? CanvasStateReceived;
-    public event Action<string, List<string>> ClientJoinedRoom;
-    public event Action<string, List<string>> ClientLeftRoom;
+    public event Action<Queue<Event>>? CanvasStateReceived;
+    public event Action<string, List<string>>? ClientJoinedRoom;
+    public event Action<string, List<string>>? ClientLeftRoom;
 
     public async Task StartAsync()
     {
         // Listen for draw events from others in the room
-        _connection.On<string>("ReceiveEvent", ev =>
-        {
-            var @event = JsonSerializer.Deserialize<Event>(ev);
-            if (@event != null)
-            {
-                EventReceived?.Invoke(@event);
-            }
-        });
+        _connection.On<Event>("ReceiveEvent", @event => { EventReceived?.Invoke(@event); });
 
         // Only relevant when this client is the host, listens for requests for the canvas state from other clients
         _connection.On<string>("RequestCanvasState", clientId => CanvasStateRequested?.Invoke(clientId));
 
         // We're a new client joining a room, listens for the response from the host carrying the canvas state
-        _connection.On<string>("ReceiveCanvasState", (serializedStrokes) =>
+        _connection.On<string>("ReceiveCanvasState", (serializedEvents) =>
         {
-            var strokes = JsonSerializer.Deserialize<List<Stroke>>(serializedStrokes);
-            if (strokes != null)
+            var events = JsonSerializer.Deserialize<Queue<Event>>(serializedEvents);
+            if (events != null)
             {
-                CanvasStateReceived?.Invoke(strokes);
+                CanvasStateReceived?.Invoke(events);
             }
         });
 
@@ -79,17 +73,17 @@ public class LiveDrawingService(string serverUrl)
     {
         if (_connection.State == HubConnectionState.Connected)
         {
-            var serializedEvent = JsonSerializer.Serialize(evt);
-            await _connection.InvokeAsync("SendEvent", roomId, serializedEvent);
+            // var serializedEvent = JsonSerializer.Serialize(evt);
+            await _connection.InvokeAsync("SendEvent", roomId, evt);
         }
     }
 
-    public async Task SendCanvasStateToClientAsync(string targetId, List<Stroke> strokes)
+    public async Task SendCanvasStateToClientAsync(string targetId, Queue<Event> events)
     {
         if (_connection.State == HubConnectionState.Connected)
         {
-            var serializedStrokes = JsonSerializer.Serialize(strokes);
-            await _connection.InvokeAsync("SendCanvasStateToClient", targetId, serializedStrokes);
+            var serializedEvents = JsonSerializer.Serialize(events);
+            await _connection.InvokeAsync("SendCanvasStateToClient", targetId, serializedEvents);
         }
     }
 }

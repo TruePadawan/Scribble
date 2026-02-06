@@ -29,6 +29,7 @@ public partial class MainViewModel : ViewModelBase
     [ObservableProperty] private SKColor _backgroundColor;
     public ScaleTransform ScaleTransform { get; }
     [ObservableProperty] private List<Stroke> _canvasStrokes = [];
+    private readonly HashSet<Guid> _deletedActions = [];
     public Dictionary<Guid, List<Guid>> SelectionTargets { get; private set; } = [];
     public event Action? RequestInvalidateSelection;
     private Queue<Event> CanvasEvents { get; set; } = [];
@@ -86,15 +87,18 @@ public partial class MainViewModel : ViewModelBase
     {
         Dispatcher.UIThread.Post(async void () =>
         {
-            var strokesSnapshot = CanvasStrokes.ToList();
-            await _liveDrawingService.SendCanvasStateToClientAsync(targetConnectionId, strokesSnapshot);
+            await _liveDrawingService.SendCanvasStateToClientAsync(targetConnectionId, CanvasEvents);
         });
     }
 
     // Event handler for processing the canvas state snapshot received from the room's host
-    private void OnCanvasStateReceived(List<Stroke> strokes)
+    private void OnCanvasStateReceived(Queue<Event> events)
     {
-        Dispatcher.UIThread.Post(() => { ProcessEvent(new RestoreCanvasEvent(Guid.NewGuid(), strokes)); });
+        Dispatcher.UIThread.Post(() =>
+        {
+            CanvasEvents = events;
+            ReplayEvents();
+        });
     }
 
     public Vector GetCanvasDimensions() => new Vector(CanvasWidth, CanvasHeight);
@@ -117,6 +121,14 @@ public partial class MainViewModel : ViewModelBase
     {
         if (_undoStack.Count == 0) return;
         var actionId = _undoStack.Pop();
+        if (Room != null)
+        {
+            while (_deletedActions.Contains(actionId))
+            {
+                actionId = _undoStack.Pop();
+            }
+        }
+
         _redoStack.Push(actionId);
         ApplyEvent(new UndoEvent(Guid.NewGuid(), actionId), isLocalEvent: true);
     }
@@ -125,6 +137,14 @@ public partial class MainViewModel : ViewModelBase
     {
         if (_redoStack.Count == 0) return;
         var actionId = _redoStack.Pop();
+        if (Room != null)
+        {
+            while (_deletedActions.Contains(actionId))
+            {
+                actionId = _redoStack.Pop();
+            }
+        }
+
         _undoStack.Push(actionId);
         ApplyEvent(new RedoEvent(Guid.NewGuid(), actionId), isLocalEvent: true);
     }
@@ -198,12 +218,14 @@ public partial class MainViewModel : ViewModelBase
             }
         }
 
+        _deletedActions.Clear();
         var drawStrokes = new Dictionary<Guid, DrawStroke>();
         var eraserStrokes = new Dictionary<Guid, EraserStroke>();
         var eraserHeads = new Dictionary<Guid, SKPoint>();
         var selectionBounds = new Dictionary<Guid, SelectionBound>();
         var clearsSomething = new Dictionary<Guid, bool>();
         var staleActionIds = new List<Guid>();
+        var strokeToActionMap = new Dictionary<Guid, Guid>();
 
         foreach (var canvasEvent in CanvasEvents.Where(canvasEvent => !hiddenActionIds.Contains(canvasEvent.ActionId)))
         {
@@ -219,6 +241,7 @@ public partial class MainViewModel : ViewModelBase
                         Path = newLinePath,
                         ToolType = ev.ToolType,
                     };
+                    strokeToActionMap[ev.StrokeId] = ev.ActionId;
                     break;
                 case StartEraseStrokeEvent ev:
                     var eraserPath = new SKPath();
@@ -267,6 +290,7 @@ public partial class MainViewModel : ViewModelBase
                         foreach (var targetId in eraserStrokes[ev.StrokeId].Targets)
                         {
                             drawStrokes.Remove(targetId);
+                            _deletedActions.Add(strokeToActionMap[targetId]);
                         }
 
                         if (eraserStrokes[ev.StrokeId].Targets.Count == 0)
