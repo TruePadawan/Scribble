@@ -4,7 +4,7 @@ using Scribble.Shared.Lib;
 
 namespace Scribble.Server.Hubs;
 
-public class LiveDrawingHub : Hub
+public class CollaborativeDrawingHub : Hub
 {
     private static readonly ConcurrentDictionary<string, List<string>> Rooms = new();
 

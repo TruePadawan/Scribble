@@ -1,14 +1,13 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.SignalR.Client;
 using Scribble.Shared.Lib;
 
-namespace Scribble.Lib;
+namespace Scribble.Lib.CollaborativeDrawing;
 
-public class LiveDrawingService(string serverUrl)
+public class CollaborativeDrawingService(string serverUrl)
 {
     private readonly HubConnection _connection =
         new HubConnectionBuilder().WithUrl(serverUrl).WithAutomaticReconnect().Build();

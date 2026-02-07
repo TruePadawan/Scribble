@@ -21,5 +21,5 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-app.MapHub<LiveDrawingHub>("/liveDrawingHub");
+app.MapHub<CollaborativeDrawingHub>("/drawingHub");
 app.Run();
