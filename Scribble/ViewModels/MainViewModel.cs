@@ -13,7 +13,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using Microsoft.AspNetCore.SignalR.Client;
 using MsBox.Avalonia;
 using MsBox.Avalonia.Enums;
-using Scribble.Lib;
+using Scribble.Lib.CollaborativeDrawing;
 using Scribble.Shared.Lib;
 using Scribble.Tools.PointerTools.ArrowTool;
 using Scribble.Utils;
@@ -34,14 +34,14 @@ public partial class MainViewModel : ViewModelBase
     public event Action? RequestInvalidateSelection;
     private Queue<Event> CanvasEvents { get; set; } = [];
 
-    private readonly LiveDrawingService _liveDrawingService;
+    private readonly CollaborativeDrawingService _collaborativeDrawingService;
 
     private readonly Stack<Guid> _undoStack = [];
     private readonly Stack<Guid> _redoStack = [];
     private readonly HashSet<Guid> _mySelections = [];
 
     [ObservableProperty] [NotifyPropertyChangedFor(nameof(CanResetCanvas))]
-    private LiveDrawingRoom? _room;
+    private CollaborativeDrawingRoom? _room;
 
     public bool CanResetCanvas => Room == null || Room.IsHost;
 
@@ -49,19 +49,19 @@ public partial class MainViewModel : ViewModelBase
     {
         BackgroundColor = SKColors.Transparent;
         ScaleTransform = new ScaleTransform(1, 1);
-        _liveDrawingService = new LiveDrawingService("https://localhost:7189/liveDrawingHub");
+        _collaborativeDrawingService = new CollaborativeDrawingService("https://localhost:7189/liveDrawingHub");
 
-        _liveDrawingService.EventReceived += OnNetworkEventReceived;
-        _liveDrawingService.CanvasStateReceived += OnCanvasStateReceived;
-        _liveDrawingService.CanvasStateRequested += OnCanvasStateRequested;
-        _liveDrawingService.ClientJoinedRoom += OnClientJoinedRoom;
-        _liveDrawingService.ClientLeftRoom += OnClientLeftRoom;
+        _collaborativeDrawingService.EventReceived += OnNetworkEventReceived;
+        _collaborativeDrawingService.CanvasStateReceived += OnCanvasStateReceived;
+        _collaborativeDrawingService.CanvasStateRequested += OnCanvasStateRequested;
+        _collaborativeDrawingService.ClientJoinedRoom += OnClientJoinedRoom;
+        _collaborativeDrawingService.ClientLeftRoom += OnClientLeftRoom;
     }
 
     private void OnClientJoinedRoom(string clientId, List<string> usersInRoom)
     {
-        if (Room == null || _liveDrawingService.ConnectionId == null) return;
-        Room = new LiveDrawingRoom(Room.RoomId, _liveDrawingService.ConnectionId)
+        if (Room == null || _collaborativeDrawingService.ConnectionId == null) return;
+        Room = new CollaborativeDrawingRoom(Room.RoomId, _collaborativeDrawingService.ConnectionId)
         {
             UsersInRoom = usersInRoom
         };
@@ -69,8 +69,8 @@ public partial class MainViewModel : ViewModelBase
 
     private void OnClientLeftRoom(string clientId, List<string> usersInRoom)
     {
-        if (Room == null || _liveDrawingService.ConnectionId == null) return;
-        Room = new LiveDrawingRoom(Room.RoomId, _liveDrawingService.ConnectionId)
+        if (Room == null || _collaborativeDrawingService.ConnectionId == null) return;
+        Room = new CollaborativeDrawingRoom(Room.RoomId, _collaborativeDrawingService.ConnectionId)
         {
             UsersInRoom = usersInRoom
         };
@@ -87,7 +87,7 @@ public partial class MainViewModel : ViewModelBase
     {
         Dispatcher.UIThread.Post(async void () =>
         {
-            await _liveDrawingService.SendCanvasStateToClientAsync(targetConnectionId, CanvasEvents);
+            await _collaborativeDrawingService.SendCanvasStateToClientAsync(targetConnectionId, CanvasEvents);
         });
     }
 
@@ -160,7 +160,7 @@ public partial class MainViewModel : ViewModelBase
 
         if (!string.IsNullOrEmpty(Room?.RoomId))
         {
-            _ = _liveDrawingService.BroadcastEventAsync(Room.RoomId, @event);
+            _ = _collaborativeDrawingService.BroadcastEventAsync(Room.RoomId, @event);
         }
     }
 
@@ -651,21 +651,21 @@ public partial class MainViewModel : ViewModelBase
 
     public async Task JoinRoom(string roomId)
     {
-        await _liveDrawingService.StartAsync();
-        await _liveDrawingService.JoinRoomAsync(roomId);
-        if (_liveDrawingService.ConnectionId != null)
+        await _collaborativeDrawingService.StartAsync();
+        await _collaborativeDrawingService.JoinRoomAsync(roomId);
+        if (_collaborativeDrawingService.ConnectionId != null)
         {
-            Room = new LiveDrawingRoom(roomId, _liveDrawingService.ConnectionId);
+            Room = new CollaborativeDrawingRoom(roomId, _collaborativeDrawingService.ConnectionId);
         }
     }
 
     public async Task LeaveRoom()
     {
-        if (_liveDrawingService.ConnectionState != HubConnectionState.Disconnected)
+        if (_collaborativeDrawingService.ConnectionState != HubConnectionState.Disconnected)
         {
-            await _liveDrawingService.StopAsync();
+            await _collaborativeDrawingService.StopAsync();
         }
     }
 
-    public HubConnectionState GetLiveDrawingServiceConnectionState() => _liveDrawingService.ConnectionState;
+    public HubConnectionState GetLiveDrawingServiceConnectionState() => _collaborativeDrawingService.ConnectionState;
 }
