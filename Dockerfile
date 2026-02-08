@@ -3,13 +3,14 @@ WORKDIR /src
 
 COPY ["Scribble.Server/Scribble.Server.csproj", "Scribble.Server/"]
 COPY ["Scribble.Shared/Scribble.Shared.csproj", "Scribble.Shared/"]
+COPY ["Directory.Packages.props", "."]
 
 RUN dotnet restore "Scribble.Server/Scribble.Server.csproj"
 
 COPY . .
 
 WORKDIR "/src/Scribble.Server"
-RUN dotnet publish "Scribble.Server.csproj" -c Release -p /app/publish
+RUN dotnet publish "Scribble.Server.csproj" -c Release -o /app/publish
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
 WORKDIR /app
