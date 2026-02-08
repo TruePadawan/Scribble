@@ -8,9 +8,19 @@ builder.Services.AddSignalR(options =>
     options.MaximumReceiveMessageSize = null;
 });
 
-var app = builder.Build();
+builder.Services.AddCors(options =>
+{
+    options.AddDefaultPolicy(policy =>
+    {
+        policy.AllowAnyHeader()
+            .AllowAnyMethod()
+            .SetIsOriginAllowed(origin => true)
+            .AllowCredentials();
+    });
+});
 
-app.UseHttpsRedirection();
+var app = builder.Build();
+app.UseCors();
 
 app.MapHub<CollaborativeDrawingHub>("/drawingHub");
 app.Run();
