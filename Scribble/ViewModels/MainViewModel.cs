@@ -40,16 +40,17 @@ public partial class MainViewModel : ViewModelBase
     private readonly Stack<Guid> _redoStack = [];
     private readonly HashSet<Guid> _mySelections = [];
 
-    [ObservableProperty] [NotifyPropertyChangedFor(nameof(CanResetCanvas))]
+    [ObservableProperty] [NotifyPropertyChangedFor(nameof(CanResetCanvas))] [NotifyPropertyChangedFor(nameof(IsLive))]
     private CollaborativeDrawingRoom? _room;
 
     public bool CanResetCanvas => Room == null || Room.IsHost;
+    public bool IsLive => Room != null;
 
     public MainViewModel()
     {
         BackgroundColor = SKColors.Transparent;
         ScaleTransform = new ScaleTransform(1, 1);
-        _collaborativeDrawingService = new CollaborativeDrawingService("https://localhost:7189/liveDrawingHub");
+        _collaborativeDrawingService = new CollaborativeDrawingService("https://localhost:7189/drawingHub");
 
         _collaborativeDrawingService.EventReceived += OnNetworkEventReceived;
         _collaborativeDrawingService.CanvasStateReceived += OnCanvasStateReceived;
@@ -58,21 +59,21 @@ public partial class MainViewModel : ViewModelBase
         _collaborativeDrawingService.ClientLeftRoom += OnClientLeftRoom;
     }
 
-    private void OnClientJoinedRoom(string clientId, List<string> usersInRoom)
+    private void OnClientJoinedRoom(CollaborativeDrawingUser client, List<CollaborativeDrawingUser> clients)
     {
         if (Room == null || _collaborativeDrawingService.ConnectionId == null) return;
-        Room = new CollaborativeDrawingRoom(Room.RoomId, _collaborativeDrawingService.ConnectionId)
+        Room = new CollaborativeDrawingRoom(Room.RoomId, _collaborativeDrawingService.ConnectionId, Room.User.Name)
         {
-            UsersInRoom = usersInRoom
+            Clients = clients
         };
     }
 
-    private void OnClientLeftRoom(string clientId, List<string> usersInRoom)
+    private void OnClientLeftRoom(CollaborativeDrawingUser client, List<CollaborativeDrawingUser> clients)
     {
         if (Room == null || _collaborativeDrawingService.ConnectionId == null) return;
-        Room = new CollaborativeDrawingRoom(Room.RoomId, _collaborativeDrawingService.ConnectionId)
+        Room = new CollaborativeDrawingRoom(Room.RoomId, _collaborativeDrawingService.ConnectionId, Room.User.Name)
         {
-            UsersInRoom = usersInRoom
+            Clients = clients
         };
     }
 
@@ -649,21 +650,31 @@ public partial class MainViewModel : ViewModelBase
         BackgroundColor = Utilities.ToSkColor(color);
     }
 
-    public async Task JoinRoom(string roomId)
+    public async Task JoinRoom(string roomId, string displayName)
     {
-        await _collaborativeDrawingService.StartAsync();
-        await _collaborativeDrawingService.JoinRoomAsync(roomId);
-        if (_collaborativeDrawingService.ConnectionId != null)
+        try
         {
-            Room = new CollaborativeDrawingRoom(roomId, _collaborativeDrawingService.ConnectionId);
+            await _collaborativeDrawingService.StartAsync();
+            if (_collaborativeDrawingService.ConnectionId != null)
+            {
+                Room = new CollaborativeDrawingRoom(roomId, _collaborativeDrawingService.ConnectionId, displayName);
+            }
+
+            await _collaborativeDrawingService.JoinRoomAsync(roomId, displayName);
+        }
+        catch (Exception)
+        {
+            await _collaborativeDrawingService.StopAsync();
+            Room = null;
         }
     }
 
     public async Task LeaveRoom()
     {
-        if (_collaborativeDrawingService.ConnectionState != HubConnectionState.Disconnected)
+        if (_collaborativeDrawingService.ConnectionState != HubConnectionState.Disconnected && Room != null)
         {
-            await _collaborativeDrawingService.StopAsync();
+            await _collaborativeDrawingService.LeaveRoomAsync(Room.RoomId);
+            Room = null;
         }
     }
 

@@ -609,7 +609,7 @@ public partial class MainView : UserControl
                     }
                 }
 
-                await _viewModel.JoinRoom(RoomIdTextBox.Text);
+                await _viewModel.JoinRoom(RoomIdTextBox.Text, NameTextBox.Text?.Trim() ?? "User");
                 EnterRoomButton.Content = "Leave Room";
                 LiveDrawingButton.Background = new SolidColorBrush(Colors.Green);
             }

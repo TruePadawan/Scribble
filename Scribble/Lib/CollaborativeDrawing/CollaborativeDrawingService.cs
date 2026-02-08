@@ -10,7 +10,7 @@ namespace Scribble.Lib.CollaborativeDrawing;
 public class CollaborativeDrawingService(string serverUrl)
 {
     private readonly HubConnection _connection =
-        new HubConnectionBuilder().WithUrl(serverUrl).WithAutomaticReconnect().Build();
+        new HubConnectionBuilder().WithUrl(serverUrl).Build();
 
     public HubConnectionState ConnectionState => _connection.State;
     public string? ConnectionId => _connection.ConnectionId;
@@ -19,8 +19,8 @@ public class CollaborativeDrawingService(string serverUrl)
     public event Action<Event>? EventReceived;
     public event Action<string>? CanvasStateRequested;
     public event Action<Queue<Event>>? CanvasStateReceived;
-    public event Action<string, List<string>>? ClientJoinedRoom;
-    public event Action<string, List<string>>? ClientLeftRoom;
+    public event Action<CollaborativeDrawingUser, List<CollaborativeDrawingUser>>? ClientJoinedRoom;
+    public event Action<CollaborativeDrawingUser, List<CollaborativeDrawingUser>>? ClientLeftRoom;
 
     public async Task StartAsync()
     {
@@ -40,11 +40,11 @@ public class CollaborativeDrawingService(string serverUrl)
             }
         });
 
-        _connection.On<string, List<string>>("ClientJoined",
-            (clientId, usersInRoom) => ClientJoinedRoom?.Invoke(clientId, usersInRoom));
+        _connection.On<CollaborativeDrawingUser, List<CollaborativeDrawingUser>>("ClientJoined",
+            (client, usersInRoom) => { ClientJoinedRoom?.Invoke(client, usersInRoom); });
 
-        _connection.On<string, List<string>>("ClientLeft",
-            (clientId, usersInRoom) => ClientLeftRoom?.Invoke(clientId, usersInRoom));
+        _connection.On<CollaborativeDrawingUser, List<CollaborativeDrawingUser>>("ClientLeft",
+            (client, usersInRoom) => ClientLeftRoom?.Invoke(client, usersInRoom));
 
         await _connection.StartAsync();
         ConnectionStarted?.Invoke();
@@ -56,15 +56,28 @@ public class CollaborativeDrawingService(string serverUrl)
         ConnectionStopped?.Invoke();
     }
 
-    public async Task JoinRoomAsync(string roomId)
+    public async Task JoinRoomAsync(string roomId, string displayName)
     {
         if (_connection.State == HubConnectionState.Connected)
         {
-            await _connection.InvokeAsync("JoinRoom", roomId);
+            await _connection.InvokeAsync("JoinRoom", roomId, displayName);
         }
         else
         {
             throw new Exception($"Failed to join room, Hub connection state - {_connection.State}");
+        }
+    }
+
+    public async Task LeaveRoomAsync(string roomId)
+    {
+        if (_connection.State == HubConnectionState.Connected)
+        {
+            await _connection.InvokeAsync("LeaveRoom", roomId);
+            await StopAsync();
+        }
+        else
+        {
+            throw new Exception($"Failed to leave room, Hub connection state - {_connection.State}");
         }
     }
 
