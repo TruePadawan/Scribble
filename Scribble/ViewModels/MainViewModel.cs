@@ -61,20 +61,26 @@ public partial class MainViewModel : ViewModelBase
 
     private void OnClientJoinedRoom(CollaborativeDrawingUser client, List<CollaborativeDrawingUser> clients)
     {
-        if (Room == null || _collaborativeDrawingService.ConnectionId == null) return;
-        Room = new CollaborativeDrawingRoom(Room.RoomId, _collaborativeDrawingService.ConnectionId, Room.User.Name)
+        Dispatcher.UIThread.Post(() =>
         {
-            Clients = clients
-        };
+            if (Room == null || _collaborativeDrawingService.ConnectionId == null) return;
+            Room = new CollaborativeDrawingRoom(Room.RoomId, _collaborativeDrawingService.ConnectionId, Room.User.Name)
+            {
+                Clients = clients
+            };
+        });
     }
 
     private void OnClientLeftRoom(CollaborativeDrawingUser client, List<CollaborativeDrawingUser> clients)
     {
-        if (Room == null || _collaborativeDrawingService.ConnectionId == null) return;
-        Room = new CollaborativeDrawingRoom(Room.RoomId, _collaborativeDrawingService.ConnectionId, Room.User.Name)
+        Dispatcher.UIThread.Post(() =>
         {
-            Clients = clients
-        };
+            if (Room == null || _collaborativeDrawingService.ConnectionId == null) return;
+            Room = new CollaborativeDrawingRoom(Room.RoomId, _collaborativeDrawingService.ConnectionId, Room.User.Name)
+            {
+                Clients = clients
+            };
+        });
     }
 
     // Event handler for when another client in the room draws something
