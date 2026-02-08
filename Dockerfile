@@ -3,6 +3,7 @@ WORKDIR /src
 
 COPY ["Scribble.Server/Scribble.Server.csproj", "Scribble.Server/"]
 COPY ["Scribble.Shared/Scribble.Shared.csproj", "Scribble.Shared/"]
+COPY ["Directory.Packages.props", "."]
 
 RUN dotnet restore "Scribble.Server/Scribble.Server.csproj"
 
