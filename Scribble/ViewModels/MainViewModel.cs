@@ -376,6 +376,7 @@ public partial class MainViewModel : ViewModelBase
                         Path = textPath,
                         ToolType = StrokeTool.Text,
                     };
+                    strokeToActionMap[ev.StrokeId] = ev.ActionId;
                     break;
                 case CreateSelectionBoundEvent ev:
                     var selectionPath = new SKPath();
