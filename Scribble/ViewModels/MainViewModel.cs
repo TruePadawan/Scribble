@@ -27,7 +27,7 @@ public partial class MainViewModel : ViewModelBase
     public static int CanvasWidth => 10000;
     public static int CanvasHeight => 10000;
 
-    [ObservableProperty] private SKColor _backgroundColor;
+    [ObservableProperty] private Color _backgroundColor;
     public ScaleTransform ScaleTransform { get; }
     [ObservableProperty] private List<Stroke> _canvasStrokes = [];
     private readonly HashSet<Guid> _deletedActions = [];
@@ -49,7 +49,7 @@ public partial class MainViewModel : ViewModelBase
 
     public MainViewModel()
     {
-        BackgroundColor = SKColors.Transparent;
+        BackgroundColor = Color.Parse("#a2000000");
         ScaleTransform = new ScaleTransform(1, 1);
         var builder = new ConfigurationBuilder()
             .AddJsonFile("appsettings.json");
@@ -641,7 +641,7 @@ public partial class MainViewModel : ViewModelBase
         var bgColor = canvasState["backgroundColor"]?.ToString();
         if (bgColor != null)
         {
-            BackgroundColor = SKColor.Parse(bgColor);
+            BackgroundColor = Color.Parse(bgColor);
         }
     }
 
@@ -664,7 +664,7 @@ public partial class MainViewModel : ViewModelBase
 
     public void ChangeBackgroundColor(Color color)
     {
-        BackgroundColor = Utilities.ToSkColor(color);
+        BackgroundColor = color;
     }
 
     public async Task JoinRoom(string roomId, string displayName)

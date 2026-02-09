@@ -8,6 +8,7 @@ using Avalonia.Platform;
 using Avalonia.Rendering.SceneGraph;
 using Avalonia.Skia;
 using Scribble.Shared.Lib;
+using Scribble.Utils;
 using SkiaSharp;
 
 namespace Scribble.Controls;
@@ -23,10 +24,10 @@ public class SkiaCanvas : Control
         set => SetValue(StrokesProperty, value);
     }
 
-    public static readonly StyledProperty<SKColor> CanvasBackgroundProperty =
-        AvaloniaProperty.Register<SkiaCanvas, SKColor>(nameof(CanvasBackground));
+    public static readonly StyledProperty<Color> CanvasBackgroundProperty =
+        AvaloniaProperty.Register<SkiaCanvas, Color>(nameof(CanvasBackground));
 
-    public SKColor CanvasBackground
+    public Color CanvasBackground
     {
         get => GetValue(CanvasBackgroundProperty);
         set => SetValue(CanvasBackgroundProperty, value);
@@ -45,9 +46,9 @@ public class SkiaCanvas : Control
             new SkiaDrawOperation(bounds, canvas => { DrawContent(canvas, strokesToDraw, bgColor); }));
     }
 
-    private void DrawContent(SKCanvas canvas, IEnumerable<Stroke> strokesToDraw, SKColor bgColor)
+    private void DrawContent(SKCanvas canvas, IEnumerable<Stroke> strokesToDraw, Color bgColor)
     {
-        canvas.Clear(bgColor);
+        canvas.Clear(Utilities.ToSkColor(bgColor));
 
         foreach (var stroke in strokesToDraw)
         {

@@ -249,7 +249,7 @@
                         <Button Width="30" Height="30" Padding="0" Click="TransparentCanvasButton_OnClick">
                             <Image Source="avares://Scribble/Assets/transparent.png" />
                         </Button>
-                        <ColorPicker Name="CanvasBackgroundColorView" Width="124" Color="Transparent"
+                        <ColorPicker Name="CanvasBackgroundColorView" Width="124" Color="{Binding BackgroundColor}"
                                      ColorChanged="CanvasBackgroundColorView_OnColorChanged" />
                     </StackPanel>
                 </StackPanel>
@@ -309,10 +309,18 @@
                     Padding="18"
                     CornerRadius="12" IsVisible="False">
                 <StackPanel MinWidth="400" Spacing="12">
-                    <TextBlock HorizontalAlignment="Center" Foreground="#AAAAAA" Margin="0, 0, 0, 12">Collaborative Drawing</TextBlock>
-                    <TextBlock FontSize="12" TextWrapping="Wrap" Foreground="WhiteSmoke">
-                        If the room id doesn't belong to any active room, the room is automatically created
-                    </TextBlock>
+                    <TextBlock HorizontalAlignment="Center" Foreground="#AAAAAA" Margin="0, 0, 0, 12">Collaborative Drawing (DEMO)</TextBlock>
+                    <StackPanel Orientation="Vertical" Spacing="8">
+                        <TextBlock FontSize="12" TextWrapping="Wrap" Foreground="WhiteSmoke">
+                            If the room id doesn't belong to any active room, the room is automatically created
+                        </TextBlock>
+                        <TextBlock FontSize="12" TextWrapping="Wrap" Foreground="WhiteSmoke">
+                            I'm using Render's free tier to host the server so it might take a minute for the initial connection to be established
+                        </TextBlock>
+                        <TextBlock FontSize="12" TextWrapping="Wrap" Foreground="WhiteSmoke">
+                            Rooms are automatically closed after about 15mins of inactivity
+                        </TextBlock>
+                    </StackPanel>
 
                     <StackPanel Orientation="Vertical" Spacing="6">
                         <Label Target="NameTextBox" Padding="0">Display name</Label>
