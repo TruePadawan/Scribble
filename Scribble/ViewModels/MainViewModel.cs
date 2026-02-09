@@ -8,10 +8,14 @@ using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Media;
 using Avalonia.Platform.Storage;
+using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
+using Microsoft.AspNetCore.SignalR.Client;
+using Microsoft.Extensions.Configuration;
 using MsBox.Avalonia;
 using MsBox.Avalonia.Enums;
-using Scribble.Lib;
+using Scribble.Lib.CollaborativeDrawing;
+using Scribble.Shared.Lib;
 using Scribble.Tools.PointerTools.ArrowTool;
 using Scribble.Utils;
 using SkiaSharp;
@@ -23,19 +27,95 @@ public partial class MainViewModel : ViewModelBase
     public static int CanvasWidth => 10000;
     public static int CanvasHeight => 10000;
 
-    [ObservableProperty] private SKColor _backgroundColor;
+    [ObservableProperty] private Color _backgroundColor;
     public ScaleTransform ScaleTransform { get; }
     [ObservableProperty] private List<Stroke> _canvasStrokes = [];
-    public Dictionary<Guid, List<Guid>> SelectionTargets { get; private set; } = new();
+    private readonly HashSet<Guid> _deletedActions = [];
+    public Dictionary<Guid, List<Guid>> SelectionTargets { get; private set; } = [];
     public event Action? RequestInvalidateSelection;
-    private List<Event> CanvasEvents { get; } = [];
-    private int _currentEventIndex = -1;
+    private Queue<Event> CanvasEvents { get; set; } = [];
 
+    private readonly CollaborativeDrawingService _collaborativeDrawingService;
+
+    private readonly Stack<Guid> _undoStack = [];
+    private readonly Stack<Guid> _redoStack = [];
+    private readonly HashSet<Guid> _mySelections = [];
+
+    [ObservableProperty] [NotifyPropertyChangedFor(nameof(CanResetCanvas))] [NotifyPropertyChangedFor(nameof(IsLive))]
+    private CollaborativeDrawingRoom? _room;
+
+    public bool CanResetCanvas => Room == null || Room.IsHost;
+    public bool IsLive => Room != null;
 
     public MainViewModel()
     {
-        BackgroundColor = SKColors.Transparent;
+        BackgroundColor = Color.Parse("#a2000000");
         ScaleTransform = new ScaleTransform(1, 1);
+        var builder = new ConfigurationBuilder()
+            .AddJsonFile("appsettings.json");
+#if DEBUG
+        builder.AddJsonFile("appsettings.Development.json", optional: true);
+#endif
+        var config = builder.Build();
+        var serverUrl = config["ServerUrl"];
+        if (serverUrl == null) throw new Exception("ServerUrl is missing");
+
+        _collaborativeDrawingService = new CollaborativeDrawingService(serverUrl);
+
+        _collaborativeDrawingService.EventReceived += OnNetworkEventReceived;
+        _collaborativeDrawingService.CanvasStateReceived += OnCanvasStateReceived;
+        _collaborativeDrawingService.CanvasStateRequested += OnCanvasStateRequested;
+        _collaborativeDrawingService.ClientJoinedRoom += OnClientJoinedRoom;
+        _collaborativeDrawingService.ClientLeftRoom += OnClientLeftRoom;
+    }
+
+    private void OnClientJoinedRoom(CollaborativeDrawingUser client, List<CollaborativeDrawingUser> clients)
+    {
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (Room == null || _collaborativeDrawingService.ConnectionId == null) return;
+            Room = new CollaborativeDrawingRoom(Room.RoomId, _collaborativeDrawingService.ConnectionId, Room.User.Name)
+            {
+                Clients = clients
+            };
+        });
+    }
+
+    private void OnClientLeftRoom(CollaborativeDrawingUser client, List<CollaborativeDrawingUser> clients)
+    {
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (Room == null || _collaborativeDrawingService.ConnectionId == null) return;
+            Room = new CollaborativeDrawingRoom(Room.RoomId, _collaborativeDrawingService.ConnectionId, Room.User.Name)
+            {
+                Clients = clients
+            };
+        });
+    }
+
+    // Event handler for when another client in the room draws something
+    private void OnNetworkEventReceived(Event @event)
+    {
+        Dispatcher.UIThread.Post(() => { ProcessEvent(@event); });
+    }
+
+    // Event handler for sending canvas state to clients that just joined the room
+    private void OnCanvasStateRequested(string targetConnectionId)
+    {
+        Dispatcher.UIThread.Post(async void () =>
+        {
+            await _collaborativeDrawingService.SendCanvasStateToClientAsync(targetConnectionId, CanvasEvents);
+        });
+    }
+
+    // Event handler for processing the canvas state snapshot received from the room's host
+    private void OnCanvasStateReceived(Queue<Event> events)
+    {
+        Dispatcher.UIThread.Post(() =>
+        {
+            CanvasEvents = events;
+            ReplayEvents();
+        });
     }
 
     public Vector GetCanvasDimensions() => new Vector(CanvasWidth, CanvasHeight);
@@ -48,90 +128,124 @@ public partial class MainViewModel : ViewModelBase
         ScaleTransform.ScaleY = newScale;
     }
 
+    private void TrackAction(Guid actionId)
+    {
+        _undoStack.Push(actionId);
+        _redoStack.Clear();
+    }
+
     public void Undo()
     {
-        if (CanvasEvents.Count == 0 || _currentEventIndex == -1) return;
-
-        // Move back to find the previous terminal event
-        int i = _currentEventIndex;
-
-        // If we are currently AT a terminal event, we want to go BEFORE it and find the next previous one
-        if (CanvasEvents[i] is ITerminalEvent)
+        if (_undoStack.Count == 0) return;
+        var actionId = _undoStack.Pop();
+        if (Room != null)
         {
-            i--;
+            while (_deletedActions.Contains(actionId))
+            {
+                actionId = _undoStack.Pop();
+            }
         }
 
-        while (i >= 0 && CanvasEvents[i] is not ITerminalEvent)
-        {
-            i--;
-        }
-
-        _currentEventIndex = i;
-        ReplayEvents();
+        _redoStack.Push(actionId);
+        ApplyEvent(new UndoEvent(Guid.NewGuid(), actionId), isLocalEvent: true);
     }
 
     public void Redo()
     {
-        if (CanvasEvents.Count == 0 || _currentEventIndex == CanvasEvents.Count - 1) return;
-
-        int i = _currentEventIndex + 1;
-        while (i < CanvasEvents.Count && CanvasEvents[i] is not ITerminalEvent)
+        if (_redoStack.Count == 0) return;
+        var actionId = _redoStack.Pop();
+        if (Room != null)
         {
-            i++;
+            while (_deletedActions.Contains(actionId))
+            {
+                actionId = _redoStack.Pop();
+            }
         }
 
-        if (i < CanvasEvents.Count)
+        _undoStack.Push(actionId);
+        ApplyEvent(new RedoEvent(Guid.NewGuid(), actionId), isLocalEvent: true);
+    }
+
+    public void ApplyEvent(Event @event, bool isLocalEvent = true)
+    {
+        if (@event is CreateSelectionBoundEvent ev)
         {
-            _currentEventIndex = i;
-            ReplayEvents();
+            _mySelections.Add(ev.BoundId);
+        }
+
+        ProcessEvent(@event, isLocalEvent);
+
+        if (!string.IsNullOrEmpty(Room?.RoomId))
+        {
+            _ = _collaborativeDrawingService.BroadcastEventAsync(Room.RoomId, @event);
         }
     }
 
-    public void ApplyEvent(Event @event)
+    private void ProcessEvent(Event @event, bool isLocalEvent = false)
     {
-        var eventsCount = CanvasEvents.Count;
-        // Remove all stale events if we branch off
-        if (eventsCount > 0 && _currentEventIndex < eventsCount - 1)
+        CanvasEvents.Enqueue(@event);
+
+        var staleActionIds = ReplayEvents();
+        bool changed = false;
+        bool currentActionIsStale = false;
+
+        Queue<Event> nonStaleEvents = [];
+        foreach (var canvasEvent in CanvasEvents)
         {
-            CanvasEvents.RemoveRange(_currentEventIndex + 1, eventsCount - _currentEventIndex - 1);
+            if (!staleActionIds.Contains(canvasEvent.ActionId))
+            {
+                nonStaleEvents.Enqueue(canvasEvent);
+            }
+            else
+            {
+                changed = true;
+                if (canvasEvent.ActionId == @event.ActionId)
+                {
+                    currentActionIsStale = true;
+                }
+            }
         }
 
-        CanvasEvents.Add(@event);
-        _currentEventIndex = CanvasEvents.Count - 1;
+        CanvasEvents = nonStaleEvents;
 
-        if (@event is EndStrokeEvent) return;
-        var staleIds = ReplayEvents();
-
-        if (staleIds.Count > 0 && _currentEventIndex == CanvasEvents.Count - 1)
+        if (changed)
         {
-            bool changed = false;
-            foreach (var id in staleIds)
-            {
-                int removed = CanvasEvents.RemoveAll(ev => ev is StrokeEvent { StrokeId: var sid } && sid == id);
-                if (removed > 0) changed = true;
-            }
+            ReplayEvents();
+        }
 
-            if (changed)
-            {
-                _currentEventIndex = CanvasEvents.Count - 1;
-                ReplayEvents();
-            }
+        // Keep track of local non-stale actions for undo/redo functionality
+        if (@event is ITerminalEvent && isLocalEvent && !currentActionIsStale)
+        {
+            TrackAction(@event.ActionId);
         }
     }
 
     private List<Guid> ReplayEvents()
     {
+        var hiddenActionIds = new HashSet<Guid>();
+        foreach (var canvasEvent in CanvasEvents)
+        {
+            if (canvasEvent is UndoEvent ev)
+            {
+                hiddenActionIds.Add(ev.TargetActionId);
+            }
+            else if (canvasEvent is RedoEvent redoEv)
+            {
+                hiddenActionIds.Remove(redoEv.TargetActionId);
+            }
+        }
+
+        _deletedActions.Clear();
         var drawStrokes = new Dictionary<Guid, DrawStroke>();
         var eraserStrokes = new Dictionary<Guid, EraserStroke>();
-        var staleEraseStrokes = new List<Guid>();
         var eraserHeads = new Dictionary<Guid, SKPoint>();
         var selectionBounds = new Dictionary<Guid, SelectionBound>();
-        var staleSelectionBounds = new List<Guid>();
         var clearsSomething = new Dictionary<Guid, bool>();
+        var staleActionIds = new List<Guid>();
+        var strokeToActionMap = new Dictionary<Guid, Guid>();
 
-        for (var i = 0; i <= _currentEventIndex; i++)
+        foreach (var canvasEvent in CanvasEvents.Where(canvasEvent => !hiddenActionIds.Contains(canvasEvent.ActionId)))
         {
-            var canvasEvent = CanvasEvents[i];
             switch (canvasEvent)
             {
                 case StartStrokeEvent ev:
@@ -144,6 +258,7 @@ public partial class MainViewModel : ViewModelBase
                         Path = newLinePath,
                         ToolType = ev.ToolType,
                     };
+                    strokeToActionMap[ev.StrokeId] = ev.ActionId;
                     break;
                 case StartEraseStrokeEvent ev:
                     var eraserPath = new SKPath();
@@ -192,11 +307,12 @@ public partial class MainViewModel : ViewModelBase
                         foreach (var targetId in eraserStrokes[ev.StrokeId].Targets)
                         {
                             drawStrokes.Remove(targetId);
+                            _deletedActions.Add(strokeToActionMap[targetId]);
                         }
 
                         if (eraserStrokes[ev.StrokeId].Targets.Count == 0)
                         {
-                            staleEraseStrokes.Add(ev.StrokeId);
+                            staleActionIds.Add(ev.ActionId);
                         }
                     }
 
@@ -276,6 +392,7 @@ public partial class MainViewModel : ViewModelBase
                         Path = textPath,
                         ToolType = StrokeTool.Text,
                     };
+                    strokeToActionMap[ev.StrokeId] = ev.ActionId;
                     break;
                 case CreateSelectionBoundEvent ev:
                     var selectionPath = new SKPath();
@@ -315,7 +432,7 @@ public partial class MainViewModel : ViewModelBase
                         if (selectionBounds[ev.BoundId].Targets.Count == 0 &&
                             !clearsSomething.GetValueOrDefault(ev.BoundId))
                         {
-                            staleSelectionBounds.Add(ev.BoundId);
+                            staleActionIds.Add(ev.ActionId);
                         }
                     }
 
@@ -381,13 +498,12 @@ public partial class MainViewModel : ViewModelBase
         }
 
         CanvasStrokes = new List<Stroke>(drawStrokes.Values.ToList());
-        SelectionTargets = selectionBounds.ToDictionary(k => k.Key, v => v.Value.Targets.ToList());
+        // Show the selection only on the client that is doing the selection
+        SelectionTargets = selectionBounds.Where(pair => _mySelections.Contains(pair.Key))
+            .ToDictionary(k => k.Key, v => v.Value.Targets.ToList());
         RequestInvalidateSelection?.Invoke();
 
-        var allStale = new List<Guid>();
-        allStale.AddRange(staleEraseStrokes);
-        allStale.AddRange(staleSelectionBounds);
-        return allStale;
+        return staleActionIds;
     }
 
     private void CheckAndErase(SKPoint eraserPoint, Dictionary<Guid, DrawStroke> drawStrokes, EraserStroke eraserStroke)
@@ -514,18 +630,18 @@ public partial class MainViewModel : ViewModelBase
         foreach (var stroke in rawStrokes)
         {
             if (stroke is null) throw new Exception("Invalid canvas file");
-            var deserializedEvent = JsonSerializer.Deserialize<Stroke>(stroke.ToJsonString());
-            if (deserializedEvent is null) throw new Exception("Invalid canvas file");
-            strokes.Add(deserializedEvent);
+            var deserializedStroke = JsonSerializer.Deserialize<Stroke>(stroke.ToJsonString());
+            if (deserializedStroke is null) throw new Exception("Invalid canvas file");
+            strokes.Add(deserializedStroke);
         }
 
-        ApplyEvent(new RestoreCanvasEvent(strokes));
+        ApplyEvent(new RestoreCanvasEvent(Guid.NewGuid(), strokes));
 
         // Restore background color
         var bgColor = canvasState["backgroundColor"]?.ToString();
         if (bgColor != null)
         {
-            BackgroundColor = SKColor.Parse(bgColor);
+            BackgroundColor = Color.Parse(bgColor);
         }
     }
 
@@ -543,11 +659,41 @@ public partial class MainViewModel : ViewModelBase
             if (result != ButtonResult.Yes) return;
         }
 
-        ApplyEvent(new RestoreCanvasEvent([]));
+        ApplyEvent(new RestoreCanvasEvent(Guid.NewGuid(), []));
     }
 
     public void ChangeBackgroundColor(Color color)
     {
-        BackgroundColor = Utilities.ToSkColor(color);
+        BackgroundColor = color;
     }
+
+    public async Task JoinRoom(string roomId, string displayName)
+    {
+        try
+        {
+            await _collaborativeDrawingService.StartAsync();
+            if (_collaborativeDrawingService.ConnectionId != null)
+            {
+                Room = new CollaborativeDrawingRoom(roomId, _collaborativeDrawingService.ConnectionId, displayName);
+            }
+
+            await _collaborativeDrawingService.JoinRoomAsync(roomId, displayName);
+        }
+        catch (Exception)
+        {
+            await _collaborativeDrawingService.StopAsync();
+            Room = null;
+        }
+    }
+
+    public async Task LeaveRoom()
+    {
+        if (_collaborativeDrawingService.ConnectionState != HubConnectionState.Disconnected && Room != null)
+        {
+            await _collaborativeDrawingService.LeaveRoomAsync(Room.RoomId);
+            Room = null;
+        }
+    }
+
+    public HubConnectionState GetLiveDrawingServiceConnectionState() => _collaborativeDrawingService.ConnectionState;
 }

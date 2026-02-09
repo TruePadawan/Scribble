@@ -1,9 +1,8 @@
-using System;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using SkiaSharp;
 
-namespace Scribble.Lib;
+namespace Scribble.Shared.Lib;
 
 public class StrokePaint
 {

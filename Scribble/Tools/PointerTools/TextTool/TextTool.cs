@@ -6,7 +6,7 @@ using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
-using Scribble.Lib;
+using Scribble.Shared.Lib;
 using Scribble.Utils;
 using Scribble.ViewModels;
 using SkiaSharp;
@@ -18,6 +18,7 @@ public class TextTool : PointerToolsBase
     private readonly Canvas _canvasContainer;
     private TextBox? _currentTextBox;
     private readonly StrokePaint _strokePaint;
+    private Guid _actionId = Guid.NewGuid();
 
     public TextTool(string name, MainViewModel viewModel, Canvas canvasContainer) : base(name, viewModel,
         LoadToolBitmap(typeof(TextTool), "text.png"))
@@ -42,6 +43,7 @@ public class TextTool : PointerToolsBase
             return;
         }
 
+        _actionId = Guid.NewGuid();
         _currentTextBox = new TextBox
         {
             MinWidth = 100,
@@ -91,8 +93,7 @@ public class TextTool : PointerToolsBase
             var textboxPos = new SKPoint((float)Canvas.GetLeft(_currentTextBox), (float)Canvas.GetTop(_currentTextBox));
             textboxPos.Y += _strokePaint.TextSize;
             var strokeId = Guid.NewGuid();
-            ViewModel.ApplyEvent(new AddTextEvent(strokeId, textboxPos, text, _strokePaint.Clone()));
-            ViewModel.ApplyEvent(new EndStrokeEvent(strokeId));
+            ViewModel.ApplyEvent(new AddTextEvent(_actionId, strokeId, textboxPos, text, _strokePaint.Clone()));
         }
 
         _canvasContainer.Children.Remove(_currentTextBox);
@@ -106,7 +107,6 @@ public class TextTool : PointerToolsBase
     public override bool RenderOptions(Panel parent)
     {
         // Render a slider for controlling the font size and a color picker for text color
-
         var colorPicker = new ColorPicker
         {
             Color = Utilities.FromSkColor(_strokePaint.Color),

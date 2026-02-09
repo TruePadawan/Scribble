@@ -138,6 +138,7 @@
                             </StackPanel>
                         </Button>
                         <Button Name="ResetCanvasMenuOption" Margin="0" Click="ResetCanvasMenuOption_OnClick"
+                                IsVisible="{Binding CanResetCanvas}"
                                 HorizontalAlignment="Stretch">
                             <StackPanel Orientation="Horizontal" Spacing="4">
                                 <Image Source="avares://Scribble/Assets/bin.png" Width="18" Height="18" />
@@ -163,47 +164,75 @@
             </StackPanel>
         </Panel>
 
-        <Border Name="ToolbarContainer"
+        <!-- Toolbar -->
+        <StackPanel Orientation="Horizontal" Spacing="18" HorizontalAlignment="Center" VerticalAlignment="Bottom"
+                    Margin="0,0,0,24">
+            <Border
+                Name="ToolbarContainer"
                 Background="#EE2B2B2B"
                 CornerRadius="16"
-                HorizontalAlignment="Center"
-                VerticalAlignment="Bottom"
-                Margin="0,0,0,24"
                 Padding="8"
                 BoxShadow="0 4 20 0 #60000000">
-            <StackPanel Name="Toolbar"
-                        Orientation="Horizontal"
-                        Spacing="8">
-                <StackPanel.Styles>
-                    <Style Selector="ToggleButton">
-                        <Setter Property="CornerRadius" Value="10" />
-                        <Setter Property="Background" Value="Transparent" />
-                        <Setter Property="BorderThickness" Value="0" />
-                        <Setter Property="Padding" Value="8" />
-                        <Setter Property="Width" Value="48" />
-                        <Setter Property="Height" Value="48" />
-                        <Setter Property="Transitions">
-                            <Transitions>
-                                <BrushTransition Property="Background" Duration="0:0:0.15" />
-                                <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.15" />
-                            </Transitions>
-                        </Setter>
-                    </Style>
-                    <Style Selector="ToggleButton:pointerover">
-                        <Setter Property="Background" Value="#1AFFFFFF" />
-                        <Setter Property="RenderTransform" Value="scale(1.1)" />
-                    </Style>
-                    <Style Selector="ToggleButton:checked">
-                        <Setter Property="Background" Value="#33FFFFFF" />
-                    </Style>
-                    <Style Selector="ToggleButton:checked /template/ ContentPresenter">
-                        <Setter Property="Background" Value="#33FFFFFF" />
-                    </Style>
-                </StackPanel.Styles>
+                <StackPanel Name="Toolbar"
+                            Orientation="Horizontal"
+                            Spacing="8">
+                </StackPanel>
+            </Border>
 
-            </StackPanel>
-        </Border>
+            <Border
+                Background="#EE2B2B2B"
+                CornerRadius="16"
+                Padding="8"
+                BoxShadow="0 4 20 0 #60000000">
+                <Panel>
+                    <Button Name="LiveDrawingButton" Click="LiveDrawingButton_OnClick">
+                        <Image Margin="4" Source="avares://Scribble/Assets/group.png" />
+                    </Button>
+                    <Border
+                        IsVisible="{Binding IsLive}"
+                        VerticalAlignment="Top"
+                        HorizontalAlignment="Right"
+                        Padding="4"
+                        CornerRadius="32"
+                        Background="Black">
+                        <TextBlock Text="{Binding Room.Clients.Count}"
+                                   Foreground="White"
+                                   FontSize="14" />
+                    </Border>
+                </Panel>
+            </Border>
 
+            <StackPanel.Styles>
+                <Style Selector="ToggleButton, Button">
+                    <Setter Property="CornerRadius" Value="10" />
+                    <Setter Property="Background" Value="Transparent" />
+                    <Setter Property="BorderThickness" Value="0" />
+                    <Setter Property="Padding" Value="6" />
+                    <Setter Property="Margin" Value="4" />
+                    <Setter Property="Width" Value="44" />
+                    <Setter Property="Height" Value="44" />
+                    <Setter Property="Transitions">
+                        <Transitions>
+                            <BrushTransition Property="Background" Duration="0:0:0.15" />
+                            <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.15" />
+                        </Transitions>
+                    </Setter>
+                </Style>
+                <Style Selector="ToggleButton:pointerover, Button:pointerover">
+                    <Setter Property="Background" Value="#1AFFFFFF" />
+                    <Setter Property="RenderTransform" Value="scale(1.1)" />
+                </Style>
+                <Style Selector="ToggleButton:checked">
+                    <Setter Property="Background" Value="#33FFFFFF" />
+                </Style>
+                <Style Selector="ToggleButton:checked /template/ ContentPresenter">
+                    <Setter Property="Background" Value="#33FFFFFF" />
+                </Style>
+            </StackPanel.Styles>
+
+        </StackPanel>
+
+        <!-- Change Background and Tool Options -->
         <StackPanel
             HorizontalAlignment="Right"
             VerticalAlignment="Top"
@@ -220,7 +249,7 @@
                         <Button Width="30" Height="30" Padding="0" Click="TransparentCanvasButton_OnClick">
                             <Image Source="avares://Scribble/Assets/transparent.png" />
                         </Button>
-                        <ColorPicker Name="CanvasBackgroundColorView" Width="124" Color="Transparent"
+                        <ColorPicker Name="CanvasBackgroundColorView" Width="124" Color="{Binding BackgroundColor}"
                                      ColorChanged="CanvasBackgroundColorView_OnColorChanged" />
                     </StackPanel>
                 </StackPanel>
@@ -267,5 +296,62 @@
                 </Style>
             </StackPanel.Styles>
         </StackPanel>
+
+        <!-- Multi-User Drawing Dialog -->
+        <Panel>
+            <!-- Invisible Background that catches clicks -->
+            <Rectangle Name="LiveDrawingWindowOverlay"
+                       Fill="Transparent"
+                       IsVisible="False" PointerPressed="LiveDrawingWindowOverlay_OnPointerPressed" />
+
+            <Border Name="LiveDrawingWindow" HorizontalAlignment="Center" VerticalAlignment="Center"
+                    Background="#2B2B2B"
+                    Padding="18"
+                    CornerRadius="12" IsVisible="False">
+                <StackPanel MinWidth="400" Spacing="12">
+                    <TextBlock HorizontalAlignment="Center" Foreground="#AAAAAA" Margin="0, 0, 0, 12">Collaborative Drawing (DEMO)</TextBlock>
+                    <StackPanel Orientation="Vertical" Spacing="8">
+                        <TextBlock FontSize="12" TextWrapping="Wrap" Foreground="WhiteSmoke">
+                            If the room id doesn't belong to any active room, the room is automatically created
+                        </TextBlock>
+                        <TextBlock FontSize="12" TextWrapping="Wrap" Foreground="WhiteSmoke">
+                            I'm using Render's free tier to host the server so it might take a minute for the initial connection to be established
+                        </TextBlock>
+                        <TextBlock FontSize="12" TextWrapping="Wrap" Foreground="WhiteSmoke">
+                            Rooms are automatically closed after about 15mins of inactivity
+                        </TextBlock>
+                    </StackPanel>
+
+                    <StackPanel Orientation="Vertical" Spacing="6">
+                        <Label Target="NameTextBox" Padding="0">Display name</Label>
+                        <TextBox Name="NameTextBox" Watermark="Archer" VerticalContentAlignment="Center"
+                                 Height="40" Text="Blue Pumpkin" />
+                    </StackPanel>
+
+                    <Grid HorizontalAlignment="Stretch" ColumnDefinitions="40,*,40" RowDefinitions="Auto,Auto"
+                          ColumnSpacing="4" RowSpacing="6">
+                        <Label Grid.Row="0" Grid.ColumnSpan="3" Target="RoomIdTextBox" Padding="0">Room ID</Label>
+                        <Button Name="RoomIdGenerateButton" Grid.Column="0" Grid.Row="1" Height="40"
+                                Click="RoomIdGenerateButton_OnClick">
+                            <Image Source="avares://Scribble/Assets/random.png" />
+                        </Button>
+                        <TextBox Grid.Column="1" Grid.Row="1" Name="RoomIdTextBox" Watermark="Room ID"
+                                 KeyDown="RoomIdTextBox_OnKeyDown" TextChanged="RoomIdTextBox_OnTextChanged"
+                                 VerticalContentAlignment="Center" />
+                        <Button Name="RoomIdClipboardButton" Grid.Column="2" Grid.Row="1" Height="40"
+                                Click="RoomIdClipboardButton_OnClick">
+                            <Image Source="avares://Scribble/Assets/clipboard.png" />
+                        </Button>
+                    </Grid>
+
+                    <Button Name="EnterRoomButton" HorizontalAlignment="Stretch" Foreground="WhiteSmoke" Padding="8"
+                            HorizontalContentAlignment="Center"
+                            Click="EnterRoomButton_OnClick">
+                        Enter room
+                    </Button>
+
+                </StackPanel>
+            </Border>
+        </Panel>
     </Panel>
 </UserControl>

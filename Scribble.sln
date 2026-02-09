@@ -20,6 +20,10 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		deploy_windows.sh = deploy_windows.sh
 	EndProjectSection
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Scribble.Server", "Scribble.Server\Scribble.Server.csproj", "{8406676B-FF6D-466E-8AD9-74EF20FF93EA}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Scribble.Shared", "Scribble.Shared\Scribble.Shared.csproj", "{08FB146D-7F0B-4FE0-AADC-3C9ACBCE57EE}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -46,6 +50,14 @@ Global
 		{7AD1DAC8-7FBE-49D5-8614-7321233DB82E}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{7AD1DAC8-7FBE-49D5-8614-7321233DB82E}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{7AD1DAC8-7FBE-49D5-8614-7321233DB82E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8406676B-FF6D-466E-8AD9-74EF20FF93EA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8406676B-FF6D-466E-8AD9-74EF20FF93EA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8406676B-FF6D-466E-8AD9-74EF20FF93EA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8406676B-FF6D-466E-8AD9-74EF20FF93EA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{08FB146D-7F0B-4FE0-AADC-3C9ACBCE57EE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{08FB146D-7F0B-4FE0-AADC-3C9ACBCE57EE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{08FB146D-7F0B-4FE0-AADC-3C9ACBCE57EE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{08FB146D-7F0B-4FE0-AADC-3C9ACBCE57EE}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

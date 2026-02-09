@@ -11,10 +11,12 @@ using Avalonia.Media.Imaging;
 using Avalonia.Platform;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
+using Microsoft.AspNetCore.SignalR.Client;
 using MsBox.Avalonia;
 using MsBox.Avalonia.Enums;
 using Scribble.Behaviours;
 using Scribble.Lib;
+using Scribble.Shared.Lib;
 using Scribble.Tools.PointerTools;
 using Scribble.Tools.PointerTools.ArrowTool;
 using Scribble.Tools.PointerTools.EllipseTool;
@@ -38,24 +40,13 @@ public partial class MainView : UserControl
     private const double MaxZoom = 3f;
     private PointerToolsBase? _activePointerTool;
     private MainViewModel? _viewModel;
-    private Point _selectionMoveCoord;
-    private double _selectionRotationAngle;
-    private SKRect _selectionBounds;
-    private Point _selectionCenter;
-    private Point _scalePivot;
-    private Point _scalePrevCoord;
-    private string? _activeScaleHandle;
+    private readonly Selection _selection;
 
     public MainView()
     {
         InitializeComponent();
         _prevCoord = new Point(-1, -1);
-        _selectionMoveCoord = new Point(-1, -1);
-        _selectionRotationAngle = double.NaN;
-        _selectionBounds = SKRect.Empty;
-        _selectionCenter = new Point(-1, -1);
-        _scalePivot = new Point(-1, -1);
-        _scalePrevCoord = new Point(-1, -1);
+        _selection = new Selection();
 
         var moveIconBitmap = Bitmap.DecodeToWidth(AssetLoader.Open(new Uri("avares://Scribble/Assets/move.png")), 36);
         var rotateIconBitmap =
@@ -118,9 +109,6 @@ public partial class MainView : UserControl
         var toggleButton = new ToggleButton
         {
             Name = tool.Name,
-            Width = 50,
-            Height = 50,
-            Margin = new Thickness(4),
         };
         ToggleButtonGroup.SetGroupName(toggleButton, "PointerTools");
         toggleButton.IsCheckedChanged += (object? sender, RoutedEventArgs e) =>
@@ -198,9 +186,9 @@ public partial class MainView : UserControl
             SelectionBoxContainer.Width = combinedBounds.Width;
             SelectionBoxContainer.Height = combinedBounds.Height;
             SelectionOverlay.IsVisible = true;
-            _selectionBounds = combinedBounds;
-            bool isRotating = !double.IsNaN(_selectionRotationAngle);
-            bool isScaling = _activeScaleHandle != null;
+            _selection.SelectionBounds = combinedBounds;
+            bool isRotating = !double.IsNaN(_selection.SelectionRotationAngle);
+            bool isScaling = _selection.ActiveScaleHandle != null;
             if (isRotating || isScaling)
             {
                 SelectionOverlay.IsVisible = false;
@@ -209,7 +197,7 @@ public partial class MainView : UserControl
         else
         {
             SelectionOverlay.IsVisible = false;
-            _selectionBounds = SKRect.Empty;
+            _selection.SelectionBounds = SKRect.Empty;
         }
     }
 
@@ -303,25 +291,27 @@ public partial class MainView : UserControl
     {
         if (e.Properties.IsLeftButtonPressed)
         {
-            _selectionMoveCoord = GetPointerPosition(e);
+            _selection.SelectionMoveCoord = GetPointerPosition(e);
+            _selection.MoveActionId = Guid.NewGuid();
         }
     }
 
     private void SelectionBorder_OnPointerMoved(object? sender, PointerEventArgs e)
     {
         var pointerCoordinates = GetPointerPosition(e);
-        var hasLastCoordinates = !_selectionMoveCoord.Equals(new Point(-1, -1));
+        var hasLastCoordinates = !_selection.SelectionMoveCoord.Equals(new Point(-1, -1));
         if (e.Properties.IsLeftButtonPressed && hasLastCoordinates && _viewModel != null)
         {
             // Move selected elements
-            Point delta = pointerCoordinates - _selectionMoveCoord;
+            Point delta = pointerCoordinates - _selection.SelectionMoveCoord;
             foreach (var selection in _viewModel.SelectionTargets)
             {
-                _viewModel.ApplyEvent(new MoveStrokesEvent(selection.Key, Utilities.ToSkPoint(delta)));
+                _viewModel.ApplyEvent(new MoveStrokesEvent(_selection.MoveActionId, selection.Key,
+                    Utilities.ToSkPoint(delta)));
             }
         }
 
-        _selectionMoveCoord = pointerCoordinates;
+        _selection.SelectionMoveCoord = pointerCoordinates;
     }
 
     private void SelectionBorder_OnPointerReleased(object? sender, PointerReleasedEventArgs e)
@@ -330,41 +320,41 @@ public partial class MainView : UserControl
         {
             foreach (var selection in _viewModel.SelectionTargets)
             {
-                _viewModel.ApplyEvent(new EndStrokeEvent(selection.Key));
+                _viewModel.ApplyEvent(new EndStrokeEvent(_selection.MoveActionId));
             }
         }
 
-        _selectionMoveCoord = new Point(-1, -1);
+        _selection.SelectionMoveCoord = new Point(-1, -1);
     }
 
     private void SelectionRotationBtn_OnPointerPressed(object? sender, PointerPressedEventArgs e)
     {
         if (e.Properties.IsLeftButtonPressed)
         {
-            if (_selectionBounds.IsEmpty)
+            if (_selection.SelectionBounds.IsEmpty)
             {
-                _selectionRotationAngle = double.NaN;
+                _selection.SelectionRotationAngle = double.NaN;
                 return;
             }
 
             var pointerCoordinates = GetPointerPosition(e);
-            _selectionCenter = new Point(_selectionBounds.Left + (_selectionBounds.Width / 2),
-                _selectionBounds.Top + (_selectionBounds.Height / 2));
-            _selectionRotationAngle = Math.Atan2(pointerCoordinates.Y - _selectionCenter.Y,
-                pointerCoordinates.X - _selectionCenter.X);
+            _selection.RefreshSelectionCenter();
+            _selection.UpdateSelectionRotationAngle(pointerCoordinates);
+            _selection.RotateActionId = Guid.NewGuid();
         }
     }
 
     private void SelectionRotationBtn_OnPointerMoved(object? sender, PointerEventArgs e)
     {
         var pointerCoordinates = GetPointerPosition(e);
-        var hasLastAngle = !double.IsNaN(_selectionRotationAngle);
+        var hasLastAngle = !double.IsNaN(_selection.SelectionRotationAngle);
 
-        if (e.Properties.IsLeftButtonPressed && hasLastAngle && _viewModel != null && !_selectionBounds.IsEmpty)
+        if (e.Properties.IsLeftButtonPressed && hasLastAngle && _viewModel != null &&
+            !_selection.SelectionBounds.IsEmpty)
         {
-            var angleRad = Math.Atan2(pointerCoordinates.Y - _selectionCenter.Y,
-                pointerCoordinates.X - _selectionCenter.X);
-            var deltaRad = angleRad - _selectionRotationAngle;
+            var angleRad = Math.Atan2(pointerCoordinates.Y - _selection.SelectionCenter.Y,
+                pointerCoordinates.X - _selection.SelectionCenter.X);
+            var deltaRad = angleRad - _selection.SelectionRotationAngle;
 
             // Keep delta in [-pi, pi] to avoid jumps across the wrap boundary.
             if (deltaRad > Math.PI)
@@ -378,11 +368,11 @@ public partial class MainView : UserControl
 
             foreach (var selection in _viewModel.SelectionTargets)
             {
-                _viewModel.ApplyEvent(new RotateStrokesEvent(selection.Key, (float)deltaRad,
-                    Utilities.ToSkPoint(_selectionCenter)));
+                _viewModel.ApplyEvent(new RotateStrokesEvent(_selection.RotateActionId, selection.Key, (float)deltaRad,
+                    Utilities.ToSkPoint(_selection.SelectionCenter)));
             }
 
-            _selectionRotationAngle = angleRad;
+            _selection.SelectionRotationAngle = angleRad;
         }
     }
 
@@ -392,12 +382,12 @@ public partial class MainView : UserControl
         {
             foreach (var selection in _viewModel.SelectionTargets)
             {
-                _viewModel.ApplyEvent(new EndStrokeEvent(selection.Key));
+                _viewModel.ApplyEvent(new EndStrokeEvent(_selection.RotateActionId));
             }
         }
 
-        _selectionRotationAngle = double.NaN;
-        _selectionCenter = new Point(-1, -1);
+        _selection.SelectionRotationAngle = double.NaN;
+        _selection.SelectionCenter = new Point(-1, -1);
         VisualizeSelection();
     }
 
@@ -405,26 +395,10 @@ public partial class MainView : UserControl
     {
         if (e.Properties.IsLeftButtonPressed && sender is Control control && _viewModel != null)
         {
-            _activeScaleHandle = control.Name;
-            _scalePrevCoord = GetPointerPosition(e);
-
-            // Determine pivot based on the handle (opposite corner)
-            // _selectionBounds contains the current bounds in Canvas coordinates
-            switch (_activeScaleHandle)
-            {
-                case "ScaleHandleTl":
-                    _scalePivot = new Point(_selectionBounds.Right, _selectionBounds.Bottom);
-                    break;
-                case "ScaleHandleTr":
-                    _scalePivot = new Point(_selectionBounds.Left, _selectionBounds.Bottom);
-                    break;
-                case "ScaleHandleBl":
-                    _scalePivot = new Point(_selectionBounds.Right, _selectionBounds.Top);
-                    break;
-                case "ScaleHandleBr":
-                    _scalePivot = new Point(_selectionBounds.Left, _selectionBounds.Top);
-                    break;
-            }
+            _selection.ActiveScaleHandle = control.Name;
+            _selection.ScalePrevCoord = GetPointerPosition(e);
+            _selection.ScaleActionId = Guid.NewGuid();
+            _selection.RefreshScalePivot();
 
             e.Handled = true;
         }
@@ -432,11 +406,11 @@ public partial class MainView : UserControl
 
     private void ScaleHandle_OnPointerMoved(object? sender, PointerEventArgs e)
     {
-        if (e.Properties.IsLeftButtonPressed && _activeScaleHandle != null && _viewModel != null)
+        if (e.Properties.IsLeftButtonPressed && _selection.ActiveScaleHandle != null && _viewModel != null)
         {
             var currentCoord = GetPointerPosition(e);
-            var prevVector = _scalePrevCoord - _scalePivot;
-            var currVector = currentCoord - _scalePivot;
+            var prevVector = _selection.ScalePrevCoord - _selection.ScalePivot;
+            var currVector = currentCoord - _selection.ScalePivot;
 
             // Avoid division by zero and extremely small scales that collapse geometry
             if (Math.Abs(prevVector.X) < 1 || Math.Abs(prevVector.Y) < 1 ||
@@ -450,27 +424,29 @@ public partial class MainView : UserControl
 
             foreach (var selection in _viewModel.SelectionTargets)
             {
-                _viewModel.ApplyEvent(new ScaleStrokesEvent(selection.Key, new SKPoint((float)scaleX, (float)scaleY),
-                    Utilities.ToSkPoint(_scalePivot)));
+                _viewModel.ApplyEvent(new ScaleStrokesEvent(_selection.ScaleActionId,
+                    selection.Key,
+                    new SKPoint((float)scaleX, (float)scaleY),
+                    Utilities.ToSkPoint(_selection.ScalePivot)));
             }
 
-            _scalePrevCoord = currentCoord;
+            _selection.ScalePrevCoord = currentCoord;
             e.Handled = true;
         }
     }
 
     private void ScaleHandle_OnPointerReleased(object? sender, PointerReleasedEventArgs e)
     {
-        if (e.InitialPressMouseButton == MouseButton.Left && _viewModel != null && _activeScaleHandle != null)
+        if (e.InitialPressMouseButton == MouseButton.Left && _viewModel != null && _selection.ActiveScaleHandle != null)
         {
             foreach (var selection in _viewModel.SelectionTargets)
             {
-                _viewModel.ApplyEvent(new EndStrokeEvent(selection.Key));
+                _viewModel.ApplyEvent(new EndStrokeEvent(_selection.ScaleActionId));
             }
 
-            _activeScaleHandle = null;
-            _scalePivot = new Point(-1, -1);
-            _scalePrevCoord = new Point(-1, -1);
+            _selection.ActiveScaleHandle = null;
+            _selection.ScalePivot = new Point(-1, -1);
+            _selection.ScalePrevCoord = new Point(-1, -1);
             VisualizeSelection();
             e.Handled = true;
         }
@@ -491,6 +467,14 @@ public partial class MainView : UserControl
     {
         MenuOptions.IsVisible = false;
         MenuOverlay.IsVisible = false;
+
+        Dispatcher.UIThread.Post(() => CanvasContainer.Focus());
+    }
+
+    private void CloseLiveDrawingWindow()
+    {
+        LiveDrawingWindow.IsVisible = false;
+        LiveDrawingWindowOverlay.IsVisible = false;
 
         Dispatcher.UIThread.Post(() => CanvasContainer.Focus());
     }
@@ -587,5 +571,110 @@ public partial class MainView : UserControl
     private void TransparentCanvasButton_OnClick(object? sender, RoutedEventArgs e)
     {
         CanvasBackgroundColorView.Color = Colors.Transparent;
+    }
+
+    private void LiveDrawingWindowOverlay_OnPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        CloseLiveDrawingWindow();
+    }
+
+    private void LiveDrawingButton_OnClick(object? sender, RoutedEventArgs e)
+    {
+        if (_viewModel == null) return;
+        LiveDrawingWindow.IsVisible = true;
+        LiveDrawingWindowOverlay.IsVisible = true;
+    }
+
+    private async void EnterRoomButton_OnClick(object? sender, RoutedEventArgs e)
+    {
+        try
+        {
+            EnterRoomButton.IsEnabled = false;
+            if (_viewModel == null || RoomIdTextBox.Text == null) return;
+            if (_viewModel.GetLiveDrawingServiceConnectionState() == HubConnectionState.Disconnected)
+            {
+                if (_viewModel.HasEvents())
+                {
+                    var box = MessageBoxManager
+                        .GetMessageBoxStandard("Warning",
+                            "This might clear your current canvas. Are you sure you want to proceed?",
+                            ButtonEnum.YesNo,
+                            Icon.Warning);
+
+                    var result = await box.ShowAsync();
+                    if (result != ButtonResult.Yes)
+                    {
+                        EnterRoomButton.IsEnabled = true;
+                        return;
+                    }
+                }
+
+                await _viewModel.JoinRoom(RoomIdTextBox.Text, NameTextBox.Text?.Trim() ?? "User");
+                EnterRoomButton.Content = "Leave Room";
+                LiveDrawingButton.Background = new SolidColorBrush(Colors.Green);
+            }
+            else
+            {
+                await _viewModel.LeaveRoom();
+                EnterRoomButton.Content = "Enter Room";
+                LiveDrawingButton.Background = new SolidColorBrush(Colors.Transparent);
+            }
+        }
+        catch (Exception exception)
+        {
+            Console.WriteLine(exception);
+        }
+        finally
+        {
+            EnterRoomButton.IsEnabled = true;
+        }
+    }
+
+    private async void RoomIdClipboardButton_OnClick(object? sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var clipboard = TopLevel.GetTopLevel(this)?.Clipboard;
+            if (clipboard == null) return;
+            await clipboard.SetTextAsync(RoomIdTextBox.Text);
+        }
+        catch (Exception exception)
+        {
+            Console.WriteLine($"Failed to copy to clipboard - {exception.Message}");
+        }
+    }
+
+    private void RoomIdGenerateButton_OnClick(object? sender, RoutedEventArgs e)
+    {
+        if (_viewModel?.GetLiveDrawingServiceConnectionState() == HubConnectionState.Disconnected)
+        {
+            string roomId = Guid.NewGuid().ToString("N");
+            RoomIdTextBox.Text = roomId;
+        }
+    }
+
+    private void RoomIdTextBox_OnKeyDown(object? sender, KeyEventArgs e)
+    {
+        // Don't allow whitespace
+        if (e.Key == Key.Space)
+        {
+            e.Handled = true;
+        }
+    }
+
+    private void RoomIdTextBox_OnTextChanged(object? sender, TextChangedEventArgs e)
+    {
+        if (sender is TextBox textBox && textBox.Text != null)
+        {
+            if (textBox.Text.Any(char.IsWhiteSpace))
+            {
+                var caretIndex = textBox.CaretIndex;
+                var cleanText = textBox.Text.Replace(" ", "");
+                textBox.Text = cleanText;
+
+                // Restore the cursor position
+                textBox.CaretIndex = Math.Min(caretIndex, textBox.Text.Length);
+            }
+        }
     }
 }

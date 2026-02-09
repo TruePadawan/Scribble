@@ -8,7 +8,7 @@ using Avalonia.Layout;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
 using Scribble.Behaviours;
-using Scribble.Lib;
+using Scribble.Shared.Lib;
 using Scribble.Utils;
 using Scribble.ViewModels;
 using SkiaSharp;
@@ -20,6 +20,7 @@ public class EllipseTool : PointerToolsBase
     private readonly StrokePaint _strokePaint;
     private SKPoint? _startPoint;
     private Guid _strokeId = Guid.NewGuid();
+    private Guid _actionId = Guid.NewGuid();
     private StrokeStyle _strokeStyle = StrokeStyle.Solid;
 
     public EllipseTool(string name, MainViewModel viewModel) : base(name, viewModel,
@@ -41,19 +42,20 @@ public class EllipseTool : PointerToolsBase
     {
         _startPoint = new SKPoint((float)coord.X, (float)coord.Y);
         _strokeId = Guid.NewGuid();
-        ViewModel.ApplyEvent(new StartStrokeEvent(_strokeId, _startPoint.Value, _strokePaint.Clone(),
+        _actionId = Guid.NewGuid();
+        ViewModel.ApplyEvent(new StartStrokeEvent(_actionId, _strokeId, _startPoint.Value, _strokePaint.Clone(),
             StrokeTool.Ellipse));
     }
 
     public override void HandlePointerMove(Point prevCoord, Point currentCoord)
     {
         var endPoint = new SKPoint((float)currentCoord.X, (float)currentCoord.Y);
-        ViewModel.ApplyEvent(new LineStrokeLineToEvent(_strokeId, endPoint));
+        ViewModel.ApplyEvent(new LineStrokeLineToEvent(_actionId, _strokeId, endPoint));
     }
 
     public override void HandlePointerRelease(Point prevCoord, Point currentCoord)
     {
-        ViewModel.ApplyEvent(new EndStrokeEvent(_strokeId));
+        ViewModel.ApplyEvent(new EndStrokeEvent(_actionId));
     }
 
     public override bool RenderOptions(Panel parent)
