@@ -14,7 +14,7 @@ A cross-platform (windows/linux) digital whiteboard application
 
 **I'm working on**:
 - Adding more tools and improving the existing ones
-- Collaborative drawing where users can join a room and draw stuff together
+- Collaborative drawing where users can join a room and draw stuff together. This is just a DEMO feature
 
  
 <img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/4a817026-a4a6-41fd-b684-1323a2f0f9d8" />
