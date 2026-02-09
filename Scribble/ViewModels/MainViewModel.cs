@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
@@ -10,6 +11,7 @@ using Avalonia.Media;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.Configuration;
 using MsBox.Avalonia;
@@ -696,4 +698,22 @@ public partial class MainViewModel : ViewModelBase
     }
 
     public HubConnectionState GetLiveDrawingServiceConnectionState() => _collaborativeDrawingService.ConnectionState;
+
+    [RelayCommand]
+    private void OpenUrl(string url)
+    {
+        if (!string.IsNullOrEmpty(url))
+        {
+            try
+            {
+                Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
+            }
+            catch (Exception ex)
+            {
+                // Hack for Linux if the above fails
+                Process.Start("xdg-open", url);
+                Console.WriteLine($"Could not open URL: {ex.Message}");
+            }
+        }
+    }
 }

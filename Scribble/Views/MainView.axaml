@@ -146,6 +146,12 @@
                             </StackPanel>
                         </Button>
                         <Rectangle Height="2" Fill="#49808080" />
+                        <Button Name="AboutOption" Margin="0" HorizontalAlignment="Stretch" Click="AboutOption_OnClick">
+                            <StackPanel Orientation="Horizontal" Spacing="4">
+                                <Image Source="avares://Scribble/Assets/about.png" Width="18" Height="18" />
+                                <Label FontSize="12">About Scribble</Label>
+                            </StackPanel>
+                        </Button>
                         <Button Name="ExitOption" Margin="0" Click="ExitOption_OnClick" HorizontalAlignment="Stretch">
                             <StackPanel Orientation="Horizontal" Spacing="4">
                                 <Image Source="avares://Scribble/Assets/exit.png" Width="18" Height="18" />
@@ -297,17 +303,17 @@
             </StackPanel.Styles>
         </StackPanel>
 
-        <!-- Multi-User Drawing Dialog -->
-        <Panel>
+        <!-- Collaborative Drawing Dialog -->
+        <Panel Name="LiveDrawingWindow" IsVisible="False">
             <!-- Invisible Background that catches clicks -->
             <Rectangle Name="LiveDrawingWindowOverlay"
                        Fill="Transparent"
                        IsVisible="False" PointerPressed="LiveDrawingWindowOverlay_OnPointerPressed" />
 
-            <Border Name="LiveDrawingWindow" HorizontalAlignment="Center" VerticalAlignment="Center"
+            <Border HorizontalAlignment="Center" VerticalAlignment="Center"
                     Background="#2B2B2B"
                     Padding="18"
-                    CornerRadius="12" IsVisible="False">
+                    CornerRadius="12">
                 <StackPanel MinWidth="400" Spacing="12">
                     <TextBlock HorizontalAlignment="Center" Foreground="#AAAAAA" Margin="0, 0, 0, 12">Collaborative Drawing (DEMO)</TextBlock>
                     <StackPanel Orientation="Vertical" Spacing="8">
@@ -350,6 +356,50 @@
                         Enter room
                     </Button>
 
+                </StackPanel>
+            </Border>
+        </Panel>
+
+        <!-- About Scribble Modal -->
+        <Panel Name="AboutScribbleWindow" IsVisible="False">
+            <!-- Invisible Background that catches clicks -->
+            <Rectangle Name="AboutScribbleWindowOverlay"
+                       Fill="Transparent"
+                       IsVisible="False" PointerPressed="AboutScribbleOverlay_OnPointerPressed" />
+
+            <Border HorizontalAlignment="Center" VerticalAlignment="Center"
+                    Background="#2B2B2B"
+                    Padding="18"
+                    CornerRadius="12">
+                <StackPanel MaxWidth="600" Spacing="12">
+                    <TextBlock HorizontalAlignment="Center" Foreground="#AAAAAA" Margin="0, 0, 0, 12">About Scribble</TextBlock>
+                    <StackPanel Orientation="Vertical" Spacing="12">
+                        <StackPanel Orientation="Vertical" Spacing="4">
+                            <TextBlock TextWrapping="Wrap" FontWeight="ExtraLight">
+                                Scribble is a cross-platform digital whiteboard program built with C#/.NET, AvaloniaUI, SignalR, SkiaSharp.
+                            </TextBlock>
+                            <TextBlock TextWrapping="Wrap" FontWeight="ExtraLight">
+                                I got bored of doing another web-based project so I decided to pick up C#/.NET and Avalonia by building this
+                            </TextBlock>
+                        </StackPanel>
+
+                        <StackPanel Orientation="Vertical" Spacing="4">
+                            <TextBlock TextWrapping="Wrap" Foreground="WhiteSmoke">
+                                Scribble v0.1.0-alpha, by
+                                <HyperlinkButton Content="Hermes"
+                                                 Padding="0"
+                                                 Margin="0"
+                                                 Command="{Binding OpenUrlCommand}"
+                                                 CommandParameter="https://github.com/TruePadawan" />
+                            </TextBlock>
+                            <HyperlinkButton Name="Icons8Button"
+                                             Content="Icons by Icons8"
+                                             Padding="0"
+                                             Margin="0"
+                                             Command="{Binding OpenUrlCommand}"
+                                             CommandParameter="http://icons8.com/icons" />
+                        </StackPanel>
+                    </StackPanel>
                 </StackPanel>
             </Border>
         </Panel>

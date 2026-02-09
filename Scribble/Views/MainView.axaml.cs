@@ -475,7 +475,13 @@ public partial class MainView : UserControl
     {
         LiveDrawingWindow.IsVisible = false;
         LiveDrawingWindowOverlay.IsVisible = false;
+        Dispatcher.UIThread.Post(() => CanvasContainer.Focus());
+    }
 
+    private void CloseAboutScribbleWindow()
+    {
+        AboutScribbleWindow.IsVisible = false;
+        AboutScribbleWindowOverlay.IsVisible = false;
         Dispatcher.UIThread.Post(() => CanvasContainer.Focus());
     }
 
@@ -676,5 +682,17 @@ public partial class MainView : UserControl
                 textBox.CaretIndex = Math.Min(caretIndex, textBox.Text.Length);
             }
         }
+    }
+
+    private void AboutScribbleOverlay_OnPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        CloseAboutScribbleWindow();
+    }
+
+    private void AboutOption_OnClick(object? sender, RoutedEventArgs e)
+    {
+        CloseMenu();
+        AboutScribbleWindow.IsVisible = true;
+        AboutScribbleWindowOverlay.IsVisible = true;
     }
 }
