@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <component type="desktop-application">
-    <id>scribble.desktop</id> <name>Scribble</name>
+    <id>Scribble.desktop</id>
+    <name>Scribble</name>
     <summary>A cross-platform digital whiteboard</summary>
+    <developer_name>Chisom Hermes Chigoziri</developer_name>
 
     <metadata_license>CC0-1.0</metadata_license>
     <project_license>GPL-3.0</project_license>
@@ -14,21 +16,31 @@
         </p>
     </description>
 
-    <launchable type="desktop-id">scribble.desktop</launchable>
+    <launchable type="desktop-id">Scribble.desktop</launchable>
+
+    <kudos>
+        <kudo>HiDpiIcon</kudo>
+        <kudo>ModernToolkit</kudo>
+    </kudos>
+
+    <keywords>
+        <keyword>whiteboard</keyword>
+        <keyword>drawing</keyword>
+        <keyword>canvas</keyword>
+    </keywords>
 
     <screenshots>
         <screenshot type="default">
-            <image>https://raw.githubusercontent.com/TruePadawan/Scribble/master/Assets/Screenshots/screenshot_1.png</image>
-            <image>https://raw.githubusercontent.com/TruePadawan/Scribble/master/Assets/Screenshots/screenshot_2.png</image>
+            <image>https://i.imgur.com/w8YdXhu.png</image>
         </screenshot>
     </screenshots>
 
     <url type="homepage">https://github.com/TruePadawan/Scribble</url>
     <url type="bugtracker">https://github.com/TruePadawan/Scribble/issues</url>
 
-    <content_rating type="oars-1.1" />
+    <content_rating type="oars-1.1"/>
 
     <releases>
-        <release version="0.1.0-alpha" date="2026-02-10" />
+        <release version="0.1.0-alpha" date="2026-02-10"/>
     </releases>
 </component>

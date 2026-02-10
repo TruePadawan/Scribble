@@ -18,7 +18,7 @@ dotnet publish "./Scribble.Desktop/Scribble.Desktop.csproj" \
 
 # --- SHARED METADATA ---
 NAME="scribble"
-VERSION="0.1.0_alpha"
+VERSION="0.1.0-alpha"
 MAINTAINER="Chisom Hermes Chigoziri <hermeschigoziri@gmail.com>"
 DESC="A cross-platform digital whiteboard engineered with C# and Avalonia UI"
 URL="https://github.com/TruePadawan/Scribble"
@@ -32,6 +32,7 @@ mkdir -p ./staging/usr/lib/scribble
 mkdir -p ./staging/usr/share/applications
 mkdir -p ./staging/usr/share/pixmaps
 mkdir -p ./staging/usr/share/icons/hicolor/scalable/apps
+mkdir -p ./staging/usr/share/metainfo
 mkdir -p ./releases/linux
 
 # 2. Copy Files
@@ -43,6 +44,7 @@ cp ./Scribble.Desktop/DEBIAN/scribble.sh ./staging/usr/bin/scribble
 cp ./Scribble.Desktop/DEBIAN/Scribble.desktop ./staging/usr/share/applications/
 cp ./Scribble.Desktop/DEBIAN/scribble.png ./staging/usr/share/pixmaps/
 cp ./Scribble.Desktop/DEBIAN/scribble.svg ./staging/usr/share/icons/hicolor/scalable/apps/
+cp ./Scribble.Desktop/DEBIAN/scribble.metainfo.xml ./staging/usr/share/metainfo/
 
 # 3. Set Permissions
 chmod +x ./staging/usr/bin/scribble
