@@ -26,9 +26,4 @@
     <ItemGroup>
         <ProjectReference Include="..\Scribble\Scribble.csproj"/>
     </ItemGroup>
-
-<!--    <ItemGroup>-->
-<!--      <AvaloniaResource Include="DEBIAN\scribble.png" />-->
-<!--      <AvaloniaResource Include="DEBIAN\scribble.svg" />-->
-<!--    </ItemGroup>-->
 </Project>
