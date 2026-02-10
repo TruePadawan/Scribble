@@ -1,11 +1,11 @@
 [Desktop Entry]
 Name=Scribble
-Comment=Scribble is a simple drawing tool
+Comment=A cross-platform digital whiteboard engineered with C# and Avalonia UI
 Icon=scribble
 Exec=scribble
 StartupWMClass=scribble
 Terminal=false
 Type=Application
 Categories=Graphics
-GenericName=Drawing Application
+GenericName=Whiteboard Application
 Keywords=draw; graphics; paint

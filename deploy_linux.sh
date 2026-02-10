@@ -3,6 +3,7 @@
 # Clean up
 rm -rf ./out/
 rm -rf ./staging/
+rm -rf ./releases/linux
 
 # .NET publish
 # self-contained is recommended, so final users won't need to install .NET
@@ -17,11 +18,12 @@ dotnet publish "./Scribble.Desktop/Scribble.Desktop.csproj" \
 
 # --- SHARED METADATA ---
 NAME="scribble"
-VERSION="1.0.0"
+VERSION="0.1.0_alpha"
 MAINTAINER="Chisom Hermes Chigoziri <hermeschigoziri@gmail.com>"
 DESC="A cross-platform digital whiteboard engineered with C# and Avalonia UI"
 URL="https://github.com/TruePadawan/Scribble"
 ARCH="amd64"
+CATEGORY="Graphics"
 
 # 1. Prepare Staging
 rm -rf ./staging
@@ -30,7 +32,7 @@ mkdir -p ./staging/usr/lib/scribble
 mkdir -p ./staging/usr/share/applications
 mkdir -p ./staging/usr/share/pixmaps
 mkdir -p ./staging/usr/share/icons/hicolor/scalable/apps
-mkdir ./releases
+mkdir -p ./releases/linux
 
 # 2. Copy Files
 # Copy binary to lib
@@ -50,31 +52,37 @@ chmod +x ./staging/usr/lib/scribble/Scribble.Desktop
 echo "Packaging DEB..."
 fpm -s dir -t deb \
     -n "$NAME" -v "$VERSION" -a "$ARCH" \
+    --license gpl3 \
     -m "$MAINTAINER" \
     --description "$DESC" \
+    --category "$CATEGORY" \
     --url "$URL" \
     -C ./staging \
-    -p ./releases/scribble_amd64.deb \
+    -p ./releases/linux/scribble_amd64.deb \
     usr/
 
 echo "Packaging RPM..."
 fpm -s dir -t rpm \
     -n "$NAME" -v "$VERSION" -a "x86_64" \
+    --license gpl3 \
     -m "$MAINTAINER" \
     --description "$DESC" \
+    --category "$CATEGORY" \
     --url "$URL" \
     -C ./staging \
-    -p ./releases/scribble.x86_64.rpm \
+    -p ./releases/linux/scribble.x86_64.rpm \
     usr/
 
 echo "Packaging Pacman..."
 fpm -s dir -t pacman \
     -n "$NAME" -v "$VERSION" -a "x86_64" \
+    --license gpl3 \
     -m "$MAINTAINER" \
     --description "$DESC" \
+    --category "$CATEGORY" \
     --url "$URL" \
     -C ./staging \
-    -p ./releases/scribble.pkg.tar.zst \
+    -p ./releases/linux/scribble.pkg.tar.zst \
     usr/
 
 echo "Done!"

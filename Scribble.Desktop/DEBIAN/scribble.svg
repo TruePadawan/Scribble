@@ -1,16 +1,7 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
-    <circle cx="256" cy="256" r="245" fill="none" stroke="white" stroke-width="14"/>
-
-    <path d="M256 256
-           c-20-30 -50-40 -70-20
-           s-20 60 10 80
-           c40 30 90 10 110-30
-           s10-100-40-120
-           c-60-30-130 0-150 50
-           s-10 130 50 150
-           c70 30 160-10 180-70
-           s-10-160-80-180
-           c-80-30-180 20-200 90
-           s20 180 100 200"
-          fill="none" stroke="white" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
-</svg>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<!-- Uploaded to: SVG Repo, www.svgrepo.com, Transformed by: SVG Repo Mixer Tools -->
+<svg width="256px" height="256px" viewBox="0 0 20.00 20.00" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" fill="#000000" stroke="#000000">
+<g id="SVGRepo_bgCarrier" stroke-width="0"/>
+<g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round" stroke="#CCCCCC" stroke-width="0.08"/>
+<g id="SVGRepo_iconCarrier"> <title>image / 36 - image, scribble icon</title> <g id="Free-Icons" stroke-width="2" fill="none" fill-rule="evenodd" stroke-linecap="round" stroke-linejoin="round"> <g transform="translate(-377.000000, -601.000000)" id="Group" stroke="#10f420" stroke-width="2"> <g transform="translate(375.000000, 598.000000)" id="Shape"> <path d="M3,13.5793719 C9.98914658,5.83454059 14.2442185,2.78592627 15.7652158,4.43352892 C18.0467117,6.90493289 7.55581053,16.1455344 9.47834357,17.954063 C11.4008766,19.7625917 16.9959382,11.5719148 19.0578414,12.4109285 C21.1197445,13.2499421 16.1152903,18.1722847 17.4055985,18.9997829 C18.2658039,19.5514483 19.3191667,19.0606734 20.5656867,17.527458"> </path> </g> </g> </g> </g>
+</svg>
