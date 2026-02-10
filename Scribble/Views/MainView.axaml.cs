@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
@@ -149,6 +150,7 @@ public partial class MainView : UserControl
     {
         if (_viewModel == null) return;
 
+        var triggeringSelectionAction = _viewModel.CanvasEvents.Last() is EndSelectionEvent;
         var allSelectedIds = _viewModel.SelectionTargets.Values.SelectMany(x => x).Distinct().ToList();
 
         if (allSelectedIds.Count > 0)
@@ -191,12 +193,54 @@ public partial class MainView : UserControl
             {
                 SelectionOverlay.IsVisible = false;
             }
+
+            if (triggeringSelectionAction)
+            {
+                ShowSelectedStrokesOptions(selectedStrokes);
+            }
         }
         else
         {
             SelectionOverlay.IsVisible = false;
             _selection.SelectionBounds = SKRect.Empty;
+            if (triggeringSelectionAction)
+            {
+                ToolOptionsContainer.IsVisible = false;
+            }
         }
+    }
+
+    private void ShowSelectedStrokesOptions(List<DrawStroke> selectedStrokes)
+    {
+        if (_viewModel == null) return;
+
+        var filteredStrokes = new Dictionary<StrokeTool, List<Guid>>();
+        foreach (var selectedStroke in selectedStrokes)
+        {
+            var strokeType = selectedStroke.ToolType;
+            if (filteredStrokes.TryGetValue(strokeType, out var strokes))
+            {
+                strokes.Add(selectedStroke.Id);
+            }
+            else
+            {
+                filteredStrokes[strokeType] = [selectedStroke.Id];
+            }
+        }
+
+        ToolOptions.Children.Clear();
+        foreach (var keyValuePair in filteredStrokes)
+        {
+            switch (keyValuePair.Key)
+            {
+                case StrokeTool.Pencil:
+                    PencilTool.RenderEditOptions(ToolOptions, keyValuePair.Value, _viewModel);
+                    break;
+            }
+        }
+
+        ToolOptionsContainer.IsVisible = true;
+        ToolOptionsContainer.Opacity = 1;
     }
 
     private Point GetPointerPosition(PointerEventArgs e)

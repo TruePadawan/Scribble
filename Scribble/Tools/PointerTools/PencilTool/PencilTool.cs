@@ -1,7 +1,9 @@
 using System;
+using System.Collections.Generic;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Media;
 using Scribble.Shared.Lib;
 using Scribble.Utils;
 using Scribble.ViewModels;
@@ -51,29 +53,40 @@ public class PencilTool : PointerToolsBase
 
     public override bool RenderOptions(Panel parent)
     {
-        parent.Children.Add(CreateOptionControl(GetStrokeColorOption(), "Stroke Color"));
-        parent.Children.Add(CreateOptionControl(GetStrokeThicknessOption(), "Stroke Thickness"));
+        var strokeColorPicker = GetStrokeColorOption();
+        var thicknessSlider = GetStrokeThicknessOption();
+
+        strokeColorPicker.Color = Utilities.FromSkColor(_strokePaint.Color);
+        strokeColorPicker.ColorChanged += (sender, args) =>
+        {
+            _strokePaint.Color = Utilities.ToSkColor(args.NewColor);
+        };
+
+        thicknessSlider.Value = _strokePaint.StrokeWidth;
+        thicknessSlider.ValueChanged += (sender, args) =>
+        {
+            var newThickness = (float)args.NewValue;
+            _strokePaint.StrokeWidth = newThickness;
+        };
+
+
+        parent.Children.Add(CreateOptionControl(strokeColorPicker, "Stroke Color"));
+        parent.Children.Add(CreateOptionControl(thicknessSlider, "Stroke Thickness"));
         parent.Width = 180;
         return true;
     }
 
-    private ColorPicker GetStrokeColorOption()
+    private static ColorPicker GetStrokeColorOption()
     {
         var colorPicker = new ColorPicker
         {
-            Color = Utilities.FromSkColor(_strokePaint.Color),
             IsColorSpectrumSliderVisible = false,
             Width = 164
-        };
-        colorPicker.ColorChanged += (sender, args) =>
-        {
-            var newColor = args.NewColor;
-            _strokePaint.Color = Utilities.ToSkColor(newColor);
         };
         return colorPicker;
     }
 
-    private Slider GetStrokeThicknessOption()
+    private static Slider GetStrokeThicknessOption()
     {
         var slider = new Slider
         {
@@ -81,10 +94,33 @@ public class PencilTool : PointerToolsBase
             IsSnapToTickEnabled = true,
             Minimum = 1,
             Maximum = 10,
-            Value = _strokePaint.StrokeWidth
+            Padding = new Thickness(8, 0),
         };
-        slider.ValueChanged += (sender, args) => { _strokePaint.StrokeWidth = (float)args.NewValue; };
-        slider.Padding = new Thickness(8, 0);
         return slider;
+    }
+
+
+    public static void RenderEditOptions(Panel parent, List<Guid> strokeIds, MainViewModel viewModel)
+    {
+        var strokeColorPicker = GetStrokeColorOption();
+        var thicknessSlider = GetStrokeThicknessOption();
+
+        strokeColorPicker.Color = Colors.White;
+        strokeColorPicker.ColorChanged += (sender, args) =>
+        {
+            var newColor = Utilities.ToSkColor(args.NewColor);
+            viewModel.ApplyEvent(new UpdateStrokeColorEvent(Guid.NewGuid(), strokeIds, newColor));
+        };
+
+        thicknessSlider.Value = 1;
+        thicknessSlider.ValueChanged += (sender, args) =>
+        {
+            var newThickness = (float)args.NewValue;
+            viewModel.ApplyEvent(new UpdateStrokeThicknessEvent(Guid.NewGuid(), strokeIds, newThickness));
+        };
+
+        parent.Children.Add(CreateOptionControl(strokeColorPicker, "Stroke Color"));
+        parent.Children.Add(CreateOptionControl(thicknessSlider, "Stroke Thickness"));
+        parent.Width = 180;
     }
 }

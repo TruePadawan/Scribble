@@ -58,7 +58,7 @@ public abstract class PointerToolsBase(string name, MainViewModel viewModel, Bit
     {
     }
 
-    protected StackPanel CreateOptionControl(Control actualControl, string optionLabel)
+    protected static StackPanel CreateOptionControl(Control actualControl, string optionLabel)
     {
         var stackPanel = new StackPanel
         {

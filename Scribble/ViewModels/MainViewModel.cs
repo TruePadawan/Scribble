@@ -35,7 +35,7 @@ public partial class MainViewModel : ViewModelBase
     private readonly HashSet<Guid> _deletedActions = [];
     public Dictionary<Guid, List<Guid>> SelectionTargets { get; private set; } = [];
     public event Action? RequestInvalidateSelection;
-    private Queue<Event> CanvasEvents { get; set; } = [];
+    public Queue<Event> CanvasEvents { get; private set; } = [];
 
     private readonly CollaborativeDrawingService _collaborativeDrawingService;
 
@@ -256,7 +256,7 @@ public partial class MainViewModel : ViewModelBase
                     drawStrokes[ev.StrokeId] = new DrawStroke
                     {
                         Id = ev.StrokeId,
-                        Paint = ev.StrokePaint,
+                        Paint = ev.StrokePaint.Clone(),
                         Path = newLinePath,
                         ToolType = ev.ToolType,
                     };
@@ -496,6 +496,20 @@ public partial class MainViewModel : ViewModelBase
                         {
                             drawStrokes[drawStroke.Id] = drawStroke;
                         }
+                    }
+
+                    break;
+                case UpdateStrokeColorEvent ev:
+                    foreach (var strokeId in ev.StrokeIds)
+                    {
+                        drawStrokes[strokeId].Paint.Color = ev.NewColor;
+                    }
+
+                    break;
+                case UpdateStrokeThicknessEvent ev:
+                    foreach (var strokeId in ev.StrokeIds)
+                    {
+                        drawStrokes[strokeId].Paint.StrokeWidth = ev.NewThickness;
                     }
 
                     break;
