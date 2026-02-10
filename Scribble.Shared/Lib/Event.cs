@@ -66,7 +66,7 @@ public record IncreaseSelectionBoundEvent(Guid ActionId, Guid BoundId, SKPoint P
 
 public record EndSelectionEvent(Guid ActionId, Guid BoundId) : Event(ActionId), ITerminalEvent;
 
-public record ClearSelectionEvent(Guid ActionId): Event(ActionId), ITerminalEvent;
+public record ClearSelectionEvent(Guid ActionId) : Event(ActionId), ITerminalEvent;
 
 public record MoveStrokesEvent(Guid ActionId, Guid BoundId, SKPoint Delta) : Event(ActionId);
 
@@ -81,3 +81,9 @@ public record RestoreCanvasEvent(Guid ActionId, List<Stroke> Strokes) : Event(Ac
 public record UndoEvent(Guid ActionId, Guid TargetActionId) : Event(ActionId);
 
 public record RedoEvent(Guid ActionId, Guid TargetActionId) : Event(ActionId);
+
+public record UpdateStrokeColorEvent(Guid ActionId, List<Guid> StrokeIds, SKColor NewColor)
+    : Event(ActionId), ITerminalEvent;
+
+public record UpdateStrokeThicknessEvent(Guid ActionId, List<Guid> StrokeIds, float NewThickness)
+    : Event(ActionId), ITerminalEvent;
