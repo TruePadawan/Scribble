@@ -6,6 +6,7 @@ using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
+using Scribble.Lib;
 using Scribble.Shared.Lib;
 using Scribble.Utils;
 using Scribble.ViewModels;
@@ -13,21 +14,21 @@ using SkiaSharp;
 
 namespace Scribble.Tools.PointerTools.TextTool;
 
-public class TextTool : PointerToolsBase
+public class TextTool : StrokeTool
 {
     private readonly Canvas _canvasContainer;
     private TextBox? _currentTextBox;
-    private readonly StrokePaint _strokePaint;
     private Guid _actionId = Guid.NewGuid();
 
     public TextTool(string name, MainViewModel viewModel, Canvas canvasContainer) : base(name, viewModel,
         LoadToolBitmap(typeof(TextTool), "text.png"))
     {
+        ToolOptions = [ToolOption.StrokeColor, ToolOption.FontSize];
         _canvasContainer = canvasContainer;
         _canvasContainer.Focusable = true;
         var plusBitmap = new Bitmap(AssetLoader.Open(new Uri("avares://Scribble/Assets/plus.png")));
         Cursor = new Cursor(plusBitmap, new PixelPoint(12, 12));
-        _strokePaint = new StrokePaint
+        StrokePaint = new StrokePaint
         {
             Color = SKColors.White,
             TextSize = 15,
@@ -48,8 +49,8 @@ public class TextTool : PointerToolsBase
         {
             MinWidth = 100,
             Background = Brushes.Transparent,
-            Foreground = new SolidColorBrush(Utilities.FromSkColor(_strokePaint.Color)),
-            FontSize = _strokePaint.TextSize,
+            Foreground = new SolidColorBrush(Utilities.FromSkColor(StrokePaint.Color)),
+            FontSize = StrokePaint.TextSize,
             BorderThickness = new Thickness(1),
             AcceptsReturn = true
         };
@@ -91,9 +92,9 @@ public class TextTool : PointerToolsBase
         if (!string.IsNullOrWhiteSpace(text))
         {
             var textboxPos = new SKPoint((float)Canvas.GetLeft(_currentTextBox), (float)Canvas.GetTop(_currentTextBox));
-            textboxPos.Y += _strokePaint.TextSize;
+            textboxPos.Y += StrokePaint.TextSize;
             var strokeId = Guid.NewGuid();
-            ViewModel.ApplyEvent(new AddTextEvent(_actionId, strokeId, textboxPos, text, _strokePaint.Clone()));
+            ViewModel.ApplyEvent(new AddTextEvent(_actionId, strokeId, textboxPos, text, StrokePaint.Clone()));
         }
 
         _canvasContainer.Children.Remove(_currentTextBox);
@@ -102,57 +103,5 @@ public class TextTool : PointerToolsBase
         {
             _canvasContainer.Focus();
         }
-    }
-
-    public override bool RenderOptions(Panel parent)
-    {
-        // Render a slider for controlling the font size and a color picker for text color
-        var colorPicker = new ColorPicker
-        {
-            Color = Utilities.FromSkColor(_strokePaint.Color),
-            IsColorSpectrumSliderVisible = false,
-            Width = 164
-        };
-        colorPicker.ColorChanged += (sender, args) =>
-        {
-            var newColor = args.NewColor;
-            _strokePaint.Color = Utilities.ToSkColor(newColor);
-        };
-
-        parent.Children.Add(CreateOptionControl(GetFontColorOption(), "Font Color"));
-        parent.Children.Add(CreateOptionControl(GetFontSizeOption(), "Font Size"));
-        parent.Width = 180;
-        return true;
-    }
-
-    private Slider GetFontSizeOption()
-    {
-        var slider = new Slider
-        {
-            TickFrequency = 1,
-            IsSnapToTickEnabled = true,
-            Minimum = 10,
-            Maximum = 40,
-            Value = _strokePaint.TextSize
-        };
-        slider.ValueChanged += ((sender, args) => { _strokePaint.TextSize = (float)args.NewValue; });
-        slider.Padding = new Thickness(8, 0);
-        return slider;
-    }
-
-    private ColorPicker GetFontColorOption()
-    {
-        var colorPicker = new ColorPicker
-        {
-            Color = Utilities.FromSkColor(_strokePaint.Color),
-            IsColorSpectrumSliderVisible = false,
-            Width = 164
-        };
-        colorPicker.ColorChanged += (sender, args) =>
-        {
-            var newColor = args.NewColor;
-            _strokePaint.Color = Utilities.ToSkColor(newColor);
-        };
-        return colorPicker;
     }
 }

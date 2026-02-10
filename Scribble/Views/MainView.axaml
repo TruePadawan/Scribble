@@ -261,7 +261,7 @@
                 </StackPanel>
             </Border>
 
-            <Border Name="ToolOptionsContainer"
+            <Border Name="ToolOptionsBorder"
                     Background="#EE2B2B2B"
                     CornerRadius="16"
                     Padding="16"
@@ -289,8 +289,11 @@
                         <Setter Property="MinWidth" Value="120" />
                     </Style>
                 </Border.Styles>
-                <StackPanel Name="ToolOptions"
+
+                <!-- This holds the options for tools -->
+                <StackPanel Name="ToolOptionsPanel"
                             Spacing="12">
+
                 </StackPanel>
             </Border>
 

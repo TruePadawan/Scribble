@@ -37,7 +37,7 @@ public record StartStrokeEvent(
     Guid StrokeId,
     SKPoint StartPoint,
     StrokePaint StrokePaint,
-    StrokeTool ToolType)
+    ToolType ToolType)
     : Event(ActionId);
 
 public record EndStrokeEvent(Guid ActionId) : Event(ActionId), ITerminalEvent;

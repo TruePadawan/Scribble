@@ -15,7 +15,7 @@ public abstract class Stroke
     public SKPath Path { get; init; } = new();
 }
 
-public enum StrokeTool
+public enum ToolType
 {
     Pencil,
     Line,
@@ -28,7 +28,7 @@ public enum StrokeTool
 public class DrawStroke : Stroke
 {
     public bool IsToBeErased = false;
-    public StrokeTool ToolType;
+    public ToolType ToolType;
     public StrokePaint Paint { get; init; } = new();
 }
 

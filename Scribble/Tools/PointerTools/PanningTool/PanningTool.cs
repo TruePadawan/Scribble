@@ -5,7 +5,7 @@ using Scribble.ViewModels;
 
 namespace Scribble.Tools.PointerTools.PanningTool;
 
-public class PanningTool : PointerToolsBase
+public class PanningTool : PointerTool
 {
     private readonly ScrollViewer _scrollViewer;
 

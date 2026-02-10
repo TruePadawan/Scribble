@@ -10,7 +10,7 @@ using SkiaSharp;
 
 namespace Scribble.Tools.PointerTools.SelectTool;
 
-class SelectTool : PointerToolsBase
+class SelectTool : PointerTool
 {
     private Border? _selectionBorder;
     private readonly Canvas _canvasContainer;

@@ -39,15 +39,17 @@ public partial class MainView : UserControl
     private Point _prevCoord;
     private const double MinZoom = 1f;
     private const double MaxZoom = 3f;
-    private PointerToolsBase? _activePointerTool;
+    private PointerTool? _activePointerTool;
     private MainViewModel? _viewModel;
     private readonly Selection _selection;
+    private readonly ToolOptionsValues _toolOptionsValues;
 
     public MainView()
     {
         InitializeComponent();
         _prevCoord = new Point(-1, -1);
         _selection = new Selection();
+        _toolOptionsValues = new ToolOptionsValues();
 
         var moveIconBitmap = Bitmap.DecodeToWidth(AssetLoader.Open(new Uri("avares://Scribble/Assets/move.png")), 36);
         var rotateIconBitmap =
@@ -103,7 +105,7 @@ public partial class MainView : UserControl
         }
     }
 
-    private void RegisterPointerTool(PointerToolsBase tool)
+    private void RegisterPointerTool(PointerTool tool)
     {
         var toggleButton = new ToggleButton
         {
@@ -118,15 +120,25 @@ public partial class MainView : UserControl
                 _activePointerTool = tool;
 
                 // Render tool options
-                ToolOptions.Children.Clear();
-                if (tool.RenderOptions(ToolOptions))
+                // ToolOptions.Children.Clear();
+                // if (tool.RenderOptions(ToolOptions))
+                // {
+                //     ToolOptionsBorder.IsVisible = true;
+                //     ToolOptionsBorder.Opacity = 1;
+                // }
+                // else
+                // {
+                //     ToolOptionsBorder.IsVisible = false;
+                // }
+                if (_activePointerTool is StrokeTool strokeTool)
                 {
-                    ToolOptionsContainer.IsVisible = true;
-                    ToolOptionsContainer.Opacity = 1;
+                    ToolOptionsBorder.IsVisible = true;
+                    ToolOptionsBorder.Opacity = 1;
+                    RenderToolOptions(strokeTool);
                 }
                 else
                 {
-                    ToolOptionsContainer.IsVisible = false;
+                    ToolOptionsBorder.IsVisible = false;
                 }
 
                 if (tool.Cursor != null)
@@ -144,6 +156,155 @@ public partial class MainView : UserControl
         toggleButton.Content = toolIcon;
 
         Toolbar.Children.Add(toggleButton);
+    }
+
+    private StackPanel CreateOptionControl(Control actualControl, string optionLabel)
+    {
+        var stackPanel = new StackPanel
+        {
+            Margin = new Thickness(8),
+            Spacing = 2
+        };
+        stackPanel.Children.Add(new Label { Content = optionLabel });
+        stackPanel.Children.Add(actualControl);
+        return stackPanel;
+    }
+
+    private void RenderToolOptions(StrokeTool strokeTool)
+    {
+        ToolOptionsPanel.Children.Clear();
+
+        foreach (var toolOption in strokeTool.ToolOptions)
+        {
+            switch (toolOption)
+            {
+                case ToolOption.StrokeThickness:
+                    var thicknessSlider = ToolOptionsFactory.GetStrokeThicknessOption();
+                    thicknessSlider.Value = _toolOptionsValues.StrokeThickness;
+                    strokeTool.StrokePaint.StrokeWidth = _toolOptionsValues.StrokeThickness;
+
+                    thicknessSlider.ValueChanged += (sender, args) =>
+                    {
+                        var newThickness = (float)args.NewValue;
+                        _toolOptionsValues.StrokeThickness = newThickness;
+                        strokeTool.StrokePaint.StrokeWidth = newThickness;
+                    };
+                    ToolOptionsPanel.Children.Add(CreateOptionControl(thicknessSlider, "Stroke Thickness"));
+                    break;
+                case ToolOption.StrokeColor:
+                    var colorPicker = ToolOptionsFactory.GetStrokeColorOption();
+                    colorPicker.Color = _toolOptionsValues.StrokeColor;
+                    strokeTool.StrokePaint.Color = Utilities.ToSkColor(_toolOptionsValues.StrokeColor);
+
+                    colorPicker.ColorChanged += (sender, args) =>
+                    {
+                        strokeTool.StrokePaint.Color = Utilities.ToSkColor(args.NewColor);
+                        _toolOptionsValues.StrokeColor = args.NewColor;
+                    };
+                    ToolOptionsPanel.Children.Add(CreateOptionControl(colorPicker, "Stroke Color"));
+                    break;
+                case ToolOption.StrokeStyle:
+                    var strokeStylePanel = ToolOptionsFactory.GetStrokeStyleOption(_toolOptionsValues.StrokeStyle);
+                    strokeTool.StrokePaint.DashIntervals = _toolOptionsValues.DashIntervals;
+
+                    foreach (var child in strokeStylePanel.Children)
+                    {
+                        if (child is ToggleButton toggleButton)
+                        {
+                            toggleButton.IsCheckedChanged += (sender, args) =>
+                            {
+                                if (toggleButton.IsChecked == false) return;
+                                switch (toggleButton.Name)
+                                {
+                                    case "Solid":
+                                        strokeTool.StrokePaint.DashIntervals = null;
+                                        _toolOptionsValues.DashIntervals = null;
+                                        _toolOptionsValues.StrokeStyle = StrokeStyle.Solid;
+                                        break;
+                                    case "Dashed":
+                                        strokeTool.StrokePaint.DashIntervals = [8f, 14f];
+                                        _toolOptionsValues.DashIntervals = [8f, 14f];
+                                        _toolOptionsValues.StrokeStyle = StrokeStyle.Dash;
+                                        break;
+                                    case "Dotted":
+                                        strokeTool.StrokePaint.DashIntervals = [0f, 16f];
+                                        _toolOptionsValues.DashIntervals = [0f, 16f];
+                                        _toolOptionsValues.StrokeStyle = StrokeStyle.Dotted;
+                                        break;
+                                }
+                            };
+                        }
+                    }
+
+                    ToolOptionsPanel.Children.Add(CreateOptionControl(strokeStylePanel, "Stroke style"));
+                    break;
+                case ToolOption.FillColor:
+                    var fillColorPanel = ToolOptionsFactory.GetFillColorOption();
+                    strokeTool.StrokePaint.FillColor = Utilities.ToSkColor(_toolOptionsValues.FillColor);
+
+                    var firstChild = fillColorPanel.Children[0];
+                    var secondChild = fillColorPanel.Children[1];
+                    if (firstChild is Button transparentBtn && secondChild is ColorPicker fillColorPicker)
+                    {
+                        fillColorPicker.ColorChanged += (sender, args) =>
+                        {
+                            var newColor = args.NewColor;
+                            _toolOptionsValues.FillColor = newColor;
+                            strokeTool.StrokePaint.FillColor = Utilities.ToSkColor(newColor);
+                        };
+
+                        var picker = fillColorPicker;
+                        transparentBtn.Click += (sender, args) =>
+                        {
+                            strokeTool.StrokePaint.FillColor = SKColors.Transparent;
+                            _toolOptionsValues.FillColor = Colors.Transparent;
+                            picker.Color = Utilities.FromSkColor(SKColors.Transparent);
+                        };
+                    }
+
+                    ToolOptionsPanel.Children.Add(CreateOptionControl(fillColorPanel, "Fill Color"));
+                    break;
+                case ToolOption.EdgeType:
+                    var edgesPanel = ToolOptionsFactory.GetEdgesOption(_toolOptionsValues.EdgeType);
+                    strokeTool.StrokePaint.StrokeJoin = _toolOptionsValues.EdgeType == EdgeType.Rounded
+                        ? SKStrokeJoin.Round
+                        : SKStrokeJoin.Miter;
+                    foreach (var child in edgesPanel.Children)
+                    {
+                        if (child is ToggleButton toggleButton)
+                        {
+                            if (toggleButton.IsChecked == false) return;
+                            switch (toggleButton.Name)
+                            {
+                                case "Sharp":
+                                    _toolOptionsValues.EdgeType = EdgeType.Sharp;
+                                    strokeTool.StrokePaint.StrokeJoin = SKStrokeJoin.Miter;
+                                    break;
+                                case "Rounded":
+                                    _toolOptionsValues.EdgeType = EdgeType.Rounded;
+                                    strokeTool.StrokePaint.StrokeJoin = SKStrokeJoin.Round;
+                                    break;
+                            }
+                        }
+                    }
+
+                    ToolOptionsPanel.Children.Add(CreateOptionControl(edgesPanel, "Edges"));
+                    break;
+                case ToolOption.FontSize:
+                    var fontSizeSlider = ToolOptionsFactory.GetFontSizeOption();
+                    strokeTool.StrokePaint.TextSize = _toolOptionsValues.FontSize;
+                    fontSizeSlider.Value = _toolOptionsValues.FontSize;
+
+                    fontSizeSlider.ValueChanged += (sender, args) =>
+                    {
+                        var newFontSize = (float)args.NewValue;
+                        _toolOptionsValues.FontSize = newFontSize;
+                        strokeTool.StrokePaint.TextSize = newFontSize;
+                    };
+                    ToolOptionsPanel.Children.Add(CreateOptionControl(fontSizeSlider, "Font Size"));
+                    break;
+            }
+        }
     }
 
     private void VisualizeSelection()
@@ -205,7 +366,7 @@ public partial class MainView : UserControl
             _selection.SelectionBounds = SKRect.Empty;
             if (triggeringSelectionAction)
             {
-                ToolOptionsContainer.IsVisible = false;
+                ToolOptionsBorder.IsVisible = false;
             }
         }
     }
@@ -214,7 +375,7 @@ public partial class MainView : UserControl
     {
         if (_viewModel == null) return;
 
-        var filteredStrokes = new Dictionary<StrokeTool, List<Guid>>();
+        var filteredStrokes = new Dictionary<ToolType, List<Guid>>();
         foreach (var selectedStroke in selectedStrokes)
         {
             var strokeType = selectedStroke.ToolType;
@@ -228,19 +389,19 @@ public partial class MainView : UserControl
             }
         }
 
-        ToolOptions.Children.Clear();
-        foreach (var keyValuePair in filteredStrokes)
-        {
-            switch (keyValuePair.Key)
-            {
-                case StrokeTool.Pencil:
-                    PencilTool.RenderEditOptions(ToolOptions, keyValuePair.Value, _viewModel);
-                    break;
-            }
-        }
-
-        ToolOptionsContainer.IsVisible = true;
-        ToolOptionsContainer.Opacity = 1;
+        // ToolOptionsPanel.Children.Clear();
+        // foreach (var keyValuePair in filteredStrokes)
+        // {
+        //     switch (keyValuePair.Key)
+        //     {
+        //         case ToolType.Pencil:
+        //             PencilTool.RenderEditOptions(ToolOptionsPanel, keyValuePair.Value, _viewModel);
+        //             break;
+        //     }
+        // }
+        //
+        // ToolOptionsBorder.IsVisible = true;
+        // ToolOptionsBorder.Opacity = 1;
     }
 
     private Point GetPointerPosition(PointerEventArgs e)

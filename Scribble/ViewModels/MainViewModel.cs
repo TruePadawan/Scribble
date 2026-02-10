@@ -335,7 +335,7 @@ public partial class MainViewModel : ViewModelBase
 
                         stroke.Path.Reset();
 
-                        if (stroke.ToolType == StrokeTool.Rectangle)
+                        if (stroke.ToolType == ToolType.Rectangle)
                         {
                             stroke.Path.MoveTo(lineStartPoint);
                             var left = Math.Min(lineStartPoint.X, lineEndPoint.X);
@@ -351,7 +351,7 @@ public partial class MainViewModel : ViewModelBase
                                 stroke.Path.AddRoundRect(rect, 24f, 24f);
                             }
                         }
-                        else if (stroke.ToolType == StrokeTool.Ellipse)
+                        else if (stroke.ToolType == ToolType.Ellipse)
                         {
                             stroke.Path.MoveTo(lineStartPoint);
                             var left = Math.Min(lineStartPoint.X, lineEndPoint.X);
@@ -365,7 +365,7 @@ public partial class MainViewModel : ViewModelBase
                             stroke.Path.MoveTo(lineStartPoint);
                             stroke.Path.LineTo(lineEndPoint);
 
-                            if (stroke.ToolType == StrokeTool.Arrow)
+                            if (stroke.ToolType == ToolType.Arrow)
                             {
                                 var (p1, p2) =
                                     ArrowTool.GetArrowHeadPoints(lineStartPoint, lineEndPoint,
@@ -392,7 +392,7 @@ public partial class MainViewModel : ViewModelBase
                         Id = ev.StrokeId,
                         Paint = ev.Paint,
                         Path = textPath,
-                        ToolType = StrokeTool.Text,
+                        ToolType = ToolType.Text,
                     };
                     strokeToActionMap[ev.StrokeId] = ev.ActionId;
                     break;
@@ -531,7 +531,7 @@ public partial class MainViewModel : ViewModelBase
         {
             switch (stroke.ToolType)
             {
-                case StrokeTool.Line or StrokeTool.Arrow:
+                case ToolType.Line or ToolType.Arrow:
                 {
                     var endPoints = new[] { stroke.Path[0], stroke.Path[1] };
                     if (IsPointNearLine(eraserPoint, endPoints, 10.0f))
