@@ -5,5 +5,5 @@ Priority: optional
 Architecture: amd64
 Depends: libx11-6, libice6, libsm6, libfontconfig1, ca-certificates, libc6, libgcc-s1, libgssapi-krb5-2, libicu74, libssl3t64, libstdc++6, tzdata
 Maintainer: Chisom Hermes Chigoziri <hermeschigoziri@gmail.com>
-Description: Scribble is a simple drawing tool
+Description: Scribble is a cross-platform digital whiteboard
 Homepage: https://github.com/TruePadawan/Scribble
