@@ -85,8 +85,6 @@ public partial class MainView : UserControl
             RegisterPointerTool(new RectangleTool("RectangleTool", viewModel));
             RegisterPointerTool(new TextTool("TextTool", viewModel, CanvasContainer));
             RegisterPointerTool(new SelectTool("SelectTool", viewModel, CanvasContainer));
-
-            VisualizeSelection();
         }
     }
 

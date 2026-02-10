@@ -63,4 +63,9 @@ class SelectTool : PointerToolsBase
         _selectionBorder = null;
         ViewModel.ApplyEvent(new EndSelectionEvent(_actionId, _boundId));
     }
+
+    public override void Dispose()
+    {
+        ViewModel.ClearSelection();
+    }
 }

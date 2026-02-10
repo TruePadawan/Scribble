@@ -439,6 +439,9 @@ public partial class MainViewModel : ViewModelBase
                     }
 
                     break;
+                case ClearSelectionEvent:
+                    selectionBounds.Clear();
+                    break;
                 case MoveStrokesEvent ev:
                     if (selectionBounds.ContainsKey(ev.BoundId))
                     {
@@ -715,5 +718,10 @@ public partial class MainViewModel : ViewModelBase
                 Console.WriteLine($"Could not open URL: {ex.Message}");
             }
         }
+    }
+
+    public void ClearSelection()
+    {
+        ApplyEvent(new ClearSelectionEvent(Guid.NewGuid()));
     }
 }

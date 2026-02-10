@@ -66,6 +66,8 @@ public record IncreaseSelectionBoundEvent(Guid ActionId, Guid BoundId, SKPoint P
 
 public record EndSelectionEvent(Guid ActionId, Guid BoundId) : Event(ActionId), ITerminalEvent;
 
+public record ClearSelectionEvent(Guid ActionId): Event(ActionId), ITerminalEvent;
+
 public record MoveStrokesEvent(Guid ActionId, Guid BoundId, SKPoint Delta) : Event(ActionId);
 
 public record RotateStrokesEvent(Guid ActionId, Guid BoundId, float DegreesRad, SKPoint Center)
