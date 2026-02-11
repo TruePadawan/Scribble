@@ -245,6 +245,7 @@ public partial class MainViewModel : ViewModelBase
         var clearsSomething = new Dictionary<Guid, bool>();
         var staleActionIds = new List<Guid>();
         var strokeToActionMap = new Dictionary<Guid, Guid>();
+        var strokeTexts = new Dictionary<Guid, string>();
 
         foreach (var canvasEvent in CanvasEvents.Where(canvasEvent => !hiddenActionIds.Contains(canvasEvent.ActionId)))
         {
@@ -396,6 +397,7 @@ public partial class MainViewModel : ViewModelBase
                         ToolType = ToolType.Text,
                         ToolOptions = ev.ToolOptions
                     };
+                    strokeTexts[ev.StrokeId] = ev.Text;
                     strokeToActionMap[ev.StrokeId] = ev.ActionId;
                     break;
                 case CreateSelectionBoundEvent ev:
@@ -563,7 +565,16 @@ public partial class MainViewModel : ViewModelBase
                 case UpdateStrokeFontSizeEvent ev:
                     foreach (var strokeId in ev.StrokeIds)
                     {
-                        drawStrokes[strokeId].Paint.TextSize = ev.FontSize;
+                        // Recreate the text's paths
+                        var textStroke = drawStrokes[strokeId];
+                        var noTransformTextPath = new SKPath();
+                        var startPoint = textStroke.Path[0];
+                        noTransformTextPath.MoveTo(startPoint);
+                        noTransformTextPath.AddPath(
+                            new SKPaint { TextSize = ev.FontSize }.GetTextPath(strokeTexts[strokeId], startPoint.X,
+                                startPoint.Y));
+                        drawStrokes[strokeId].Path.Reset();
+                        drawStrokes[strokeId].Path.AddPath(noTransformTextPath);
                     }
 
                     break;
