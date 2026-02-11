@@ -33,7 +33,7 @@ public class PencilTool : StrokeTool
         _strokeId = Guid.NewGuid();
         _actionId = Guid.NewGuid();
         ViewModel.ApplyEvent(
-            new StartStrokeEvent(_actionId, _strokeId, startPoint, StrokePaint.Clone(), ToolType.Pencil));
+            new StartStrokeEvent(_actionId, _strokeId, startPoint, StrokePaint.Clone(), ToolType.Pencil, ToolOptions));
     }
 
     public override void HandlePointerMove(Point prevCoord, Point currentCoord)

@@ -38,7 +38,7 @@ public class ArrowTool : StrokeTool
         _strokeId = Guid.NewGuid();
         _actionId = Guid.NewGuid();
         ViewModel.ApplyEvent(new StartStrokeEvent(_actionId, _strokeId, _startPoint.Value, StrokePaint.Clone(),
-            ToolType.Arrow));
+            ToolType.Arrow, ToolOptions));
     }
 
     public override void HandlePointerMove(Point prevCoord, Point currentCoord)

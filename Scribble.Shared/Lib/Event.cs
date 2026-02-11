@@ -37,7 +37,8 @@ public record StartStrokeEvent(
     Guid StrokeId,
     SKPoint StartPoint,
     StrokePaint StrokePaint,
-    ToolType ToolType)
+    ToolType ToolType,
+    HashSet<ToolOption> ToolOptions)
     : Event(ActionId);
 
 public record EndStrokeEvent(Guid ActionId) : Event(ActionId), ITerminalEvent;
@@ -56,7 +57,13 @@ public record TriggerEraseEvent(Guid ActionId, Guid StrokeId) : Event(ActionId),
 public record LineStrokeLineToEvent(Guid ActionId, Guid StrokeId, SKPoint EndPoint) : Event(ActionId);
 
 // TEXT TOOL
-public record AddTextEvent(Guid ActionId, Guid StrokeId, SKPoint Position, string Text, StrokePaint Paint)
+public record AddTextEvent(
+    Guid ActionId,
+    Guid StrokeId,
+    SKPoint Position,
+    string Text,
+    StrokePaint Paint,
+    HashSet<ToolOption> ToolOptions)
     : Event(ActionId), ITerminalEvent;
 
 // SELECT TOOL
@@ -86,4 +93,16 @@ public record UpdateStrokeColorEvent(Guid ActionId, List<Guid> StrokeIds, SKColo
     : Event(ActionId), ITerminalEvent;
 
 public record UpdateStrokeThicknessEvent(Guid ActionId, List<Guid> StrokeIds, float NewThickness)
+    : Event(ActionId), ITerminalEvent;
+
+public record UpdateStrokeStyleEvent(Guid ActionId, List<Guid> StrokeIds, float[]? NewDashIntervals)
+    : Event(ActionId), ITerminalEvent;
+
+public record UpdateStrokeFillColorEvent(Guid ActionId, List<Guid> StrokeIds, SKColor NewFillColor)
+    : Event(ActionId), ITerminalEvent;
+
+public record UpdateStrokeEdgeTypeEvent(Guid ActionId, List<Guid> StrokeIds, SKStrokeJoin NewStrokeJoin)
+    : Event(ActionId), ITerminalEvent;
+
+public record UpdateStrokeFontSizeEvent(Guid ActionId, List<Guid> StrokeIds, float FontSize)
     : Event(ActionId), ITerminalEvent;

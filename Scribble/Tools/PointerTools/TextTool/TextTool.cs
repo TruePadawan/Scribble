@@ -93,7 +93,8 @@ public class TextTool : StrokeTool
             var textboxPos = new SKPoint((float)Canvas.GetLeft(_currentTextBox), (float)Canvas.GetTop(_currentTextBox));
             textboxPos.Y += StrokePaint.TextSize;
             var strokeId = Guid.NewGuid();
-            ViewModel.ApplyEvent(new AddTextEvent(_actionId, strokeId, textboxPos, text, StrokePaint.Clone()));
+            ViewModel.ApplyEvent(new AddTextEvent(_actionId, strokeId, textboxPos, text, StrokePaint.Clone(),
+                ToolOptions));
         }
 
         _canvasContainer.Children.Remove(_currentTextBox);

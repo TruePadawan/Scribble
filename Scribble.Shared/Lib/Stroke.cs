@@ -29,6 +29,7 @@ public class DrawStroke : Stroke
 {
     public bool IsToBeErased = false;
     public ToolType ToolType;
+    public HashSet<ToolOption> ToolOptions { get; init; } = [];
     public StrokePaint Paint { get; init; } = new();
 }
 

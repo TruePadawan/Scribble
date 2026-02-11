@@ -11,16 +11,6 @@ using Scribble.Shared.Lib;
 
 namespace Scribble.Lib;
 
-public enum ToolOption
-{
-    StrokeThickness,
-    StrokeColor,
-    StrokeStyle,
-    FillColor,
-    EdgeType,
-    FontSize
-}
-
 public record ToolOptionsValues
 {
     public float StrokeThickness { get; set; } = 1f;

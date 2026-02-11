@@ -42,7 +42,7 @@ public class RectangleTool : StrokeTool
         _strokeId = Guid.NewGuid();
         _actionId = Guid.NewGuid();
         ViewModel.ApplyEvent(new StartStrokeEvent(_actionId, _strokeId, _startPoint.Value, StrokePaint.Clone(),
-            ToolType.Rectangle));
+            ToolType.Rectangle, ToolOptions));
     }
 
 

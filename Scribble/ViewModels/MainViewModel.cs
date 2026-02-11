@@ -259,6 +259,7 @@ public partial class MainViewModel : ViewModelBase
                         Paint = ev.StrokePaint.Clone(),
                         Path = newLinePath,
                         ToolType = ev.ToolType,
+                        ToolOptions = ev.ToolOptions
                     };
                     strokeToActionMap[ev.StrokeId] = ev.ActionId;
                     break;
@@ -393,6 +394,7 @@ public partial class MainViewModel : ViewModelBase
                         Paint = ev.Paint,
                         Path = textPath,
                         ToolType = ToolType.Text,
+                        ToolOptions = ev.ToolOptions
                     };
                     strokeToActionMap[ev.StrokeId] = ev.ActionId;
                     break;
@@ -510,6 +512,34 @@ public partial class MainViewModel : ViewModelBase
                     foreach (var strokeId in ev.StrokeIds)
                     {
                         drawStrokes[strokeId].Paint.StrokeWidth = ev.NewThickness;
+                    }
+
+                    break;
+                case UpdateStrokeStyleEvent ev:
+                    foreach (var strokeId in ev.StrokeIds)
+                    {
+                        drawStrokes[strokeId].Paint.DashIntervals = ev.NewDashIntervals;
+                    }
+
+                    break;
+                case UpdateStrokeFillColorEvent ev:
+                    foreach (var strokeId in ev.StrokeIds)
+                    {
+                        drawStrokes[strokeId].Paint.FillColor = ev.NewFillColor;
+                    }
+
+                    break;
+                case UpdateStrokeEdgeTypeEvent ev:
+                    foreach (var strokeId in ev.StrokeIds)
+                    {
+                        drawStrokes[strokeId].Paint.StrokeJoin = ev.NewStrokeJoin;
+                    }
+
+                    break;
+                case UpdateStrokeFontSizeEvent ev:
+                    foreach (var strokeId in ev.StrokeIds)
+                    {
+                        drawStrokes[strokeId].Paint.TextSize = ev.FontSize;
                     }
 
                     break;
