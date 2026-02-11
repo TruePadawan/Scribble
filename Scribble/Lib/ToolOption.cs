@@ -32,7 +32,7 @@ public record ToolOptionsValues
     public float FontSize { get; set; } = 10;
 }
 
-static class ToolOptionsFactory
+internal static class ToolOptionsControlFactory
 {
     public static ColorPicker GetStrokeColorOption()
     {

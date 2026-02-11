@@ -179,7 +179,7 @@ public partial class MainView : UserControl
             switch (toolOption)
             {
                 case ToolOption.StrokeThickness:
-                    var thicknessSlider = ToolOptionsFactory.GetStrokeThicknessOption();
+                    var thicknessSlider = ToolOptionsControlFactory.GetStrokeThicknessOption();
                     thicknessSlider.Value = _toolOptionsValues.StrokeThickness;
                     strokeTool.StrokePaint.StrokeWidth = _toolOptionsValues.StrokeThickness;
 
@@ -192,7 +192,7 @@ public partial class MainView : UserControl
                     ToolOptionsPanel.Children.Add(CreateOptionControl(thicknessSlider, "Stroke Thickness"));
                     break;
                 case ToolOption.StrokeColor:
-                    var colorPicker = ToolOptionsFactory.GetStrokeColorOption();
+                    var colorPicker = ToolOptionsControlFactory.GetStrokeColorOption();
                     colorPicker.Color = _toolOptionsValues.StrokeColor;
                     strokeTool.StrokePaint.Color = Utilities.ToSkColor(_toolOptionsValues.StrokeColor);
 
@@ -204,7 +204,7 @@ public partial class MainView : UserControl
                     ToolOptionsPanel.Children.Add(CreateOptionControl(colorPicker, "Stroke Color"));
                     break;
                 case ToolOption.StrokeStyle:
-                    var strokeStylePanel = ToolOptionsFactory.GetStrokeStyleOption(_toolOptionsValues.StrokeStyle);
+                    var strokeStylePanel = ToolOptionsControlFactory.GetStrokeStyleOption(_toolOptionsValues.StrokeStyle);
                     strokeTool.StrokePaint.DashIntervals = _toolOptionsValues.DashIntervals;
 
                     foreach (var child in strokeStylePanel.Children)
@@ -239,7 +239,7 @@ public partial class MainView : UserControl
                     ToolOptionsPanel.Children.Add(CreateOptionControl(strokeStylePanel, "Stroke style"));
                     break;
                 case ToolOption.FillColor:
-                    var fillColorPanel = ToolOptionsFactory.GetFillColorOption();
+                    var fillColorPanel = ToolOptionsControlFactory.GetFillColorOption();
                     strokeTool.StrokePaint.FillColor = Utilities.ToSkColor(_toolOptionsValues.FillColor);
 
                     var firstChild = fillColorPanel.Children[0];
@@ -265,7 +265,7 @@ public partial class MainView : UserControl
                     ToolOptionsPanel.Children.Add(CreateOptionControl(fillColorPanel, "Fill Color"));
                     break;
                 case ToolOption.EdgeType:
-                    var edgesPanel = ToolOptionsFactory.GetEdgesOption(_toolOptionsValues.EdgeType);
+                    var edgesPanel = ToolOptionsControlFactory.GetEdgesOption(_toolOptionsValues.EdgeType);
                     strokeTool.StrokePaint.StrokeJoin = _toolOptionsValues.EdgeType == EdgeType.Rounded
                         ? SKStrokeJoin.Round
                         : SKStrokeJoin.Miter;
@@ -291,7 +291,7 @@ public partial class MainView : UserControl
                     ToolOptionsPanel.Children.Add(CreateOptionControl(edgesPanel, "Edges"));
                     break;
                 case ToolOption.FontSize:
-                    var fontSizeSlider = ToolOptionsFactory.GetFontSizeOption();
+                    var fontSizeSlider = ToolOptionsControlFactory.GetFontSizeOption();
                     strokeTool.StrokePaint.TextSize = _toolOptionsValues.FontSize;
                     fontSizeSlider.Value = _toolOptionsValues.FontSize;
 
