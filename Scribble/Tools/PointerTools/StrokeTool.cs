@@ -6,7 +6,7 @@ using Scribble.ViewModels;
 
 namespace Scribble.Tools.PointerTools;
 
-public class StrokeTool(string name, MainViewModel viewModel, Bitmap icon) : PointerTool(name, viewModel, icon)
+public abstract class StrokeTool(string name, MainViewModel viewModel, Bitmap icon) : PointerTool(name, viewModel, icon)
 {
     public StrokePaint StrokePaint { get; protected init; } = new();
     public HashSet<ToolOption> ToolOptions { get; protected init; } = [];
