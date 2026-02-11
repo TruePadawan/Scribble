@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using Avalonia.Media.Imaging;
-using Scribble.Lib;
 using Scribble.Shared.Lib;
 using Scribble.ViewModels;
 
