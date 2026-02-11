@@ -36,6 +36,7 @@ public class EllipseTool : StrokeTool
         {
             IsAntialias = true,
             IsStroke = true,
+            StrokeCap = SKStrokeCap.Round,
             StrokeWidth = 1,
             Color = SKColors.Red,
         };
