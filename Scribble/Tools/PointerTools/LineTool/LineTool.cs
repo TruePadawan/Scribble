@@ -1,16 +1,9 @@
 using System;
 using Avalonia;
-using Avalonia.Controls;
-using Avalonia.Controls.Primitives;
 using Avalonia.Input;
-using Avalonia.Interactivity;
-using Avalonia.Layout;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
-using Scribble.Behaviours;
-using Scribble.Lib;
 using Scribble.Shared.Lib;
-using Scribble.Utils;
 using Scribble.ViewModels;
 using SkiaSharp;
 
