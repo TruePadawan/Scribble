@@ -532,7 +532,31 @@ public partial class MainViewModel : ViewModelBase
                 case UpdateStrokeEdgeTypeEvent ev:
                     foreach (var strokeId in ev.StrokeIds)
                     {
-                        drawStrokes[strokeId].Paint.StrokeJoin = ev.NewStrokeJoin;
+                        var stroke = drawStrokes[strokeId];
+                        stroke.Paint.StrokeJoin = ev.NewStrokeJoin;
+                        // Recreate the stroke paths
+
+                        var bounds = stroke.Path.Bounds;
+                        var lineStartPoint = stroke.Path.Points[0];
+                        var lineEndPoint = new SKPoint(
+                            bounds.Left + bounds.Right - lineStartPoint.X,
+                            bounds.Top + bounds.Bottom - lineStartPoint.Y
+                        );
+
+                        stroke.Path.Reset();
+                        stroke.Path.MoveTo(lineStartPoint);
+                        var left = Math.Min(lineStartPoint.X, lineEndPoint.X);
+                        var top = Math.Min(lineStartPoint.Y, lineEndPoint.Y);
+                        var rect = SKRect.Create(new SKPoint(left, top),
+                            Utilities.GetSize(lineStartPoint, lineEndPoint));
+                        if (stroke.Paint.StrokeJoin == SKStrokeJoin.Miter)
+                        {
+                            stroke.Path.AddRect(rect);
+                        }
+                        else
+                        {
+                            stroke.Path.AddRoundRect(rect, 24f, 24f);
+                        }
                     }
 
                     break;

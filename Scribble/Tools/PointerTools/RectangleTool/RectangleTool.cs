@@ -45,7 +45,6 @@ public class RectangleTool : StrokeTool
             ToolType.Rectangle, ToolOptions));
     }
 
-
     public override void HandlePointerMove(Point prevCoord, Point currentCoord)
     {
         var endPoint = new SKPoint((float)currentCoord.X, (float)currentCoord.Y);

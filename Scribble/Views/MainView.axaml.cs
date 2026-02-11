@@ -264,18 +264,21 @@ public partial class MainView : UserControl
                     {
                         if (child is ToggleButton toggleButton)
                         {
-                            if (toggleButton.IsChecked == false) return;
-                            switch (toggleButton.Name)
+                            toggleButton.IsCheckedChanged += (sender, args) =>
                             {
-                                case "Sharp":
-                                    _toolOptionsValues.EdgeType = EdgeType.Sharp;
-                                    strokeTool.StrokePaint.StrokeJoin = SKStrokeJoin.Miter;
-                                    break;
-                                case "Rounded":
-                                    _toolOptionsValues.EdgeType = EdgeType.Rounded;
-                                    strokeTool.StrokePaint.StrokeJoin = SKStrokeJoin.Round;
-                                    break;
-                            }
+                                if (toggleButton.IsChecked == false) return;
+                                switch (toggleButton.Name)
+                                {
+                                    case "Sharp":
+                                        _toolOptionsValues.EdgeType = EdgeType.Sharp;
+                                        strokeTool.StrokePaint.StrokeJoin = SKStrokeJoin.Miter;
+                                        break;
+                                    case "Rounded":
+                                        _toolOptionsValues.EdgeType = EdgeType.Rounded;
+                                        strokeTool.StrokePaint.StrokeJoin = SKStrokeJoin.Round;
+                                        break;
+                                }
+                            };
                         }
                     }
 
@@ -405,22 +408,25 @@ public partial class MainView : UserControl
                     {
                         if (child is ToggleButton toggleButton)
                         {
-                            if (toggleButton.IsChecked == false) return;
-                            SKStrokeJoin newStrokeJoin = SKStrokeJoin.Miter;
-                            switch (toggleButton.Name)
+                            toggleButton.IsCheckedChanged += (sender, args) =>
                             {
-                                case "Sharp":
-                                    _toolOptionsValues.EdgeType = EdgeType.Sharp;
-                                    newStrokeJoin = SKStrokeJoin.Miter;
-                                    break;
-                                case "Rounded":
-                                    _toolOptionsValues.EdgeType = EdgeType.Rounded;
-                                    newStrokeJoin = SKStrokeJoin.Round;
-                                    break;
-                            }
+                                if (toggleButton.IsChecked == false) return;
+                                SKStrokeJoin newStrokeJoin = SKStrokeJoin.Miter;
+                                switch (toggleButton.Name)
+                                {
+                                    case "Sharp":
+                                        _toolOptionsValues.EdgeType = EdgeType.Sharp;
+                                        newStrokeJoin = SKStrokeJoin.Miter;
+                                        break;
+                                    case "Rounded":
+                                        _toolOptionsValues.EdgeType = EdgeType.Rounded;
+                                        newStrokeJoin = SKStrokeJoin.Round;
+                                        break;
+                                }
 
-                            _viewModel.ApplyEvent(new UpdateStrokeEdgeTypeEvent(Guid.NewGuid(), strokeIds,
-                                newStrokeJoin));
+                                _viewModel.ApplyEvent(new UpdateStrokeEdgeTypeEvent(Guid.NewGuid(), strokeIds,
+                                    newStrokeJoin));
+                            };
                         }
                     }
 
@@ -512,7 +518,6 @@ public partial class MainView : UserControl
     private void ShowSelectedStrokesOptions(List<DrawStroke> selectedStrokes)
     {
         if (_viewModel == null) return;
-
         var filteredStrokeIds = new Dictionary<ToolOption, List<Guid>>();
         foreach (var selectedStroke in selectedStrokes)
         {
