@@ -7,7 +7,7 @@ using SkiaSharp;
 
 namespace Scribble.Tools.PointerTools.EraseTool;
 
-public class EraseTool : PointerToolsBase
+public class EraseTool : PointerTool
 {
     private Guid _strokeId = Guid.NewGuid();
     private Guid _actionId = Guid.NewGuid();

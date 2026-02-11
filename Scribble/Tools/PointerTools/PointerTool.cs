@@ -1,6 +1,5 @@
 using System;
 using Avalonia;
-using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
@@ -14,7 +13,7 @@ namespace Scribble.Tools.PointerTools;
  * Name - The name of the Tool
  * Icon - The icon that represents the tool in the UI
  */
-public abstract class PointerToolsBase(string name, MainViewModel viewModel, Bitmap icon)
+public abstract class PointerTool(string name, MainViewModel viewModel, Bitmap icon)
 {
     public string Name { get; } = name;
     protected MainViewModel ViewModel { get; } = viewModel;
@@ -46,27 +45,8 @@ public abstract class PointerToolsBase(string name, MainViewModel viewModel, Bit
     {
     }
 
-    // Derived classes should override this and render their options in the panel
-    // Should return true if the tool has options to render
-    public virtual bool RenderOptions(Panel parent)
-    {
-        return false;
-    }
-
     // This is called when the active tool is swapped out
     public virtual void Dispose()
     {
-    }
-
-    protected StackPanel CreateOptionControl(Control actualControl, string optionLabel)
-    {
-        var stackPanel = new StackPanel
-        {
-            Margin = new Thickness(8),
-            Spacing = 2
-        };
-        stackPanel.Children.Add(new Label { Content = optionLabel });
-        stackPanel.Children.Add(actualControl);
-        return stackPanel;
     }
 }

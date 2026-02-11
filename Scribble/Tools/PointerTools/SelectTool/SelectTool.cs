@@ -10,7 +10,7 @@ using SkiaSharp;
 
 namespace Scribble.Tools.PointerTools.SelectTool;
 
-class SelectTool : PointerToolsBase
+class SelectTool : PointerTool
 {
     private Border? _selectionBorder;
     private readonly Canvas _canvasContainer;
@@ -62,5 +62,10 @@ class SelectTool : PointerToolsBase
         _canvasContainer.Children.Remove(_selectionBorder);
         _selectionBorder = null;
         ViewModel.ApplyEvent(new EndSelectionEvent(_actionId, _boundId));
+    }
+
+    public override void Dispose()
+    {
+        ViewModel.ClearSelection();
     }
 }

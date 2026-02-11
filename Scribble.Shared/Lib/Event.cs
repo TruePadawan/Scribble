@@ -37,7 +37,8 @@ public record StartStrokeEvent(
     Guid StrokeId,
     SKPoint StartPoint,
     StrokePaint StrokePaint,
-    StrokeTool ToolType)
+    ToolType ToolType,
+    HashSet<ToolOption> ToolOptions)
     : Event(ActionId);
 
 public record EndStrokeEvent(Guid ActionId) : Event(ActionId), ITerminalEvent;
@@ -56,7 +57,13 @@ public record TriggerEraseEvent(Guid ActionId, Guid StrokeId) : Event(ActionId),
 public record LineStrokeLineToEvent(Guid ActionId, Guid StrokeId, SKPoint EndPoint) : Event(ActionId);
 
 // TEXT TOOL
-public record AddTextEvent(Guid ActionId, Guid StrokeId, SKPoint Position, string Text, StrokePaint Paint)
+public record AddTextEvent(
+    Guid ActionId,
+    Guid StrokeId,
+    SKPoint Position,
+    string Text,
+    StrokePaint Paint,
+    HashSet<ToolOption> ToolOptions)
     : Event(ActionId), ITerminalEvent;
 
 // SELECT TOOL
@@ -65,6 +72,8 @@ public record CreateSelectionBoundEvent(Guid ActionId, Guid BoundId, SKPoint Sta
 public record IncreaseSelectionBoundEvent(Guid ActionId, Guid BoundId, SKPoint Point) : Event(ActionId);
 
 public record EndSelectionEvent(Guid ActionId, Guid BoundId) : Event(ActionId), ITerminalEvent;
+
+public record ClearSelectionEvent(Guid ActionId) : Event(ActionId), ITerminalEvent;
 
 public record MoveStrokesEvent(Guid ActionId, Guid BoundId, SKPoint Delta) : Event(ActionId);
 
@@ -79,3 +88,21 @@ public record RestoreCanvasEvent(Guid ActionId, List<Stroke> Strokes) : Event(Ac
 public record UndoEvent(Guid ActionId, Guid TargetActionId) : Event(ActionId);
 
 public record RedoEvent(Guid ActionId, Guid TargetActionId) : Event(ActionId);
+
+public record UpdateStrokeColorEvent(Guid ActionId, List<Guid> StrokeIds, SKColor NewColor)
+    : Event(ActionId), ITerminalEvent;
+
+public record UpdateStrokeThicknessEvent(Guid ActionId, List<Guid> StrokeIds, float NewThickness)
+    : Event(ActionId), ITerminalEvent;
+
+public record UpdateStrokeStyleEvent(Guid ActionId, List<Guid> StrokeIds, float[]? NewDashIntervals)
+    : Event(ActionId), ITerminalEvent;
+
+public record UpdateStrokeFillColorEvent(Guid ActionId, List<Guid> StrokeIds, SKColor NewFillColor)
+    : Event(ActionId), ITerminalEvent;
+
+public record UpdateStrokeEdgeTypeEvent(Guid ActionId, List<Guid> StrokeIds, SKStrokeJoin NewStrokeJoin)
+    : Event(ActionId), ITerminalEvent;
+
+public record UpdateStrokeFontSizeEvent(Guid ActionId, List<Guid> StrokeIds, float FontSize)
+    : Event(ActionId), ITerminalEvent;
