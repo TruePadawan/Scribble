@@ -23,6 +23,12 @@ namespace Scribble.Shared.Lib;
 [JsonDerivedType(typeof(UndoEvent), typeDiscriminator: "Undo")]
 [JsonDerivedType(typeof(RedoEvent), typeDiscriminator: "Redo")]
 [JsonDerivedType(typeof(RestoreCanvasEvent), typeDiscriminator: "RestoreCanvasEvent")]
+[JsonDerivedType(typeof(UpdateStrokeColorEvent), typeDiscriminator: "UpdateStrokeColorEvent")]
+[JsonDerivedType(typeof(UpdateStrokeEdgeTypeEvent), typeDiscriminator: "UpdateStrokeEdgeTypeEvent")]
+[JsonDerivedType(typeof(UpdateStrokeFillColorEvent), typeDiscriminator: "UpdateStrokeFillColorEvent")]
+[JsonDerivedType(typeof(UpdateStrokeFontSizeEvent), typeDiscriminator: "UpdateStrokeFontSizeEvent")]
+[JsonDerivedType(typeof(UpdateStrokeStyleEvent), typeDiscriminator: "UpdateStrokeStyleEvent")]
+[JsonDerivedType(typeof(UpdateStrokeThicknessEvent), typeDiscriminator: "UpdateStrokeThicknessEvent")]
 public abstract record Event(Guid ActionId)
 {
     public DateTime TimeStamp { get; init; } = DateTime.UtcNow;
