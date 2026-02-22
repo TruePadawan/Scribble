@@ -408,5 +408,20 @@
                 </StackPanel>
             </Border>
         </Panel>
+
+        <!-- Undo/Redo Buttons -->
+        <Border CornerRadius="16"
+                HorizontalAlignment="Left"
+                VerticalAlignment="Bottom"
+                Margin="8,0,0,12">
+            <StackPanel Orientation="Horizontal">
+                <Button ToolTip.Tip="Undo - Ctrl+Z" Name="UndoButton" Command="{Binding Undo}" IsEnabled="False">
+                    <Image Source="avares://Scribble/Assets/undo-disabled.png" Margin="4" Width="15" Height="15" />
+                </Button>
+                <Button ToolTip.Tip="Redo - Ctrl+Shift+Z" Name="RedoButton" Command="{Binding Redo}" IsEnabled="False">
+                    <Image Source="avares://Scribble/Assets/redo-disabled.png" Margin="4" Width="15" Height="15" />
+                </Button>
+            </StackPanel>
+        </Border>
     </Panel>
 </UserControl>

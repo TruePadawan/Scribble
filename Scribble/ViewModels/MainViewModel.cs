@@ -29,12 +29,15 @@ public partial class MainViewModel : ViewModelBase
     public static int CanvasWidth => 10000;
     public static int CanvasHeight => 10000;
 
+    public event Action? RequestInvalidateSelection;
+    public event Action<int>? UndoStackChanged;
+    public event Action<int>? RedoStackChanged;
+
     [ObservableProperty] private Color _backgroundColor;
     public ScaleTransform ScaleTransform { get; }
     [ObservableProperty] private List<Stroke> _canvasStrokes = [];
     private readonly HashSet<Guid> _deletedActions = [];
     public Dictionary<Guid, List<Guid>> SelectionTargets { get; private set; } = [];
-    public event Action? RequestInvalidateSelection;
     public Queue<Event> CanvasEvents { get; private set; } = [];
 
     private readonly CollaborativeDrawingService _collaborativeDrawingService;
@@ -134,6 +137,9 @@ public partial class MainViewModel : ViewModelBase
     {
         _undoStack.Push(actionId);
         _redoStack.Clear();
+
+        UndoStackChanged?.Invoke(_undoStack.Count);
+        RedoStackChanged?.Invoke(_redoStack.Count);
     }
 
     public void Undo()
@@ -148,8 +154,11 @@ public partial class MainViewModel : ViewModelBase
             }
         }
 
+        UndoStackChanged?.Invoke(_undoStack.Count);
+
         _redoStack.Push(actionId);
         ApplyEvent(new UndoEvent(Guid.NewGuid(), actionId), isLocalEvent: true);
+        RedoStackChanged?.Invoke(_redoStack.Count);
     }
 
     public void Redo()
@@ -164,8 +173,11 @@ public partial class MainViewModel : ViewModelBase
             }
         }
 
+        RedoStackChanged?.Invoke(_redoStack.Count);
+
         _undoStack.Push(actionId);
         ApplyEvent(new RedoEvent(Guid.NewGuid(), actionId), isLocalEvent: true);
+        UndoStackChanged?.Invoke(_undoStack.Count);
     }
 
     public void ApplyEvent(Event @event, bool isLocalEvent = true)
