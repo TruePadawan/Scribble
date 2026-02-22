@@ -20,6 +20,7 @@ public abstract class PointerTool(string name, MainViewModel viewModel, Bitmap i
     public readonly Bitmap ToolIcon = icon;
     public Cursor? Cursor;
     public KeyGesture? HotKey { get; protected init; }
+    public string ToolTip { get; protected init; } = name;
 
     /// <summary>
     /// Loads a bitmap relative to the tool's folder.

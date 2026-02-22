@@ -35,6 +35,7 @@ public class TextTool : StrokeTool
         };
 
         HotKey = new KeyGesture(Key.D8);
+        ToolTip = "Text Tool - 8";
     }
 
     public override void HandlePointerClick(Point coord)

@@ -32,6 +32,7 @@ public class ArrowTool : StrokeTool
         _startPoint = null;
 
         HotKey = new KeyGesture(Key.D5);
+        ToolTip = "Arrow Tool - 5";
     }
 
     public override void HandlePointerClick(Point coord)

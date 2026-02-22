@@ -124,14 +124,14 @@
                         IsVisible="False">
                     <StackPanel Spacing="4">
                         <Button Name="OpenFileMenuOption" HorizontalAlignment="Stretch"
-                                Click="OpenFileMenuOption_OnClick" HotKey="Ctrl+O">
+                                Click="OpenFileMenuOption_OnClick" HotKey="Ctrl+O" ToolTip.Tip="Ctrl+O">
                             <StackPanel Orientation="Horizontal" Spacing="4">
                                 <Image Source="avares://Scribble/Assets/open.png" Width="18" Height="18" />
                                 <Label FontSize="12">Open...</Label>
                             </StackPanel>
                         </Button>
                         <Button Name="SaveToFileMenuOption" Margin="0" Click="SaveToFileMenuOption_OnClick"
-                                HorizontalAlignment="Stretch" HotKey="Ctrl+S">
+                                HorizontalAlignment="Stretch" HotKey="Ctrl+S" ToolTip.Tip="Ctrl+S">
                             <StackPanel Orientation="Horizontal" Spacing="4">
                                 <Image Source="avares://Scribble/Assets/save.png" Width="18" Height="18" />
                                 <Label FontSize="12">Save to file</Label>
@@ -139,7 +139,7 @@
                         </Button>
                         <Button Name="ResetCanvasMenuOption" Margin="0" Click="ResetCanvasMenuOption_OnClick"
                                 IsVisible="{Binding CanResetCanvas}"
-                                HorizontalAlignment="Stretch" HotKey="Ctrl+R">
+                                HorizontalAlignment="Stretch" HotKey="Ctrl+R" ToolTip.Tip="Ctrl+R">
                             <StackPanel Orientation="Horizontal" Spacing="4">
                                 <Image Source="avares://Scribble/Assets/bin.png" Width="18" Height="18" />
                                 <Label FontSize="12">Reset canvas</Label>
@@ -153,7 +153,7 @@
                             </StackPanel>
                         </Button>
                         <Button Name="ExitOption" Margin="0" Click="ExitOption_OnClick" HorizontalAlignment="Stretch"
-                                HotKey="Ctrl+X">
+                                HotKey="Ctrl+X" ToolTip.Tip="Ctrl+X">
                             <StackPanel Orientation="Horizontal" Spacing="4">
                                 <Image Source="avares://Scribble/Assets/exit.png" Width="18" Height="18" />
                                 <Label FontSize="12">Exit</Label>
@@ -192,7 +192,8 @@
                 Padding="8"
                 BoxShadow="0 4 20 0 #60000000">
                 <Panel>
-                    <Button Name="LiveDrawingButton" Click="LiveDrawingButton_OnClick">
+                    <Button Name="LiveDrawingButton" Click="LiveDrawingButton_OnClick"
+                            ToolTip.Tip="Collaborative Drawing">
                         <Image Margin="4" Source="avares://Scribble/Assets/group.png" />
                     </Button>
                     <Border

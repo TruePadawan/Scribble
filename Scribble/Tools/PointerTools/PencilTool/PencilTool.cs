@@ -27,6 +27,7 @@ public class PencilTool : StrokeTool
         };
 
         HotKey = new KeyGesture(Key.D1);
+        ToolTip = "Pencil Tool - 1";
     }
 
     public override void HandlePointerClick(Point coord)
