@@ -17,4 +17,4 @@ dotnet publish "./Scribble.Desktop/Scribble.Desktop.csproj" \
   --output "./out/win-x64" \
   /p:PublishSingleFile=true
 
-zip -j ./releases/windows/Scribble_Win64.zip ./out/win-x64/*
+zip -j ./releases/windows/Scribble-1.1.2.zip ./out/win-x64/*

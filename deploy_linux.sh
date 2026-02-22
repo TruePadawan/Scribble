@@ -18,7 +18,7 @@ dotnet publish "./Scribble.Desktop/Scribble.Desktop.csproj" \
 
 # --- SHARED METADATA ---
 NAME="scribble"
-VERSION="0.1.1-alpha"
+VERSION="0.1.2-alpha"
 MAINTAINER="Chisom Hermes Chigoziri <hermeschigoziri@gmail.com>"
 DESC="A cross-platform digital whiteboard engineered with C# and Avalonia UI"
 URL="https://github.com/TruePadawan/Scribble"

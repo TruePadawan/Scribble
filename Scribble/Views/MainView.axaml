@@ -390,7 +390,7 @@
 
                         <StackPanel Orientation="Vertical" Spacing="4">
                             <TextBlock TextWrapping="Wrap" Foreground="WhiteSmoke">
-                                Scribble v0.1.1-alpha, by
+                                Scribble v0.1.2-alpha, by
                                 <HyperlinkButton Content="Hermes"
                                                  Padding="0"
                                                  Margin="0"
