@@ -34,6 +34,8 @@ public class EllipseTool : StrokeTool
             Color = SKColors.Red,
         };
         _startPoint = null;
+
+        HotKey = new KeyGesture(Key.D6);
     }
 
     public override void HandlePointerClick(Point coord)

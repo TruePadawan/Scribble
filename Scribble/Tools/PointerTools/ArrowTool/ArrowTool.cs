@@ -30,6 +30,8 @@ public class ArrowTool : StrokeTool
             Color = SKColors.Red
         };
         _startPoint = null;
+
+        HotKey = new KeyGesture(Key.D5);
     }
 
     public override void HandlePointerClick(Point coord)

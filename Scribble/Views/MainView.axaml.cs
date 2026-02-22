@@ -112,6 +112,13 @@ public partial class MainView : UserControl
             Name = tool.Name,
         };
         ToggleButtonGroup.SetGroupName(toggleButton, "PointerTools");
+
+        // Connect the tool's hotkey
+        if (tool.HotKey != null)
+        {
+            toggleButton.HotKey = tool.HotKey;
+        }
+
         toggleButton.IsCheckedChanged += (object? sender, RoutedEventArgs e) =>
         {
             if (toggleButton.IsChecked == true)

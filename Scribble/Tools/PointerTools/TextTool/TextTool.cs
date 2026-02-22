@@ -33,6 +33,8 @@ public class TextTool : StrokeTool
             TextSize = 15,
             IsAntialias = true
         };
+
+        HotKey = new KeyGesture(Key.D8);
     }
 
     public override void HandlePointerClick(Point coord)

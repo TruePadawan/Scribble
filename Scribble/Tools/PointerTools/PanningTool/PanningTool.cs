@@ -14,6 +14,8 @@ public class PanningTool : PointerTool
     {
         _scrollViewer = scrollViewer;
         Cursor = new Cursor(ToolIcon.CreateScaledBitmap(new PixelSize(30, 30)), new PixelPoint(15, 15));
+
+        HotKey = new KeyGesture(Key.D3);
     }
 
     public override void HandlePointerMove(Point prevCoord, Point currentCoord)

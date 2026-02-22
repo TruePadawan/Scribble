@@ -16,6 +16,8 @@ public class EraseTool : PointerTool
         : base(name, viewModel, LoadToolBitmap(typeof(EraseTool), "eraser.png"))
     {
         Cursor = new Cursor(ToolIcon.CreateScaledBitmap(new PixelSize(36, 36)), new PixelPoint(10, 30));
+
+        HotKey = new KeyGesture(Key.D2);
     }
 
     public override void HandlePointerClick(Point coord)
