@@ -25,6 +25,9 @@ public class PencilTool : StrokeTool
             StrokeWidth = 1,
             Color = SKColors.Red
         };
+
+        HotKey = new KeyGesture(Key.D1);
+        ToolTip = "Pencil Tool - 1";
     }
 
     public override void HandlePointerClick(Point coord)

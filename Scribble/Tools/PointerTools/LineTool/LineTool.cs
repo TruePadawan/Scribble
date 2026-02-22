@@ -30,6 +30,9 @@ public class LineTool : StrokeTool
             Color = SKColors.Red,
         };
         _startPoint = null;
+
+        HotKey = new KeyGesture(Key.D4);
+        ToolTip = "Line Tool - 4";
     }
 
     public override void HandlePointerClick(Point coord)

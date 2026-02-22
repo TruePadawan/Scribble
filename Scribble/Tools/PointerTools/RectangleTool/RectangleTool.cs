@@ -34,6 +34,9 @@ public class RectangleTool : StrokeTool
             Color = SKColors.Red
         };
         _startPoint = null;
+
+        HotKey = new KeyGesture(Key.D7);
+        ToolTip = "Rectangle Tool - 7";
     }
 
     public override void HandlePointerClick(Point coord)

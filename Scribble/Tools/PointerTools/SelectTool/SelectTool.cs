@@ -23,6 +23,9 @@ class SelectTool : PointerTool
     {
         Cursor = Cursor.Default;
         _canvasContainer = canvasContainer;
+
+        HotKey = new KeyGesture(Key.D9);
+        ToolTip = "Select Tool - 9";
     }
 
     public override void HandlePointerClick(Point coord)
