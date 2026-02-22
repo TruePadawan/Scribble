@@ -504,7 +504,8 @@ public partial class MainView : UserControl
     {
         if (_viewModel == null) return;
 
-        var triggeringSelectionAction = _viewModel.CanvasEvents.Last() is EndSelectionEvent;
+        var hasEvents = _viewModel.CanvasEvents.Count > 0;
+        var triggeringSelectionAction = hasEvents && _viewModel.CanvasEvents.Last() is EndSelectionEvent;
         var allSelectedIds = _viewModel.SelectionTargets.Values.SelectMany(x => x).Distinct().ToList();
 
         if (allSelectedIds.Count > 0)
