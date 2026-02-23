@@ -10,7 +10,6 @@ using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
-using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using Microsoft.AspNetCore.SignalR.Client;
 using MsBox.Avalonia;
@@ -881,58 +880,6 @@ public partial class MainView : UserControl
         AboutScribbleWindow.IsVisible = false;
         AboutScribbleWindowOverlay.IsVisible = false;
         Dispatcher.UIThread.Post(() => CanvasContainer.Focus());
-    }
-
-    private async void SaveToFileMenuOption_OnClick(object? sender, RoutedEventArgs e)
-    {
-        try
-        {
-            var topLevel = TopLevel.GetTopLevel(this);
-            if (topLevel == null) return;
-
-            var file = await topLevel.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
-            {
-                SuggestedFileName = "Scribble",
-                Title = "Save canvas state to file",
-                DefaultExtension = ".scribble",
-            });
-            if (file is not null)
-            {
-                _viewModel?.SaveCanvasToFile(file);
-            }
-
-            CloseMenu();
-        }
-        catch (Exception exception)
-        {
-            Console.WriteLine(exception.Message);
-        }
-    }
-
-    private async void OpenFileMenuOption_OnClick(object? sender, RoutedEventArgs e)
-    {
-        try
-        {
-            var topLevel = TopLevel.GetTopLevel(this);
-            if (topLevel == null) return;
-
-            var files = await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
-            {
-                SuggestedFileName = "Scribble",
-                Title = "Restore canvas state from file",
-                AllowMultiple = false,
-            });
-            if (files.Count == 1 && _viewModel != null)
-            {
-                await _viewModel.RestoreCanvasFromFile(files[0]);
-            }
-
-            CloseMenu();
-        }
-        catch (Exception exception)
-        {
-            Console.WriteLine(exception.Message);
-        }
     }
 
     private async void ExitOption_OnClick(object? sender, RoutedEventArgs e)

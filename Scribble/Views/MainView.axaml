@@ -124,13 +124,13 @@
                         IsVisible="False">
                     <StackPanel Spacing="4">
                         <Button Name="OpenFileMenuOption" HorizontalAlignment="Stretch"
-                                Click="OpenFileMenuOption_OnClick" HotKey="Ctrl+O" ToolTip.Tip="Ctrl+O">
+                                Command="{Binding OpenFileActionCommand}" HotKey="Ctrl+O" ToolTip.Tip="Ctrl+O">
                             <StackPanel Orientation="Horizontal" Spacing="4">
                                 <Image Source="avares://Scribble/Assets/open.png" Width="18" Height="18" />
                                 <Label FontSize="12">Open...</Label>
                             </StackPanel>
                         </Button>
-                        <Button Name="SaveToFileMenuOption" Margin="0" Click="SaveToFileMenuOption_OnClick"
+                        <Button Name="SaveToFileMenuOption" Margin="0" Command="{Binding SaveToFileActionCommand}"
                                 HorizontalAlignment="Stretch" HotKey="Ctrl+S" ToolTip.Tip="Ctrl+S">
                             <StackPanel Orientation="Horizontal" Spacing="4">
                                 <Image Source="avares://Scribble/Assets/save.png" Width="18" Height="18" />

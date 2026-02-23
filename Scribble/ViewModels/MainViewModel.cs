@@ -16,6 +16,7 @@ using Microsoft.AspNetCore.SignalR.Client;
 using MsBox.Avalonia;
 using MsBox.Avalonia.Enums;
 using Scribble.Lib.CollaborativeDrawing;
+using Scribble.Services.FileService;
 using Scribble.Shared.Lib;
 using Scribble.Tools.PointerTools.ArrowTool;
 using Scribble.Utils;
@@ -40,6 +41,7 @@ public partial class MainViewModel : ViewModelBase
     public Queue<Event> CanvasEvents { get; private set; } = [];
 
     private readonly CollaborativeDrawingService _collaborativeDrawingService;
+    private readonly IFileService _fileService;
 
     private readonly Stack<Guid> _undoStack = [];
     private readonly Stack<Guid> _redoStack = [];
@@ -51,12 +53,13 @@ public partial class MainViewModel : ViewModelBase
     public bool CanResetCanvas => Room == null || Room.IsHost;
     public bool IsLive => Room != null;
 
-    public MainViewModel(CollaborativeDrawingService drawingService)
+    public MainViewModel(CollaborativeDrawingService drawingService, IFileService fileService)
     {
         BackgroundColor = Color.Parse("#a2000000");
         ScaleTransform = new ScaleTransform(1, 1);
 
         _collaborativeDrawingService = drawingService;
+        _fileService = fileService;
 
         _collaborativeDrawingService.EventReceived += OnNetworkEventReceived;
         _collaborativeDrawingService.CanvasStateReceived += OnCanvasStateReceived;
@@ -666,16 +669,30 @@ public partial class MainViewModel : ViewModelBase
         }
     }
 
-    public async Task SaveCanvasToFile(IStorageFile file)
+    public bool HasEvents()
+    {
+        return CanvasEvents.Count > 0;
+    }
+
+    [RelayCommand]
+    private async Task SaveToFileAction()
+    {
+        var file = await _fileService.PickFileToSaveAsync();
+        if (file != null)
+        {
+            await SaveCanvasToFile(file);
+        }
+    }
+
+    private async Task SaveCanvasToFile(IStorageFile file)
     {
         await using var stream = await file.OpenWriteAsync();
-        using var streamWriter = new StreamWriter(stream);
+        await using var streamWriter = new StreamWriter(stream);
 
         var serializerOptions = new JsonSerializerOptions { WriteIndented = true };
         var jsonCanvasStrokes = new JsonArray();
-        for (int i = 0; i < CanvasStrokes.Count; i++)
+        foreach (var stroke in CanvasStrokes)
         {
-            var stroke = CanvasStrokes[i];
             jsonCanvasStrokes.Add(JsonSerializer.SerializeToNode(stroke, serializerOptions));
         }
 
@@ -687,12 +704,17 @@ public partial class MainViewModel : ViewModelBase
         await streamWriter.WriteAsync(canvasState.ToJsonString(serializerOptions));
     }
 
-    public bool HasEvents()
+    [RelayCommand]
+    private async Task OpenFileAction()
     {
-        return CanvasEvents.Count > 0;
+        var file = await _fileService.PickFileToOpenAsync();
+        if (file != null)
+        {
+            await RestoreCanvasFromFile(file);
+        }
     }
 
-    public async Task RestoreCanvasFromFile(IStorageFile file)
+    private async Task RestoreCanvasFromFile(IStorageFile file)
     {
         await using var stream = await file.OpenReadAsync();
         using var streamReader = new StreamReader(stream);
