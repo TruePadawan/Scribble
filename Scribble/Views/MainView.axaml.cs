@@ -42,10 +42,6 @@ public partial class MainView : UserControl
     private MainViewModel? _viewModel;
     private readonly Selection _selection;
     private readonly ToolOptionsValues _toolOptionsValues;
-    private readonly Image _undoDisabledIcon;
-    private readonly Image _undoEnabledIcon;
-    private readonly Image _redoDisabledIcon;
-    private readonly Image _redoEnabledIcon;
     private Action? _zoomed;
 
     public MainView()
@@ -60,38 +56,6 @@ public partial class MainView : UserControl
             Bitmap.DecodeToWidth(AssetLoader.Open(new Uri("avares://Scribble/Assets/rotate.png")), 24);
         SelectionBorder.Cursor = new Cursor(moveIconBitmap, new PixelPoint(18, 18));
         SelectionRotationBtn.Cursor = new Cursor(rotateIconBitmap, new PixelPoint(12, 12));
-
-        _undoDisabledIcon = new Image
-        {
-            Source = new Bitmap(AssetLoader.Open(new Uri("avares://Scribble/Assets/undo-disabled.png"))),
-            Width = 15,
-            Height = 15,
-            Margin = new Thickness(4)
-        };
-
-        _undoEnabledIcon = new Image
-        {
-            Source = new Bitmap(AssetLoader.Open(new Uri("avares://Scribble/Assets/undo.png"))),
-            Width = 15,
-            Height = 15,
-            Margin = new Thickness(4)
-        };
-
-        _redoDisabledIcon = new Image
-        {
-            Source = new Bitmap(AssetLoader.Open(new Uri("avares://Scribble/Assets/redo-disabled.png"))),
-            Width = 15,
-            Height = 15,
-            Margin = new Thickness(4)
-        };
-
-        _redoEnabledIcon = new Image
-        {
-            Source = new Bitmap(AssetLoader.Open(new Uri("avares://Scribble/Assets/redo.png"))),
-            Width = 15,
-            Height = 15,
-            Margin = new Thickness(4)
-        };
     }
 
     protected override void OnDataContextChanged(EventArgs e)
@@ -99,8 +63,6 @@ public partial class MainView : UserControl
         if (_viewModel != null)
         {
             _viewModel.RequestInvalidateSelection -= VisualizeSelection;
-            _viewModel.UndoStackChanged -= UpdateUndoButton;
-            _viewModel.RedoStackChanged -= UpdateRedoButton;
         }
 
         base.OnDataContextChanged(e);
@@ -109,8 +71,6 @@ public partial class MainView : UserControl
         {
             _viewModel = viewModel;
             _viewModel.RequestInvalidateSelection += VisualizeSelection;
-            _viewModel.UndoStackChanged += UpdateUndoButton;
-            _viewModel.RedoStackChanged += UpdateRedoButton;
 
             Toolbar.Children.Clear();
 
@@ -1039,18 +999,6 @@ public partial class MainView : UserControl
         CloseMenu();
         AboutScribbleWindow.IsVisible = true;
         AboutScribbleWindowOverlay.IsVisible = true;
-    }
-
-    private void UpdateUndoButton(int undoStackCount)
-    {
-        UndoButton.IsEnabled = undoStackCount > 0;
-        UndoButton.Content = undoStackCount > 0 ? _undoEnabledIcon : _undoDisabledIcon;
-    }
-
-    private void UpdateRedoButton(int redoStackCount)
-    {
-        RedoButton.IsEnabled = redoStackCount > 0;
-        RedoButton.Content = redoStackCount > 0 ? _redoEnabledIcon : _redoDisabledIcon;
     }
 
     private void ZoomOutBtn_OnClick(object? sender, RoutedEventArgs e)

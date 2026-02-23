@@ -14,8 +14,8 @@
         <vm:MainViewModel />
     </Design.DataContext>
     <UserControl.KeyBindings>
-        <KeyBinding Gesture="Ctrl+Z" Command="{Binding Undo}" />
-        <KeyBinding Gesture="Ctrl+Shift+Z" Command="{Binding Redo}" />
+        <KeyBinding Gesture="Ctrl+Z" Command="{Binding UndoCommand}" />
+        <KeyBinding Gesture="Ctrl+Shift+Z" Command="{Binding RedoCommand}" />
     </UserControl.KeyBindings>
     <!-- Simulate a wide canvas -->
     <!-- Use a RenderTransformOrigin to tell the ScrollViewer to scale from top left -->
@@ -416,11 +416,11 @@
                 Background="#2c2c2c"
                 Margin="8,0,0,12">
             <StackPanel Orientation="Horizontal">
-                <Button ToolTip.Tip="Undo - Ctrl+Z" Name="UndoButton" Command="{Binding Undo}" IsEnabled="False">
-                    <Image Source="avares://Scribble/Assets/undo-disabled.png" Margin="4" Width="15" Height="15" />
+                <Button ToolTip.Tip="Undo - Ctrl+Z" Name="UndoButton" Command="{Binding UndoCommand}">
+                    <Image Source="avares://Scribble/Assets/undo.png" Margin="4" Width="15" Height="15" />
                 </Button>
-                <Button ToolTip.Tip="Redo - Ctrl+Shift+Z" Name="RedoButton" Command="{Binding Redo}" IsEnabled="False">
-                    <Image Source="avares://Scribble/Assets/redo-disabled.png" Margin="4" Width="15" Height="15" />
+                <Button ToolTip.Tip="Redo - Ctrl+Shift+Z" Name="RedoButton" Command="{Binding RedoCommand}">
+                    <Image Source="avares://Scribble/Assets/redo.png" Margin="4" Width="15" Height="15" />
                 </Button>
             </StackPanel>
             <Border.Styles>
@@ -438,6 +438,10 @@
 
                 <Style Selector="Button:disabled /template/ ContentPresenter">
                     <Setter Property="Background" Value="#2c2c2c" />
+                </Style>
+
+                <Style Selector="Button:disabled Image">
+                    <Setter Property="Opacity" Value="0.5" />
                 </Style>
             </Border.Styles>
         </Border>

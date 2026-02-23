@@ -30,8 +30,6 @@ public partial class MainViewModel : ViewModelBase
     public static int CanvasHeight => 10000;
 
     public event Action? RequestInvalidateSelection;
-    public event Action<int>? UndoStackChanged;
-    public event Action<int>? RedoStackChanged;
 
     [ObservableProperty] private Color _backgroundColor;
     public ScaleTransform ScaleTransform { get; }
@@ -52,6 +50,8 @@ public partial class MainViewModel : ViewModelBase
 
     public bool CanResetCanvas => Room == null || Room.IsHost;
     public bool IsLive => Room != null;
+    private bool CanUndo => _undoStack.Count > 0;
+    private bool CanRedo => _redoStack.Count > 0;
 
     public MainViewModel(CollaborativeDrawingService drawingService, IFileService fileService)
     {
@@ -132,11 +132,12 @@ public partial class MainViewModel : ViewModelBase
         _undoStack.Push(actionId);
         _redoStack.Clear();
 
-        UndoStackChanged?.Invoke(_undoStack.Count);
-        RedoStackChanged?.Invoke(_redoStack.Count);
+        UndoCommand.NotifyCanExecuteChanged();
+        RedoCommand.NotifyCanExecuteChanged();
     }
 
-    public void Undo()
+    [RelayCommand(CanExecute = nameof(CanUndo))]
+    private void Undo()
     {
         if (_undoStack.Count == 0) return;
         var actionId = _undoStack.Pop();
@@ -148,14 +149,15 @@ public partial class MainViewModel : ViewModelBase
             }
         }
 
-        UndoStackChanged?.Invoke(_undoStack.Count);
-
         _redoStack.Push(actionId);
         ApplyEvent(new UndoEvent(Guid.NewGuid(), actionId), isLocalEvent: true);
-        RedoStackChanged?.Invoke(_redoStack.Count);
+
+        UndoCommand.NotifyCanExecuteChanged();
+        RedoCommand.NotifyCanExecuteChanged();
     }
 
-    public void Redo()
+    [RelayCommand(CanExecute = nameof(CanRedo))]
+    private void Redo()
     {
         if (_redoStack.Count == 0) return;
         var actionId = _redoStack.Pop();
@@ -167,11 +169,11 @@ public partial class MainViewModel : ViewModelBase
             }
         }
 
-        RedoStackChanged?.Invoke(_redoStack.Count);
-
         _undoStack.Push(actionId);
         ApplyEvent(new RedoEvent(Guid.NewGuid(), actionId), isLocalEvent: true);
-        UndoStackChanged?.Invoke(_undoStack.Count);
+
+        UndoCommand.NotifyCanExecuteChanged();
+        RedoCommand.NotifyCanExecuteChanged();
     }
 
     public void ApplyEvent(Event @event, bool isLocalEvent = true)
