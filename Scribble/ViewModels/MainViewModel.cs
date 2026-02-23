@@ -13,7 +13,6 @@ using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.AspNetCore.SignalR.Client;
-using Microsoft.Extensions.Configuration;
 using MsBox.Avalonia;
 using MsBox.Avalonia.Enums;
 using Scribble.Lib.CollaborativeDrawing;
@@ -52,20 +51,12 @@ public partial class MainViewModel : ViewModelBase
     public bool CanResetCanvas => Room == null || Room.IsHost;
     public bool IsLive => Room != null;
 
-    public MainViewModel()
+    public MainViewModel(CollaborativeDrawingService drawingService)
     {
         BackgroundColor = Color.Parse("#a2000000");
         ScaleTransform = new ScaleTransform(1, 1);
-        var builder = new ConfigurationBuilder()
-            .AddJsonFile("appsettings.json");
-#if DEBUG
-        builder.AddJsonFile("appsettings.Development.json", optional: true);
-#endif
-        var config = builder.Build();
-        var serverUrl = config["ServerUrl"];
-        if (serverUrl == null) throw new Exception("ServerUrl is missing");
 
-        _collaborativeDrawingService = new CollaborativeDrawingService(serverUrl);
+        _collaborativeDrawingService = drawingService;
 
         _collaborativeDrawingService.EventReceived += OnNetworkEventReceived;
         _collaborativeDrawingService.CanvasStateReceived += OnCanvasStateReceived;

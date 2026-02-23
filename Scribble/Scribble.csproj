@@ -28,6 +28,7 @@
         <PackageReference Include="MessageBox.Avalonia"/>
         <PackageReference Include="Microsoft.AspNetCore.SignalR.Client"/>
         <PackageReference Include="Microsoft.Extensions.Configuration.Json"/>
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
     </ItemGroup>
 
     <ItemGroup>
