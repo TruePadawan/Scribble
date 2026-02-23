@@ -145,8 +145,13 @@ public partial class MainView : UserControl
             Dispatcher.UIThread.Post(() => firstButton.Focus());
         }
 
+        // Update the scale factor text and zoom button's enabled state when zoom happens
         _zoomed += UpdateScaleFactorText;
         _zoomed += UpdateZoomButtons;
+
+        // Add hotkeys for zoom buttons
+        ZoomInBtn.HotKey = new KeyGesture(Key.OemPlus, KeyModifiers.Control);
+        ZoomOutBtn.HotKey = new KeyGesture(Key.OemMinus, KeyModifiers.Control);
     }
 
     private void RegisterPointerTool(PointerTool tool)
