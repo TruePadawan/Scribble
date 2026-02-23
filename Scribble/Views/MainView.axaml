@@ -410,9 +410,10 @@
         </Panel>
 
         <!-- Undo/Redo Buttons -->
-        <Border CornerRadius="16"
+        <Border CornerRadius="8"
                 HorizontalAlignment="Left"
                 VerticalAlignment="Bottom"
+                Background="#2c2c2c"
                 Margin="8,0,0,12">
             <StackPanel Orientation="Horizontal">
                 <Button ToolTip.Tip="Undo - Ctrl+Z" Name="UndoButton" Command="{Binding Undo}" IsEnabled="False">
@@ -422,6 +423,65 @@
                     <Image Source="avares://Scribble/Assets/redo-disabled.png" Margin="4" Width="15" Height="15" />
                 </Button>
             </StackPanel>
+            <Border.Styles>
+                <Style Selector="Button">
+                    <Setter Property="Background" Value="#2c2c2c" />
+                </Style>
+
+                <Style Selector="Button:pointerover /template/ ContentPresenter">
+                    <Setter Property="Background" Value="#3c3c3c" />
+                </Style>
+
+                <Style Selector="Button:pressed /template/ ContentPresenter">
+                    <Setter Property="Background" Value="#1c1c1c" />
+                </Style>
+
+                <Style Selector="Button:disabled /template/ ContentPresenter">
+                    <Setter Property="Background" Value="#2c2c2c" />
+                </Style>
+            </Border.Styles>
         </Border>
+
+        <!-- Zoom Buttons -->
+        <Border
+            HorizontalAlignment="Right"
+            VerticalAlignment="Bottom"
+            CornerRadius="8"
+            Background="#2c2c2c"
+            Margin="0,0,8,12">
+            <StackPanel Orientation="Horizontal" Spacing="2">
+                <Button ToolTip.Tip="Zoom out - Ctrl + '-'" Name="ZoomOutBtn" IsEnabled="False"
+                        Click="ZoomOutBtn_OnClick">
+                    <Image Source="avares://Scribble/Assets/minus-disabled.png" Margin="4" Width="15" Height="15" />
+                </Button>
+                <TextBlock Name="ScaleFactorText" Text="100%" VerticalAlignment="Center" />
+                <Button ToolTip.Tip="Zoom in - Ctrl + '+'" Name="ZoomInBtn" IsEnabled="True" Click="ZoomInBtn_OnClick">
+                    <Image Source="avares://Scribble/Assets/plus.png" Margin="4" Width="15" Height="15" />
+                </Button>
+            </StackPanel>
+            <Border.Styles>
+                <Style Selector="Button">
+                    <Setter Property="Background" Value="#2c2c2c" />
+                </Style>
+
+                <Style Selector="Button:pointerover /template/ ContentPresenter">
+                    <Setter Property="Background" Value="#3c3c3c" />
+                </Style>
+
+                <Style Selector="Button:pressed /template/ ContentPresenter">
+                    <Setter Property="Background" Value="#1c1c1c" />
+                </Style>
+
+                <Style Selector="Button:disabled /template/ ContentPresenter">
+                    <Setter Property="Background" Value="#2c2c2c" />
+                </Style>
+
+                <Style Selector="TextBlock">
+                    <Setter Property="Foreground" Value="White" />
+                    <Setter Property="Background" Value="#2c2c2c" />
+                </Style>
+            </Border.Styles>
+        </Border>
+
     </Panel>
 </UserControl>
