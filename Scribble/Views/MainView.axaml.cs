@@ -641,15 +641,24 @@ public partial class MainView : UserControl
         bool ctrlKeyIsActive = (e.KeyModifiers & KeyModifiers.Control) != 0;
         if (!ctrlKeyIsActive) return;
 
-        // ZOOM TO POINT
         if (_viewModel == null) throw new Exception("View Model not initialized");
 
-        double currentScale = _viewModel.GetCurrentScale();
         Point mousePosOnViewPort = e.GetPosition(CanvasScrollViewer);
         Point mousePosOnCanvas = e.GetPosition(MainCanvas);
 
         // Multiplicative Zoom
         double zoomFactor = e.Delta.Y > 0 ? 1.1f : 0.9f;
+        Zoom(zoomFactor, mousePosOnViewPort, mousePosOnCanvas);
+
+        // Stop the scroll viewer from applying its own scrolling logic
+        e.Handled = true;
+    }
+
+    private void Zoom(double zoomFactor, Point pointerViewPortPos, Point pointerCanvasPos)
+    {
+        if (_viewModel == null) throw new Exception("View Model not initialized");
+
+        double currentScale = _viewModel.GetCurrentScale();
         double newScale = currentScale * zoomFactor;
 
         // Clamp new zoom between min and max zoom
@@ -667,11 +676,8 @@ public partial class MainView : UserControl
         CanvasScrollViewer.UpdateLayout();
 
         // Implement zoom to point
-        var newOffset = (mousePosOnCanvas * newScale) - mousePosOnViewPort;
+        var newOffset = (pointerCanvasPos * newScale) - pointerViewPortPos;
         CanvasScrollViewer.Offset = new Vector(newOffset.X, newOffset.Y);
-
-        // Stop the scroll viewer from applying its own scrolling logic
-        e.Handled = true;
     }
 
     private void SelectionBorder_OnPointerPressed(object? sender, PointerPressedEventArgs e)
