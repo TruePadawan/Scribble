@@ -10,7 +10,6 @@ using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
 using Avalonia.Threading;
-using Scribble.Behaviours;
 using Scribble.Lib;
 using Scribble.Shared.Lib;
 using Scribble.Tools.PointerTools;
@@ -57,6 +56,7 @@ public partial class MainView : UserControl
         {
             _viewModel.RequestInvalidateSelection -= VisualizeSelection;
             _viewModel.CenterZoomRequested -= OnCenterZoomRequested;
+            _viewModel.ActiveToolChanged -= OnActiveToolChanged;
         }
 
         base.OnDataContextChanged(e);
@@ -66,42 +66,66 @@ public partial class MainView : UserControl
             _viewModel = viewModel;
             _viewModel.RequestInvalidateSelection += VisualizeSelection;
             _viewModel.CenterZoomRequested += OnCenterZoomRequested;
-
-            Toolbar.Children.Clear();
+            _viewModel.ActiveToolChanged += OnActiveToolChanged;
 
             // Center the whiteboard
             (double canvasWidth, double canvasHeight) = viewModel.GetCanvasDimensions();
             CanvasScrollViewer.Offset = new Vector(canvasWidth / 2, canvasHeight / 2);
 
-            // Register pointer tools
-            RegisterPointerTool(new PencilTool("PencilTool", viewModel));
-            RegisterPointerTool(new EraseTool("EraseTool", viewModel));
-            RegisterPointerTool(new PanningTool("PanningTool", viewModel, CanvasScrollViewer));
-            RegisterPointerTool(new LineTool("LineTool", viewModel));
-            RegisterPointerTool(new ArrowTool("ArrowTool", viewModel));
-            RegisterPointerTool(new EllipseTool("EllipseTool", viewModel));
-            RegisterPointerTool(new RectangleTool("RectangleTool", viewModel));
-            RegisterPointerTool(new TextTool("TextTool", viewModel, CanvasContainer));
-            RegisterPointerTool(new SelectTool("SelectTool", viewModel, CanvasContainer));
+            viewModel.AvailableTools.Clear();
+            var tools = new List<PointerTool>
+            {
+                new PencilTool("PencilTool", viewModel),
+                new EraseTool("EraseTool", viewModel),
+                new PanningTool("PanningTool", viewModel, CanvasScrollViewer),
+                new LineTool("LineTool", viewModel),
+                new ArrowTool("ArrowTool", viewModel),
+                new EllipseTool("EllipseTool", viewModel),
+                new RectangleTool("RectangleTool", viewModel),
+                new TextTool("TextTool", viewModel, CanvasContainer),
+                new SelectTool("SelectTool", viewModel, CanvasContainer)
+            };
+            foreach (var tool in tools)
+            {
+                viewModel.AvailableTools.Add(tool);
+
+                // Map the tool's HotKey to trigger the SelectToolCommand
+                if (tool.HotKey != null)
+                {
+                    KeyBindings.Add(new KeyBinding
+                    {
+                        Gesture = tool.HotKey,
+                        Command = viewModel.SwitchToolCommand,
+                        CommandParameter = tool
+                    });
+                }
+            }
+
+            viewModel.ActivePointerTool = tools.FirstOrDefault();
         }
     }
 
-    protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
+    private void OnActiveToolChanged(PointerTool? tool)
     {
-        base.OnAttachedToVisualTree(e);
-        // Select the first tool by default
-        if (Toolbar.Children.Count > 0 && Toolbar.Children[0] is ToggleButton firstButton)
-        {
-            firstButton.IsChecked = true;
+        _activePointerTool = tool;
+        if (tool == null) return;
 
-            // Schedules the focus attempt for the next UI cycle
-            // This is required for undo/redo to work immediately
-            Dispatcher.UIThread.Post(() => firstButton.Focus());
+        // Render tool options
+        if (_activePointerTool is StrokeTool strokeTool)
+        {
+            ToolOptionsBorder.IsVisible = true;
+            ToolOptionsBorder.Opacity = 1;
+            RenderToolOptions(strokeTool);
+        }
+        else
+        {
+            ToolOptionsBorder.IsVisible = false;
         }
 
-        // Add hotkeys for zoom buttons
-        ZoomInBtn.HotKey = new KeyGesture(Key.OemPlus, KeyModifiers.Control);
-        ZoomOutBtn.HotKey = new KeyGesture(Key.OemMinus, KeyModifiers.Control);
+        if (tool.Cursor != null)
+        {
+            MainCanvas.Cursor = tool.Cursor;
+        }
     }
 
     private void OnCenterZoomRequested(double zoomFactor)
@@ -141,58 +165,6 @@ public partial class MainView : UserControl
         // Implement zoom to point
         var newOffset = (pointerCanvasPos * newScale) - pointerViewPortPos;
         CanvasScrollViewer.Offset = new Vector(newOffset.X, newOffset.Y);
-    }
-
-    private void RegisterPointerTool(PointerTool tool)
-    {
-        var toggleButton = new ToggleButton
-        {
-            Name = tool.Name,
-        };
-        ToggleButtonGroup.SetGroupName(toggleButton, "PointerTools");
-
-        ToolTip.SetTip(toggleButton, tool.ToolTip);
-        // Connect the tool's hotkey
-        if (tool.HotKey != null)
-        {
-            toggleButton.HotKey = tool.HotKey;
-        }
-
-
-        toggleButton.IsCheckedChanged += (object? sender, RoutedEventArgs e) =>
-        {
-            if (toggleButton.IsChecked == true)
-            {
-                _activePointerTool?.Dispose();
-                _activePointerTool = tool;
-
-                // Render tool options
-                if (_activePointerTool is StrokeTool strokeTool)
-                {
-                    ToolOptionsBorder.IsVisible = true;
-                    ToolOptionsBorder.Opacity = 1;
-                    RenderToolOptions(strokeTool);
-                }
-                else
-                {
-                    ToolOptionsBorder.IsVisible = false;
-                }
-
-                if (tool.Cursor != null)
-                {
-                    MainCanvas.Cursor = tool.Cursor;
-                }
-            }
-        };
-
-        var toolIcon = new Image
-        {
-            Source = tool.ToolIcon,
-            Margin = new Thickness(4)
-        };
-        toggleButton.Content = toolIcon;
-
-        Toolbar.Children.Add(toggleButton);
     }
 
     private StackPanel CreateOptionControl(Control actualControl, string optionLabel)

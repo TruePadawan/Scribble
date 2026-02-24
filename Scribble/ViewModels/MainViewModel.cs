@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -18,6 +19,7 @@ using Scribble.Lib.CollaborativeDrawing;
 using Scribble.Services.DialogService;
 using Scribble.Services.FileService;
 using Scribble.Shared.Lib;
+using Scribble.Tools.PointerTools;
 using Scribble.Tools.PointerTools.ArrowTool;
 using Scribble.Utils;
 using SkiaSharp;
@@ -87,6 +89,11 @@ public partial class MainViewModel : ViewModelBase
 
     public event Action<double>? CenterZoomRequested;
 
+    public ObservableCollection<PointerTool> AvailableTools { get; } = [];
+    public event Action<PointerTool?>? ActiveToolChanged;
+    [ObservableProperty] private PointerTool? _activePointerTool;
+
+    // METHODS
     public MainViewModel(CollaborativeDrawingService drawingService, IFileService fileService,
         IDialogService dialogService)
     {
@@ -909,5 +916,18 @@ public partial class MainViewModel : ViewModelBase
         // Tell the UI that it should refresh controls that are bound to CanZoomIn and CanZoomOut
         ZoomInCommand.NotifyCanExecuteChanged();
         ZoomOutCommand.NotifyCanExecuteChanged();
+    }
+
+    // runs when _activePointerTool changes
+    partial void OnActivePointerToolChanged(PointerTool? oldValue, PointerTool? newValue)
+    {
+        oldValue?.Dispose();
+        ActiveToolChanged?.Invoke(newValue);
+    }
+
+    [RelayCommand]
+    private void SwitchTool(PointerTool tool)
+    {
+        ActivePointerTool = tool;
     }
 }

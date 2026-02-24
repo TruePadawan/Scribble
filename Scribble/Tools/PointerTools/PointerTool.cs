@@ -17,8 +17,8 @@ public abstract class PointerTool(string name, MainViewModel viewModel, Bitmap i
 {
     public string Name { get; } = name;
     protected MainViewModel ViewModel { get; } = viewModel;
-    public readonly Bitmap ToolIcon = icon;
-    public Cursor? Cursor;
+    public Bitmap ToolIcon { get; } = icon;
+    public Cursor? Cursor { get; protected init; }
     public KeyGesture? HotKey { get; protected init; }
     public string ToolTip { get; protected init; } = name;
 
