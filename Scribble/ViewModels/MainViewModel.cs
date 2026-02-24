@@ -2,22 +2,17 @@
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
-using System.IO;
 using System.Linq;
-using System.Text.Json;
-using System.Text.Json.Nodes;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Media;
-using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
 using Scribble.Messages;
 using Scribble.Services.DialogService;
-using Scribble.Services.FileService;
 using Scribble.Shared.Lib;
 using Scribble.Tools.PointerTools;
 using Scribble.Tools.PointerTools.ArrowTool;
@@ -54,7 +49,6 @@ public partial class MainViewModel : ViewModelBase
     public Dictionary<Guid, List<Guid>> SelectionTargets { get; private set; } = [];
     public Queue<Event> CanvasEvents { get; private set; } = [];
 
-    private readonly IFileService _fileService;
     private readonly IDialogService _dialogService;
 
     private readonly Stack<Guid> _undoStack = [];
@@ -63,21 +57,23 @@ public partial class MainViewModel : ViewModelBase
 
     public string ScaleFactorText => $"{Math.Floor(ZoomLevel / MinZoom * 100)}%";
     public ObservableCollection<PointerTool> AvailableTools { get; } = [];
-    public MultiUserDrawingViewModel MultiUserDrawingViewModel { get; }
 
-    public MainViewModel(MultiUserDrawingViewModel multiplayer, IFileService fileService,
+    public MultiUserDrawingViewModel MultiUserDrawingViewModel { get; }
+    public DocumentViewModel DocumentViewModel { get; }
+
+    public MainViewModel(MultiUserDrawingViewModel multiplayer, DocumentViewModel documentViewModel,
         IDialogService dialogService)
     {
         BackgroundColor = Color.Parse("#a2000000");
         ScaleTransform = new ScaleTransform(1, 1);
 
-        _fileService = fileService;
         _dialogService = dialogService;
         MultiUserDrawingViewModel = multiplayer;
+        DocumentViewModel = documentViewModel;
 
         // Reply to requests asking if there are any canvas events
         WeakReferenceMessenger.Default.Register<MainViewModel, HasEventsRequestMessage>(this,
-            (recipient, message) => { message.Reply(recipient.CanvasEvents.Count > 0); });
+            (mainViewModel, message) => { message.Reply(mainViewModel.CanvasEvents.Count > 0); });
 
         // Listen for incoming network events
         WeakReferenceMessenger.Default.Register<NetworkEventReceivedMessage>(this,
@@ -91,6 +87,27 @@ public partial class MainViewModel : ViewModelBase
             {
                 WeakReferenceMessenger.Default.Send(new SendCanvasStateMessage(m.TargetConnectionId, CanvasEvents));
             });
+
+        // Send canvas data when the DocumentViewModel wants to save
+        WeakReferenceMessenger.Default.Register<MainViewModel, RequestCanvasDataMessage>(this,
+            (mainViewModel, message) =>
+            {
+                message.Reply(new CanvasDataPayload(mainViewModel.CanvasStrokes, mainViewModel.BackgroundColor));
+            });
+
+        // Load canvas data when the DocumentViewModel reads a file
+        WeakReferenceMessenger.Default.Register<MainViewModel, LoadCanvasDataMessage>(this, (mainViewModel, message) =>
+        {
+            mainViewModel.ApplyEvent(new RestoreCanvasEvent(Guid.NewGuid(), message.Strokes));
+            if (message.BackgroundColorHex != null)
+            {
+                mainViewModel.BackgroundColor = Color.Parse(message.BackgroundColorHex);
+            }
+        });
+
+        // Clear data when the DocumentViewModel triggers a reset
+        WeakReferenceMessenger.Default.Register<MainViewModel, ClearCanvasMessage>(this,
+            (mainViewModel, m) => { mainViewModel.ApplyEvent(new RestoreCanvasEvent(Guid.NewGuid(), [])); });
     }
 
     // Event handler for when another client in the room draws something
@@ -661,125 +678,10 @@ public partial class MainViewModel : ViewModelBase
         return CanvasEvents.Count > 0;
     }
 
-    [RelayCommand]
-    private async Task SaveToFileAction()
-    {
-        var file = await _fileService.PickFileToSaveAsync();
-        if (file != null)
-        {
-            await SaveCanvasToFile(file);
-        }
-    }
-
-    private async Task SaveCanvasToFile(IStorageFile file)
-    {
-        await using var stream = await file.OpenWriteAsync();
-        await using var streamWriter = new StreamWriter(stream);
-
-        var serializerOptions = new JsonSerializerOptions { WriteIndented = true };
-        var jsonCanvasStrokes = new JsonArray();
-        foreach (var stroke in CanvasStrokes)
-        {
-            jsonCanvasStrokes.Add(JsonSerializer.SerializeToNode(stroke, serializerOptions));
-        }
-
-        var canvasState = new JsonObject
-        {
-            ["strokes"] = jsonCanvasStrokes,
-            ["backgroundColor"] = BackgroundColor.ToString()
-        };
-        await streamWriter.WriteAsync(canvasState.ToJsonString(serializerOptions));
-    }
-
-    [RelayCommand]
-    private async Task OpenFileAction()
-    {
-        var file = await _fileService.PickFileToOpenAsync();
-        if (file != null)
-        {
-            await RestoreCanvasFromFile(file);
-        }
-    }
-
-    private async Task RestoreCanvasFromFile(IStorageFile file)
-    {
-        await using var stream = await file.OpenReadAsync();
-        using var streamReader = new StreamReader(stream);
-        var json = await streamReader.ReadToEndAsync();
-        var canvasState = JsonNode.Parse(json);
-        var rawStrokes = canvasState?["strokes"]?.AsArray();
-        if (canvasState is null || rawStrokes is null) return;
-
-        if (CanvasEvents.Count > 0)
-        {
-            var confirmed = await _dialogService.ShowWarningConfirmationAsync("Warning",
-                "This will clear your current canvas. Are you sure you want to proceed?");
-            if (!confirmed) return;
-        }
-
-        List<Stroke> strokes = [];
-        foreach (var stroke in rawStrokes)
-        {
-            if (stroke is null) throw new Exception("Invalid canvas file");
-            var deserializedStroke = JsonSerializer.Deserialize<Stroke>(stroke.ToJsonString());
-            if (deserializedStroke is null) throw new Exception("Invalid canvas file");
-            strokes.Add(deserializedStroke);
-        }
-
-        ApplyEvent(new RestoreCanvasEvent(Guid.NewGuid(), strokes));
-
-        // Restore background color
-        var bgColor = canvasState["backgroundColor"]?.ToString();
-        if (bgColor != null)
-        {
-            BackgroundColor = Color.Parse(bgColor);
-        }
-    }
-
-    public async Task ResetCanvas()
-    {
-        if (CanvasEvents.Count > 0)
-        {
-            var confirmed = await _dialogService.ShowWarningConfirmationAsync("Warning",
-                "This will clear your current canvas. Are you sure you want to proceed?");
-            if (!confirmed) return;
-        }
-
-        ApplyEvent(new RestoreCanvasEvent(Guid.NewGuid(), []));
-    }
-
     public void ChangeBackgroundColor(Color color)
     {
         BackgroundColor = color;
     }
-
-    // private async Task JoinRoomAsync(string roomId, string displayName)
-    // {
-    //     try
-    //     {
-    //         await _collaborativeDrawingService.StartAsync();
-    //         if (_collaborativeDrawingService.ConnectionId != null)
-    //         {
-    //             Room = new CollaborativeDrawingRoom(roomId, _collaborativeDrawingService.ConnectionId, displayName);
-    //         }
-    //
-    //         await _collaborativeDrawingService.JoinRoomAsync(roomId, displayName);
-    //     }
-    //     catch (Exception)
-    //     {
-    //         await _collaborativeDrawingService.StopAsync();
-    //         Room = null;
-    //     }
-    // }
-
-    // private async Task LeaveRoomAsync()
-    // {
-    //     if (Room != null)
-    //     {
-    //         await _collaborativeDrawingService.LeaveRoomAsync(Room.RoomId);
-    //         Room = null;
-    //     }
-    // }
 
     [RelayCommand]
     private void OpenUrl(string url)
@@ -803,35 +705,6 @@ public partial class MainViewModel : ViewModelBase
     {
         ApplyEvent(new ClearSelectionEvent(Guid.NewGuid()));
     }
-
-    // [RelayCommand(CanExecute = nameof(CanToggleRoomConnection))]
-    // private async Task ToggleRoomConnectionAsync()
-    // {
-    //     if (_collaborativeDrawingService.ConnectionState == HubConnectionState.Disconnected)
-    //     {
-    //         if (HasEvents())
-    //         {
-    //             var confirmed = await _dialogService.ShowWarningConfirmationAsync("Warning",
-    //                 "This might clear your current canvas. Are you sure you want to proceed?");
-    //             if (!confirmed) return;
-    //         }
-    //
-    //         await JoinRoomAsync(RoomId, ClientDisplayName.Trim());
-    //     }
-    //     else
-    //     {
-    //         await LeaveRoomAsync();
-    //     }
-    // }
-    //
-    // [RelayCommand(CanExecute = nameof(CanGenerateRoomId))]
-    // private void GenerateRoomId()
-    // {
-    //     if (_collaborativeDrawingService.ConnectionState == HubConnectionState.Disconnected)
-    //     {
-    //         RoomId = Guid.NewGuid().ToString("N");
-    //     }
-    // }
 
     [RelayCommand]
     private async Task ExitAsync()

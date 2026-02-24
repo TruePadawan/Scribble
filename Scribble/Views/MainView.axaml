@@ -124,20 +124,24 @@
                         IsVisible="False">
                     <StackPanel Spacing="4">
                         <Button Name="OpenFileMenuOption" HorizontalAlignment="Stretch"
-                                Command="{Binding OpenFileActionCommand}" HotKey="Ctrl+O" ToolTip.Tip="Ctrl+O">
+                                Command="{Binding DocumentViewModel.OpenFileActionCommand}"
+                                HotKey="Ctrl+O"
+                                ToolTip.Tip="Ctrl+O">
                             <StackPanel Orientation="Horizontal" Spacing="4">
                                 <Image Source="avares://Scribble/Assets/open.png" Width="18" Height="18" />
                                 <Label FontSize="12">Open...</Label>
                             </StackPanel>
                         </Button>
-                        <Button Name="SaveToFileMenuOption" Margin="0" Command="{Binding SaveToFileActionCommand}"
+                        <Button Name="SaveToFileMenuOption" Margin="0"
+                                Command="{Binding DocumentViewModel.SaveToFileActionCommand}"
                                 HorizontalAlignment="Stretch" HotKey="Ctrl+S" ToolTip.Tip="Ctrl+S">
                             <StackPanel Orientation="Horizontal" Spacing="4">
                                 <Image Source="avares://Scribble/Assets/save.png" Width="18" Height="18" />
                                 <Label FontSize="12">Save to file</Label>
                             </StackPanel>
                         </Button>
-                        <Button Name="ResetCanvasMenuOption" Margin="0" Click="ResetCanvasMenuOption_OnClick"
+                        <Button Name="ResetCanvasMenuOption" Margin="0"
+                                Command="{Binding DocumentViewModel.ResetCanvasCommand}"
                                 IsVisible="{Binding MultiUserDrawingViewModel.CanResetCanvas}"
                                 HorizontalAlignment="Stretch" HotKey="Ctrl+R" ToolTip.Tip="Ctrl+R">
                             <StackPanel Orientation="Horizontal" Spacing="4">

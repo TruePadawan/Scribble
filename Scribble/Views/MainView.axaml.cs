@@ -821,11 +821,6 @@ public partial class MainView : UserControl
         Dispatcher.UIThread.Post(() => CanvasContainer.Focus());
     }
 
-    private void ResetCanvasMenuOption_OnClick(object? sender, RoutedEventArgs e)
-    {
-        _viewModel?.ResetCanvas();
-    }
-
     private void CanvasBackgroundColorView_OnColorChanged(object? sender, ColorChangedEventArgs e)
     {
         _viewModel?.ChangeBackgroundColor(e.NewColor);
