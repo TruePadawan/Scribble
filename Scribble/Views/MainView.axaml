@@ -138,7 +138,7 @@
                             </StackPanel>
                         </Button>
                         <Button Name="ResetCanvasMenuOption" Margin="0" Click="ResetCanvasMenuOption_OnClick"
-                                IsVisible="{Binding CanResetCanvas}"
+                                IsVisible="{Binding MultiUserDrawingViewModel.CanResetCanvas}"
                                 HorizontalAlignment="Stretch" HotKey="Ctrl+R" ToolTip.Tip="Ctrl+R">
                             <StackPanel Orientation="Horizontal" Spacing="4">
                                 <Image Source="avares://Scribble/Assets/bin.png" Width="18" Height="18" />
@@ -237,18 +237,18 @@
                 <Panel>
                     <Button Name="LiveDrawingButton"
                             Click="LiveDrawingButton_OnClick"
-                            Background="{Binding LiveDrawingButtonBackground}"
+                            Background="{Binding MultiUserDrawingViewModel.LiveDrawingButtonBackground}"
                             ToolTip.Tip="Collaborative Drawing">
                         <Image Margin="4" Source="avares://Scribble/Assets/group.png" />
                     </Button>
                     <Border
-                        IsVisible="{Binding IsLive}"
+                        IsVisible="{Binding MultiUserDrawingViewModel.IsLive}"
                         VerticalAlignment="Top"
                         HorizontalAlignment="Right"
                         Padding="4"
                         CornerRadius="32"
                         Background="Black">
-                        <TextBlock Text="{Binding Room.Clients.Count}"
+                        <TextBlock Text="{Binding MultiUserDrawingViewModel.Room.Clients.Count}"
                                    Foreground="White"
                                    FontSize="14" />
                     </Border>
@@ -375,7 +375,7 @@
                     <StackPanel Orientation="Vertical" Spacing="6">
                         <Label Target="NameTextBox" Padding="0">Display name</Label>
                         <TextBox Name="NameTextBox" Watermark="Archer" VerticalContentAlignment="Center"
-                                 Height="40" Text="{Binding ClientDisplayName}" />
+                                 Height="40" Text="{Binding MultiUserDrawingViewModel.ClientDisplayName}" />
                     </StackPanel>
 
                     <Grid HorizontalAlignment="Stretch" ColumnDefinitions="40,*,40" RowDefinitions="Auto,Auto"
@@ -383,7 +383,7 @@
                         <Label Grid.Row="0" Grid.ColumnSpan="3" Target="RoomIdTextBox" Padding="0">Room ID</Label>
                         <Button Grid.Column="0" Grid.Row="1"
                                 Height="40"
-                                Command="{Binding GenerateRoomIdCommand}">
+                                Command="{Binding MultiUserDrawingViewModel.GenerateRoomIdCommand}">
                             <Image Source="avares://Scribble/Assets/random.png" />
                         </Button>
                         <TextBox Grid.Column="1" Grid.Row="1"
@@ -391,7 +391,7 @@
                                  Watermark="Room ID"
                                  KeyDown="RoomIdTextBox_OnKeyDown"
                                  TextChanged="RoomIdTextBox_OnTextChanged"
-                                 Text="{Binding RoomId}"
+                                 Text="{Binding MultiUserDrawingViewModel.RoomId}"
                                  VerticalContentAlignment="Center" />
                         <Button Name="RoomIdClipboardButton" Grid.Column="2" Grid.Row="1" Height="40"
                                 Click="RoomIdClipboardButton_OnClick">
@@ -401,8 +401,8 @@
 
                     <Button Name="EnterRoomButton" HorizontalAlignment="Stretch" Foreground="WhiteSmoke" Padding="8"
                             HorizontalContentAlignment="Center"
-                            Content="{Binding RoomButtonText}"
-                            Command="{Binding ToggleRoomConnectionCommand}" />
+                            Content="{Binding MultiUserDrawingViewModel.RoomButtonText}"
+                            Command="{Binding MultiUserDrawingViewModel.ToggleRoomConnectionCommand}" />
                 </StackPanel>
             </Border>
         </Panel>

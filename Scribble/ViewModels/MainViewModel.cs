@@ -14,8 +14,8 @@ using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using Microsoft.AspNetCore.SignalR.Client;
-using Scribble.Lib.CollaborativeDrawing;
+using CommunityToolkit.Mvvm.Messaging;
+using Scribble.Messages;
 using Scribble.Services.DialogService;
 using Scribble.Services.FileService;
 using Scribble.Shared.Lib;
@@ -30,19 +30,30 @@ public partial class MainViewModel : ViewModelBase
 {
     public static int CanvasWidth => 10000;
     public static int CanvasHeight => 10000;
+    private bool CanZoomIn => ZoomLevel < MaxZoom;
+    private bool CanZoomOut => ZoomLevel > MinZoom;
+    private bool CanUndo => _undoStack.Count > 0;
+    private bool CanRedo => _redoStack.Count > 0;
+
     public const double MinZoom = 1.0f;
     public const double MaxZoom = 3.0f;
 
     public event Action? RequestInvalidateSelection;
+    public event Action<PointerTool?>? ActiveToolChanged;
+    public event Action<double>? CenterZoomRequested;
 
     [ObservableProperty] private Color _backgroundColor;
-    public ScaleTransform ScaleTransform { get; }
     [ObservableProperty] private List<Stroke> _canvasStrokes = [];
+    [ObservableProperty] private PointerTool? _activePointerTool;
+
+    [ObservableProperty] [NotifyPropertyChangedFor(nameof(ScaleFactorText))]
+    private double _zoomLevel = 1.0f;
+
+    public ScaleTransform ScaleTransform { get; }
     private readonly HashSet<Guid> _deletedActions = [];
     public Dictionary<Guid, List<Guid>> SelectionTargets { get; private set; } = [];
     public Queue<Event> CanvasEvents { get; private set; } = [];
 
-    private readonly CollaborativeDrawingService _collaborativeDrawingService;
     private readonly IFileService _fileService;
     private readonly IDialogService _dialogService;
 
@@ -50,104 +61,42 @@ public partial class MainViewModel : ViewModelBase
     private readonly Stack<Guid> _redoStack = [];
     private readonly HashSet<Guid> _mySelections = [];
 
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(CanResetCanvas))]
-    [NotifyPropertyChangedFor(nameof(IsLive))]
-    [NotifyPropertyChangedFor(nameof(RoomButtonText))]
-    [NotifyPropertyChangedFor(nameof(LiveDrawingButtonBackground))]
-    [NotifyCanExecuteChangedFor(nameof(GenerateRoomIdCommand))]
-    private CollaborativeDrawingRoom? _room;
-
-    public bool CanResetCanvas => Room == null || Room.IsHost;
-    public bool IsLive => Room != null;
-    private bool CanGenerateRoomId => Room == null;
-    private bool CanUndo => _undoStack.Count > 0;
-    private bool CanRedo => _redoStack.Count > 0;
-
-    private bool CanToggleRoomConnection =>
-        !string.IsNullOrWhiteSpace(RoomId) && !string.IsNullOrWhiteSpace(ClientDisplayName);
-
-    // Tell the command to re-evaluate when the room id or client display name changes
-    [ObservableProperty] [NotifyCanExecuteChangedFor(nameof(ToggleRoomConnectionCommand))]
-    private string _roomId = string.Empty;
-
-    [ObservableProperty] [NotifyCanExecuteChangedFor(nameof(ToggleRoomConnectionCommand))]
-    private string _clientDisplayName = string.Empty;
-
-    public string RoomButtonText => IsLive ? "Leave Room" : "Enter Room";
-
-    public IBrush LiveDrawingButtonBackground =>
-        IsLive ? new SolidColorBrush(Colors.Green) : new SolidColorBrush(Colors.Transparent);
-
-    [ObservableProperty] [NotifyPropertyChangedFor(nameof(ScaleFactorText))]
-    private double _zoomLevel = 1.0f;
-
     public string ScaleFactorText => $"{Math.Floor(ZoomLevel / MinZoom * 100)}%";
-
-    private bool CanZoomIn => ZoomLevel < MaxZoom;
-    private bool CanZoomOut => ZoomLevel > MinZoom;
-
-    public event Action<double>? CenterZoomRequested;
-
     public ObservableCollection<PointerTool> AvailableTools { get; } = [];
-    public event Action<PointerTool?>? ActiveToolChanged;
-    [ObservableProperty] private PointerTool? _activePointerTool;
+    public MultiUserDrawingViewModel MultiUserDrawingViewModel { get; }
 
-    // METHODS
-    public MainViewModel(CollaborativeDrawingService drawingService, IFileService fileService,
+    public MainViewModel(MultiUserDrawingViewModel multiplayer, IFileService fileService,
         IDialogService dialogService)
     {
         BackgroundColor = Color.Parse("#a2000000");
         ScaleTransform = new ScaleTransform(1, 1);
 
-        _collaborativeDrawingService = drawingService;
         _fileService = fileService;
         _dialogService = dialogService;
+        MultiUserDrawingViewModel = multiplayer;
 
-        _collaborativeDrawingService.EventReceived += OnNetworkEventReceived;
-        _collaborativeDrawingService.CanvasStateReceived += OnCanvasStateReceived;
-        _collaborativeDrawingService.CanvasStateRequested += OnCanvasStateRequested;
-        _collaborativeDrawingService.ClientJoinedRoom += OnClientJoinedRoom;
-        _collaborativeDrawingService.ClientLeftRoom += OnClientLeftRoom;
-    }
+        // Reply to requests asking if there are any canvas events
+        WeakReferenceMessenger.Default.Register<MainViewModel, HasEventsRequestMessage>(this,
+            (recipient, message) => { message.Reply(recipient.CanvasEvents.Count > 0); });
 
-    private void OnClientJoinedRoom(CollaborativeDrawingUser client, List<CollaborativeDrawingUser> clients)
-    {
-        Dispatcher.UIThread.Post(() =>
-        {
-            if (Room == null || _collaborativeDrawingService.ConnectionId == null) return;
-            Room = new CollaborativeDrawingRoom(Room.RoomId, _collaborativeDrawingService.ConnectionId, Room.User.Name)
+        // Listen for incoming network events
+        WeakReferenceMessenger.Default.Register<NetworkEventReceivedMessage>(this,
+            (r, message) => { OnNetworkEventReceived(message.Event); });
+
+        WeakReferenceMessenger.Default.Register<CanvasStateReceivedMessage>(this,
+            (r, message) => { OnCanvasStateReceived(message.Events); });
+
+        WeakReferenceMessenger.Default.Register<CanvasStateRequestedMessage>(this,
+            (r, m) =>
             {
-                Clients = clients
-            };
-        });
-    }
-
-    private void OnClientLeftRoom(CollaborativeDrawingUser client, List<CollaborativeDrawingUser> clients)
-    {
-        Dispatcher.UIThread.Post(() =>
-        {
-            if (Room == null || _collaborativeDrawingService.ConnectionId == null) return;
-            Room = new CollaborativeDrawingRoom(Room.RoomId, _collaborativeDrawingService.ConnectionId, Room.User.Name)
-            {
-                Clients = clients
-            };
-        });
+                WeakReferenceMessenger.Default.Send(new SendCanvasStateMessage(m.TargetConnectionId, CanvasEvents));
+            });
     }
 
     // Event handler for when another client in the room draws something
     private void OnNetworkEventReceived(Event @event)
     {
         Dispatcher.UIThread.Post(() => { ProcessEvent(@event); });
-    }
-
-    // Event handler for sending canvas state to clients that just joined the room
-    private void OnCanvasStateRequested(string targetConnectionId)
-    {
-        Dispatcher.UIThread.Post(async void () =>
-        {
-            await _collaborativeDrawingService.SendCanvasStateToClientAsync(targetConnectionId, CanvasEvents);
-        });
     }
 
     // Event handler for processing the canvas state snapshot received from the room's host
@@ -176,7 +125,7 @@ public partial class MainViewModel : ViewModelBase
     {
         if (_undoStack.Count == 0) return;
         var actionId = _undoStack.Pop();
-        if (Room != null)
+        if (MultiUserDrawingViewModel.Room != null)
         {
             while (_deletedActions.Contains(actionId))
             {
@@ -196,7 +145,7 @@ public partial class MainViewModel : ViewModelBase
     {
         if (_redoStack.Count == 0) return;
         var actionId = _redoStack.Pop();
-        if (Room != null)
+        if (MultiUserDrawingViewModel.Room != null)
         {
             while (_deletedActions.Contains(actionId))
             {
@@ -220,9 +169,10 @@ public partial class MainViewModel : ViewModelBase
 
         ProcessEvent(@event, isLocalEvent);
 
-        if (!string.IsNullOrEmpty(Room?.RoomId))
+        if (MultiUserDrawingViewModel.Room != null)
         {
-            _ = _collaborativeDrawingService.BroadcastEventAsync(Room.RoomId, @event);
+            var roomId = MultiUserDrawingViewModel.Room.RoomId;
+            WeakReferenceMessenger.Default.Send(new BroadcastEventMessage(roomId, @event));
         }
     }
 
@@ -803,33 +753,33 @@ public partial class MainViewModel : ViewModelBase
         BackgroundColor = color;
     }
 
-    private async Task JoinRoomAsync(string roomId, string displayName)
-    {
-        try
-        {
-            await _collaborativeDrawingService.StartAsync();
-            if (_collaborativeDrawingService.ConnectionId != null)
-            {
-                Room = new CollaborativeDrawingRoom(roomId, _collaborativeDrawingService.ConnectionId, displayName);
-            }
+    // private async Task JoinRoomAsync(string roomId, string displayName)
+    // {
+    //     try
+    //     {
+    //         await _collaborativeDrawingService.StartAsync();
+    //         if (_collaborativeDrawingService.ConnectionId != null)
+    //         {
+    //             Room = new CollaborativeDrawingRoom(roomId, _collaborativeDrawingService.ConnectionId, displayName);
+    //         }
+    //
+    //         await _collaborativeDrawingService.JoinRoomAsync(roomId, displayName);
+    //     }
+    //     catch (Exception)
+    //     {
+    //         await _collaborativeDrawingService.StopAsync();
+    //         Room = null;
+    //     }
+    // }
 
-            await _collaborativeDrawingService.JoinRoomAsync(roomId, displayName);
-        }
-        catch (Exception)
-        {
-            await _collaborativeDrawingService.StopAsync();
-            Room = null;
-        }
-    }
-
-    private async Task LeaveRoomAsync()
-    {
-        if (Room != null)
-        {
-            await _collaborativeDrawingService.LeaveRoomAsync(Room.RoomId);
-            Room = null;
-        }
-    }
+    // private async Task LeaveRoomAsync()
+    // {
+    //     if (Room != null)
+    //     {
+    //         await _collaborativeDrawingService.LeaveRoomAsync(Room.RoomId);
+    //         Room = null;
+    //     }
+    // }
 
     [RelayCommand]
     private void OpenUrl(string url)
@@ -854,34 +804,34 @@ public partial class MainViewModel : ViewModelBase
         ApplyEvent(new ClearSelectionEvent(Guid.NewGuid()));
     }
 
-    [RelayCommand(CanExecute = nameof(CanToggleRoomConnection))]
-    private async Task ToggleRoomConnectionAsync()
-    {
-        if (_collaborativeDrawingService.ConnectionState == HubConnectionState.Disconnected)
-        {
-            if (HasEvents())
-            {
-                var confirmed = await _dialogService.ShowWarningConfirmationAsync("Warning",
-                    "This might clear your current canvas. Are you sure you want to proceed?");
-                if (!confirmed) return;
-            }
-
-            await JoinRoomAsync(RoomId, ClientDisplayName.Trim());
-        }
-        else
-        {
-            await LeaveRoomAsync();
-        }
-    }
-
-    [RelayCommand(CanExecute = nameof(CanGenerateRoomId))]
-    private void GenerateRoomId()
-    {
-        if (_collaborativeDrawingService.ConnectionState == HubConnectionState.Disconnected)
-        {
-            RoomId = Guid.NewGuid().ToString("N");
-        }
-    }
+    // [RelayCommand(CanExecute = nameof(CanToggleRoomConnection))]
+    // private async Task ToggleRoomConnectionAsync()
+    // {
+    //     if (_collaborativeDrawingService.ConnectionState == HubConnectionState.Disconnected)
+    //     {
+    //         if (HasEvents())
+    //         {
+    //             var confirmed = await _dialogService.ShowWarningConfirmationAsync("Warning",
+    //                 "This might clear your current canvas. Are you sure you want to proceed?");
+    //             if (!confirmed) return;
+    //         }
+    //
+    //         await JoinRoomAsync(RoomId, ClientDisplayName.Trim());
+    //     }
+    //     else
+    //     {
+    //         await LeaveRoomAsync();
+    //     }
+    // }
+    //
+    // [RelayCommand(CanExecute = nameof(CanGenerateRoomId))]
+    // private void GenerateRoomId()
+    // {
+    //     if (_collaborativeDrawingService.ConnectionState == HubConnectionState.Disconnected)
+    //     {
+    //         RoomId = Guid.NewGuid().ToString("N");
+    //     }
+    // }
 
     [RelayCommand]
     private async Task ExitAsync()
