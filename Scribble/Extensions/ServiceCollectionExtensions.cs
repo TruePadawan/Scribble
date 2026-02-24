@@ -26,6 +26,7 @@ public static class ServiceCollectionExtensions
         collection.AddSingleton(new CollaborativeDrawingService(serverUrl));
 
         collection.AddTransient<MultiUserDrawingViewModel>();
+        collection.AddTransient<DocumentViewModel>();
         collection.AddTransient<MainViewModel>();
 
         collection.AddSingleton<IFileService, AvaloniaFileService>();
