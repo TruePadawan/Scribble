@@ -13,9 +13,8 @@ using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.AspNetCore.SignalR.Client;
-using MsBox.Avalonia;
-using MsBox.Avalonia.Enums;
 using Scribble.Lib.CollaborativeDrawing;
+using Scribble.Services.DialogService;
 using Scribble.Services.FileService;
 using Scribble.Shared.Lib;
 using Scribble.Tools.PointerTools.ArrowTool;
@@ -40,6 +39,7 @@ public partial class MainViewModel : ViewModelBase
 
     private readonly CollaborativeDrawingService _collaborativeDrawingService;
     private readonly IFileService _fileService;
+    private readonly IDialogService _dialogService;
 
     private readonly Stack<Guid> _undoStack = [];
     private readonly Stack<Guid> _redoStack = [];
@@ -53,13 +53,15 @@ public partial class MainViewModel : ViewModelBase
     private bool CanUndo => _undoStack.Count > 0;
     private bool CanRedo => _redoStack.Count > 0;
 
-    public MainViewModel(CollaborativeDrawingService drawingService, IFileService fileService)
+    public MainViewModel(CollaborativeDrawingService drawingService, IFileService fileService,
+        IDialogService dialogService)
     {
         BackgroundColor = Color.Parse("#a2000000");
         ScaleTransform = new ScaleTransform(1, 1);
 
         _collaborativeDrawingService = drawingService;
         _fileService = fileService;
+        _dialogService = dialogService;
 
         _collaborativeDrawingService.EventReceived += OnNetworkEventReceived;
         _collaborativeDrawingService.CanvasStateReceived += OnCanvasStateReceived;
@@ -727,14 +729,9 @@ public partial class MainViewModel : ViewModelBase
 
         if (CanvasEvents.Count > 0)
         {
-            var box = MessageBoxManager
-                .GetMessageBoxStandard("Warning",
-                    "This will clear your current canvas. Are you sure you want to proceed?",
-                    ButtonEnum.YesNo,
-                    Icon.Warning);
-
-            var result = await box.ShowAsync();
-            if (result != ButtonResult.Yes) return;
+            var confirmed = await _dialogService.ShowWarningConfirmationAsync("Warning",
+                "This will clear your current canvas. Are you sure you want to proceed?");
+            if (!confirmed) return;
         }
 
         List<Stroke> strokes = [];
@@ -760,14 +757,9 @@ public partial class MainViewModel : ViewModelBase
     {
         if (CanvasEvents.Count > 0)
         {
-            var box = MessageBoxManager
-                .GetMessageBoxStandard("Warning",
-                    "This will clear your current canvas. Are you sure you want to proceed?",
-                    ButtonEnum.YesNo,
-                    Icon.Warning);
-
-            var result = await box.ShowAsync();
-            if (result != ButtonResult.Yes) return;
+            var confirmed = await _dialogService.ShowWarningConfirmationAsync("Warning",
+                "This will clear your current canvas. Are you sure you want to proceed?");
+            if (!confirmed) return;
         }
 
         ApplyEvent(new RestoreCanvasEvent(Guid.NewGuid(), []));
