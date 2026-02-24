@@ -2,6 +2,7 @@ using System;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Scribble.Lib.CollaborativeDrawing;
+using Scribble.Services.DialogService;
 using Scribble.Services.FileService;
 using Scribble.ViewModels;
 
@@ -28,5 +29,7 @@ public static class ServiceCollectionExtensions
         collection.AddTransient<MainViewModel>();
 
         collection.AddSingleton<IFileService, AvaloniaFileService>();
+
+        collection.AddSingleton<IDialogService, AvaloniaDialogService>();
     }
 }
