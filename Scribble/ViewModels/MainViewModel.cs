@@ -1,12 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
-using Avalonia.Media;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -14,7 +12,6 @@ using CommunityToolkit.Mvvm.Messaging;
 using Scribble.Messages;
 using Scribble.Services.DialogService;
 using Scribble.Shared.Lib;
-using Scribble.Tools.PointerTools;
 using Scribble.Tools.PointerTools.ArrowTool;
 using Scribble.Utils;
 using SkiaSharp;
@@ -25,26 +22,12 @@ public partial class MainViewModel : ViewModelBase
 {
     public static int CanvasWidth => 10000;
     public static int CanvasHeight => 10000;
-    private bool CanZoomIn => ZoomLevel < MaxZoom;
-    private bool CanZoomOut => ZoomLevel > MinZoom;
+
     private bool CanUndo => _undoStack.Count > 0;
     private bool CanRedo => _redoStack.Count > 0;
 
-    public const double MinZoom = 1.0f;
-    public const double MaxZoom = 3.0f;
-
     public event Action? RequestInvalidateSelection;
-    public event Action<PointerTool?>? ActiveToolChanged;
-    public event Action<double>? CenterZoomRequested;
-
-    [ObservableProperty] private Color _backgroundColor;
     [ObservableProperty] private List<Stroke> _canvasStrokes = [];
-    [ObservableProperty] private PointerTool? _activePointerTool;
-
-    [ObservableProperty] [NotifyPropertyChangedFor(nameof(ScaleFactorText))]
-    private double _zoomLevel = 1.0f;
-
-    public ScaleTransform ScaleTransform { get; }
     private readonly HashSet<Guid> _deletedActions = [];
     public Dictionary<Guid, List<Guid>> SelectionTargets { get; private set; } = [];
     public Queue<Event> CanvasEvents { get; private set; } = [];
@@ -55,21 +38,18 @@ public partial class MainViewModel : ViewModelBase
     private readonly Stack<Guid> _redoStack = [];
     private readonly HashSet<Guid> _mySelections = [];
 
-    public string ScaleFactorText => $"{Math.Floor(ZoomLevel / MinZoom * 100)}%";
-    public ObservableCollection<PointerTool> AvailableTools { get; } = [];
-
     public MultiUserDrawingViewModel MultiUserDrawingViewModel { get; }
     public DocumentViewModel DocumentViewModel { get; }
+    public UiStateViewModel UiStateViewModel { get; }
 
     public MainViewModel(MultiUserDrawingViewModel multiplayer, DocumentViewModel documentViewModel,
+        UiStateViewModel uiStateViewModel,
         IDialogService dialogService)
     {
-        BackgroundColor = Color.Parse("#a2000000");
-        ScaleTransform = new ScaleTransform(1, 1);
-
         _dialogService = dialogService;
         MultiUserDrawingViewModel = multiplayer;
         DocumentViewModel = documentViewModel;
+        UiStateViewModel = uiStateViewModel;
 
         // Reply to requests asking if there are any canvas events
         WeakReferenceMessenger.Default.Register<MainViewModel, HasEventsRequestMessage>(this,
@@ -92,18 +72,16 @@ public partial class MainViewModel : ViewModelBase
         WeakReferenceMessenger.Default.Register<MainViewModel, RequestCanvasDataMessage>(this,
             (mainViewModel, message) =>
             {
-                message.Reply(new CanvasDataPayload(mainViewModel.CanvasStrokes, mainViewModel.BackgroundColor));
+                message.Reply(new CanvasDataPayload(mainViewModel.CanvasStrokes,
+                    mainViewModel.UiStateViewModel.BackgroundColor));
             });
 
         // Load canvas data when the DocumentViewModel reads a file
-        WeakReferenceMessenger.Default.Register<MainViewModel, LoadCanvasDataMessage>(this, (mainViewModel, message) =>
-        {
-            mainViewModel.ApplyEvent(new LoadCanvasEvent(Guid.NewGuid(), message.Strokes));
-            if (message.BackgroundColorHex != null)
+        WeakReferenceMessenger.Default.Register<MainViewModel, LoadCanvasDataMessage>(this,
+            (mainViewModel, message) =>
             {
-                mainViewModel.BackgroundColor = Color.Parse(message.BackgroundColorHex);
-            }
-        });
+                mainViewModel.ApplyEvent(new LoadCanvasEvent(Guid.NewGuid(), message.Strokes));
+            });
 
         // Clear data when the DocumentViewModel triggers a reset
         WeakReferenceMessenger.Default.Register<MainViewModel, ClearCanvasMessage>(this,
@@ -678,11 +656,6 @@ public partial class MainViewModel : ViewModelBase
         return CanvasEvents.Count > 0;
     }
 
-    public void ChangeBackgroundColor(Color color)
-    {
-        BackgroundColor = color;
-    }
-
     [RelayCommand]
     private void OpenUrl(string url)
     {
@@ -720,37 +693,5 @@ public partial class MainViewModel : ViewModelBase
         {
             desktop.Shutdown();
         }
-    }
-
-    [RelayCommand(CanExecute = nameof(CanZoomIn))]
-    private void ZoomIn() => CenterZoomRequested?.Invoke(1.1);
-
-    [RelayCommand(CanExecute = nameof(CanZoomOut))]
-    private void ZoomOut() => CenterZoomRequested?.Invoke(0.9);
-
-    public void ApplyZoom(double newScale)
-    {
-        // Clamp the zoom level between the min and max zoom
-        ZoomLevel = Math.Max(MinZoom, Math.Min(MaxZoom, newScale));
-
-        ScaleTransform.ScaleX = ZoomLevel;
-        ScaleTransform.ScaleY = ZoomLevel;
-
-        // Tell the UI that it should refresh controls that are bound to CanZoomIn and CanZoomOut
-        ZoomInCommand.NotifyCanExecuteChanged();
-        ZoomOutCommand.NotifyCanExecuteChanged();
-    }
-
-    // runs when _activePointerTool changes
-    partial void OnActivePointerToolChanged(PointerTool? oldValue, PointerTool? newValue)
-    {
-        oldValue?.Dispose();
-        ActiveToolChanged?.Invoke(newValue);
-    }
-
-    [RelayCommand]
-    private void SwitchTool(PointerTool tool)
-    {
-        ActivePointerTool = tool;
     }
 }

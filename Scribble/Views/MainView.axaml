@@ -21,7 +21,8 @@
     <!-- Use a RenderTransformOrigin to tell the ScrollViewer to scale from top left -->
     <Panel>
         <ScrollViewer Name="CanvasScrollViewer" HorizontalScrollBarVisibility="Auto">
-            <LayoutTransformControl Name="MainCanvasLayoutTransform" LayoutTransform="{Binding ScaleTransform}">
+            <LayoutTransformControl Name="MainCanvasLayoutTransform"
+                                    LayoutTransform="{Binding UiStateViewModel.ScaleTransform}">
                 <Canvas Name="CanvasContainer"
                         Width="{Binding CanvasWidth}"
                         Height="{Binding CanvasHeight}"
@@ -29,7 +30,7 @@
                         Background="Transparent">
                     <controls:SkiaCanvas Name="MainCanvas"
                                          HorizontalAlignment="Left"
-                                         CanvasBackground="{Binding BackgroundColor}"
+                                         CanvasBackground="{Binding UiStateViewModel.BackgroundColor}"
                                          Width="{Binding CanvasWidth}"
                                          Height="{Binding CanvasHeight}"
                                          PointerPressed="MainCanvas_OnPointerPressed"
@@ -185,8 +186,8 @@
                 Padding="8"
                 BoxShadow="0 4 20 0 #60000000">
                 <ListBox
-                    ItemsSource="{Binding AvailableTools}"
-                    SelectedItem="{Binding ActivePointerTool}"
+                    ItemsSource="{Binding UiStateViewModel.AvailableTools}"
+                    SelectedItem="{Binding UiStateViewModel.ActivePointerTool}"
                     Background="Transparent"
                     BorderThickness="0"
                     Margin="0"
@@ -300,7 +301,8 @@
                         <Button Width="30" Height="30" Padding="0" Click="TransparentCanvasButton_OnClick">
                             <Image Source="avares://Scribble/Assets/transparent.png" />
                         </Button>
-                        <ColorPicker Name="CanvasBackgroundColorView" Width="124" Color="{Binding BackgroundColor}"
+                        <ColorPicker Name="CanvasBackgroundColorView" Width="124"
+                                     Color="{Binding UiStateViewModel.BackgroundColor}"
                                      ColorChanged="CanvasBackgroundColorView_OnColorChanged" />
                     </StackPanel>
                 </StackPanel>
@@ -498,14 +500,15 @@
             <StackPanel Orientation="Horizontal" Spacing="2">
                 <Button ToolTip.Tip="Zoom out - Ctrl + '-'"
                         Name="ZoomOutBtn"
-                        Command="{Binding ZoomOutCommand}"
+                        Command="{Binding UiStateViewModel.ZoomOutCommand}"
                         HotKey="Ctrl+OemMinus">
                     <Image Source="avares://Scribble/Assets/minus.png" Margin="4" Width="15" Height="15" />
                 </Button>
-                <TextBlock Name="ScaleFactorText" Text="{Binding ScaleFactorText}" VerticalAlignment="Center" />
+                <TextBlock Name="ScaleFactorText" Text="{Binding UiStateViewModel.ScaleFactorText}"
+                           VerticalAlignment="Center" />
                 <Button ToolTip.Tip="Zoom in - Ctrl + '+'"
                         Name="ZoomInBtn"
-                        Command="{Binding ZoomInCommand}"
+                        Command="{Binding UiStateViewModel.ZoomInCommand}"
                         HotKey="Ctrl+OemPlus">
                     <Image Source="avares://Scribble/Assets/plus.png" Margin="4" Width="15" Height="15" />
                 </Button>

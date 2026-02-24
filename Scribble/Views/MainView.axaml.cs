@@ -55,8 +55,8 @@ public partial class MainView : UserControl
         if (_viewModel != null)
         {
             _viewModel.RequestInvalidateSelection -= VisualizeSelection;
-            _viewModel.CenterZoomRequested -= OnCenterZoomRequested;
-            _viewModel.ActiveToolChanged -= OnActiveToolChanged;
+            _viewModel.UiStateViewModel.CenterZoomRequested -= OnCenterZoomRequested;
+            _viewModel.UiStateViewModel.ActiveToolChanged -= OnActiveToolChanged;
         }
 
         base.OnDataContextChanged(e);
@@ -65,14 +65,14 @@ public partial class MainView : UserControl
         {
             _viewModel = viewModel;
             _viewModel.RequestInvalidateSelection += VisualizeSelection;
-            _viewModel.CenterZoomRequested += OnCenterZoomRequested;
-            _viewModel.ActiveToolChanged += OnActiveToolChanged;
+            _viewModel.UiStateViewModel.CenterZoomRequested += OnCenterZoomRequested;
+            _viewModel.UiStateViewModel.ActiveToolChanged += OnActiveToolChanged;
 
             // Center the whiteboard
             (double canvasWidth, double canvasHeight) = viewModel.GetCanvasDimensions();
             CanvasScrollViewer.Offset = new Vector(canvasWidth / 2, canvasHeight / 2);
 
-            viewModel.AvailableTools.Clear();
+            viewModel.UiStateViewModel.AvailableTools.Clear();
             var tools = new List<PointerTool>
             {
                 new PencilTool("PencilTool", viewModel),
@@ -87,7 +87,7 @@ public partial class MainView : UserControl
             };
             foreach (var tool in tools)
             {
-                viewModel.AvailableTools.Add(tool);
+                viewModel.UiStateViewModel.AvailableTools.Add(tool);
 
                 // Map the tool's HotKey to trigger the SelectToolCommand
                 if (tool.HotKey != null)
@@ -95,13 +95,13 @@ public partial class MainView : UserControl
                     KeyBindings.Add(new KeyBinding
                     {
                         Gesture = tool.HotKey,
-                        Command = viewModel.SwitchToolCommand,
+                        Command = viewModel.UiStateViewModel.SwitchToolCommand,
                         CommandParameter = tool
                     });
                 }
             }
 
-            viewModel.ActivePointerTool = tools.FirstOrDefault();
+            viewModel.UiStateViewModel.ActivePointerTool = tools.FirstOrDefault();
         }
     }
 
@@ -138,7 +138,7 @@ public partial class MainView : UserControl
             CanvasScrollViewer.Viewport.Height / 2
         );
 
-        double currentZoomLevel = _viewModel.ZoomLevel;
+        double currentZoomLevel = _viewModel.UiStateViewModel.ZoomLevel;
         Vector currentOffset = CanvasScrollViewer.Offset;
 
         Point centerOnCanvas = new Point(
@@ -153,12 +153,12 @@ public partial class MainView : UserControl
     {
         if (_viewModel == null) return;
 
-        double newScale = _viewModel.ZoomLevel * zoomFactor;
+        double newScale = _viewModel.UiStateViewModel.ZoomLevel * zoomFactor;
         // Clamp new scale between min and max zoom
-        newScale = Math.Max(MainViewModel.MinZoom, Math.Min(newScale, MainViewModel.MaxZoom));
-        if (Math.Abs(newScale - _viewModel.ZoomLevel) < 0.0001f) return;
+        newScale = Math.Max(UiStateViewModel.MinZoom, Math.Min(newScale, UiStateViewModel.MaxZoom));
+        if (Math.Abs(newScale - _viewModel.UiStateViewModel.ZoomLevel) < 0.0001f) return;
 
-        _viewModel.ApplyZoom(newScale);
+        _viewModel.UiStateViewModel.ApplyZoom(newScale);
 
         // Needed to prevent weird zooming at the edge of the canvas
         CanvasScrollViewer.UpdateLayout();
@@ -823,7 +823,7 @@ public partial class MainView : UserControl
 
     private void CanvasBackgroundColorView_OnColorChanged(object? sender, ColorChangedEventArgs e)
     {
-        _viewModel?.ChangeBackgroundColor(e.NewColor);
+        _viewModel?.UiStateViewModel.ChangeBackgroundColor(e.NewColor);
     }
 
     private void TransparentCanvasButton_OnClick(object? sender, RoutedEventArgs e)
