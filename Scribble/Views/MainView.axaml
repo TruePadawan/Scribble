@@ -456,12 +456,12 @@
             Background="#2c2c2c"
             Margin="0,0,8,12">
             <StackPanel Orientation="Horizontal" Spacing="2">
-                <Button ToolTip.Tip="Zoom out - Ctrl + '-'" Name="ZoomOutBtn" IsEnabled="False"
-                        Click="ZoomOutBtn_OnClick">
-                    <Image Source="avares://Scribble/Assets/minus-disabled.png" Margin="4" Width="15" Height="15" />
+                <Button ToolTip.Tip="Zoom out - Ctrl + '-'" Name="ZoomOutBtn"
+                        Command="{Binding ZoomOutCommand}">
+                    <Image Source="avares://Scribble/Assets/minus.png" Margin="4" Width="15" Height="15" />
                 </Button>
-                <TextBlock Name="ScaleFactorText" Text="100%" VerticalAlignment="Center" />
-                <Button ToolTip.Tip="Zoom in - Ctrl + '+'" Name="ZoomInBtn" IsEnabled="True" Click="ZoomInBtn_OnClick">
+                <TextBlock Name="ScaleFactorText" Text="{Binding ScaleFactorText}" VerticalAlignment="Center" />
+                <Button ToolTip.Tip="Zoom in - Ctrl + '+'" Name="ZoomInBtn" Command="{Binding ZoomInCommand}">
                     <Image Source="avares://Scribble/Assets/plus.png" Margin="4" Width="15" Height="15" />
                 </Button>
             </StackPanel>

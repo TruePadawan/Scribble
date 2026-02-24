@@ -32,13 +32,10 @@ namespace Scribble.Views;
 public partial class MainView : UserControl
 {
     private Point _prevCoord;
-    private const double MinZoom = 1f;
-    private const double MaxZoom = 3f;
     private PointerTool? _activePointerTool;
     private MainViewModel? _viewModel;
     private readonly Selection _selection;
     private readonly ToolOptionsValues _toolOptionsValues;
-    private Action? _zoomed;
 
     public MainView()
     {
@@ -59,6 +56,7 @@ public partial class MainView : UserControl
         if (_viewModel != null)
         {
             _viewModel.RequestInvalidateSelection -= VisualizeSelection;
+            _viewModel.CenterZoomRequested -= OnCenterZoomRequested;
         }
 
         base.OnDataContextChanged(e);
@@ -67,6 +65,7 @@ public partial class MainView : UserControl
         {
             _viewModel = viewModel;
             _viewModel.RequestInvalidateSelection += VisualizeSelection;
+            _viewModel.CenterZoomRequested += OnCenterZoomRequested;
 
             Toolbar.Children.Clear();
 
@@ -100,13 +99,48 @@ public partial class MainView : UserControl
             Dispatcher.UIThread.Post(() => firstButton.Focus());
         }
 
-        // Update the scale factor text and zoom button's enabled state when zoom happens
-        _zoomed += UpdateScaleFactorText;
-        _zoomed += UpdateZoomButtons;
-
         // Add hotkeys for zoom buttons
         ZoomInBtn.HotKey = new KeyGesture(Key.OemPlus, KeyModifiers.Control);
         ZoomOutBtn.HotKey = new KeyGesture(Key.OemMinus, KeyModifiers.Control);
+    }
+
+    private void OnCenterZoomRequested(double zoomFactor)
+    {
+        if (_viewModel == null) return;
+
+        // Zoom in as if the pointer was in the middle of the viewport
+        Point centerOnViewport = new Point(
+            CanvasScrollViewer.Viewport.Width / 2,
+            CanvasScrollViewer.Viewport.Height / 2
+        );
+
+        double currentZoomLevel = _viewModel.ZoomLevel;
+        Vector currentOffset = CanvasScrollViewer.Offset;
+
+        Point centerOnCanvas = new Point(
+            (currentOffset.X + centerOnViewport.X) / currentZoomLevel,
+            (currentOffset.Y + centerOnViewport.Y) / currentZoomLevel
+        );
+
+        PerformZoom(zoomFactor, centerOnViewport, centerOnCanvas);
+    }
+
+    private void PerformZoom(double zoomFactor, Point pointerViewPortPos, Point pointerCanvasPos)
+    {
+        if (_viewModel == null) return;
+
+        double newScale = _viewModel.ZoomLevel * zoomFactor;
+        // Clamp new scale between min and max zoom
+        newScale = Math.Max(MainViewModel.MinZoom, Math.Min(newScale, MainViewModel.MaxZoom));
+        if (Math.Abs(newScale - _viewModel.ZoomLevel) < 0.0001f) return;
+
+        _viewModel.ApplyZoom(newScale);
+
+        // Needed to prevent weird zooming at the edge of the canvas
+        CanvasScrollViewer.UpdateLayout();
+        // Implement zoom to point
+        var newOffset = (pointerCanvasPos * newScale) - pointerViewPortPos;
+        CanvasScrollViewer.Offset = new Vector(newOffset.X, newOffset.Y);
     }
 
     private void RegisterPointerTool(PointerTool tool)
@@ -608,35 +642,13 @@ public partial class MainView : UserControl
 
         Point mousePosOnViewPort = e.GetPosition(CanvasScrollViewer);
         Point mousePosOnCanvas = e.GetPosition(MainCanvas);
+
         // Multiplicative Zoom
         double zoomFactor = e.Delta.Y > 0 ? 1.1f : 0.9f;
-        Zoom(zoomFactor, mousePosOnViewPort, mousePosOnCanvas);
+        PerformZoom(zoomFactor, mousePosOnViewPort, mousePosOnCanvas);
+
         // Stop the scroll viewer from applying its own scrolling logic
         e.Handled = true;
-    }
-
-    private void Zoom(double zoomFactor, Point pointerViewPortPos, Point pointerCanvasPos)
-    {
-        if (_viewModel == null) throw new Exception("View Model not initialized");
-
-        double currentScale = _viewModel.GetCurrentScale();
-        double newScale = currentScale * zoomFactor;
-
-        // Clamp new zoom between min and max zoom
-        newScale = Math.Max(MinZoom, Math.Min(newScale, MaxZoom));
-        // Do nothing if there was no change in zoom, i.e., I'm at the min or max zoom
-        if (Math.Abs(newScale - currentScale) < 0.0001f)
-        {
-            return;
-        }
-
-        _viewModel.SetCurrentScale(newScale);
-
-        // Implement zoom to point
-        var newOffset = (pointerCanvasPos * newScale) - pointerViewPortPos;
-        CanvasScrollViewer.Offset = new Vector(newOffset.X, newOffset.Y);
-
-        _zoomed?.Invoke();
     }
 
     private void SelectionBorder_OnPointerPressed(object? sender, PointerPressedEventArgs e)
@@ -913,110 +925,5 @@ public partial class MainView : UserControl
         CloseMenu();
         AboutScribbleWindow.IsVisible = true;
         AboutScribbleWindowOverlay.IsVisible = true;
-    }
-
-    private void ZoomOutBtn_OnClick(object? sender, RoutedEventArgs e)
-    {
-        if (_viewModel == null) return;
-
-        // Zoom out as if the pointer was in the middle of the viewport
-        Point centerOnViewport = new Point(
-            CanvasScrollViewer.Viewport.Width / 2,
-            CanvasScrollViewer.Viewport.Height / 2
-        );
-
-        double currentScale = _viewModel.GetCurrentScale();
-        Vector currentOffset = CanvasScrollViewer.Offset;
-
-        Point centerOnCanvas = new Point(
-            (currentOffset.X + centerOnViewport.X) / currentScale,
-            (currentOffset.Y + centerOnViewport.Y) / currentScale
-        );
-
-        Zoom(0.9f, centerOnViewport, centerOnCanvas);
-    }
-
-    private void ZoomInBtn_OnClick(object? sender, RoutedEventArgs e)
-    {
-        if (_viewModel == null) return;
-
-        // Zoom in as if the pointer was in the middle of the viewport
-        Point centerOnViewport = new Point(
-            CanvasScrollViewer.Viewport.Width / 2,
-            CanvasScrollViewer.Viewport.Height / 2
-        );
-
-        double currentScale = _viewModel.GetCurrentScale();
-        Vector currentOffset = CanvasScrollViewer.Offset;
-
-        Point centerOnCanvas = new Point(
-            (currentOffset.X + centerOnViewport.X) / currentScale,
-            (currentOffset.Y + centerOnViewport.Y) / currentScale
-        );
-
-        Zoom(1.1f, centerOnViewport, centerOnCanvas);
-    }
-
-    private void UpdateScaleFactorText()
-    {
-        if (_viewModel == null) return;
-
-        var scaleFactor = Math.Floor(_viewModel.GetCurrentScale() / MinZoom * 100);
-        ScaleFactorText.Text = $"{scaleFactor}%";
-    }
-
-    private void UpdateZoomButtons()
-    {
-        if (_viewModel == null) return;
-
-        var currentScale = _viewModel.GetCurrentScale();
-        bool atMinZoom = Math.Abs(currentScale - MinZoom) < 0.0001f;
-        bool atMaxZoom = Math.Abs(currentScale - MaxZoom) < 0.0001f;
-
-        if (atMinZoom)
-        {
-            ZoomOutBtn.IsEnabled = false;
-            ZoomOutBtn.Content = new Image
-            {
-                Source = new Bitmap(AssetLoader.Open(new Uri("avares://Scribble/Assets/minus-disabled.png"))),
-                Width = 15,
-                Height = 15,
-                Margin = new Thickness(4)
-            };
-        }
-        else
-        {
-            ZoomOutBtn.IsEnabled = true;
-            ZoomOutBtn.Content = new Image
-            {
-                Source = new Bitmap(AssetLoader.Open(new Uri("avares://Scribble/Assets/minus.png"))),
-                Width = 15,
-                Height = 15,
-                Margin = new Thickness(4)
-            };
-        }
-
-        if (atMaxZoom)
-        {
-            ZoomInBtn.IsEnabled = false;
-            ZoomInBtn.Content = new Image
-            {
-                Source = new Bitmap(AssetLoader.Open(new Uri("avares://Scribble/Assets/plus-disabled.png"))),
-                Width = 15,
-                Height = 15,
-                Margin = new Thickness(4)
-            };
-        }
-        else
-        {
-            ZoomInBtn.IsEnabled = true;
-            ZoomInBtn.Content = new Image
-            {
-                Source = new Bitmap(AssetLoader.Open(new Uri("avares://Scribble/Assets/plus.png"))),
-                Width = 15,
-                Height = 15,
-                Margin = new Thickness(4)
-            };
-        }
     }
 }

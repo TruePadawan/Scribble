@@ -28,6 +28,8 @@ public partial class MainViewModel : ViewModelBase
 {
     public static int CanvasWidth => 10000;
     public static int CanvasHeight => 10000;
+    public const double MinZoom = 1.0f;
+    public const double MaxZoom = 3.0f;
 
     public event Action? RequestInvalidateSelection;
 
@@ -74,6 +76,16 @@ public partial class MainViewModel : ViewModelBase
 
     public IBrush LiveDrawingButtonBackground =>
         IsLive ? new SolidColorBrush(Colors.Green) : new SolidColorBrush(Colors.Transparent);
+
+    [ObservableProperty] [NotifyPropertyChangedFor(nameof(ScaleFactorText))]
+    private double _zoomLevel = 1.0f;
+
+    public string ScaleFactorText => $"{Math.Floor(ZoomLevel / MinZoom * 100)}%";
+
+    private bool CanZoomIn => ZoomLevel < MaxZoom;
+    private bool CanZoomOut => ZoomLevel > MinZoom;
+
+    public event Action<double>? CenterZoomRequested;
 
     public MainViewModel(CollaborativeDrawingService drawingService, IFileService fileService,
         IDialogService dialogService)
@@ -142,14 +154,6 @@ public partial class MainViewModel : ViewModelBase
     }
 
     public Vector GetCanvasDimensions() => new Vector(CanvasWidth, CanvasHeight);
-
-    public double GetCurrentScale() => ScaleTransform.ScaleX;
-
-    public void SetCurrentScale(double newScale)
-    {
-        ScaleTransform.ScaleX = newScale;
-        ScaleTransform.ScaleY = newScale;
-    }
 
     private void TrackAction(Guid actionId)
     {
@@ -886,5 +890,24 @@ public partial class MainViewModel : ViewModelBase
         {
             desktop.Shutdown();
         }
+    }
+
+    [RelayCommand(CanExecute = nameof(CanZoomIn))]
+    private void ZoomIn() => CenterZoomRequested?.Invoke(1.1);
+
+    [RelayCommand(CanExecute = nameof(CanZoomOut))]
+    private void ZoomOut() => CenterZoomRequested?.Invoke(0.9);
+
+    public void ApplyZoom(double newScale)
+    {
+        // Clamp the zoom level between the min and max zoom
+        ZoomLevel = Math.Max(MinZoom, Math.Min(MaxZoom, newScale));
+
+        ScaleTransform.ScaleX = ZoomLevel;
+        ScaleTransform.ScaleY = ZoomLevel;
+
+        // Tell the UI that it should refresh controls that are bound to CanZoomIn and CanZoomOut
+        ZoomInCommand.NotifyCanExecuteChanged();
+        ZoomOutCommand.NotifyCanExecuteChanged();
     }
 }
