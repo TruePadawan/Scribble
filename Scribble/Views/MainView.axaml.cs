@@ -631,8 +631,7 @@ public partial class MainView : UserControl
         }
 
         _viewModel.SetCurrentScale(newScale);
-        // Force the scroll viewer to update its layout before calculating a new offset
-        CanvasScrollViewer.UpdateLayout();
+
         // Implement zoom to point
         var newOffset = (pointerCanvasPos * newScale) - pointerViewPortPos;
         CanvasScrollViewer.Offset = new Vector(newOffset.X, newOffset.Y);
