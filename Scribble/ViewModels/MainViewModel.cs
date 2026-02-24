@@ -7,6 +7,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Threading.Tasks;
 using Avalonia;
+using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Media;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
@@ -821,5 +822,21 @@ public partial class MainViewModel : ViewModelBase
     public void ClearSelection()
     {
         ApplyEvent(new ClearSelectionEvent(Guid.NewGuid()));
+    }
+
+    [RelayCommand]
+    private async Task ExitAsync()
+    {
+        if (CanvasEvents.Count > 0)
+        {
+            var confirmed = await _dialogService.ShowWarningConfirmationAsync("Warning",
+                "All unsaved work will be lost. Are you sure you want to proceed?");
+            if (!confirmed) return;
+        }
+
+        if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+        {
+            desktop.Shutdown();
+        }
     }
 }

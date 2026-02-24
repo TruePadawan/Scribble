@@ -152,7 +152,8 @@
                                 <Label FontSize="12">About Scribble</Label>
                             </StackPanel>
                         </Button>
-                        <Button Name="ExitOption" Margin="0" Click="ExitOption_OnClick" HorizontalAlignment="Stretch"
+                        <Button Name="ExitOption" Margin="0" Command="{Binding ExitCommand}"
+                                HorizontalAlignment="Stretch"
                                 HotKey="Ctrl+X" ToolTip.Tip="Ctrl+X">
                             <StackPanel Orientation="Horizontal" Spacing="4">
                                 <Image Source="avares://Scribble/Assets/exit.png" Width="18" Height="18" />
