@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Interactivity;
@@ -11,9 +10,6 @@ using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
 using Avalonia.Threading;
-using Microsoft.AspNetCore.SignalR.Client;
-using MsBox.Avalonia;
-using MsBox.Avalonia.Enums;
 using Scribble.Behaviours;
 using Scribble.Lib;
 using Scribble.Shared.Lib;
@@ -869,51 +865,6 @@ public partial class MainView : UserControl
         LiveDrawingWindowOverlay.IsVisible = true;
     }
 
-    private async void EnterRoomButton_OnClick(object? sender, RoutedEventArgs e)
-    {
-        try
-        {
-            EnterRoomButton.IsEnabled = false;
-            if (_viewModel == null || RoomIdTextBox.Text == null) return;
-            if (_viewModel.GetLiveDrawingServiceConnectionState() == HubConnectionState.Disconnected)
-            {
-                if (_viewModel.HasEvents())
-                {
-                    var box = MessageBoxManager
-                        .GetMessageBoxStandard("Warning",
-                            "This might clear your current canvas. Are you sure you want to proceed?",
-                            ButtonEnum.YesNo,
-                            Icon.Warning);
-
-                    var result = await box.ShowAsync();
-                    if (result != ButtonResult.Yes)
-                    {
-                        EnterRoomButton.IsEnabled = true;
-                        return;
-                    }
-                }
-
-                await _viewModel.JoinRoom(RoomIdTextBox.Text, NameTextBox.Text?.Trim() ?? "User");
-                EnterRoomButton.Content = "Leave Room";
-                LiveDrawingButton.Background = new SolidColorBrush(Colors.Green);
-            }
-            else
-            {
-                await _viewModel.LeaveRoom();
-                EnterRoomButton.Content = "Enter Room";
-                LiveDrawingButton.Background = new SolidColorBrush(Colors.Transparent);
-            }
-        }
-        catch (Exception exception)
-        {
-            Console.WriteLine(exception);
-        }
-        finally
-        {
-            EnterRoomButton.IsEnabled = true;
-        }
-    }
-
     private async void RoomIdClipboardButton_OnClick(object? sender, RoutedEventArgs e)
     {
         try
@@ -925,15 +876,6 @@ public partial class MainView : UserControl
         catch (Exception exception)
         {
             Console.WriteLine($"Failed to copy to clipboard - {exception.Message}");
-        }
-    }
-
-    private void RoomIdGenerateButton_OnClick(object? sender, RoutedEventArgs e)
-    {
-        if (_viewModel?.GetLiveDrawingServiceConnectionState() == HubConnectionState.Disconnected)
-        {
-            string roomId = Guid.NewGuid().ToString("N");
-            RoomIdTextBox.Text = roomId;
         }
     }
 

@@ -85,7 +85,6 @@ public class CollaborativeDrawingService(string serverUrl)
     {
         if (_connection.State == HubConnectionState.Connected)
         {
-            // var serializedEvent = JsonSerializer.Serialize(evt);
             await _connection.InvokeAsync("SendEvent", roomId, evt);
         }
     }

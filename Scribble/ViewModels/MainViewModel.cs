@@ -46,13 +46,34 @@ public partial class MainViewModel : ViewModelBase
     private readonly Stack<Guid> _redoStack = [];
     private readonly HashSet<Guid> _mySelections = [];
 
-    [ObservableProperty] [NotifyPropertyChangedFor(nameof(CanResetCanvas))] [NotifyPropertyChangedFor(nameof(IsLive))]
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanResetCanvas))]
+    [NotifyPropertyChangedFor(nameof(IsLive))]
+    [NotifyPropertyChangedFor(nameof(RoomButtonText))]
+    [NotifyPropertyChangedFor(nameof(LiveDrawingButtonBackground))]
+    [NotifyCanExecuteChangedFor(nameof(GenerateRoomIdCommand))]
     private CollaborativeDrawingRoom? _room;
 
     public bool CanResetCanvas => Room == null || Room.IsHost;
     public bool IsLive => Room != null;
+    private bool CanGenerateRoomId => Room == null;
     private bool CanUndo => _undoStack.Count > 0;
     private bool CanRedo => _redoStack.Count > 0;
+
+    private bool CanToggleRoomConnection =>
+        !string.IsNullOrWhiteSpace(RoomId) && !string.IsNullOrWhiteSpace(ClientDisplayName);
+
+    // Tell the command to re-evaluate when the room id or client display name changes
+    [ObservableProperty] [NotifyCanExecuteChangedFor(nameof(ToggleRoomConnectionCommand))]
+    private string _roomId = string.Empty;
+
+    [ObservableProperty] [NotifyCanExecuteChangedFor(nameof(ToggleRoomConnectionCommand))]
+    private string _clientDisplayName = string.Empty;
+
+    public string RoomButtonText => IsLive ? "Leave Room" : "Enter Room";
+
+    public IBrush LiveDrawingButtonBackground =>
+        IsLive ? new SolidColorBrush(Colors.Green) : new SolidColorBrush(Colors.Transparent);
 
     public MainViewModel(CollaborativeDrawingService drawingService, IFileService fileService,
         IDialogService dialogService)
@@ -674,7 +695,7 @@ public partial class MainViewModel : ViewModelBase
         }
     }
 
-    public bool HasEvents()
+    private bool HasEvents()
     {
         return CanvasEvents.Count > 0;
     }
@@ -771,7 +792,7 @@ public partial class MainViewModel : ViewModelBase
         BackgroundColor = color;
     }
 
-    public async Task JoinRoom(string roomId, string displayName)
+    private async Task JoinRoomAsync(string roomId, string displayName)
     {
         try
         {
@@ -790,16 +811,14 @@ public partial class MainViewModel : ViewModelBase
         }
     }
 
-    public async Task LeaveRoom()
+    private async Task LeaveRoomAsync()
     {
-        if (_collaborativeDrawingService.ConnectionState != HubConnectionState.Disconnected && Room != null)
+        if (Room != null)
         {
             await _collaborativeDrawingService.LeaveRoomAsync(Room.RoomId);
             Room = null;
         }
     }
-
-    public HubConnectionState GetLiveDrawingServiceConnectionState() => _collaborativeDrawingService.ConnectionState;
 
     [RelayCommand]
     private void OpenUrl(string url)
@@ -824,10 +843,39 @@ public partial class MainViewModel : ViewModelBase
         ApplyEvent(new ClearSelectionEvent(Guid.NewGuid()));
     }
 
+    [RelayCommand(CanExecute = nameof(CanToggleRoomConnection))]
+    private async Task ToggleRoomConnectionAsync()
+    {
+        if (_collaborativeDrawingService.ConnectionState == HubConnectionState.Disconnected)
+        {
+            if (HasEvents())
+            {
+                var confirmed = await _dialogService.ShowWarningConfirmationAsync("Warning",
+                    "This might clear your current canvas. Are you sure you want to proceed?");
+                if (!confirmed) return;
+            }
+
+            await JoinRoomAsync(RoomId, ClientDisplayName.Trim());
+        }
+        else
+        {
+            await LeaveRoomAsync();
+        }
+    }
+
+    [RelayCommand(CanExecute = nameof(CanGenerateRoomId))]
+    private void GenerateRoomId()
+    {
+        if (_collaborativeDrawingService.ConnectionState == HubConnectionState.Disconnected)
+        {
+            RoomId = Guid.NewGuid().ToString("N");
+        }
+    }
+
     [RelayCommand]
     private async Task ExitAsync()
     {
-        if (CanvasEvents.Count > 0)
+        if (HasEvents())
         {
             var confirmed = await _dialogService.ShowWarningConfirmationAsync("Warning",
                 "All unsaved work will be lost. Are you sure you want to proceed?");
