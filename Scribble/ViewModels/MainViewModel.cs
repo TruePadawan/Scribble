@@ -98,7 +98,7 @@ public partial class MainViewModel : ViewModelBase
         // Load canvas data when the DocumentViewModel reads a file
         WeakReferenceMessenger.Default.Register<MainViewModel, LoadCanvasDataMessage>(this, (mainViewModel, message) =>
         {
-            mainViewModel.ApplyEvent(new RestoreCanvasEvent(Guid.NewGuid(), message.Strokes));
+            mainViewModel.ApplyEvent(new LoadCanvasEvent(Guid.NewGuid(), message.Strokes));
             if (message.BackgroundColorHex != null)
             {
                 mainViewModel.BackgroundColor = Color.Parse(message.BackgroundColorHex);
@@ -107,7 +107,7 @@ public partial class MainViewModel : ViewModelBase
 
         // Clear data when the DocumentViewModel triggers a reset
         WeakReferenceMessenger.Default.Register<MainViewModel, ClearCanvasMessage>(this,
-            (mainViewModel, m) => { mainViewModel.ApplyEvent(new RestoreCanvasEvent(Guid.NewGuid(), [])); });
+            (mainViewModel, m) => { mainViewModel.ApplyEvent(new LoadCanvasEvent(Guid.NewGuid(), [])); });
     }
 
     // Event handler for when another client in the room draws something
@@ -502,7 +502,7 @@ public partial class MainViewModel : ViewModelBase
                     }
 
                     break;
-                case RestoreCanvasEvent ev:
+                case LoadCanvasEvent ev:
                     drawStrokes.Clear();
                     foreach (Stroke stroke in ev.Strokes)
                     {
