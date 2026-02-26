@@ -23,9 +23,11 @@ public static class ServiceCollectionExtensions
         collection.AddSingleton<IConfiguration>(config);
 
         var serverUrl = config["ServerUrl"] ?? throw new Exception("ServerUrl is missing");
-        // Register CollaborativeDrawingService as a singleton
         collection.AddSingleton(new CollaborativeDrawingService(serverUrl));
 
+        collection.AddTransient<UiStateViewModel>();
+        collection.AddTransient<MultiUserDrawingViewModel>();
+        collection.AddTransient<DocumentViewModel>();
         collection.AddTransient<MainViewModel>();
 
         collection.AddSingleton<IFileService, AvaloniaFileService>();

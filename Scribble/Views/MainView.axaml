@@ -4,6 +4,9 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="clr-namespace:Scribble.ViewModels"
              xmlns:controls="using:Scribble.Controls"
+             xmlns:toolOpts="using:Scribble.ViewModels.ToolOptions"
+             xmlns:behaviours="using:Scribble.Behaviours"
+             xmlns:shared="using:Scribble.Shared.Lib"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:Class="Scribble.Views.MainView"
              x:DataType="vm:MainViewModel"
@@ -21,7 +24,8 @@
     <!-- Use a RenderTransformOrigin to tell the ScrollViewer to scale from top left -->
     <Panel>
         <ScrollViewer Name="CanvasScrollViewer" HorizontalScrollBarVisibility="Auto">
-            <LayoutTransformControl Name="MainCanvasLayoutTransform" LayoutTransform="{Binding ScaleTransform}">
+            <LayoutTransformControl Name="MainCanvasLayoutTransform"
+                                    LayoutTransform="{Binding UiStateViewModel.ScaleTransform}">
                 <Canvas Name="CanvasContainer"
                         Width="{Binding CanvasWidth}"
                         Height="{Binding CanvasHeight}"
@@ -29,7 +33,7 @@
                         Background="Transparent">
                     <controls:SkiaCanvas Name="MainCanvas"
                                          HorizontalAlignment="Left"
-                                         CanvasBackground="{Binding BackgroundColor}"
+                                         CanvasBackground="{Binding UiStateViewModel.BackgroundColor}"
                                          Width="{Binding CanvasWidth}"
                                          Height="{Binding CanvasHeight}"
                                          PointerPressed="MainCanvas_OnPointerPressed"
@@ -124,21 +128,25 @@
                         IsVisible="False">
                     <StackPanel Spacing="4">
                         <Button Name="OpenFileMenuOption" HorizontalAlignment="Stretch"
-                                Command="{Binding OpenFileActionCommand}" HotKey="Ctrl+O" ToolTip.Tip="Ctrl+O">
+                                Command="{Binding DocumentViewModel.OpenFileActionCommand}"
+                                HotKey="Ctrl+O"
+                                ToolTip.Tip="Ctrl+O">
                             <StackPanel Orientation="Horizontal" Spacing="4">
                                 <Image Source="avares://Scribble/Assets/open.png" Width="18" Height="18" />
                                 <Label FontSize="12">Open...</Label>
                             </StackPanel>
                         </Button>
-                        <Button Name="SaveToFileMenuOption" Margin="0" Command="{Binding SaveToFileActionCommand}"
+                        <Button Name="SaveToFileMenuOption" Margin="0"
+                                Command="{Binding DocumentViewModel.SaveToFileActionCommand}"
                                 HorizontalAlignment="Stretch" HotKey="Ctrl+S" ToolTip.Tip="Ctrl+S">
                             <StackPanel Orientation="Horizontal" Spacing="4">
                                 <Image Source="avares://Scribble/Assets/save.png" Width="18" Height="18" />
                                 <Label FontSize="12">Save to file</Label>
                             </StackPanel>
                         </Button>
-                        <Button Name="ResetCanvasMenuOption" Margin="0" Click="ResetCanvasMenuOption_OnClick"
-                                IsVisible="{Binding CanResetCanvas}"
+                        <Button Name="ResetCanvasMenuOption" Margin="0"
+                                Command="{Binding DocumentViewModel.ResetCanvasCommand}"
+                                IsVisible="{Binding MultiUserDrawingViewModel.CanResetCanvas}"
                                 HorizontalAlignment="Stretch" HotKey="Ctrl+R" ToolTip.Tip="Ctrl+R">
                             <StackPanel Orientation="Horizontal" Spacing="4">
                                 <Image Source="avares://Scribble/Assets/bin.png" Width="18" Height="18" />
@@ -181,8 +189,8 @@
                 Padding="8"
                 BoxShadow="0 4 20 0 #60000000">
                 <ListBox
-                    ItemsSource="{Binding AvailableTools}"
-                    SelectedItem="{Binding ActivePointerTool}"
+                    ItemsSource="{Binding UiStateViewModel.AvailableTools}"
+                    SelectedItem="{Binding UiStateViewModel.ActivePointerTool}"
                     Background="Transparent"
                     BorderThickness="0"
                     Margin="0"
@@ -237,18 +245,18 @@
                 <Panel>
                     <Button Name="LiveDrawingButton"
                             Click="LiveDrawingButton_OnClick"
-                            Background="{Binding LiveDrawingButtonBackground}"
+                            Background="{Binding MultiUserDrawingViewModel.LiveDrawingButtonBackground}"
                             ToolTip.Tip="Collaborative Drawing">
                         <Image Margin="4" Source="avares://Scribble/Assets/group.png" />
                     </Button>
                     <Border
-                        IsVisible="{Binding IsLive}"
+                        IsVisible="{Binding MultiUserDrawingViewModel.IsLive}"
                         VerticalAlignment="Top"
                         HorizontalAlignment="Right"
                         Padding="4"
                         CornerRadius="32"
                         Background="Black">
-                        <TextBlock Text="{Binding Room.Clients.Count}"
+                        <TextBlock Text="{Binding MultiUserDrawingViewModel.Room.Clients.Count}"
                                    Foreground="White"
                                    FontSize="14" />
                     </Border>
@@ -296,7 +304,8 @@
                         <Button Width="30" Height="30" Padding="0" Click="TransparentCanvasButton_OnClick">
                             <Image Source="avares://Scribble/Assets/transparent.png" />
                         </Button>
-                        <ColorPicker Name="CanvasBackgroundColorView" Width="124" Color="{Binding BackgroundColor}"
+                        <ColorPicker Name="CanvasBackgroundColorView" Width="124"
+                                     Color="{Binding UiStateViewModel.BackgroundColor}"
                                      ColorChanged="CanvasBackgroundColorView_OnColorChanged" />
                     </StackPanel>
                 </StackPanel>
@@ -307,8 +316,7 @@
                     CornerRadius="16"
                     Padding="16"
                     BoxShadow="0 4 20 0 #60000000"
-                    IsVisible="False"
-                    Opacity="0">
+                    IsVisible="{Binding UiStateViewModel.ToolOptionsVisible}">
                 <Border.Transitions>
                     <Transitions>
                         <DoubleTransition Property="Opacity" Duration="0:0:0.3" Easing="CubicEaseOut" />
@@ -332,10 +340,121 @@
                 </Border.Styles>
 
                 <!-- This holds the options for tools -->
-                <StackPanel Name="ToolOptionsPanel"
-                            Spacing="12">
+                <ItemsControl ItemsSource="{Binding UiStateViewModel.ActiveToolOptions}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel Spacing="12" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.DataTemplates>
 
-                </StackPanel>
+                        <!-- Stroke Thickness -->
+                        <DataTemplate DataType="toolOpts:StrokeThicknessOptionViewModel">
+                            <StackPanel Margin="8" Spacing="2">
+                                <Label Content="{Binding Label}" />
+                                <Slider TickFrequency="1"
+                                        IsSnapToTickEnabled="True"
+                                        Minimum="1"
+                                        Maximum="10"
+                                        Padding="8,0"
+                                        Value="{Binding Thickness}" />
+                            </StackPanel>
+                        </DataTemplate>
+
+                        <!-- Stroke Color -->
+                        <DataTemplate DataType="toolOpts:StrokeColorOptionViewModel">
+                            <StackPanel Margin="8" Spacing="2">
+                                <Label Content="{Binding Label}" />
+                                <ColorPicker IsColorSpectrumSliderVisible="False"
+                                             Width="164"
+                                             Color="{Binding Color}" />
+                            </StackPanel>
+                        </DataTemplate>
+
+                        <!-- Stroke Style -->
+                        <DataTemplate DataType="toolOpts:StrokeStyleOptionViewModel">
+                            <StackPanel Margin="8" Spacing="2">
+                                <Label Content="{Binding Label}" />
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <ToggleButton Width="36" Height="36"
+                                                  behaviours:ToggleButtonGroup.GroupName="LineStyle"
+                                                  IsChecked="{Binding StrokeStyle,
+                                                      Converter={StaticResource EnumBoolConverter},
+                                                      ConverterParameter={x:Static shared:StrokeStyle.Solid}}">
+                                        <Image Source="avares://Scribble/Assets/line.png" Width="20" />
+                                    </ToggleButton>
+                                    <ToggleButton Width="36" Height="36"
+                                                  behaviours:ToggleButtonGroup.GroupName="LineStyle"
+                                                  IsChecked="{Binding StrokeStyle,
+                                                      Converter={StaticResource EnumBoolConverter},
+                                                      ConverterParameter={x:Static shared:StrokeStyle.Dash}}">
+                                        <Image Source="avares://Scribble/Assets/dashed_line.png" Width="20" />
+                                    </ToggleButton>
+                                    <ToggleButton Width="36" Height="36"
+                                                  behaviours:ToggleButtonGroup.GroupName="LineStyle"
+                                                  IsChecked="{Binding StrokeStyle,
+                                                      Converter={StaticResource EnumBoolConverter},
+                                                      ConverterParameter={x:Static shared:StrokeStyle.Dotted}}">
+                                        <Image Source="avares://Scribble/Assets/dotted_line.png" Width="20" />
+                                    </ToggleButton>
+                                </StackPanel>
+                            </StackPanel>
+                        </DataTemplate>
+
+                        <!-- Fill Color -->
+                        <DataTemplate DataType="toolOpts:FillColorOptionViewModel">
+                            <StackPanel Margin="8" Spacing="2">
+                                <Label Content="{Binding Label}" />
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <Button Width="30" Height="30" Padding="0"
+                                            Command="{Binding SetTransparentCommand}">
+                                        <Image Source="avares://Scribble/Assets/transparent.png" />
+                                    </Button>
+                                    <ColorPicker IsColorSpectrumSliderVisible="False"
+                                                 Width="124"
+                                                 Color="{Binding FillColor}" />
+                                </StackPanel>
+                            </StackPanel>
+                        </DataTemplate>
+
+                        <!-- Edge Type -->
+                        <DataTemplate DataType="toolOpts:EdgeTypeOptionViewModel">
+                            <StackPanel Margin="8" Spacing="2">
+                                <Label Content="{Binding Label}" />
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <ToggleButton Width="36" Height="36"
+                                                  behaviours:ToggleButtonGroup.GroupName="EdgeStyle"
+                                                  IsChecked="{Binding EdgeType,
+                                                      Converter={StaticResource EnumBoolConverter},
+                                                      ConverterParameter={x:Static shared:EdgeType.Sharp}}">
+                                        <Image Source="avares://Scribble/Assets/sharp_edge.png" Width="20" />
+                                    </ToggleButton>
+                                    <ToggleButton Width="36" Height="36"
+                                                  behaviours:ToggleButtonGroup.GroupName="EdgeStyle"
+                                                  IsChecked="{Binding EdgeType,
+                                                      Converter={StaticResource EnumBoolConverter},
+                                                      ConverterParameter={x:Static shared:EdgeType.Rounded}}">
+                                        <Image Source="avares://Scribble/Assets/rounded_edge.png" Width="20" />
+                                    </ToggleButton>
+                                </StackPanel>
+                            </StackPanel>
+                        </DataTemplate>
+
+                        <!-- Font Size -->
+                        <DataTemplate DataType="toolOpts:FontSizeOptionViewModel">
+                            <StackPanel Margin="8" Spacing="2">
+                                <Label Content="{Binding Label}" />
+                                <Slider TickFrequency="1"
+                                        IsSnapToTickEnabled="True"
+                                        Minimum="10"
+                                        Maximum="40"
+                                        Padding="8,0"
+                                        Value="{Binding FontSize}" />
+                            </StackPanel>
+                        </DataTemplate>
+
+                    </ItemsControl.DataTemplates>
+                </ItemsControl>
             </Border>
 
             <StackPanel.Styles>
@@ -375,7 +494,7 @@
                     <StackPanel Orientation="Vertical" Spacing="6">
                         <Label Target="NameTextBox" Padding="0">Display name</Label>
                         <TextBox Name="NameTextBox" Watermark="Archer" VerticalContentAlignment="Center"
-                                 Height="40" Text="{Binding ClientDisplayName}" />
+                                 Height="40" Text="{Binding MultiUserDrawingViewModel.ClientDisplayName}" />
                     </StackPanel>
 
                     <Grid HorizontalAlignment="Stretch" ColumnDefinitions="40,*,40" RowDefinitions="Auto,Auto"
@@ -383,7 +502,7 @@
                         <Label Grid.Row="0" Grid.ColumnSpan="3" Target="RoomIdTextBox" Padding="0">Room ID</Label>
                         <Button Grid.Column="0" Grid.Row="1"
                                 Height="40"
-                                Command="{Binding GenerateRoomIdCommand}">
+                                Command="{Binding MultiUserDrawingViewModel.GenerateRoomIdCommand}">
                             <Image Source="avares://Scribble/Assets/random.png" />
                         </Button>
                         <TextBox Grid.Column="1" Grid.Row="1"
@@ -391,7 +510,7 @@
                                  Watermark="Room ID"
                                  KeyDown="RoomIdTextBox_OnKeyDown"
                                  TextChanged="RoomIdTextBox_OnTextChanged"
-                                 Text="{Binding RoomId}"
+                                 Text="{Binding MultiUserDrawingViewModel.RoomId}"
                                  VerticalContentAlignment="Center" />
                         <Button Name="RoomIdClipboardButton" Grid.Column="2" Grid.Row="1" Height="40"
                                 Click="RoomIdClipboardButton_OnClick">
@@ -401,8 +520,8 @@
 
                     <Button Name="EnterRoomButton" HorizontalAlignment="Stretch" Foreground="WhiteSmoke" Padding="8"
                             HorizontalContentAlignment="Center"
-                            Content="{Binding RoomButtonText}"
-                            Command="{Binding ToggleRoomConnectionCommand}" />
+                            Content="{Binding MultiUserDrawingViewModel.RoomButtonText}"
+                            Command="{Binding MultiUserDrawingViewModel.ToggleRoomConnectionCommand}" />
                 </StackPanel>
             </Border>
         </Panel>
@@ -494,14 +613,15 @@
             <StackPanel Orientation="Horizontal" Spacing="2">
                 <Button ToolTip.Tip="Zoom out - Ctrl + '-'"
                         Name="ZoomOutBtn"
-                        Command="{Binding ZoomOutCommand}"
+                        Command="{Binding UiStateViewModel.ZoomOutCommand}"
                         HotKey="Ctrl+OemMinus">
                     <Image Source="avares://Scribble/Assets/minus.png" Margin="4" Width="15" Height="15" />
                 </Button>
-                <TextBlock Name="ScaleFactorText" Text="{Binding ScaleFactorText}" VerticalAlignment="Center" />
+                <TextBlock Name="ScaleFactorText" Text="{Binding UiStateViewModel.ScaleFactorText}"
+                           VerticalAlignment="Center" />
                 <Button ToolTip.Tip="Zoom in - Ctrl + '+'"
                         Name="ZoomInBtn"
-                        Command="{Binding ZoomInCommand}"
+                        Command="{Binding UiStateViewModel.ZoomInCommand}"
                         HotKey="Ctrl+OemPlus">
                     <Image Source="avares://Scribble/Assets/plus.png" Margin="4" Width="15" Height="15" />
                 </Button>

@@ -1,25 +1,17 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.Diagnostics;
-using System.IO;
 using System.Linq;
-using System.Text.Json;
-using System.Text.Json.Nodes;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
-using Avalonia.Media;
-using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using Microsoft.AspNetCore.SignalR.Client;
-using Scribble.Lib.CollaborativeDrawing;
+using CommunityToolkit.Mvvm.Messaging;
+using Scribble.Messages;
 using Scribble.Services.DialogService;
-using Scribble.Services.FileService;
 using Scribble.Shared.Lib;
-using Scribble.Tools.PointerTools;
 using Scribble.Tools.PointerTools.ArrowTool;
 using Scribble.Utils;
 using SkiaSharp;
@@ -30,124 +22,76 @@ public partial class MainViewModel : ViewModelBase
 {
     public static int CanvasWidth => 10000;
     public static int CanvasHeight => 10000;
-    public const double MinZoom = 1.0f;
-    public const double MaxZoom = 3.0f;
+
+    private bool CanUndo => _undoStack.Count > 0;
+    private bool CanRedo => _redoStack.Count > 0;
 
     public event Action? RequestInvalidateSelection;
-
-    [ObservableProperty] private Color _backgroundColor;
-    public ScaleTransform ScaleTransform { get; }
     [ObservableProperty] private List<Stroke> _canvasStrokes = [];
     private readonly HashSet<Guid> _deletedActions = [];
     public Dictionary<Guid, List<Guid>> SelectionTargets { get; private set; } = [];
     public Queue<Event> CanvasEvents { get; private set; } = [];
 
-    private readonly CollaborativeDrawingService _collaborativeDrawingService;
-    private readonly IFileService _fileService;
     private readonly IDialogService _dialogService;
 
     private readonly Stack<Guid> _undoStack = [];
     private readonly Stack<Guid> _redoStack = [];
     private readonly HashSet<Guid> _mySelections = [];
 
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(CanResetCanvas))]
-    [NotifyPropertyChangedFor(nameof(IsLive))]
-    [NotifyPropertyChangedFor(nameof(RoomButtonText))]
-    [NotifyPropertyChangedFor(nameof(LiveDrawingButtonBackground))]
-    [NotifyCanExecuteChangedFor(nameof(GenerateRoomIdCommand))]
-    private CollaborativeDrawingRoom? _room;
+    public MultiUserDrawingViewModel MultiUserDrawingViewModel { get; }
+    public DocumentViewModel DocumentViewModel { get; }
+    public UiStateViewModel UiStateViewModel { get; }
 
-    public bool CanResetCanvas => Room == null || Room.IsHost;
-    public bool IsLive => Room != null;
-    private bool CanGenerateRoomId => Room == null;
-    private bool CanUndo => _undoStack.Count > 0;
-    private bool CanRedo => _redoStack.Count > 0;
-
-    private bool CanToggleRoomConnection =>
-        !string.IsNullOrWhiteSpace(RoomId) && !string.IsNullOrWhiteSpace(ClientDisplayName);
-
-    // Tell the command to re-evaluate when the room id or client display name changes
-    [ObservableProperty] [NotifyCanExecuteChangedFor(nameof(ToggleRoomConnectionCommand))]
-    private string _roomId = string.Empty;
-
-    [ObservableProperty] [NotifyCanExecuteChangedFor(nameof(ToggleRoomConnectionCommand))]
-    private string _clientDisplayName = string.Empty;
-
-    public string RoomButtonText => IsLive ? "Leave Room" : "Enter Room";
-
-    public IBrush LiveDrawingButtonBackground =>
-        IsLive ? new SolidColorBrush(Colors.Green) : new SolidColorBrush(Colors.Transparent);
-
-    [ObservableProperty] [NotifyPropertyChangedFor(nameof(ScaleFactorText))]
-    private double _zoomLevel = 1.0f;
-
-    public string ScaleFactorText => $"{Math.Floor(ZoomLevel / MinZoom * 100)}%";
-
-    private bool CanZoomIn => ZoomLevel < MaxZoom;
-    private bool CanZoomOut => ZoomLevel > MinZoom;
-
-    public event Action<double>? CenterZoomRequested;
-
-    public ObservableCollection<PointerTool> AvailableTools { get; } = [];
-    public event Action<PointerTool?>? ActiveToolChanged;
-    [ObservableProperty] private PointerTool? _activePointerTool;
-
-    // METHODS
-    public MainViewModel(CollaborativeDrawingService drawingService, IFileService fileService,
+    public MainViewModel(MultiUserDrawingViewModel multiplayer, DocumentViewModel documentViewModel,
+        UiStateViewModel uiStateViewModel,
         IDialogService dialogService)
     {
-        BackgroundColor = Color.Parse("#a2000000");
-        ScaleTransform = new ScaleTransform(1, 1);
-
-        _collaborativeDrawingService = drawingService;
-        _fileService = fileService;
         _dialogService = dialogService;
+        MultiUserDrawingViewModel = multiplayer;
+        DocumentViewModel = documentViewModel;
+        UiStateViewModel = uiStateViewModel;
 
-        _collaborativeDrawingService.EventReceived += OnNetworkEventReceived;
-        _collaborativeDrawingService.CanvasStateReceived += OnCanvasStateReceived;
-        _collaborativeDrawingService.CanvasStateRequested += OnCanvasStateRequested;
-        _collaborativeDrawingService.ClientJoinedRoom += OnClientJoinedRoom;
-        _collaborativeDrawingService.ClientLeftRoom += OnClientLeftRoom;
-    }
+        // Reply to requests asking if there are any canvas events
+        WeakReferenceMessenger.Default.Register<MainViewModel, HasEventsRequestMessage>(this,
+            (mainViewModel, message) => { message.Reply(mainViewModel.CanvasEvents.Count > 0); });
 
-    private void OnClientJoinedRoom(CollaborativeDrawingUser client, List<CollaborativeDrawingUser> clients)
-    {
-        Dispatcher.UIThread.Post(() =>
-        {
-            if (Room == null || _collaborativeDrawingService.ConnectionId == null) return;
-            Room = new CollaborativeDrawingRoom(Room.RoomId, _collaborativeDrawingService.ConnectionId, Room.User.Name)
+        // Listen for incoming network events
+        WeakReferenceMessenger.Default.Register<NetworkEventReceivedMessage>(this,
+            (r, message) => { OnNetworkEventReceived(message.Event); });
+
+        WeakReferenceMessenger.Default.Register<CanvasStateReceivedMessage>(this,
+            (r, message) => { OnCanvasStateReceived(message.Events); });
+
+        WeakReferenceMessenger.Default.Register<CanvasStateRequestedMessage>(this,
+            (r, m) =>
             {
-                Clients = clients
-            };
-        });
-    }
+                WeakReferenceMessenger.Default.Send(new SendCanvasStateMessage(m.TargetConnectionId, CanvasEvents));
+            });
 
-    private void OnClientLeftRoom(CollaborativeDrawingUser client, List<CollaborativeDrawingUser> clients)
-    {
-        Dispatcher.UIThread.Post(() =>
-        {
-            if (Room == null || _collaborativeDrawingService.ConnectionId == null) return;
-            Room = new CollaborativeDrawingRoom(Room.RoomId, _collaborativeDrawingService.ConnectionId, Room.User.Name)
+        // Send canvas data when the DocumentViewModel wants to save
+        WeakReferenceMessenger.Default.Register<MainViewModel, RequestCanvasDataMessage>(this,
+            (mainViewModel, message) =>
             {
-                Clients = clients
-            };
-        });
+                message.Reply(new CanvasDataPayload(mainViewModel.CanvasStrokes,
+                    mainViewModel.UiStateViewModel.BackgroundColor));
+            });
+
+        // Load canvas data when the DocumentViewModel reads a file
+        WeakReferenceMessenger.Default.Register<MainViewModel, LoadCanvasDataMessage>(this,
+            (mainViewModel, message) =>
+            {
+                mainViewModel.ApplyEvent(new LoadCanvasEvent(Guid.NewGuid(), message.Strokes));
+            });
+
+        // Clear data when the DocumentViewModel triggers a reset
+        WeakReferenceMessenger.Default.Register<MainViewModel, ClearCanvasMessage>(this,
+            (mainViewModel, m) => { mainViewModel.ApplyEvent(new LoadCanvasEvent(Guid.NewGuid(), [])); });
     }
 
     // Event handler for when another client in the room draws something
     private void OnNetworkEventReceived(Event @event)
     {
         Dispatcher.UIThread.Post(() => { ProcessEvent(@event); });
-    }
-
-    // Event handler for sending canvas state to clients that just joined the room
-    private void OnCanvasStateRequested(string targetConnectionId)
-    {
-        Dispatcher.UIThread.Post(async void () =>
-        {
-            await _collaborativeDrawingService.SendCanvasStateToClientAsync(targetConnectionId, CanvasEvents);
-        });
     }
 
     // Event handler for processing the canvas state snapshot received from the room's host
@@ -176,7 +120,7 @@ public partial class MainViewModel : ViewModelBase
     {
         if (_undoStack.Count == 0) return;
         var actionId = _undoStack.Pop();
-        if (Room != null)
+        if (MultiUserDrawingViewModel.Room != null)
         {
             while (_deletedActions.Contains(actionId))
             {
@@ -196,7 +140,7 @@ public partial class MainViewModel : ViewModelBase
     {
         if (_redoStack.Count == 0) return;
         var actionId = _redoStack.Pop();
-        if (Room != null)
+        if (MultiUserDrawingViewModel.Room != null)
         {
             while (_deletedActions.Contains(actionId))
             {
@@ -220,9 +164,10 @@ public partial class MainViewModel : ViewModelBase
 
         ProcessEvent(@event, isLocalEvent);
 
-        if (!string.IsNullOrEmpty(Room?.RoomId))
+        if (MultiUserDrawingViewModel.Room != null)
         {
-            _ = _collaborativeDrawingService.BroadcastEventAsync(Room.RoomId, @event);
+            var roomId = MultiUserDrawingViewModel.Room.RoomId;
+            WeakReferenceMessenger.Default.Send(new BroadcastEventMessage(roomId, @event));
         }
     }
 
@@ -535,7 +480,7 @@ public partial class MainViewModel : ViewModelBase
                     }
 
                     break;
-                case RestoreCanvasEvent ev:
+                case LoadCanvasEvent ev:
                     drawStrokes.Clear();
                     foreach (Stroke stroke in ev.Strokes)
                     {
@@ -579,15 +524,34 @@ public partial class MainViewModel : ViewModelBase
                     {
                         var stroke = drawStrokes[strokeId];
                         stroke.Paint.StrokeJoin = ev.NewStrokeJoin;
-                        // Recreate the stroke paths
+                        // Recreate the stroke paths, preserving any rotation
 
-                        var bounds = stroke.Path.Bounds;
-                        var lineStartPoint = stroke.Path.Points[0];
+                        // Detect a rotation angle if any from the first edge of the rect/roundrect sub-path
+                        var points = stroke.Path.Points;
+                        var rotationAngle = (float)Math.Atan2(
+                            points[2].Y - points[1].Y,
+                            points[2].X - points[1].X);
+
+                        // Un-rotate around the shape's center to recover axis-aligned dimensions
+                        var center = new SKPoint(
+                            stroke.Path.TightBounds.MidX,
+                            stroke.Path.TightBounds.MidY);
+
+                        using var unrotatedPath = new SKPath(stroke.Path);
+                        if (Math.Abs(rotationAngle) > 0.001f)
+                        {
+                            unrotatedPath.Transform(
+                                SKMatrix.CreateRotation(-rotationAngle, center.X, center.Y));
+                        }
+
+                        var bounds = unrotatedPath.Bounds;
+                        var lineStartPoint = unrotatedPath.Points[0];
                         var lineEndPoint = new SKPoint(
                             bounds.Left + bounds.Right - lineStartPoint.X,
                             bounds.Top + bounds.Bottom - lineStartPoint.Y
                         );
 
+                        // Rebuild the path with the new edge type
                         stroke.Path.Reset();
                         stroke.Path.MoveTo(lineStartPoint);
                         var left = Math.Min(lineStartPoint.X, lineEndPoint.X);
@@ -601,6 +565,13 @@ public partial class MainViewModel : ViewModelBase
                         else
                         {
                             stroke.Path.AddRoundRect(rect, 24f, 24f);
+                        }
+
+                        // Re-apply the rotation
+                        if (Math.Abs(rotationAngle) > 0.001f)
+                        {
+                            stroke.Path.Transform(
+                                SKMatrix.CreateRotation(rotationAngle, center.X, center.Y));
                         }
                     }
 
@@ -712,126 +683,6 @@ public partial class MainViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private async Task SaveToFileAction()
-    {
-        var file = await _fileService.PickFileToSaveAsync();
-        if (file != null)
-        {
-            await SaveCanvasToFile(file);
-        }
-    }
-
-    private async Task SaveCanvasToFile(IStorageFile file)
-    {
-        await using var stream = await file.OpenWriteAsync();
-        await using var streamWriter = new StreamWriter(stream);
-
-        var serializerOptions = new JsonSerializerOptions { WriteIndented = true };
-        var jsonCanvasStrokes = new JsonArray();
-        foreach (var stroke in CanvasStrokes)
-        {
-            jsonCanvasStrokes.Add(JsonSerializer.SerializeToNode(stroke, serializerOptions));
-        }
-
-        var canvasState = new JsonObject
-        {
-            ["strokes"] = jsonCanvasStrokes,
-            ["backgroundColor"] = BackgroundColor.ToString()
-        };
-        await streamWriter.WriteAsync(canvasState.ToJsonString(serializerOptions));
-    }
-
-    [RelayCommand]
-    private async Task OpenFileAction()
-    {
-        var file = await _fileService.PickFileToOpenAsync();
-        if (file != null)
-        {
-            await RestoreCanvasFromFile(file);
-        }
-    }
-
-    private async Task RestoreCanvasFromFile(IStorageFile file)
-    {
-        await using var stream = await file.OpenReadAsync();
-        using var streamReader = new StreamReader(stream);
-        var json = await streamReader.ReadToEndAsync();
-        var canvasState = JsonNode.Parse(json);
-        var rawStrokes = canvasState?["strokes"]?.AsArray();
-        if (canvasState is null || rawStrokes is null) return;
-
-        if (CanvasEvents.Count > 0)
-        {
-            var confirmed = await _dialogService.ShowWarningConfirmationAsync("Warning",
-                "This will clear your current canvas. Are you sure you want to proceed?");
-            if (!confirmed) return;
-        }
-
-        List<Stroke> strokes = [];
-        foreach (var stroke in rawStrokes)
-        {
-            if (stroke is null) throw new Exception("Invalid canvas file");
-            var deserializedStroke = JsonSerializer.Deserialize<Stroke>(stroke.ToJsonString());
-            if (deserializedStroke is null) throw new Exception("Invalid canvas file");
-            strokes.Add(deserializedStroke);
-        }
-
-        ApplyEvent(new RestoreCanvasEvent(Guid.NewGuid(), strokes));
-
-        // Restore background color
-        var bgColor = canvasState["backgroundColor"]?.ToString();
-        if (bgColor != null)
-        {
-            BackgroundColor = Color.Parse(bgColor);
-        }
-    }
-
-    public async Task ResetCanvas()
-    {
-        if (CanvasEvents.Count > 0)
-        {
-            var confirmed = await _dialogService.ShowWarningConfirmationAsync("Warning",
-                "This will clear your current canvas. Are you sure you want to proceed?");
-            if (!confirmed) return;
-        }
-
-        ApplyEvent(new RestoreCanvasEvent(Guid.NewGuid(), []));
-    }
-
-    public void ChangeBackgroundColor(Color color)
-    {
-        BackgroundColor = color;
-    }
-
-    private async Task JoinRoomAsync(string roomId, string displayName)
-    {
-        try
-        {
-            await _collaborativeDrawingService.StartAsync();
-            if (_collaborativeDrawingService.ConnectionId != null)
-            {
-                Room = new CollaborativeDrawingRoom(roomId, _collaborativeDrawingService.ConnectionId, displayName);
-            }
-
-            await _collaborativeDrawingService.JoinRoomAsync(roomId, displayName);
-        }
-        catch (Exception)
-        {
-            await _collaborativeDrawingService.StopAsync();
-            Room = null;
-        }
-    }
-
-    private async Task LeaveRoomAsync()
-    {
-        if (Room != null)
-        {
-            await _collaborativeDrawingService.LeaveRoomAsync(Room.RoomId);
-            Room = null;
-        }
-    }
-
-    [RelayCommand]
     private void OpenUrl(string url)
     {
         if (!string.IsNullOrEmpty(url))
@@ -854,35 +705,6 @@ public partial class MainViewModel : ViewModelBase
         ApplyEvent(new ClearSelectionEvent(Guid.NewGuid()));
     }
 
-    [RelayCommand(CanExecute = nameof(CanToggleRoomConnection))]
-    private async Task ToggleRoomConnectionAsync()
-    {
-        if (_collaborativeDrawingService.ConnectionState == HubConnectionState.Disconnected)
-        {
-            if (HasEvents())
-            {
-                var confirmed = await _dialogService.ShowWarningConfirmationAsync("Warning",
-                    "This might clear your current canvas. Are you sure you want to proceed?");
-                if (!confirmed) return;
-            }
-
-            await JoinRoomAsync(RoomId, ClientDisplayName.Trim());
-        }
-        else
-        {
-            await LeaveRoomAsync();
-        }
-    }
-
-    [RelayCommand(CanExecute = nameof(CanGenerateRoomId))]
-    private void GenerateRoomId()
-    {
-        if (_collaborativeDrawingService.ConnectionState == HubConnectionState.Disconnected)
-        {
-            RoomId = Guid.NewGuid().ToString("N");
-        }
-    }
-
     [RelayCommand]
     private async Task ExitAsync()
     {
@@ -897,37 +719,5 @@ public partial class MainViewModel : ViewModelBase
         {
             desktop.Shutdown();
         }
-    }
-
-    [RelayCommand(CanExecute = nameof(CanZoomIn))]
-    private void ZoomIn() => CenterZoomRequested?.Invoke(1.1);
-
-    [RelayCommand(CanExecute = nameof(CanZoomOut))]
-    private void ZoomOut() => CenterZoomRequested?.Invoke(0.9);
-
-    public void ApplyZoom(double newScale)
-    {
-        // Clamp the zoom level between the min and max zoom
-        ZoomLevel = Math.Max(MinZoom, Math.Min(MaxZoom, newScale));
-
-        ScaleTransform.ScaleX = ZoomLevel;
-        ScaleTransform.ScaleY = ZoomLevel;
-
-        // Tell the UI that it should refresh controls that are bound to CanZoomIn and CanZoomOut
-        ZoomInCommand.NotifyCanExecuteChanged();
-        ZoomOutCommand.NotifyCanExecuteChanged();
-    }
-
-    // runs when _activePointerTool changes
-    partial void OnActivePointerToolChanged(PointerTool? oldValue, PointerTool? newValue)
-    {
-        oldValue?.Dispose();
-        ActiveToolChanged?.Invoke(newValue);
-    }
-
-    [RelayCommand]
-    private void SwitchTool(PointerTool tool)
-    {
-        ActivePointerTool = tool;
     }
 }

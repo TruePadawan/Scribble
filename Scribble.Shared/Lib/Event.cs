@@ -22,7 +22,7 @@ namespace Scribble.Shared.Lib;
 [JsonDerivedType(typeof(ScaleStrokesEvent), typeDiscriminator: "ScaleStrokes")]
 [JsonDerivedType(typeof(UndoEvent), typeDiscriminator: "Undo")]
 [JsonDerivedType(typeof(RedoEvent), typeDiscriminator: "Redo")]
-[JsonDerivedType(typeof(RestoreCanvasEvent), typeDiscriminator: "RestoreCanvasEvent")]
+[JsonDerivedType(typeof(LoadCanvasEvent), typeDiscriminator: "LoadCanvasEvent")]
 [JsonDerivedType(typeof(UpdateStrokeColorEvent), typeDiscriminator: "UpdateStrokeColorEvent")]
 [JsonDerivedType(typeof(UpdateStrokeEdgeTypeEvent), typeDiscriminator: "UpdateStrokeEdgeTypeEvent")]
 [JsonDerivedType(typeof(UpdateStrokeFillColorEvent), typeDiscriminator: "UpdateStrokeFillColorEvent")]
@@ -89,7 +89,7 @@ public record RotateStrokesEvent(Guid ActionId, Guid BoundId, float DegreesRad, 
 public record ScaleStrokesEvent(Guid ActionId, Guid BoundId, SKPoint Scale, SKPoint Center) : Event(ActionId);
 
 // MISC
-public record RestoreCanvasEvent(Guid ActionId, List<Stroke> Strokes) : Event(ActionId), ITerminalEvent;
+public record LoadCanvasEvent(Guid ActionId, List<Stroke> Strokes) : Event(ActionId), ITerminalEvent;
 
 public record UndoEvent(Guid ActionId, Guid TargetActionId) : Event(ActionId);
 
