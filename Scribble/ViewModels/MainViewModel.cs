@@ -524,15 +524,34 @@ public partial class MainViewModel : ViewModelBase
                     {
                         var stroke = drawStrokes[strokeId];
                         stroke.Paint.StrokeJoin = ev.NewStrokeJoin;
-                        // Recreate the stroke paths
+                        // Recreate the stroke paths, preserving any rotation
 
-                        var bounds = stroke.Path.Bounds;
-                        var lineStartPoint = stroke.Path.Points[0];
+                        // Detect a rotation angle if any from the first edge of the rect/roundrect sub-path
+                        var points = stroke.Path.Points;
+                        var rotationAngle = (float)Math.Atan2(
+                            points[2].Y - points[1].Y,
+                            points[2].X - points[1].X);
+
+                        // Un-rotate around the shape's center to recover axis-aligned dimensions
+                        var center = new SKPoint(
+                            stroke.Path.TightBounds.MidX,
+                            stroke.Path.TightBounds.MidY);
+
+                        using var unrotatedPath = new SKPath(stroke.Path);
+                        if (Math.Abs(rotationAngle) > 0.001f)
+                        {
+                            unrotatedPath.Transform(
+                                SKMatrix.CreateRotation(-rotationAngle, center.X, center.Y));
+                        }
+
+                        var bounds = unrotatedPath.Bounds;
+                        var lineStartPoint = unrotatedPath.Points[0];
                         var lineEndPoint = new SKPoint(
                             bounds.Left + bounds.Right - lineStartPoint.X,
                             bounds.Top + bounds.Bottom - lineStartPoint.Y
                         );
 
+                        // Rebuild the path with the new edge type
                         stroke.Path.Reset();
                         stroke.Path.MoveTo(lineStartPoint);
                         var left = Math.Min(lineStartPoint.X, lineEndPoint.X);
@@ -546,6 +565,13 @@ public partial class MainViewModel : ViewModelBase
                         else
                         {
                             stroke.Path.AddRoundRect(rect, 24f, 24f);
+                        }
+
+                        // Re-apply the rotation
+                        if (Math.Abs(rotationAngle) > 0.001f)
+                        {
+                            stroke.Path.Transform(
+                                SKMatrix.CreateRotation(rotationAngle, center.X, center.Y));
                         }
                     }
 
