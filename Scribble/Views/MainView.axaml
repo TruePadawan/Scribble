@@ -316,8 +316,7 @@
                     CornerRadius="16"
                     Padding="16"
                     BoxShadow="0 4 20 0 #60000000"
-                    IsVisible="{Binding UiStateViewModel.ToolOptionsVisible}"
-                    Opacity="0">
+                    IsVisible="{Binding UiStateViewModel.ToolOptionsVisible}">
                 <Border.Transitions>
                     <Transitions>
                         <DoubleTransition Property="Opacity" Duration="0:0:0.3" Easing="CubicEaseOut" />
