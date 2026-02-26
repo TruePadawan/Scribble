@@ -161,8 +161,6 @@ public partial class MainView : UserControl
         CanvasScrollViewer.Offset = new Vector(newOffset.X, newOffset.Y);
     }
 
-
-
     private void VisualizeSelection()
     {
         if (_viewModel == null) return;
