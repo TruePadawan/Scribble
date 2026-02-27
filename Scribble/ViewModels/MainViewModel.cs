@@ -380,7 +380,7 @@ public partial class MainViewModel : ViewModelBase
                     drawStrokes[ev.StrokeId] = new DrawStroke
                     {
                         Id = ev.StrokeId,
-                        Paint = ev.Paint,
+                        Paint = ev.Paint.Clone(),
                         Path = textPath,
                         ToolType = ToolType.Text,
                         ToolOptions = ev.ToolOptions

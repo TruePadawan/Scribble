@@ -26,4 +26,13 @@ public static class Utilities
     {
         return new SKPoint((float)coord.X, (float)coord.Y);
     }
+
+    /// <summary>
+    /// Returns true if two points are within a small epsilon of each other.
+    /// Filters subpixel jitter from tablet pens without affecting intentional movement.
+    /// </summary>
+    public static bool AreSamePosition(Point a, Point b, double epsilon = 0.5)
+    {
+        return Math.Abs(a.X - b.X) < epsilon && Math.Abs(a.Y - b.Y) < epsilon;
+    }
 }
