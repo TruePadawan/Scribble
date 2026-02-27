@@ -369,9 +369,44 @@
                         <DataTemplate DataType="toolOpts:StrokeColorOptionViewModel">
                             <StackPanel Margin="8" Spacing="2">
                                 <Label Content="{Binding Label}" />
-                                <ColorPicker IsColorSpectrumSliderVisible="False"
-                                             Width="164"
-                                             Color="{Binding Color}" />
+                                <Button Width="160" Height="30" CornerRadius="4">
+                                    <Button.Background>
+                                        <SolidColorBrush Color="{Binding Color}" />
+                                    </Button.Background>
+                                    <Button.Flyout>
+                                        <Flyout Placement="Bottom">
+                                            <ListBox ItemsSource="{Binding PaletteColors}"
+                                                     SelectedItem="{Binding Color}"
+                                                     Background="Transparent"
+                                                     BorderThickness="0">
+
+                                                <ListBox.ItemsPanel>
+                                                    <ItemsPanelTemplate>
+                                                        <WrapPanel Orientation="Vertical" MaxHeight="320" />
+                                                    </ItemsPanelTemplate>
+                                                </ListBox.ItemsPanel>
+
+                                                <ListBox.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <Border Width="24" Height="24" CornerRadius="4" Margin="2">
+                                                            <Border.Background>
+                                                                <SolidColorBrush Color="{Binding}" />
+                                                            </Border.Background>
+                                                        </Border>
+                                                    </DataTemplate>
+                                                </ListBox.ItemTemplate>
+
+                                                <ListBox.Styles>
+                                                    <Style Selector="ListBoxItem">
+                                                        <Setter Property="Padding" Value="0" />
+                                                        <Setter Property="Margin" Value="2" />
+                                                        <Setter Property="CornerRadius" Value="4" />
+                                                    </Style>
+                                                </ListBox.Styles>
+                                            </ListBox>
+                                        </Flyout>
+                                    </Button.Flyout>
+                                </Button>
                             </StackPanel>
                         </DataTemplate>
 
@@ -414,9 +449,45 @@
                                             Command="{Binding SetTransparentCommand}">
                                         <Image Source="avares://Scribble/Assets/transparent.png" />
                                     </Button>
-                                    <ColorPicker IsColorSpectrumSliderVisible="False"
-                                                 Width="124"
-                                                 Color="{Binding FillColor}" />
+                                    <Button Width="130" Height="30" CornerRadius="4" BorderBrush="Gray"
+                                            BorderThickness="1">
+                                        <Button.Background>
+                                            <SolidColorBrush Color="{Binding FillColor}" />
+                                        </Button.Background>
+                                        <Button.Flyout>
+                                            <Flyout Placement="Bottom">
+                                                <ListBox ItemsSource="{Binding PaletteColors}"
+                                                         SelectedItem="{Binding FillColor}"
+                                                         Background="Transparent"
+                                                         BorderThickness="0">
+
+                                                    <ListBox.ItemsPanel>
+                                                        <ItemsPanelTemplate>
+                                                            <WrapPanel Orientation="Vertical" MaxHeight="320" />
+                                                        </ItemsPanelTemplate>
+                                                    </ListBox.ItemsPanel>
+
+                                                    <ListBox.ItemTemplate>
+                                                        <DataTemplate>
+                                                            <Border Width="24" Height="24" CornerRadius="4" Margin="2">
+                                                                <Border.Background>
+                                                                    <SolidColorBrush Color="{Binding}" />
+                                                                </Border.Background>
+                                                            </Border>
+                                                        </DataTemplate>
+                                                    </ListBox.ItemTemplate>
+
+                                                    <ListBox.Styles>
+                                                        <Style Selector="ListBoxItem">
+                                                            <Setter Property="Padding" Value="0" />
+                                                            <Setter Property="Margin" Value="2" />
+                                                            <Setter Property="CornerRadius" Value="4" />
+                                                        </Style>
+                                                    </ListBox.Styles>
+                                                </ListBox>
+                                            </Flyout>
+                                        </Button.Flyout>
+                                    </Button>
                                 </StackPanel>
                             </StackPanel>
                         </DataTemplate>
