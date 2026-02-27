@@ -528,14 +528,9 @@ public partial class MainView : UserControl
         Dispatcher.UIThread.Post(() => CanvasContainer.Focus());
     }
 
-    private void CanvasBackgroundColorView_OnColorChanged(object? sender, ColorChangedEventArgs e)
-    {
-        _viewModel?.UiStateViewModel.ChangeBackgroundColor(e.NewColor);
-    }
-
     private void TransparentCanvasButton_OnClick(object? sender, RoutedEventArgs e)
     {
-        CanvasBackgroundColorView.Color = Colors.Transparent;
+        CanvasBackgroundColorPicker.SelectedColor = Color.Parse("#a2000000");
     }
 
     private void LiveDrawingWindowOverlay_OnPointerPressed(object? sender, PointerPressedEventArgs e)
