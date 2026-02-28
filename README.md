@@ -15,6 +15,8 @@ A cross-platform (windows/linux) digital whiteboard application
 **I'm working on**:
 - UI/UX Improvements
 
+<img width="1916" height="1048" alt="image" src="https://github.com/user-attachments/assets/9ba0d5c9-af75-4aa1-b8c6-5b954c4b161b" />
+
 <img width="1920" height="1043" alt="Screenshot from 2026-02-10 07-11-14" src="https://github.com/user-attachments/assets/b8cf2baf-f565-4f2e-8f8c-0224a5eadef2" />
  
 <img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/4a817026-a4a6-41fd-b684-1323a2f0f9d8" />
