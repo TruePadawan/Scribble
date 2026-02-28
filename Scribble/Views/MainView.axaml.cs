@@ -595,4 +595,24 @@ public partial class MainView : UserControl
         AboutScribbleWindow.IsVisible = true;
         AboutScribbleWindowOverlay.IsVisible = true;
     }
+
+    private void CloseExportImageWindow()
+    {
+        ExportImageWindow.IsVisible = false;
+        ExportImageWindowOverlay.IsVisible = false;
+
+        Dispatcher.UIThread.Post(() => CanvasContainer.Focus());
+    }
+
+    private void ExportImageWindowOverlay_OnPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        CloseExportImageWindow();
+    }
+
+    private void ExportMenuOption_OnClick(object? sender, RoutedEventArgs e)
+    {
+        CloseMenu();
+        ExportImageWindow.IsVisible = true;
+        ExportImageWindowOverlay.IsVisible = true;
+    }
 }
