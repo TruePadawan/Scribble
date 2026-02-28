@@ -7,6 +7,7 @@
              xmlns:toolOpts="using:Scribble.ViewModels.ToolOptions"
              xmlns:behaviours="using:Scribble.Behaviours"
              xmlns:shared="using:Scribble.Shared.Lib"
+             xmlns:scribbleColorPicker="clr-namespace:Scribble.Controls.ScribbleColorPicker"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:Class="Scribble.Views.MainView"
              x:DataType="vm:MainViewModel"
@@ -298,15 +299,17 @@
                 CornerRadius="16"
                 Padding="16"
                 BoxShadow="0 4 20 0 #60000000">
-                <StackPanel Margin="8" Spacing="2">
+                <StackPanel Margin="0" Spacing="2">
                     <Label>Change canvas background</Label>
                     <StackPanel Orientation="Horizontal" Spacing="8">
                         <Button Width="30" Height="30" Padding="0" Click="TransparentCanvasButton_OnClick">
                             <Image Source="avares://Scribble/Assets/transparent.png" />
                         </Button>
-                        <ColorPicker Name="CanvasBackgroundColorView" Width="124"
-                                     Color="{Binding UiStateViewModel.BackgroundColor}"
-                                     ColorChanged="CanvasBackgroundColorView_OnColorChanged" />
+                        <scribbleColorPicker:ScribbleColorPicker
+                            Name="CanvasBackgroundColorPicker"
+                            Width="124"
+                            CornerRadius="4"
+                            SelectedColor="{Binding UiStateViewModel.BackgroundColor}" />
                     </StackPanel>
                 </StackPanel>
             </Border>
@@ -365,9 +368,11 @@
                         <DataTemplate DataType="toolOpts:StrokeColorOptionViewModel">
                             <StackPanel Margin="8" Spacing="2">
                                 <Label Content="{Binding Label}" />
-                                <ColorPicker IsColorSpectrumSliderVisible="False"
-                                             Width="164"
-                                             Color="{Binding Color}" />
+                                <scribbleColorPicker:ScribbleColorPicker
+                                    Width="160"
+                                    Height="30"
+                                    CornerRadius="4"
+                                    SelectedColor="{Binding Color}" />
                             </StackPanel>
                         </DataTemplate>
 
@@ -410,9 +415,11 @@
                                             Command="{Binding SetTransparentCommand}">
                                         <Image Source="avares://Scribble/Assets/transparent.png" />
                                     </Button>
-                                    <ColorPicker IsColorSpectrumSliderVisible="False"
-                                                 Width="124"
-                                                 Color="{Binding FillColor}" />
+                                    <scribbleColorPicker:ScribbleColorPicker
+                                        Width="124"
+                                        Height="30"
+                                        CornerRadius="4"
+                                        SelectedColor="{Binding FillColor}" />
                                 </StackPanel>
                             </StackPanel>
                         </DataTemplate>
@@ -551,7 +558,7 @@
 
                         <StackPanel Orientation="Vertical" Spacing="4">
                             <TextBlock TextWrapping="Wrap" Foreground="WhiteSmoke">
-                                Scribble v0.1.3-alpha, by
+                                Scribble v0.1.4-alpha, by
                                 <HyperlinkButton Content="Hermes"
                                                  Padding="0"
                                                  Margin="0"

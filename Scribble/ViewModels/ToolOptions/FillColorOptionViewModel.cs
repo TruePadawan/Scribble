@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -11,6 +12,7 @@ public partial class FillColorOptionViewModel : ToolOptionViewModelBase
     [ObservableProperty] private Color _fillColor;
 
     public Action<Color>? FillColorChanged { get; set; }
+    public List<Color> PaletteColors { get; } = GenerateMaterialPalette();
 
     public FillColorOptionViewModel(Color initialColor)
         : base("Fill Color", ToolOption.FillColor)

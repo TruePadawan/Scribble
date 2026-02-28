@@ -1,0 +1,68 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             x:Class="Scribble.Controls.ScribbleColorPicker.ScribbleColorPicker"
+             x:Name="Root">
+    <Button
+        Name="ColorPickerButton"
+        BorderBrush="Gray"
+        Width="{Binding Width, ElementName=Root}"
+        Height="{Binding Height, ElementName=Root}"
+        CornerRadius="{Binding CornerRadius, ElementName=Root}"
+        Padding="{Binding Padding, ElementName=Root}"
+        HorizontalAlignment="Stretch"
+        VerticalAlignment="Stretch">
+        <Button.Background>
+            <SolidColorBrush Color="{Binding SelectedColor, ElementName=Root}" />
+        </Button.Background>
+        <Button.Flyout>
+            <Flyout Placement="Bottom">
+                <StackPanel Spacing="12">
+
+                    <ListBox Name="ColorListBox"
+                             ItemsSource="{Binding PaletteColors, ElementName=Root}"
+                             SelectedItem="{Binding SelectedColor, ElementName=Root, Mode=TwoWay}"
+                             SelectionChanged="ColorListBox_OnSelectionChanged"
+                             Background="Transparent"
+                             BorderThickness="0">
+
+                        <ListBox.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel Orientation="Vertical" MaxHeight="320" />
+                            </ItemsPanelTemplate>
+                        </ListBox.ItemsPanel>
+
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <Border Width="24" Height="24" CornerRadius="4" Margin="2">
+                                    <Border.Background>
+                                        <SolidColorBrush Color="{Binding}" />
+                                    </Border.Background>
+                                </Border>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+
+                        <ListBox.Styles>
+                            <Style Selector="ListBoxItem">
+                                <Setter Property="Padding" Value="0" />
+                                <Setter Property="Margin" Value="2" />
+                                <Setter Property="CornerRadius" Value="4" />
+                            </Style>
+                        </ListBox.Styles>
+                    </ListBox>
+
+                    <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
+                        <TextBlock Text="#" VerticalAlignment="Center" Foreground="#AAAAAA" FontWeight="Bold" />
+                        <TextBox Name="HexTextBox"
+                                 Width="120"
+                                 Watermark="FFFFFF"
+                                 TextChanged="HexTextBox_OnTextChanged" />
+                    </StackPanel>
+
+                </StackPanel>
+            </Flyout>
+        </Button.Flyout>
+    </Button>
+</UserControl>

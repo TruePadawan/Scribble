@@ -265,6 +265,11 @@ public partial class MainView : UserControl
     private void MainCanvas_OnPointerMoved(object? sender, PointerEventArgs e)
     {
         var pointerCoordinates = GetPointerPosition(e);
+
+        // Skip if position hasn't changed (tablet pens fire PointerMoved
+        // due to pressure/tilt jitter even when stationary)
+        if (Utilities.AreSamePosition(pointerCoordinates, _prevCoord)) return;
+
         var hasLastCoordinates = !_prevCoord.Equals(new Point(-1, -1));
 
         if (e.Properties.IsLeftButtonPressed && hasLastCoordinates)
@@ -326,6 +331,10 @@ public partial class MainView : UserControl
     private void SelectionBorder_OnPointerMoved(object? sender, PointerEventArgs e)
     {
         var pointerCoordinates = GetPointerPosition(e);
+
+        // Skip if position hasn't changed (tablet pen jitter)
+        if (Utilities.AreSamePosition(pointerCoordinates, _selection.SelectionMoveCoord)) return;
+
         var hasLastCoordinates = !_selection.SelectionMoveCoord.Equals(new Point(-1, -1));
         if (e.Properties.IsLeftButtonPressed && hasLastCoordinates && _viewModel != null)
         {
@@ -383,6 +392,9 @@ public partial class MainView : UserControl
                 pointerCoordinates.X - _selection.SelectionCenter.X);
             var deltaRad = angleRad - _selection.SelectionRotationAngle;
 
+            // Skip if angle hasn't changed (tablet pen jitter)
+            if (Math.Abs(deltaRad) < double.Epsilon) return;
+
             // Keep delta in [-pi, pi] to avoid jumps across the wrap boundary.
             if (deltaRad > Math.PI)
             {
@@ -436,6 +448,10 @@ public partial class MainView : UserControl
         if (e.Properties.IsLeftButtonPressed && _selection.ActiveScaleHandle != null && _viewModel != null)
         {
             var currentCoord = GetPointerPosition(e);
+
+            // Skip if position hasn't changed (tablet pen jitter)
+            if (Utilities.AreSamePosition(currentCoord, _selection.ScalePrevCoord)) return;
+
             var prevVector = _selection.ScalePrevCoord - _selection.ScalePivot;
             var currVector = currentCoord - _selection.ScalePivot;
 
@@ -512,14 +528,9 @@ public partial class MainView : UserControl
         Dispatcher.UIThread.Post(() => CanvasContainer.Focus());
     }
 
-    private void CanvasBackgroundColorView_OnColorChanged(object? sender, ColorChangedEventArgs e)
-    {
-        _viewModel?.UiStateViewModel.ChangeBackgroundColor(e.NewColor);
-    }
-
     private void TransparentCanvasButton_OnClick(object? sender, RoutedEventArgs e)
     {
-        CanvasBackgroundColorView.Color = Colors.Transparent;
+        CanvasBackgroundColorPicker.SelectedColor = Color.Parse("#a2000000");
     }
 
     private void LiveDrawingWindowOverlay_OnPointerPressed(object? sender, PointerPressedEventArgs e)
