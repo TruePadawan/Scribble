@@ -55,10 +55,10 @@ public partial class CanvasExportViewModel : ViewModelBase
             }
         }
 
-        var pngData = GetPngData(drawStrokes,
+        var pngData = GetImageData(drawStrokes,
             includeBackground: IncludeBackground,
             backgroundColor: Utilities.ToSkColor(canvasData.BackgroundColor),
-            ImageScale);
+            ImageScale, SKEncodedImageFormat.Png);
         if (pngData == null || pngData.Length == 0)
         {
             // Reset the preview image
@@ -85,6 +85,43 @@ public partial class CanvasExportViewModel : ViewModelBase
         {
             await using var stream = await file.OpenWriteAsync();
             PreviewImage.Save(stream);
+        }
+    }
+
+    [RelayCommand]
+    private async Task ExportCanvasToJpegAsync()
+    {
+        var canvasData = WeakReferenceMessenger.Default.Send<RequestCanvasDataMessage>().Response;
+        List<DrawStroke> drawStrokes = [];
+        foreach (var canvasStroke in canvasData.Strokes)
+        {
+            if (canvasStroke is DrawStroke drawStroke)
+            {
+                drawStrokes.Add(drawStroke);
+            }
+        }
+
+        var jpegData = GetImageData(drawStrokes,
+            includeBackground: IncludeBackground,
+            backgroundColor: Utilities.ToSkColor(canvasData.BackgroundColor),
+            ImageScale, SKEncodedImageFormat.Jpeg);
+        if (jpegData != null && jpegData.Length > 0)
+        {
+            using var stream = new MemoryStream(jpegData);
+            var jpegBitmap = new Bitmap(stream);
+
+            var filePickOptions = new FilePickerSaveOptions
+            {
+                SuggestedFileName = "canvas_jpeg",
+                Title = "Export canvas as JPEG",
+                DefaultExtension = ".jpeg",
+            };
+            var file = await _fileService.PickFileToSaveAsync(filePickOptions);
+            if (file != null)
+            {
+                await using var fileStream = await file.OpenWriteAsync();
+                jpegBitmap.Save(fileStream);
+            }
         }
     }
 
@@ -117,11 +154,12 @@ public partial class CanvasExportViewModel : ViewModelBase
         return totalBounds;
     }
 
-    private byte[]? GetPngData(
+    private byte[]? GetImageData(
         List<DrawStroke> strokes,
         bool includeBackground,
         SKColor backgroundColor,
-        int scale = 1, int padding = 20)
+        int scale,
+        SKEncodedImageFormat format)
     {
         if (strokes.Count == 0)
         {
@@ -131,7 +169,7 @@ public partial class CanvasExportViewModel : ViewModelBase
         // Calculate the bounding box of all strokes
         SKRect bounds = GetStrokesBounds(strokes);
         // Add padding
-        bounds.Inflate(padding, padding);
+        bounds.Inflate(20, 20);
 
         // Determine the final image size based on scale
         var finalImgWidth = (int)(bounds.Width * scale);
@@ -172,7 +210,7 @@ public partial class CanvasExportViewModel : ViewModelBase
         }
 
         using var image = surface.Snapshot();
-        using var data = image.Encode(SKEncodedImageFormat.Png, 100);
+        using var data = image.Encode(format, 100);
 
         return data.ToArray();
     }
