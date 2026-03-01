@@ -28,7 +28,13 @@ public partial class DocumentViewModel : ViewModelBase
     [RelayCommand]
     private async Task SaveToFileActionAsync()
     {
-        var file = await _fileService.PickFileToSaveAsync();
+        var filePickOptions = new FilePickerSaveOptions
+        {
+            SuggestedFileName = "Scribble",
+            Title = "Save canvas state to file",
+            DefaultExtension = ".scribble",
+        };
+        var file = await _fileService.PickFileToSaveAsync(filePickOptions);
         if (file != null)
         {
             await SaveCanvasToFileAsync(file);
@@ -59,7 +65,13 @@ public partial class DocumentViewModel : ViewModelBase
     [RelayCommand]
     private async Task OpenFileAction()
     {
-        var file = await _fileService.PickFileToOpenAsync();
+        var filePickerOptions = new FilePickerOpenOptions
+        {
+            SuggestedFileName = "Scribble",
+            Title = "Restore canvas state from file",
+            AllowMultiple = false,
+        };
+        var file = await _fileService.PickFileToOpenAsync(filePickerOptions);
         if (file != null)
         {
             await LoadCanvasFromFileAsync(file);

@@ -23,31 +23,21 @@ public class AvaloniaFileService : IFileService
         return null;
     }
 
-    public async Task<IStorageFile?> PickFileToOpenAsync()
+    public async Task<IStorageFile?> PickFileToOpenAsync(FilePickerOpenOptions options)
     {
         var topLevel = GetTopLevel();
         if (topLevel == null) return null;
 
-        var files = await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
-        {
-            SuggestedFileName = "Scribble",
-            Title = "Restore canvas state from file",
-            AllowMultiple = false,
-        });
+        var files = await topLevel.StorageProvider.OpenFilePickerAsync(options);
 
         return files.Count == 1 ? files[0] : null;
     }
 
-    public async Task<IStorageFile?> PickFileToSaveAsync()
+    public async Task<IStorageFile?> PickFileToSaveAsync(FilePickerSaveOptions options)
     {
         var topLevel = GetTopLevel();
         if (topLevel == null) return null;
 
-        return await topLevel.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
-        {
-            SuggestedFileName = "Scribble",
-            Title = "Save canvas state to file",
-            DefaultExtension = ".scribble",
-        });
+        return await topLevel.StorageProvider.SaveFilePickerAsync(options);
     }
 }
