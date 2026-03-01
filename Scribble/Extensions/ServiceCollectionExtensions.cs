@@ -25,6 +25,7 @@ public static class ServiceCollectionExtensions
         var serverUrl = config["ServerUrl"] ?? throw new Exception("ServerUrl is missing");
         collection.AddSingleton(new CollaborativeDrawingService(serverUrl));
 
+        collection.AddTransient<CanvasExportViewModel>();
         collection.AddTransient<UiStateViewModel>();
         collection.AddTransient<MultiUserDrawingViewModel>();
         collection.AddTransient<DocumentViewModel>();

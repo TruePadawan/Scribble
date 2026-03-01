@@ -6,6 +6,8 @@ rm -rf ./out/
 # Ensure the releases folder exists
 mkdir -p ./releases/windows
 
+VERSION="${1:-0.1.0}"
+
 # .NET publish
 # self-contained is recommended, so final users won't need to install .NET
 dotnet publish "./Scribble.Desktop/Scribble.Desktop.csproj" \
@@ -17,4 +19,4 @@ dotnet publish "./Scribble.Desktop/Scribble.Desktop.csproj" \
   --output "./out/win-x64" \
   /p:PublishSingleFile=true
 
-zip -j ./releases/windows/Scribble-1.1.4.zip ./out/win-x64/*
+zip -j "./releases/windows/Scribble-${VERSION}.zip" ./out/win-x64/*

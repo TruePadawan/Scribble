@@ -5,6 +5,6 @@ namespace Scribble.Services.FileService;
 
 public interface IFileService
 {
-    Task<IStorageFile?> PickFileToOpenAsync();
-    Task<IStorageFile?> PickFileToSaveAsync();
+    Task<IStorageFile?> PickFileToOpenAsync(FilePickerOpenOptions options);
+    Task<IStorageFile?> PickFileToSaveAsync(FilePickerSaveOptions options);
 }

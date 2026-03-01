@@ -1,5 +1,7 @@
 using System;
 using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Media;
 using SkiaSharp;
 
@@ -34,5 +36,20 @@ public static class Utilities
     public static bool AreSamePosition(Point a, Point b, double epsilon = 0.5)
     {
         return Math.Abs(a.X - b.X) < epsilon && Math.Abs(a.Y - b.Y) < epsilon;
+    }
+
+    public static TopLevel? GetTopLevel()
+    {
+        if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+        {
+            return desktop.MainWindow;
+        }
+
+        if (Application.Current?.ApplicationLifetime is ISingleViewApplicationLifetime singleView)
+        {
+            return TopLevel.GetTopLevel(singleView.MainView);
+        }
+
+        return null;
     }
 }

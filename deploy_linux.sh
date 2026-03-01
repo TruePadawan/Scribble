@@ -18,7 +18,7 @@ dotnet publish "./Scribble.Desktop/Scribble.Desktop.csproj" \
 
 # --- SHARED METADATA ---
 NAME="scribble"
-VERSION="0.1.4-alpha"
+VERSION="${1:-0.1.0}"
 MAINTAINER="Chisom Hermes Chigoziri <hermeschigoziri@gmail.com>"
 DESC="A cross-platform digital whiteboard engineered with C# and Avalonia UI"
 URL="https://github.com/TruePadawan/Scribble"
@@ -60,7 +60,7 @@ fpm -s dir -t deb \
     --category "$CATEGORY" \
     --url "$URL" \
     -C ./staging \
-    -p ./releases/linux/scribble_amd64.deb \
+    -p "./releases/linux/scribble_${VERSION}_amd64.deb" \
     usr/
 
 echo "Packaging RPM..."
@@ -72,7 +72,7 @@ fpm -s dir -t rpm \
     --category "$CATEGORY" \
     --url "$URL" \
     -C ./staging \
-    -p ./releases/linux/scribble.x86_64.rpm \
+    -p "./releases/linux/scribble-${VERSION}.x86_64.rpm" \
     usr/
 
 echo "Packaging Pacman..."
@@ -84,7 +84,7 @@ fpm -s dir -t pacman \
     --category "$CATEGORY" \
     --url "$URL" \
     -C ./staging \
-    -p ./releases/linux/scribble.pkg.tar.zst \
+    -p "./releases/linux/scribble-${VERSION}.pkg.tar.zst" \
     usr/
 
 echo "Done!"
