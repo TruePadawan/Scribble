@@ -129,7 +129,7 @@
                         IsVisible="False">
                     <StackPanel Spacing="4">
                         <Button Name="OpenFileMenuOption" HorizontalAlignment="Stretch"
-                                Command="{Binding DocumentViewModel.OpenFileActionCommand}"
+                                Command="{Binding DocumentViewModel.LoadCanvasFromFileActionCommand}"
                                 HotKey="Ctrl+O"
                                 ToolTip.Tip="Ctrl+O">
                             <StackPanel Orientation="Horizontal" Spacing="4">
@@ -138,7 +138,7 @@
                             </StackPanel>
                         </Button>
                         <Button Name="SaveToFileMenuOption" Margin="0"
-                                Command="{Binding DocumentViewModel.SaveToFileActionCommand}"
+                                Command="{Binding DocumentViewModel.SaveCanvasToFileActionCommand}"
                                 HorizontalAlignment="Stretch" HotKey="Ctrl+S" ToolTip.Tip="Ctrl+S">
                             <StackPanel Orientation="Horizontal" Spacing="4">
                                 <Image Source="avares://Scribble/Assets/save.png" Width="18" Height="18" />

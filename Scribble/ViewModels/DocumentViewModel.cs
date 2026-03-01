@@ -26,7 +26,7 @@ public partial class DocumentViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private async Task SaveToFileActionAsync()
+    private async Task SaveCanvasToFileAction()
     {
         var filePickOptions = new FilePickerSaveOptions
         {
@@ -63,7 +63,7 @@ public partial class DocumentViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private async Task OpenFileAction()
+    private async Task LoadCanvasFromFileAction()
     {
         var filePickerOptions = new FilePickerOpenOptions
         {
@@ -109,7 +109,7 @@ public partial class DocumentViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    public async Task ResetCanvasAsync()
+    private async Task ResetCanvas()
     {
         var hasEvents = WeakReferenceMessenger.Default.Send<HasEventsRequestMessage>().Response;
         if (hasEvents)
