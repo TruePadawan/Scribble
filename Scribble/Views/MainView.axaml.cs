@@ -612,6 +612,7 @@ public partial class MainView : UserControl
     private void ExportMenuOption_OnClick(object? sender, RoutedEventArgs e)
     {
         CloseMenu();
+        _viewModel?.CanvasExportViewModel.UpdateCanvasPreview();
         ExportImageWindow.IsVisible = true;
         ExportImageWindowOverlay.IsVisible = true;
     }

@@ -684,7 +684,8 @@
                 <StackPanel Orientation="Horizontal" Spacing="10">
                     <Border Name="ExportImagePreviewBorder" Width="500" Height="400" BorderBrush="Gray"
                             BorderThickness="1">
-
+                        <Image Stretch="Uniform"
+                               Source="{Binding CanvasExportViewModel.PreviewImage}" />
                     </Border>
                     <Border Padding="8, 0">
                         <Grid RowDefinitions="Auto, *">
@@ -693,19 +694,33 @@
                                 <TextBlock Grid.ColumnSpan="2" Grid.Row="0" FontWeight="Bold" FontSize="18">Export Image</TextBlock>
 
                                 <Label Grid.Column="0" Grid.Row="1" VerticalAlignment="Center" FontWeight="Medium">Background</Label>
-                                <CheckBox Grid.Column="1" Grid.Row="1" VerticalAlignment="Center"
-                                          HorizontalAlignment="Right" />
+                                <CheckBox Grid.Column="1" Grid.Row="1"
+                                          VerticalAlignment="Center"
+                                          HorizontalAlignment="Right"
+                                          IsChecked="{Binding CanvasExportViewModel.IncludeBackground}" />
 
                                 <Label Grid.Column="0" Grid.Row="2" VerticalAlignment="Center" FontWeight="Medium">Scale</Label>
                                 <StackPanel Grid.Column="1" Grid.Row="2" Orientation="Horizontal"
                                             VerticalAlignment="Center" Spacing="8">
-                                    <RadioButton GroupName="ExportImageScale" Content="1x" IsChecked="True" />
-                                    <RadioButton GroupName="ExportImageScale" Content="2x" />
-                                    <RadioButton GroupName="ExportImageScale" Content="3x" />
+                                    <RadioButton GroupName="ExportImageScale" Content="1x"
+                                                 IsChecked="True"
+                                                 Command="{Binding CanvasExportViewModel.ChangeImageScaleCommand}"
+                                                 CommandParameter="1" />
+                                    <RadioButton GroupName="ExportImageScale" Content="2x"
+                                                 Command="{Binding CanvasExportViewModel.ChangeImageScaleCommand}"
+                                                 CommandParameter="2" />
+                                    <RadioButton GroupName="ExportImageScale" Content="3x"
+                                                 Command="{Binding CanvasExportViewModel.ChangeImageScaleCommand}"
+                                                 CommandParameter="3" />
                                 </StackPanel>
                             </Grid>
                             <StackPanel Grid.Row="1" Orientation="Vertical" Spacing="2" VerticalAlignment="Bottom">
-                                <Button HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Padding="8">Export as PNG</Button>
+                                <Button HorizontalAlignment="Stretch"
+                                        HorizontalContentAlignment="Center"
+                                        Padding="8"
+                                        Command="{Binding CanvasExportViewModel.ExportCanvasToPngCommand}">
+                                    Export as PNG
+                                </Button>
                                 <Button HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Padding="8">Copy to Clipboard</Button>
                             </StackPanel>
                         </Grid>
