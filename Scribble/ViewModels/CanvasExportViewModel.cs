@@ -1,8 +1,6 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
-using Avalonia;
-using Avalonia.Controls;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform.Storage;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -13,7 +11,6 @@ using Scribble.Messages;
 using Scribble.Services.FileService;
 using Scribble.Shared.Lib;
 using Scribble.Utils;
-using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Input.Platform;
 
 namespace Scribble.ViewModels;
@@ -94,23 +91,8 @@ public partial class CanvasExportViewModel : ViewModelBase
     [RelayCommand]
     private async Task CopyCanvasToClipboardAsync()
     {
-        var clipboard = GetTopLevel()?.Clipboard;
+        var clipboard = Utilities.GetTopLevel()?.Clipboard;
         if (clipboard == null) return;
         await clipboard.SetBitmapAsync(PreviewImage);
-    }
-
-    private TopLevel? GetTopLevel()
-    {
-        if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
-        {
-            return desktop.MainWindow;
-        }
-
-        if (Application.Current?.ApplicationLifetime is ISingleViewApplicationLifetime singleView)
-        {
-            return TopLevel.GetTopLevel(singleView.MainView);
-        }
-
-        return null;
     }
 }

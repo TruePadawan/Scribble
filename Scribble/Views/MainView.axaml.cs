@@ -549,7 +549,7 @@ public partial class MainView : UserControl
     {
         try
         {
-            var clipboard = TopLevel.GetTopLevel(this)?.Clipboard;
+            var clipboard = Utilities.GetTopLevel()?.Clipboard;
             if (clipboard == null) return;
             await clipboard.SetTextAsync(RoomIdTextBox.Text);
         }
