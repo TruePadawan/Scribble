@@ -549,7 +549,7 @@ public partial class MainView : UserControl
     {
         try
         {
-            var clipboard = TopLevel.GetTopLevel(this)?.Clipboard;
+            var clipboard = Utilities.GetTopLevel()?.Clipboard;
             if (clipboard == null) return;
             await clipboard.SetTextAsync(RoomIdTextBox.Text);
         }
@@ -594,5 +594,26 @@ public partial class MainView : UserControl
         CloseMenu();
         AboutScribbleWindow.IsVisible = true;
         AboutScribbleWindowOverlay.IsVisible = true;
+    }
+
+    private void CloseExportImageWindow()
+    {
+        ExportImageWindow.IsVisible = false;
+        ExportImageWindowOverlay.IsVisible = false;
+
+        Dispatcher.UIThread.Post(() => CanvasContainer.Focus());
+    }
+
+    private void ExportImageWindowOverlay_OnPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        CloseExportImageWindow();
+    }
+
+    private void ExportMenuOption_OnClick(object? sender, RoutedEventArgs e)
+    {
+        CloseMenu();
+        _viewModel?.CanvasExportViewModel.UpdateCanvasPreview();
+        ExportImageWindow.IsVisible = true;
+        ExportImageWindowOverlay.IsVisible = true;
     }
 }
