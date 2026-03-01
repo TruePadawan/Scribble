@@ -1,0 +1,70 @@
+name: Build and Release Scribble
+
+on:
+  push:
+    tags:
+      - 'v*' # Triggers ONLY when a tag starting with 'v' (e.g., v1.1.4) is pushed
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # Required for creating the GitHub Release
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0'
+
+      # CACHING STEP
+      - name: Cache NuGet Packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          # Creates a unique key based on the OS and project's dependencies
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
+          # If an exact match isn't found, it falls back to the closest previous cache
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+
+      - name: Setup Ruby (Required for fpm)
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.2'
+
+      - name: Install System Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y rpm zip
+          gem install fpm
+
+      - name: Make scripts executable
+        run: |
+          chmod +x ./deploy_linux.sh
+          chmod +x ./deploy_windows.sh
+
+      - name: Extract Clean Version Number
+        # Strips the leading "v" from the tag (e.g., "v1.1.4" becomes "1.1.4")
+        run: |
+          CLEAN_VERSION=${GITHUB_REF_NAME#v}
+          echo "APP_VERSION=$CLEAN_VERSION" >> $GITHUB_ENV
+
+      - name: Run Deployment Scripts with Tag Version
+        run: |
+          echo "Building Scribble version $APP_VERSION"
+          ./deploy_linux.sh "$APP_VERSION"
+          ./deploy_windows.sh "$APP_VERSION"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: "Scribble ${{ github.ref_name }}"
+          files: |
+            releases/linux/*
+            releases/windows/*
+          generate_release_notes: true
