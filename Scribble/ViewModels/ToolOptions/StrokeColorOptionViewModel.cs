@@ -1,25 +1,17 @@
 using System;
-using System.Collections.Generic;
 using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
-using Scribble.Shared.Lib;
 
 namespace Scribble.ViewModels.ToolOptions;
 
 /// <summary>
 /// View model for managing the stroke color option
 /// </summary>
-public partial class StrokeColorOptionViewModel : ToolOptionViewModelBase
+public partial class StrokeColorOptionViewModel(Color initialColor) : ToolOptionViewModelBase("Stroke Color")
 {
-    [ObservableProperty] private Color _color;
+    [ObservableProperty] private Color _color = initialColor;
 
-    public Action<Color>? ColorChanged { get; set; }
-
-    public StrokeColorOptionViewModel(Color initialColor)
-        : base("Stroke Color", ToolOption.StrokeColor)
-    {
-        _color = initialColor;
-    }
+    public Action<Color>? ColorChanged;
 
     partial void OnColorChanged(Color value)
     {

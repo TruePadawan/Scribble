@@ -1,23 +1,16 @@
 using System;
 using CommunityToolkit.Mvvm.ComponentModel;
-using Scribble.Shared.Lib;
 
 namespace Scribble.ViewModels.ToolOptions;
 
 /// <summary>
 /// View model for managing the font size option
 /// </summary>
-public partial class FontSizeOptionViewModel : ToolOptionViewModelBase
+public partial class FontSizeOptionViewModel(float initialSize) : ToolOptionViewModelBase("Font Size")
 {
-    [ObservableProperty] private float _fontSize;
+    [ObservableProperty] private float _fontSize = initialSize;
 
-    public Action<float>? FontSizeChanged { get; set; }
-
-    public FontSizeOptionViewModel(float initialSize)
-        : base("Font Size", ToolOption.FontSize)
-    {
-        _fontSize = initialSize;
-    }
+    public Action<float>? FontSizeChanged;
 
     partial void OnFontSizeChanged(float value)
     {
