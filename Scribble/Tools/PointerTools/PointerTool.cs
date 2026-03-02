@@ -7,12 +7,11 @@ using Scribble.ViewModels;
 
 namespace Scribble.Tools.PointerTools;
 
-/**
- * Base class for all Pointer Tools
- * It enforces the data that all Pointer Tools should have
- * Name - The name of the Tool
- * Icon - The icon that represents the tool in the UI
- */
+/// <summary>
+/// Base class for all Pointer Tools
+/// </summary>
+/// <param name="name">The name of the tool</param>
+/// <param name="icon">The bitmap representing the tool's icon</param>
 public abstract class PointerTool(string name, MainViewModel viewModel, Bitmap icon)
 {
     public string Name { get; } = name;
@@ -47,7 +46,9 @@ public abstract class PointerTool(string name, MainViewModel viewModel, Bitmap i
     {
     }
 
-    // This is called when the active tool is swapped out
+    /// <summary>
+    /// This is called when the tool is switched out
+    /// </summary>
     public virtual void Dispose()
     {
     }

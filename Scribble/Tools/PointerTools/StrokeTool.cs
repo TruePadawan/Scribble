@@ -5,6 +5,11 @@ using Scribble.ViewModels;
 
 namespace Scribble.Tools.PointerTools;
 
+/// <summary>
+/// Represents a Pointer Tool that draws visible strokes on the canvas
+/// </summary>
+/// <param name="name">The name of the tool</param>
+/// <param name="icon">The bitmap representing the tool's icon</param>
 public abstract class StrokeTool(string name, MainViewModel viewModel, Bitmap icon) : PointerTool(name, viewModel, icon)
 {
     public StrokePaint StrokePaint { get; protected init; } = new();
