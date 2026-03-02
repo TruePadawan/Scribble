@@ -212,6 +212,10 @@ public partial class MainViewModel : ViewModelBase
         }
     }
 
+    /// <summary>
+    /// Builds the latest state of the canvas from the events in the queue
+    /// </summary>
+    /// <returns></returns>
     private List<Guid> ReplayEvents()
     {
         var hiddenActionIds = new HashSet<Guid>();
@@ -266,7 +270,7 @@ public partial class MainViewModel : ViewModelBase
                     eraserHeads[ev.StrokeId] = ev.StartPoint;
 
                     // Find all targets for erasing
-                    CheckAndErase(ev.StartPoint, drawStrokes, newEraserStroke);
+                    CheckAndErase(ev.StartPoint, drawStrokes.Values, newEraserStroke);
 
                     eraserStrokes[ev.StrokeId] = newEraserStroke;
                     break;
@@ -286,7 +290,8 @@ public partial class MainViewModel : ViewModelBase
                             var completionPercentage = s / stepSize;
                             var checkX = start.X + (end.X - start.X) * completionPercentage;
                             var checkY = start.Y + (end.Y - start.Y) * completionPercentage;
-                            CheckAndErase(new SKPoint((float)checkX, (float)checkY), drawStrokes, currentEraserStroke);
+                            CheckAndErase(new SKPoint((float)checkX, (float)checkY), drawStrokes.Values,
+                                currentEraserStroke);
                         }
 
                         currentEraserStroke.Path.LineTo(ev.Point);
@@ -418,7 +423,7 @@ public partial class MainViewModel : ViewModelBase
                         var top = Math.Min(boundOrigin.Y, ev.Point.Y);
                         var left = Math.Min(boundOrigin.X, ev.Point.X);
                         var boundRect = SKRect.Create(new SKPoint(left, top), Utilities.GetSize(boundOrigin, ev.Point));
-                        CheckAndSelect(boundRect, bound, drawStrokes);
+                        CheckAndSelect(boundRect, bound, drawStrokes.Values);
                     }
 
                     break;
@@ -606,16 +611,23 @@ public partial class MainViewModel : ViewModelBase
         return staleActionIds;
     }
 
-    private void CheckAndErase(SKPoint eraserPoint, Dictionary<Guid, DrawStroke> drawStrokes, EraserStroke eraserStroke)
+    /// <summary>
+    /// Marks the strokes that are a target for erasure
+    /// </summary>
+    /// <param name="eraserPoint">The latest point in the eraser's stroke</param>
+    /// <param name="drawStrokes">Collection of all current strokes on the canvas</param>
+    /// <param name="eraserStroke">The active eraser stroke</param>
+    private void CheckAndErase(SKPoint eraserPoint, IEnumerable<DrawStroke> drawStrokes, EraserStroke eraserStroke)
     {
-        foreach (var (strokeId, stroke) in drawStrokes)
+        foreach (var stroke in drawStrokes)
         {
+            var strokeId = stroke.Id;
             switch (stroke.ToolType)
             {
                 case ToolType.Line or ToolType.Arrow:
                 {
                     var endPoints = new[] { stroke.Path[0], stroke.Path[1] };
-                    if (IsPointNearLine(eraserPoint, endPoints, 10.0f))
+                    if (Utilities.IsPointNearLine(eraserPoint, endPoints, 10.0f))
                     {
                         stroke.IsToBeErased = true;
                         eraserStroke.Targets.Add(strokeId);
@@ -637,53 +649,32 @@ public partial class MainViewModel : ViewModelBase
         }
     }
 
-    private bool IsPointNearLine(SKPoint point, SKPoint[] lineEndPoints, float tolerance)
-    {
-        var start = lineEndPoints[0];
-        var end = lineEndPoints[1];
-
-        float lineLenSq = float.Pow(end.X - start.X, 2) + float.Pow(end.Y - start.Y, 2);
-
-        // Check if the 'line' is actually just a point
-        if (lineLenSq == 0)
-        {
-            return SKPoint.Distance(point, start) < tolerance;
-        }
-
-        float t = ((point.X - start.X) * (end.X - start.X) +
-                   (point.Y - start.Y) * (end.Y - start.Y)) / lineLenSq;
-
-        // Clamp t to the segment [0, 1] to handle the endpoints correctly
-        t = float.Clamp(t, 0f, 1f);
-
-        // Find the closest point on the line segment
-        var closest = new SKPoint(
-            start.X + t * (end.X - start.X),
-            start.Y + t * (end.Y - start.Y)
-        );
-
-        return SKPoint.Distance(point, closest) < tolerance;
-    }
-
-    private void CheckAndSelect(SKRect boundRect, SelectionBound bound, Dictionary<Guid, DrawStroke> drawStrokes)
+    /// <summary>
+    /// Finds all strokes that are within the selection boundary
+    /// </summary>
+    private void CheckAndSelect(SKRect boundRect, SelectionBound bound, IEnumerable<DrawStroke> drawStrokes)
     {
         bound.Targets.Clear();
-        foreach (var (id, stroke) in drawStrokes)
+        foreach (var stroke in drawStrokes)
         {
             SKRect strokeBounds = stroke.Path.Bounds;
 
             if (boundRect.Contains(strokeBounds))
             {
-                bound.Targets.Add(id);
+                bound.Targets.Add(stroke.Id);
             }
         }
     }
 
-    private bool HasEvents()
+    private bool HasCanvasEvents()
     {
         return CanvasEvents.Count > 0;
     }
 
+    /// <summary>
+    /// Opens the specified URL in the default browser
+    /// </summary>
+    /// <param name="url">The url to open</param>
     [RelayCommand]
     private void OpenUrl(string url)
     {
@@ -702,15 +693,21 @@ public partial class MainViewModel : ViewModelBase
         }
     }
 
+    /// <summary>
+    /// Clears any active selection
+    /// </summary>
     public void ClearSelection()
     {
         ApplyEvent(new ClearSelectionEvent(Guid.NewGuid()));
     }
 
+    /// <summary>
+    /// Exits the application
+    /// </summary>
     [RelayCommand]
     private async Task ExitAsync()
     {
-        if (HasEvents())
+        if (HasCanvasEvents())
         {
             var confirmed = await _dialogService.ShowWarningConfirmationAsync("Warning",
                 "All unsaved work will be lost. Are you sure you want to proceed?");
@@ -723,10 +720,13 @@ public partial class MainViewModel : ViewModelBase
         }
     }
 
+    /// <summary>
+    /// Clears the canvas
+    /// </summary>
     [RelayCommand]
     private async Task ResetCanvas()
     {
-        if (CanvasEvents.Count > 0)
+        if (HasCanvasEvents())
         {
             var confirmed = await _dialogService.ShowWarningConfirmationAsync("Warning",
                 "This will clear your current canvas. Are you sure you want to proceed?");
