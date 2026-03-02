@@ -722,4 +722,17 @@ public partial class MainViewModel : ViewModelBase
             desktop.Shutdown();
         }
     }
+
+    [RelayCommand]
+    private async Task ResetCanvas()
+    {
+        if (CanvasEvents.Count > 0)
+        {
+            var confirmed = await _dialogService.ShowWarningConfirmationAsync("Warning",
+                "This will clear your current canvas. Are you sure you want to proceed?");
+            if (!confirmed) return;
+        }
+
+        WeakReferenceMessenger.Default.Send(new ClearCanvasMessage());
+    }
 }

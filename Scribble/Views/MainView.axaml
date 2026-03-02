@@ -154,7 +154,7 @@
                             </StackPanel>
                         </Button>
                         <Button Name="ResetCanvasMenuOption" Margin="0"
-                                Command="{Binding DocumentViewModel.ResetCanvasCommand}"
+                                Command="{Binding ResetCanvasCommand}"
                                 IsVisible="{Binding MultiUserDrawingViewModel.CanResetCanvas}"
                                 HorizontalAlignment="Stretch" HotKey="Ctrl+R" ToolTip.Tip="Ctrl+R">
                             <StackPanel Orientation="Horizontal" Spacing="4">
