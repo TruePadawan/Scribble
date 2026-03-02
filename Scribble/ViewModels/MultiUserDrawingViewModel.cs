@@ -14,6 +14,9 @@ using Scribble.Shared.Lib;
 
 namespace Scribble.ViewModels;
 
+/// <summary>
+/// View model for managing multi-user drawing
+/// </summary>
 public partial class MultiUserDrawingViewModel : ViewModelBase
 {
     // Services

@@ -14,6 +14,10 @@ using Scribble.Shared.Lib;
 
 namespace Scribble.ViewModels;
 
+/// <summary>
+/// View model for handling canvas-to-file and file-to-canvas operations
+/// Handles saving and loading the canvas state to/from a file
+/// </summary>
 public partial class DocumentViewModel : ViewModelBase
 {
     private readonly IFileService _fileService;

@@ -15,6 +15,9 @@ using SkiaSharp;
 
 namespace Scribble.ViewModels;
 
+/// <summary>
+/// View model for handling exporting the canvas state into an image
+/// </summary>
 public partial class CanvasExportViewModel : ViewModelBase
 {
     [ObservableProperty] private int _imageScale;
