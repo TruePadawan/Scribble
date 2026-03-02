@@ -25,16 +25,7 @@ public class EllipseTool : StrokeTool
         ];
         var plusBitmap = new Bitmap(AssetLoader.Open(new Uri("avares://Scribble/Assets/plus.png")));
         Cursor = new Cursor(plusBitmap, new PixelPoint(12, 12));
-        StrokePaint = new StrokePaint
-        {
-            IsAntialias = true,
-            IsStroke = true,
-            StrokeCap = SKStrokeCap.Round,
-            StrokeWidth = 1,
-            Color = SKColors.Red,
-        };
         _startPoint = null;
-
         HotKey = new KeyGesture(Key.D6);
         ToolTip = "Ellipse Tool - 6";
     }

@@ -6,9 +6,9 @@ namespace Scribble.Shared.Lib;
 
 public class StrokePaint
 {
-    public bool IsAntialias { get; init; }
-    public bool IsStroke { get; init; }
-    public SKStrokeCap StrokeCap { get; init; }
+    public bool IsAntialias { get; set; } = true;
+    public bool IsStroke { get; set; } = true;
+    public SKStrokeCap StrokeCap { get; set; } = SKStrokeCap.Round;
     public SKStrokeJoin StrokeJoin { get; set; }
     public float StrokeWidth { get; set; } = 1;
     public float TextSize { get; set; }
