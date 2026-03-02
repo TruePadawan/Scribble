@@ -13,6 +13,9 @@ using SkiaSharp;
 
 namespace Scribble.Controls;
 
+/// <summary>
+/// The SkiaCanvas control represents the canvas/whiteboard of the application
+/// </summary>
 public class SkiaCanvas : Control
 {
     public static readonly StyledProperty<List<Stroke>> StrokesProperty =
@@ -43,10 +46,10 @@ public class SkiaCanvas : Control
         var strokesToDraw = Strokes;
         var bgColor = CanvasBackground;
         context.Custom(
-            new SkiaDrawOperation(bounds, canvas => { DrawContent(canvas, strokesToDraw, bgColor); }));
+            new SkiaDrawOperation(bounds, canvas => { DrawStrokesOnCanvas(canvas, strokesToDraw, bgColor); }));
     }
 
-    private void DrawContent(SKCanvas canvas, IEnumerable<Stroke> strokesToDraw, Color bgColor)
+    private void DrawStrokesOnCanvas(SKCanvas canvas, IEnumerable<Stroke> strokesToDraw, Color bgColor)
     {
         canvas.Clear(Utilities.ToSkColor(bgColor));
 
