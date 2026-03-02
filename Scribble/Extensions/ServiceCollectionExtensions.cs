@@ -8,6 +8,9 @@ using Scribble.ViewModels;
 
 namespace Scribble.Extensions;
 
+/// <summary>
+/// Extension methods for registering services in the application
+/// </summary>
 public static class ServiceCollectionExtensions
 {
     public static void AddCommonServices(this IServiceCollection collection)

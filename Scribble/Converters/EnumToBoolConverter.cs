@@ -5,6 +5,9 @@ using Avalonia.Data.Converters;
 
 namespace Scribble.Converters;
 
+/// <summary>
+/// This converter allows the ToggleButton control's IsChecked status to be converted between a boolean and an enum
+/// </summary>
 public class EnumToBoolConverter : IValueConverter
 {
     public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
