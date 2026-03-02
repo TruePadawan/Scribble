@@ -69,6 +69,7 @@ public partial class MainView : UserControl
             (double canvasWidth, double canvasHeight) = viewModel.GetCanvasDimensions();
             CanvasScrollViewer.Offset = new Vector(canvasWidth / 2, canvasHeight / 2);
 
+            // Load in all the pointer tools
             viewModel.UiStateViewModel.AvailableTools.Clear();
             var tools = new List<PointerTool>
             {
@@ -102,6 +103,7 @@ public partial class MainView : UserControl
         }
     }
 
+    // If the active tool is a stroke tool, show its options else clear and hide the tool options UI
     private void OnActiveToolChanged(PointerTool? tool)
     {
         _activePointerTool = tool;
@@ -354,7 +356,7 @@ public partial class MainView : UserControl
     {
         if (e.InitialPressMouseButton == MouseButton.Left && _viewModel != null)
         {
-            foreach (var selection in _viewModel.SelectionTargets)
+            foreach (var unused in _viewModel.SelectionTargets)
             {
                 _viewModel.ApplyEvent(new EndStrokeEvent(_selection.MoveActionId));
             }
@@ -419,7 +421,7 @@ public partial class MainView : UserControl
     {
         if (e.InitialPressMouseButton == MouseButton.Left && _viewModel != null)
         {
-            foreach (var selection in _viewModel.SelectionTargets)
+            foreach (var unused in _viewModel.SelectionTargets)
             {
                 _viewModel.ApplyEvent(new EndStrokeEvent(_selection.RotateActionId));
             }
@@ -482,7 +484,7 @@ public partial class MainView : UserControl
     {
         if (e.InitialPressMouseButton == MouseButton.Left && _viewModel != null && _selection.ActiveScaleHandle != null)
         {
-            foreach (var selection in _viewModel.SelectionTargets)
+            foreach (var unused in _viewModel.SelectionTargets)
             {
                 _viewModel.ApplyEvent(new EndStrokeEvent(_selection.ScaleActionId));
             }
