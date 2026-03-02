@@ -7,6 +7,9 @@ using Scribble.Shared.Lib;
 
 namespace Scribble.ViewModels.ToolOptions;
 
+/// <summary>
+/// View model for managing the fill color option
+/// </summary>
 public partial class FillColorOptionViewModel : ToolOptionViewModelBase
 {
     [ObservableProperty] private Color _fillColor;

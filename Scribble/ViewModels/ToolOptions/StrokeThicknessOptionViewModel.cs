@@ -4,6 +4,9 @@ using Scribble.Shared.Lib;
 
 namespace Scribble.ViewModels.ToolOptions;
 
+/// <summary>
+/// View model for managing the stroke thickness option
+/// </summary>
 public partial class StrokeThicknessOptionViewModel : ToolOptionViewModelBase
 {
     [ObservableProperty] private float _thickness;

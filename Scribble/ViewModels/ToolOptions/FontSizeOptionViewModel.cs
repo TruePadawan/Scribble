@@ -4,6 +4,9 @@ using Scribble.Shared.Lib;
 
 namespace Scribble.ViewModels.ToolOptions;
 
+/// <summary>
+/// View model for managing the font size option
+/// </summary>
 public partial class FontSizeOptionViewModel : ToolOptionViewModelBase
 {
     [ObservableProperty] private float _fontSize;

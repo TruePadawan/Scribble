@@ -4,6 +4,9 @@ using Scribble.Shared.Lib;
 
 namespace Scribble.ViewModels.ToolOptions;
 
+/// <summary>
+/// View model for managing the stroke style option
+/// </summary>
 public partial class StrokeStyleOptionViewModel : ToolOptionViewModelBase
 {
     [ObservableProperty] private StrokeStyle _strokeStyle;

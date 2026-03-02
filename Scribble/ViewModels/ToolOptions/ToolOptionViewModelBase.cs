@@ -6,6 +6,9 @@ using Scribble.Shared.Lib;
 
 namespace Scribble.ViewModels.ToolOptions;
 
+/// <summary>
+/// Base class for all tool options view models
+/// </summary>
 public abstract partial class ToolOptionViewModelBase : ObservableObject
 {
     public string Label { get; }

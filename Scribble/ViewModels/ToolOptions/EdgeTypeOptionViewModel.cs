@@ -4,6 +4,9 @@ using Scribble.Shared.Lib;
 
 namespace Scribble.ViewModels.ToolOptions;
 
+/// <summary>
+/// View model for managing the edge type option
+/// </summary>
 public partial class EdgeTypeOptionViewModel : ToolOptionViewModelBase
 {
     [ObservableProperty] private EdgeType _edgeType;
