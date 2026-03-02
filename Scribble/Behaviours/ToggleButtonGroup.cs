@@ -5,6 +5,10 @@ using Avalonia.Interactivity;
 
 namespace Scribble.Behaviours;
 
+/// <summary>
+/// Provides the ability to group ToggleButtons and have them act like Radio buttons
+/// via the GroupName attached property
+/// </summary>
 public class ToggleButtonGroup
 {
     public static readonly AttachedProperty<string?> GroupNameProperty =
