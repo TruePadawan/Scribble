@@ -48,17 +48,26 @@ public partial class CanvasExportViewModel : ViewModelBase
 
     public void UpdateCanvasPreview()
     {
+        List<DrawStroke> previewedStrokes = [];
+        var strokesPayload = WeakReferenceMessenger.Default.Send<RequestSelectedStrokes>().Response;
         var canvasData = WeakReferenceMessenger.Default.Send<RequestCanvasDataMessage>().Response;
-        List<DrawStroke> drawStrokes = [];
-        foreach (var canvasStroke in canvasData.Strokes)
+
+        if (strokesPayload.Strokes.Count > 0)
         {
-            if (canvasStroke is DrawStroke drawStroke)
+            previewedStrokes = strokesPayload.Strokes;
+        }
+        else
+        {
+            foreach (var canvasStroke in canvasData.Strokes)
             {
-                drawStrokes.Add(drawStroke);
+                if (canvasStroke is DrawStroke drawStroke)
+                {
+                    previewedStrokes.Add(drawStroke);
+                }
             }
         }
 
-        var pngData = GetImageData(drawStrokes,
+        var pngData = GetImageData(previewedStrokes,
             includeBackground: IncludeBackground,
             backgroundColor: Utilities.ToSkColor(canvasData.BackgroundColor),
             ImageScale, SKEncodedImageFormat.Png);
