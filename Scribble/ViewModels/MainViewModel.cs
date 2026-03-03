@@ -88,6 +88,32 @@ public partial class MainViewModel : ViewModelBase
         // Clear data when the DocumentViewModel triggers a reset
         WeakReferenceMessenger.Default.Register<MainViewModel, ClearCanvasMessage>(this,
             (mainViewModel, m) => { mainViewModel.ApplyEvent(new LoadCanvasEvent(Guid.NewGuid(), [])); });
+
+        // Send the actively selected strokes to the recipient
+        WeakReferenceMessenger.Default.Register<MainViewModel, RequestSelectedStrokes>(this,
+            (mainViewModel, message) =>
+            {
+                var hasActiveSelection = mainViewModel.SelectionTargets.Count > 0;
+                if (hasActiveSelection)
+                {
+                    var id = mainViewModel.SelectionTargets.Keys.First();
+                    var selectedStrokesIds = mainViewModel.SelectionTargets[id];
+                    List<DrawStroke> selectedStrokes = [];
+                    foreach (var stroke in mainViewModel.CanvasStrokes)
+                    {
+                        if (stroke is DrawStroke drawStroke && selectedStrokesIds.Contains(drawStroke.Id))
+                        {
+                            selectedStrokes.Add(drawStroke);
+                        }
+                    }
+
+                    message.Reply(new SelectedStrokesPayload(selectedStrokes));
+                }
+                else
+                {
+                    message.Reply(new SelectedStrokesPayload([]));
+                }
+            });
     }
 
     // Event handler for when another client in the room draws something

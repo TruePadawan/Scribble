@@ -17,4 +17,10 @@ public class RequestCanvasDataMessage : RequestMessage<CanvasDataPayload>
 public record LoadCanvasDataMessage(List<Stroke> Strokes, string? BackgroundColorHex);
 
 // Message from Document View Model to MainViewModel asking to clear the canvas
-public record ClearCanvasMessage();
+public record ClearCanvasMessage;
+
+public record SelectedStrokesPayload(List<DrawStroke> Strokes);
+
+public class RequestSelectedStrokes : RequestMessage<SelectedStrokesPayload>
+{
+}
