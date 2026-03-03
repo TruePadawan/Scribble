@@ -22,6 +22,7 @@ public class CollaborativeDrawingService(string serverUrl)
     public event Action<CollaborativeDrawingUser, List<CollaborativeDrawingUser>>? ClientJoinedRoom;
     public event Action<CollaborativeDrawingUser, List<CollaborativeDrawingUser>>? ClientLeftRoom;
 
+    // Set up the event handlers and starts a connection to the SignalR server
     public async Task StartAsync()
     {
         // Listen for draw events from others in the room
@@ -50,6 +51,7 @@ public class CollaborativeDrawingService(string serverUrl)
         ConnectionStarted?.Invoke();
     }
 
+    // Kill the SignalR connection
     public async Task StopAsync()
     {
         await _connection.StopAsync();

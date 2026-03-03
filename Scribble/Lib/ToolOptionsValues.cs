@@ -3,6 +3,9 @@ using Scribble.Shared.Lib;
 
 namespace Scribble.Lib;
 
+/// <summary>
+/// Represents the values of the tool options
+/// </summary>
 public class ToolOptionsValues
 {
     public float StrokeThickness { get; set; } = 1f;

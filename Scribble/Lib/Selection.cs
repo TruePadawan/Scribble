@@ -4,6 +4,10 @@ using SkiaSharp;
 
 namespace Scribble.Lib;
 
+/// <summary>
+/// Represents the current selection in the application
+/// It encapsulates the data that represents an active selection
+/// </summary>
 public class Selection
 {
     public Point SelectionMoveCoord = new Point(-1, -1);

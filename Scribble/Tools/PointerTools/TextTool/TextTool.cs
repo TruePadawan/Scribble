@@ -29,9 +29,7 @@ public class TextTool : StrokeTool
         Cursor = new Cursor(plusBitmap, new PixelPoint(12, 12));
         StrokePaint = new StrokePaint
         {
-            Color = SKColors.White,
-            TextSize = 15,
-            IsAntialias = true
+            IsStroke = false,
         };
 
         HotKey = new KeyGesture(Key.D8);

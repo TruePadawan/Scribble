@@ -14,6 +14,10 @@ using Scribble.Shared.Lib;
 
 namespace Scribble.ViewModels;
 
+/// <summary>
+/// View model for handling canvas-to-file and file-to-canvas operations
+/// Handles saving and loading the canvas state to/from a file
+/// </summary>
 public partial class DocumentViewModel : ViewModelBase
 {
     private readonly IFileService _fileService;
@@ -106,19 +110,5 @@ public partial class DocumentViewModel : ViewModelBase
 
         var bgColor = canvasState["backgroundColor"]?.ToString();
         WeakReferenceMessenger.Default.Send(new LoadCanvasDataMessage(strokes, bgColor));
-    }
-
-    [RelayCommand]
-    private async Task ResetCanvas()
-    {
-        var hasEvents = WeakReferenceMessenger.Default.Send<HasEventsRequestMessage>().Response;
-        if (hasEvents)
-        {
-            var confirmed = await _dialogService.ShowWarningConfirmationAsync("Warning",
-                "This will clear your current canvas. Are you sure you want to proceed?");
-            if (!confirmed) return;
-        }
-
-        WeakReferenceMessenger.Default.Send(new ClearCanvasMessage());
     }
 }

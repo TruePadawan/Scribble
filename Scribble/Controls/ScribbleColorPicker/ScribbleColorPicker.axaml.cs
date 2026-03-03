@@ -6,6 +6,10 @@ using Avalonia.Media;
 
 namespace Scribble.Controls.ScribbleColorPicker;
 
+/// <summary>
+/// Custom control for picking a color
+/// It provides a button that opens a flyout with a programmable set of colors that can be selected
+/// </summary>
 public partial class ScribbleColorPicker : UserControl
 {
     private static readonly IReadOnlyList<Color> DefaultPalette = GenerateMaterialPalette();
@@ -27,12 +31,14 @@ public partial class ScribbleColorPicker : UserControl
         return colors;
     }
 
-    // Properties
     public static readonly StyledProperty<IEnumerable<Color>> PaletteColorsProperty =
         AvaloniaProperty.Register<ScribbleColorPicker, IEnumerable<Color>>(
             nameof(PaletteColors),
             defaultValue: DefaultPalette);
 
+    /// <summary>
+    /// Property representing the colors that can be selected
+    /// </summary>
     public IEnumerable<Color> PaletteColors
     {
         get => GetValue(PaletteColorsProperty);
@@ -45,6 +51,9 @@ public partial class ScribbleColorPicker : UserControl
             Colors.White,
             defaultBindingMode: BindingMode.TwoWay);
 
+    /// <summary>
+    /// Property representing the currently selected color
+    /// </summary>
     public Color SelectedColor
     {
         get => GetValue(SelectedColorProperty);
@@ -59,6 +68,7 @@ public partial class ScribbleColorPicker : UserControl
         InitializeComponent();
     }
 
+    // Update the textbox to show the hex code of the currently selected color
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
         base.OnPropertyChanged(change);
@@ -77,6 +87,7 @@ public partial class ScribbleColorPicker : UserControl
         _isUpdatingHex = false;
     }
 
+    // Update the selected color when the inputted text is a valid hex code
     private void HexTextBox_OnTextChanged(object? sender, TextChangedEventArgs e)
     {
         if (_isUpdatingHex) return;
@@ -94,6 +105,7 @@ public partial class ScribbleColorPicker : UserControl
         }
     }
 
+    // Close the flyout when a color is selected
     private void ColorListBox_OnSelectionChanged(object? sender, SelectionChangedEventArgs e)
     {
         if (e.AddedItems.Count > 0)

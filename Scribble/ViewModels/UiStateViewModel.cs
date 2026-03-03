@@ -15,6 +15,10 @@ using SkiaSharp;
 
 namespace Scribble.ViewModels;
 
+/// <summary>
+/// View model for managing the UI state of the application
+/// Handles zooming, tool switching, and tool options
+/// </summary>
 public partial class UiStateViewModel : ViewModelBase
 {
     public const double MinZoom = 1.0f;
@@ -52,11 +56,6 @@ public partial class UiStateViewModel : ViewModelBase
         });
     }
 
-    public void ChangeBackgroundColor(Color color)
-    {
-        BackgroundColor = color;
-    }
-
     [RelayCommand(CanExecute = nameof(CanZoomIn))]
     private void ZoomIn() => CenterZoomRequested?.Invoke(1.1);
 
@@ -76,7 +75,6 @@ public partial class UiStateViewModel : ViewModelBase
         ZoomOutCommand.NotifyCanExecuteChanged();
     }
 
-    // runs when _activePointerTool changes
     partial void OnActivePointerToolChanged(PointerTool? oldValue, PointerTool? newValue)
     {
         oldValue?.Dispose();

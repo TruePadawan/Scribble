@@ -4,17 +4,14 @@ using Scribble.Shared.Lib;
 
 namespace Scribble.ViewModels.ToolOptions;
 
-public partial class EdgeTypeOptionViewModel : ToolOptionViewModelBase
+/// <summary>
+/// View model for managing the edge type option
+/// </summary>
+public partial class EdgeTypeOptionViewModel(EdgeType initialEdgeType) : ToolOptionViewModelBase("Edges")
 {
-    [ObservableProperty] private EdgeType _edgeType;
+    [ObservableProperty] private EdgeType _edgeType = initialEdgeType;
 
-    public Action<EdgeType>? EdgeTypeChanged { get; set; }
-
-    public EdgeTypeOptionViewModel(EdgeType initialEdgeType)
-        : base("Edges", ToolOption.EdgeType)
-    {
-        _edgeType = initialEdgeType;
-    }
+    public Action<EdgeType>? EdgeTypeChanged;
 
     partial void OnEdgeTypeChanged(EdgeType value)
     {

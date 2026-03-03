@@ -1,20 +1,16 @@
 using System;
 using CommunityToolkit.Mvvm.ComponentModel;
-using Scribble.Shared.Lib;
 
 namespace Scribble.ViewModels.ToolOptions;
 
-public partial class StrokeThicknessOptionViewModel : ToolOptionViewModelBase
+/// <summary>
+/// View model for managing the stroke thickness option
+/// </summary>
+public partial class StrokeThicknessOptionViewModel(float initialValue) : ToolOptionViewModelBase("Stroke Thickness")
 {
-    [ObservableProperty] private float _thickness;
+    [ObservableProperty] private float _thickness = initialValue;
 
-    public Action<float>? ThicknessChanged { get; set; }
-
-    public StrokeThicknessOptionViewModel(float initialValue)
-        : base("Stroke Thickness", ToolOption.StrokeThickness)
-    {
-        _thickness = initialValue;
-    }
+    public Action<float>? ThicknessChanged;
 
     partial void OnThicknessChanged(float value)
     {

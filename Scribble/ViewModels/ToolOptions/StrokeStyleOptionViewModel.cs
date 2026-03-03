@@ -4,17 +4,14 @@ using Scribble.Shared.Lib;
 
 namespace Scribble.ViewModels.ToolOptions;
 
-public partial class StrokeStyleOptionViewModel : ToolOptionViewModelBase
+/// <summary>
+/// View model for managing the stroke style option
+/// </summary>
+public partial class StrokeStyleOptionViewModel(StrokeStyle initialStyle) : ToolOptionViewModelBase("Stroke Style")
 {
-    [ObservableProperty] private StrokeStyle _strokeStyle;
+    [ObservableProperty] private StrokeStyle _strokeStyle = initialStyle;
 
-    public Action<StrokeStyle, float[]?>? StyleChanged { get; set; }
-
-    public StrokeStyleOptionViewModel(StrokeStyle initialStyle)
-        : base("Stroke Style", ToolOption.StrokeStyle)
-    {
-        _strokeStyle = initialStyle;
-    }
+    public Action<StrokeStyle, float[]?>? StyleChanged;
 
     partial void OnStrokeStyleChanged(StrokeStyle value)
     {

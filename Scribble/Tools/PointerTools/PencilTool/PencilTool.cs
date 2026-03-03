@@ -17,15 +17,6 @@ public class PencilTool : StrokeTool
     {
         ToolOptions = [ToolOption.StrokeColor, ToolOption.StrokeThickness];
         Cursor = new Cursor(ToolIcon.CreateScaledBitmap(new PixelSize(36, 36)), new PixelPoint(0, 36));
-        StrokePaint = new StrokePaint
-        {
-            IsAntialias = true,
-            IsStroke = true,
-            StrokeCap = SKStrokeCap.Round,
-            StrokeWidth = 1,
-            Color = SKColors.Red
-        };
-
         HotKey = new KeyGesture(Key.D1);
         ToolTip = "Pencil Tool - 1";
     }
