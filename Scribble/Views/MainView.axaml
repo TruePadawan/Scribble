@@ -566,10 +566,13 @@
 
                         <StackPanel Orientation="Vertical" Spacing="4">
                             <TextBlock TextWrapping="Wrap" Foreground="WhiteSmoke">
-                                Scribble v0.1.4-alpha, by
+                                <TextBlock VerticalAlignment="Center">
+                                    Scribble v0.1.6-alpha, by
+                                </TextBlock>
                                 <HyperlinkButton Content="Hermes"
                                                  Padding="0"
                                                  Margin="0"
+                                                 VerticalAlignment="Center"
                                                  Command="{Binding OpenUrlCommand}"
                                                  CommandParameter="https://github.com/TruePadawan" />
                             </TextBlock>
