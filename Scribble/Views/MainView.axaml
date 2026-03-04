@@ -567,7 +567,7 @@
                         <StackPanel Orientation="Vertical" Spacing="4">
                             <TextBlock TextWrapping="Wrap" Foreground="WhiteSmoke">
                                 <TextBlock VerticalAlignment="Center">
-                                    Scribble v0.1.6-alpha, by
+                                    Scribble by
                                 </TextBlock>
                                 <HyperlinkButton Content="Hermes"
                                                  Padding="0"
