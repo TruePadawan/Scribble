@@ -29,6 +29,7 @@ namespace Scribble.Shared.Lib;
 [JsonDerivedType(typeof(UpdateStrokeFontSizeEvent), typeDiscriminator: "UpdateStrokeFontSizeEvent")]
 [JsonDerivedType(typeof(UpdateStrokeStyleEvent), typeDiscriminator: "UpdateStrokeStyleEvent")]
 [JsonDerivedType(typeof(UpdateStrokeThicknessEvent), typeDiscriminator: "UpdateStrokeThicknessEvent")]
+[JsonDerivedType(typeof(ClearSelectionEvent), typeDiscriminator: "ClearSelectionEvent")]
 public abstract record Event(Guid ActionId)
 {
     public DateTime TimeStamp { get; init; } = DateTime.UtcNow;
