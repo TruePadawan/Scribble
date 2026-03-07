@@ -66,7 +66,7 @@ class SelectTool : PointerTool
         ViewModel.ApplyEvent(new EndSelectionEvent(_actionId, _boundId));
     }
 
-    public override void Dispose()
+    public override void HandleToolSwitchOut()
     {
         ViewModel.ClearSelection();
     }

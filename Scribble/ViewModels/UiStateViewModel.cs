@@ -77,7 +77,7 @@ public partial class UiStateViewModel : ViewModelBase
 
     partial void OnActivePointerToolChanged(PointerTool? oldValue, PointerTool? newValue)
     {
-        oldValue?.Dispose();
+        oldValue?.HandleToolSwitchOut();
         ActiveToolChanged?.Invoke(newValue);
     }
 
