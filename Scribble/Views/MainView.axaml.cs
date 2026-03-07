@@ -10,11 +10,13 @@ using Avalonia.Media.Imaging;
 using Avalonia.Platform;
 using Avalonia.Threading;
 using Scribble.Lib;
+using Scribble.Services.FileService;
 using Scribble.Shared.Lib;
 using Scribble.Tools.PointerTools;
 using Scribble.Tools.PointerTools.ArrowTool;
 using Scribble.Tools.PointerTools.EllipseTool;
 using Scribble.Tools.PointerTools.EraseTool;
+using Scribble.Tools.PointerTools.ImageTool;
 using Scribble.Tools.PointerTools.LineTool;
 using Scribble.Tools.PointerTools.PanningTool;
 using Scribble.Tools.PointerTools.PencilTool;
@@ -33,8 +35,9 @@ public partial class MainView : UserControl
     private PointerTool? _activePointerTool;
     private MainViewModel? _viewModel;
     private readonly Selection _selection;
+    private IFileService _fileService;
 
-    public MainView()
+    public MainView(IFileService fileService)
     {
         InitializeComponent();
         _prevCoord = new Point(-1, -1);
@@ -45,6 +48,7 @@ public partial class MainView : UserControl
             Bitmap.DecodeToWidth(AssetLoader.Open(new Uri("avares://Scribble/Assets/rotate.png")), 24);
         SelectionBorder.Cursor = new Cursor(moveIconBitmap, new PixelPoint(18, 18));
         SelectionRotationBtn.Cursor = new Cursor(rotateIconBitmap, new PixelPoint(12, 12));
+        _fileService = fileService;
     }
 
     protected override void OnDataContextChanged(EventArgs e)
@@ -81,7 +85,8 @@ public partial class MainView : UserControl
                 new EllipseTool("EllipseTool", viewModel),
                 new RectangleTool("RectangleTool", viewModel),
                 new TextTool("TextTool", viewModel, CanvasContainer),
-                new SelectTool("SelectTool", viewModel, CanvasContainer)
+                new SelectTool("SelectTool", viewModel, CanvasContainer),
+                new ImageTool("ImageTool", viewModel, _fileService)
             };
             foreach (var tool in tools)
             {

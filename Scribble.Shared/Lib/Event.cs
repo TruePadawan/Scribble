@@ -30,6 +30,7 @@ namespace Scribble.Shared.Lib;
 [JsonDerivedType(typeof(UpdateStrokeStyleEvent), typeDiscriminator: "UpdateStrokeStyleEvent")]
 [JsonDerivedType(typeof(UpdateStrokeThicknessEvent), typeDiscriminator: "UpdateStrokeThicknessEvent")]
 [JsonDerivedType(typeof(ClearSelectionEvent), typeDiscriminator: "ClearSelectionEvent")]
+[JsonDerivedType(typeof(AddImageEvent), typeDiscriminator: "AddImageEvent")]
 public abstract record Event(Guid ActionId)
 {
     public DateTime TimeStamp { get; init; } = DateTime.UtcNow;
@@ -88,6 +89,13 @@ public record RotateStrokesEvent(Guid ActionId, Guid BoundId, float DegreesRad, 
     : Event(ActionId);
 
 public record ScaleStrokesEvent(Guid ActionId, Guid BoundId, SKPoint Scale, SKPoint Center) : Event(ActionId);
+
+// IMAGE TOOL
+public record AddImageEvent(
+    Guid ActionId,
+    Guid ImageId,
+    string ImageBase64String,
+    SKPoint Position) : Event(ActionId), ITerminalEvent;
 
 // MISC
 public record LoadCanvasEvent(Guid ActionId, List<Stroke> Strokes) : Event(ActionId), ITerminalEvent;

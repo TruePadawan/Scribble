@@ -5,6 +5,7 @@ using System.Linq;
 using Avalonia.Markup.Xaml;
 using Microsoft.Extensions.DependencyInjection;
 using Scribble.Extensions;
+using Scribble.Services.FileService;
 using Scribble.ViewModels;
 using Scribble.Views;
 
@@ -25,6 +26,7 @@ public partial class App : Application
 
         var services = serviceCollection.BuildServiceProvider();
         var viewModel = services.GetRequiredService<MainViewModel>();
+        var fileService = services.GetRequiredService<IFileService>();
 
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
@@ -39,9 +41,9 @@ public partial class App : Application
         }
         else if (ApplicationLifetime is ISingleViewApplicationLifetime singleViewPlatform)
         {
-            singleViewPlatform.MainView = new MainView
+            singleViewPlatform.MainView = new MainView(fileService)
             {
-                DataContext = viewModel
+                DataContext = viewModel,
             };
         }
 
