@@ -26,7 +26,6 @@ public partial class App : Application
 
         var services = serviceCollection.BuildServiceProvider();
         var viewModel = services.GetRequiredService<MainViewModel>();
-        var fileService = services.GetRequiredService<IFileService>();
 
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
@@ -41,7 +40,7 @@ public partial class App : Application
         }
         else if (ApplicationLifetime is ISingleViewApplicationLifetime singleViewPlatform)
         {
-            singleViewPlatform.MainView = new MainView(fileService)
+            singleViewPlatform.MainView = new MainView
             {
                 DataContext = viewModel,
             };

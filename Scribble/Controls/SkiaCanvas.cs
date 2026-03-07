@@ -18,13 +18,13 @@ namespace Scribble.Controls;
 /// </summary>
 public class SkiaCanvas : Control
 {
-    public static readonly StyledProperty<List<Stroke>> StrokesProperty =
-        AvaloniaProperty.Register<SkiaCanvas, List<Stroke>>(nameof(Strokes));
+    public static readonly StyledProperty<List<CanvasElement>> CanvasElementsProperty =
+        AvaloniaProperty.Register<SkiaCanvas, List<CanvasElement>>(nameof(CanvasElements));
 
-    public List<Stroke> Strokes
+    public List<CanvasElement> CanvasElements
     {
-        get => GetValue(StrokesProperty);
-        set => SetValue(StrokesProperty, value);
+        get => GetValue(CanvasElementsProperty);
+        set => SetValue(CanvasElementsProperty, value);
     }
 
     public static readonly StyledProperty<Color> CanvasBackgroundProperty =
@@ -43,19 +43,19 @@ public class SkiaCanvas : Control
 
         var bounds = new Rect(0, 0, Bounds.Width, Bounds.Height);
         // Have to capture the data outside the Render thread else it throws an exception
-        var strokesToDraw = Strokes;
+        var elementsToDraw = CanvasElements;
         var bgColor = CanvasBackground;
         context.Custom(
-            new SkiaDrawOperation(bounds, canvas => { DrawStrokesOnCanvas(canvas, strokesToDraw, bgColor); }));
+            new SkiaDrawOperation(bounds, canvas => { DrawStrokesOnCanvas(canvas, elementsToDraw, bgColor); }));
     }
 
-    private void DrawStrokesOnCanvas(SKCanvas canvas, IEnumerable<Stroke> strokesToDraw, Color bgColor)
+    private void DrawStrokesOnCanvas(SKCanvas canvas, IEnumerable<CanvasElement> elementsToDraw, Color bgColor)
     {
         canvas.Clear(Utilities.ToSkColor(bgColor));
 
-        foreach (var stroke in strokesToDraw)
+        foreach (var canvasElement in elementsToDraw)
         {
-            if (stroke is DrawStroke drawStroke)
+            if (canvasElement is DrawStroke drawStroke)
             {
                 using var paintToUse = drawStroke.Paint.ToSkPaint();
                 if (drawStroke.IsToBeErased)
@@ -89,7 +89,7 @@ public class SkiaCanvas : Control
     {
         base.OnPropertyChanged(change);
 
-        if (change.Property == StrokesProperty)
+        if (change.Property == CanvasElementsProperty)
         {
             if (change.OldValue is INotifyCollectionChanged oldList)
             {

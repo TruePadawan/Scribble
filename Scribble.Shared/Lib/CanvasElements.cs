@@ -4,25 +4,19 @@ using SkiaSharp;
 
 namespace Scribble.Shared.Lib;
 
+[JsonDerivedType(typeof(CanvasImage), typeDiscriminator: "CanvasImage")]
+public abstract class CanvasElement
+{
+    public Guid Id { get; init; } = Guid.NewGuid();
+}
+
 [JsonDerivedType(typeof(DrawStroke), typeDiscriminator: "DrawStroke")]
 [JsonDerivedType(typeof(EraserStroke), typeDiscriminator: "EraserStroke")]
 [JsonDerivedType(typeof(SelectionBound), typeDiscriminator: "SelectionBound")]
-public abstract class Stroke
+public abstract class Stroke : CanvasElement
 {
-    public Guid Id { get; init; } = Guid.NewGuid();
-
     [JsonConverter(typeof(SKPathJsonConverter))]
     public SKPath Path { get; init; } = new();
-}
-
-public enum ToolType
-{
-    Pencil,
-    Line,
-    Arrow,
-    Ellipse,
-    Rectangle,
-    Text
 }
 
 public class DrawStroke : Stroke
@@ -43,6 +37,21 @@ public class SelectionBound : Stroke
     public HashSet<Guid> Targets = [];
 }
 
+public class CanvasImage : CanvasElement
+{
+    public required string ImageBase64String { get; init; }
+}
+
+public enum ToolType
+{
+    Pencil,
+    Line,
+    Arrow,
+    Ellipse,
+    Rectangle,
+    Text
+}
+
 public enum StrokeStyle
 {
     Solid,
@@ -56,6 +65,10 @@ public enum EdgeType
     Rounded
 }
 
+/// <summary>
+/// Converts an SKPath to and from an SVG path string
+/// This preserves Moves, Lines, Curves, and Shapes automatically
+/// </summary>
 public class SKPathJsonConverter : JsonConverter<SKPath>
 {
     public override SKPath Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
@@ -72,8 +85,6 @@ public class SKPathJsonConverter : JsonConverter<SKPath>
 
     public override void Write(Utf8JsonWriter writer, SKPath value, JsonSerializerOptions options)
     {
-        // Convert the Path to an SVG path string
-        // This preserves Moves, Lines, Curves, and Shapes automatically
         string svgPathData = value.ToSvgPathData();
         writer.WriteStringValue(svgPathData);
     }

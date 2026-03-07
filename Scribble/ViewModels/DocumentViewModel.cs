@@ -53,9 +53,13 @@ public partial class DocumentViewModel : ViewModelBase
 
         var serializerOptions = new JsonSerializerOptions { WriteIndented = true };
         var jsonCanvasStrokes = new JsonArray();
-        foreach (var stroke in canvasData.Strokes)
+        foreach (var element in canvasData.CanvasElements)
         {
-            jsonCanvasStrokes.Add(JsonSerializer.SerializeToNode(stroke, serializerOptions));
+            if (element is Stroke stroke)
+            {
+                jsonCanvasStrokes.Add(JsonSerializer.SerializeToNode(stroke, serializerOptions));
+            }
+            // TODO: Add canvas images
         }
 
         var canvasState = new JsonObject
@@ -99,16 +103,17 @@ public partial class DocumentViewModel : ViewModelBase
             if (!confirmed) return;
         }
 
-        List<Stroke> strokes = [];
+        List<CanvasElement> elements = [];
         foreach (var stroke in rawStrokes)
         {
             if (stroke is null) throw new Exception("Invalid canvas file");
             var deserializedStroke = JsonSerializer.Deserialize<Stroke>(stroke.ToJsonString());
             if (deserializedStroke is null) throw new Exception("Invalid canvas file");
-            strokes.Add(deserializedStroke);
+            elements.Add(deserializedStroke);
         }
+        // TODO: Add canvas images
 
         var bgColor = canvasState["backgroundColor"]?.ToString();
-        WeakReferenceMessenger.Default.Send(new LoadCanvasDataMessage(strokes, bgColor));
+        WeakReferenceMessenger.Default.Send(new LoadCanvasDataMessage(elements, bgColor));
     }
 }

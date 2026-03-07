@@ -6,7 +6,7 @@ using Scribble.Shared.Lib;
 namespace Scribble.Messages;
 
 // Holds the canvas data saved to a file
-public record CanvasDataPayload(List<Stroke> Strokes, Color BackgroundColor);
+public record CanvasDataPayload(List<CanvasElement> CanvasElements, Color BackgroundColor);
 
 // From Document View Model to MainViewModel asking for the current canvas data
 public class RequestCanvasDataMessage : RequestMessage<CanvasDataPayload>
@@ -14,13 +14,13 @@ public class RequestCanvasDataMessage : RequestMessage<CanvasDataPayload>
 }
 
 // Message from Document View Model to MainViewModel asking to load the canvas data
-public record LoadCanvasDataMessage(List<Stroke> Strokes, string? BackgroundColorHex);
+public record LoadCanvasDataMessage(List<CanvasElement> CanvasElements, string? BackgroundColorHex);
 
 // Message from Document View Model to MainViewModel asking to clear the canvas
 public record ClearCanvasMessage;
 
-public record SelectedStrokesPayload(List<DrawStroke> Strokes);
+public record SelectedElementsPayload(List<CanvasElement> CanvasElements);
 
-public class RequestSelectedStrokes : RequestMessage<SelectedStrokesPayload>
+public class RequestSelectedElements : RequestMessage<SelectedElementsPayload>
 {
 }

@@ -35,9 +35,9 @@ public partial class MainView : UserControl
     private PointerTool? _activePointerTool;
     private MainViewModel? _viewModel;
     private readonly Selection _selection;
-    private IFileService _fileService;
+    private readonly IFileService _fileService;
 
-    public MainView(IFileService fileService)
+    public MainView()
     {
         InitializeComponent();
         _prevCoord = new Point(-1, -1);
@@ -48,7 +48,7 @@ public partial class MainView : UserControl
             Bitmap.DecodeToWidth(AssetLoader.Open(new Uri("avares://Scribble/Assets/rotate.png")), 24);
         SelectionBorder.Cursor = new Cursor(moveIconBitmap, new PixelPoint(18, 18));
         SelectionRotationBtn.Cursor = new Cursor(rotateIconBitmap, new PixelPoint(12, 12));
-        _fileService = fileService;
+        _fileService = new AvaloniaFileService();
     }
 
     protected override void OnDataContextChanged(EventArgs e)
@@ -178,8 +178,8 @@ public partial class MainView : UserControl
 
         if (allSelectedIds.Count > 0)
         {
-            var selectedStrokes = _viewModel.CanvasStrokes
-                .Where(stroke => allSelectedIds.Contains(stroke.Id) && stroke is DrawStroke)
+            var selectedStrokes = _viewModel.CanvasElements
+                .Where(element => allSelectedIds.Contains(element.Id) && element is DrawStroke)
                 .Cast<DrawStroke>()
                 .ToList();
             if (selectedStrokes.Count == 0)

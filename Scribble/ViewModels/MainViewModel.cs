@@ -27,7 +27,7 @@ public partial class MainViewModel : ViewModelBase
     private bool CanRedo => _redoStack.Count > 0;
 
     public event Action? RequestInvalidateSelection;
-    [ObservableProperty] private List<Stroke> _canvasStrokes = [];
+    [ObservableProperty] private List<CanvasElement> _canvasElements = [];
     private readonly HashSet<Guid> _deletedActions = [];
     public Dictionary<Guid, List<Guid>> SelectionTargets { get; private set; } = [];
     public Queue<Event> CanvasEvents { get; private set; } = [];
@@ -74,7 +74,7 @@ public partial class MainViewModel : ViewModelBase
         WeakReferenceMessenger.Default.Register<MainViewModel, RequestCanvasDataMessage>(this,
             (mainViewModel, message) =>
             {
-                message.Reply(new CanvasDataPayload(mainViewModel.CanvasStrokes,
+                message.Reply(new CanvasDataPayload(mainViewModel.CanvasElements,
                     mainViewModel.UiStateViewModel.BackgroundColor));
             });
 
@@ -82,7 +82,7 @@ public partial class MainViewModel : ViewModelBase
         WeakReferenceMessenger.Default.Register<MainViewModel, LoadCanvasDataMessage>(this,
             (mainViewModel, message) =>
             {
-                mainViewModel.ApplyEvent(new LoadCanvasEvent(Guid.NewGuid(), message.Strokes));
+                mainViewModel.ApplyEvent(new LoadCanvasEvent(Guid.NewGuid(), message.CanvasElements));
             });
 
         // Clear data when the DocumentViewModel triggers a reset
@@ -90,28 +90,33 @@ public partial class MainViewModel : ViewModelBase
             (mainViewModel, m) => { mainViewModel.ApplyEvent(new LoadCanvasEvent(Guid.NewGuid(), [])); });
 
         // Send the actively selected strokes to the recipient
-        WeakReferenceMessenger.Default.Register<MainViewModel, RequestSelectedStrokes>(this,
+        WeakReferenceMessenger.Default.Register<MainViewModel, RequestSelectedElements>(this,
             (mainViewModel, message) =>
             {
                 var hasActiveSelection = mainViewModel.SelectionTargets.Count > 0;
                 if (hasActiveSelection)
                 {
                     var id = mainViewModel.SelectionTargets.Keys.First();
-                    var selectedStrokesIds = mainViewModel.SelectionTargets[id];
-                    List<DrawStroke> selectedStrokes = [];
-                    foreach (var stroke in mainViewModel.CanvasStrokes)
+                    var selectedElementIds = mainViewModel.SelectionTargets[id];
+                    List<CanvasElement> selectedElements = [];
+                    foreach (var canvasElement in mainViewModel.CanvasElements)
                     {
-                        if (stroke is DrawStroke drawStroke && selectedStrokesIds.Contains(drawStroke.Id))
+                        if (canvasElement is DrawStroke drawStroke && selectedElementIds.Contains(drawStroke.Id))
                         {
-                            selectedStrokes.Add(drawStroke);
+                            selectedElements.Add(drawStroke);
+                        }
+                        else if (canvasElement is CanvasImage canvasImage &&
+                                 selectedElementIds.Contains(canvasImage.Id))
+                        {
+                            selectedElements.Add(canvasImage);
                         }
                     }
 
-                    message.Reply(new SelectedStrokesPayload(selectedStrokes));
+                    message.Reply(new SelectedElementsPayload(selectedElements));
                 }
                 else
                 {
-                    message.Reply(new SelectedStrokesPayload([]));
+                    message.Reply(new SelectedElementsPayload([]));
                 }
             });
     }
@@ -515,9 +520,9 @@ public partial class MainViewModel : ViewModelBase
                     break;
                 case LoadCanvasEvent ev:
                     drawStrokes.Clear();
-                    foreach (Stroke stroke in ev.Strokes)
+                    foreach (var element in ev.CanvasElements)
                     {
-                        if (stroke is DrawStroke drawStroke)
+                        if (element is DrawStroke drawStroke)
                         {
                             drawStrokes[drawStroke.Id] = drawStroke;
                         }
@@ -628,7 +633,7 @@ public partial class MainViewModel : ViewModelBase
             }
         }
 
-        CanvasStrokes = new List<Stroke>(drawStrokes.Values.ToList());
+        CanvasElements = new List<CanvasElement>(drawStrokes.Values.ToList());
         // Show the selection only on the client that is doing the selection
         SelectionTargets = selectionBounds.Where(pair => _mySelections.Contains(pair.Key))
             .ToDictionary(k => k.Key, v => v.Value.Targets.ToList());

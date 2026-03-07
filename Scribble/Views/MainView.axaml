@@ -41,7 +41,7 @@
                                          PointerMoved="MainCanvas_OnPointerMoved"
                                          PointerReleased="MainCanvas_OnPointerReleased"
                                          PointerWheelChanged="MainCanvas_OnPointerWheelChanged"
-                                         Strokes="{Binding CanvasStrokes}"
+                                         CanvasElements="{Binding CanvasElements}"
                                          RenderTransformOrigin="0 0" />
                     <!-- COVERS SELECTED ELEMENTS -->
                     <StackPanel Name="SelectionOverlay" Spacing="6" IsVisible="False">

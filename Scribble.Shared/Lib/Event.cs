@@ -98,7 +98,7 @@ public record AddImageEvent(
     SKPoint Position) : Event(ActionId), ITerminalEvent;
 
 // MISC
-public record LoadCanvasEvent(Guid ActionId, List<Stroke> Strokes) : Event(ActionId), ITerminalEvent;
+public record LoadCanvasEvent(Guid ActionId, List<CanvasElement> CanvasElements) : Event(ActionId), ITerminalEvent;
 
 public record UndoEvent(Guid ActionId, Guid TargetActionId) : Event(ActionId);
 
