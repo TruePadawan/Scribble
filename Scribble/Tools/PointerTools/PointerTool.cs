@@ -47,6 +47,13 @@ public abstract class PointerTool(string name, MainViewModel viewModel, Bitmap i
     }
 
     /// <summary>
+    /// This is called when the tool is switched in
+    /// </summary>
+    public virtual void HandleToolSwitchIn()
+    {
+    }
+
+    /// <summary>
     /// This is called when the tool is switched out
     /// </summary>
     public virtual void HandleToolSwitchOut()

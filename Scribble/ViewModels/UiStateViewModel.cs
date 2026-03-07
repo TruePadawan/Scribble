@@ -79,6 +79,7 @@ public partial class UiStateViewModel : ViewModelBase
     {
         oldValue?.HandleToolSwitchOut();
         ActiveToolChanged?.Invoke(newValue);
+        newValue?.HandleToolSwitchIn();
     }
 
     [RelayCommand]
