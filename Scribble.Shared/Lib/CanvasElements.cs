@@ -39,7 +39,7 @@ public class SelectionBound : Stroke
 
 public class CanvasImage : CanvasElement
 {
-    [JsonIgnore] public required string ImageBase64String { get; init; }
+    public required string ImageBase64String { get; init; }
     public required SKRect Bounds { get; init; }
     public bool IsToBeErased = false;
 }
