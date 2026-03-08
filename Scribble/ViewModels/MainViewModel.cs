@@ -529,7 +529,7 @@ public partial class MainViewModel : ViewModelBase
                     }
 
                     break;
-                case ScaleStrokesEvent ev:
+                case ScaleCanvasElementsEvent ev:
                     if (selectionBounds.ContainsKey(ev.BoundId))
                     {
                         var bound = selectionBounds[ev.BoundId];
@@ -540,6 +540,22 @@ public partial class MainViewModel : ViewModelBase
                                 drawStrokes[boundTargetId].Path
                                     .Transform(SKMatrix.CreateScale(ev.Scale.X, ev.Scale.Y, ev.Center.X,
                                         ev.Center.Y));
+                            }
+                            else if (canvasImages.ContainsKey(boundTargetId))
+                            {
+                                var image = canvasImages[boundTargetId];
+                                var scaleMatrix =
+                                    SKMatrix.CreateScale(ev.Scale.X, ev.Scale.Y, ev.Center.X, ev.Center.Y);
+                                var topLeft = scaleMatrix.MapPoint(new SKPoint(image.Bounds.Left, image.Bounds.Top));
+                                var bottomRight =
+                                    scaleMatrix.MapPoint(new SKPoint(image.Bounds.Right, image.Bounds.Bottom));
+                                var newBounds = new SKRect(topLeft.X, topLeft.Y, bottomRight.X, bottomRight.Y);
+
+                                const float minSize = 10f;
+                                if (newBounds.Width >= minSize && newBounds.Height >= minSize)
+                                {
+                                    image.Bounds = newBounds;
+                                }
                             }
                         }
                     }

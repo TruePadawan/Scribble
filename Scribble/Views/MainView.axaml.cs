@@ -495,7 +495,7 @@ public partial class MainView : UserControl
 
             foreach (var selection in _viewModel.SelectionTargets)
             {
-                _viewModel.ApplyEvent(new ScaleStrokesEvent(_selection.ScaleActionId,
+                _viewModel.ApplyEvent(new ScaleCanvasElementsEvent(_selection.ScaleActionId,
                     selection.Key,
                     new SKPoint((float)scaleX, (float)scaleY),
                     Utilities.ToSkPoint(_selection.ScalePivot)));
