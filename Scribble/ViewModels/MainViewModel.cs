@@ -655,11 +655,12 @@ public partial class MainViewModel : ViewModelBase
 
                     break;
                 case AddImageEvent ev:
+                    var imageBounds = SKRect.Create(ev.Position, ev.Size);
                     canvasImages[ev.ImageId] = new CanvasImage
                     {
                         Id = ev.ImageId,
                         ImageBase64String = ev.ImageBase64String,
-                        Bounds = ev.Bounds,
+                        Bounds = imageBounds,
                     };
                     elementIdToActionId[ev.ImageId] = ev.ActionId;
                     break;

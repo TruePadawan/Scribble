@@ -96,7 +96,8 @@ public record AddImageEvent(
     Guid ActionId,
     Guid ImageId,
     string ImageBase64String,
-    SKRect Bounds) : Event(ActionId), ITerminalEvent;
+    SKPoint Position,
+    SKSize Size) : Event(ActionId), ITerminalEvent;
 
 // MISC
 public record LoadCanvasEvent(Guid ActionId, List<CanvasElement> CanvasElements) : Event(ActionId), ITerminalEvent;
