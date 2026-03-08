@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
@@ -68,7 +69,10 @@ public partial class CanvasExportViewModel : ViewModelBase
                 {
                     previewedElements.Add(drawStroke);
                 }
-                // TODO: Add canvas images
+                else if (canvasElement is CanvasImage canvasImage)
+                {
+                    previewedElements.Add(canvasImage);
+                }
             }
         }
 
@@ -169,7 +173,10 @@ public partial class CanvasExportViewModel : ViewModelBase
                     totalBounds.Union(pathBounds);
                 }
             }
-            // TODO: Add canvas images
+            else if (element is CanvasImage canvasImage)
+            {
+                totalBounds.Union(canvasImage.Bounds);
+            }
         }
 
         return totalBounds;
@@ -229,6 +236,15 @@ public partial class CanvasExportViewModel : ViewModelBase
                     }
 
                     canvas.DrawPath(drawStroke.Path, paintToUse);
+                }
+            }
+            else if (element is CanvasImage canvasImage)
+            {
+                var imageBytes = Convert.FromBase64String(canvasImage.ImageBase64String);
+                var bitmap = SKBitmap.Decode(imageBytes);
+                if (bitmap != null)
+                {
+                    canvas.DrawBitmap(bitmap, canvasImage.Bounds);
                 }
             }
         }
