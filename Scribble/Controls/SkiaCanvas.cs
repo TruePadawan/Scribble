@@ -88,7 +88,16 @@ public class SkiaCanvas : Control
                 var bitmap = SKBitmap.Decode(imageBytes);
                 if (bitmap != null)
                 {
-                    canvas.DrawBitmap(bitmap, canvasImage.Bounds);
+                    if (canvasImage.IsToBeErased)
+                    {
+                        using var lowOpacityPaint = new SKPaint();
+                        lowOpacityPaint.Color = SKColors.Black.WithAlpha(80);
+                        canvas.DrawBitmap(bitmap, canvasImage.Bounds, lowOpacityPaint);
+                    }
+                    else
+                    {
+                        canvas.DrawBitmap(bitmap, canvasImage.Bounds);
+                    }
                 }
             }
         }

@@ -269,7 +269,7 @@ public partial class MainViewModel : ViewModelBase
         var selectionBounds = new Dictionary<Guid, SelectionBound>();
         var clearsSomething = new Dictionary<Guid, bool>();
         var staleActionIds = new List<Guid>();
-        var strokeToActionMap = new Dictionary<Guid, Guid>();
+        var elementIdToActionId = new Dictionary<Guid, Guid>();
         var strokeTexts = new Dictionary<Guid, string>();
         var canvasImages = new Dictionary<Guid, CanvasImage>();
 
@@ -288,7 +288,7 @@ public partial class MainViewModel : ViewModelBase
                         ToolType = ev.ToolType,
                         ToolOptions = ev.ToolOptions
                     };
-                    strokeToActionMap[ev.StrokeId] = ev.ActionId;
+                    elementIdToActionId[ev.StrokeId] = ev.ActionId;
                     break;
                 case StartEraseStrokeEvent ev:
                     var eraserPath = new SKPath();
@@ -302,7 +302,7 @@ public partial class MainViewModel : ViewModelBase
                     eraserHeads[ev.StrokeId] = ev.StartPoint;
 
                     // Find all targets for erasing
-                    CheckAndErase(ev.StartPoint, drawStrokes.Values, newEraserStroke);
+                    CheckAndErase(ev.StartPoint, [..drawStrokes.Values, ..canvasImages.Values], newEraserStroke);
 
                     eraserStrokes[ev.StrokeId] = newEraserStroke;
                     break;
@@ -322,7 +322,8 @@ public partial class MainViewModel : ViewModelBase
                             var completionPercentage = s / stepSize;
                             var checkX = start.X + (end.X - start.X) * completionPercentage;
                             var checkY = start.Y + (end.Y - start.Y) * completionPercentage;
-                            CheckAndErase(new SKPoint((float)checkX, (float)checkY), drawStrokes.Values,
+                            CheckAndErase(new SKPoint((float)checkX, (float)checkY),
+                                [..drawStrokes.Values, ..canvasImages.Values],
                                 currentEraserStroke);
                         }
 
@@ -338,7 +339,8 @@ public partial class MainViewModel : ViewModelBase
                         foreach (var targetId in eraserStrokes[ev.StrokeId].Targets)
                         {
                             drawStrokes.Remove(targetId);
-                            _deletedActions.Add(strokeToActionMap[targetId]);
+                            canvasImages.Remove(targetId);
+                            _deletedActions.Add(elementIdToActionId[targetId]);
                         }
 
                         if (eraserStrokes[ev.StrokeId].Targets.Count == 0)
@@ -425,7 +427,7 @@ public partial class MainViewModel : ViewModelBase
                         ToolOptions = ev.ToolOptions
                     };
                     strokeTexts[ev.StrokeId] = ev.Text;
-                    strokeToActionMap[ev.StrokeId] = ev.ActionId;
+                    elementIdToActionId[ev.StrokeId] = ev.ActionId;
                     break;
                 case CreateSelectionBoundEvent ev:
                     var selectionPath = new SKPath();
@@ -638,6 +640,7 @@ public partial class MainViewModel : ViewModelBase
                         ImageBase64String = ev.ImageBase64String,
                         Bounds = ev.Bounds,
                     };
+                    elementIdToActionId[ev.ImageId] = ev.ActionId;
                     break;
             }
         }
@@ -655,35 +658,47 @@ public partial class MainViewModel : ViewModelBase
     /// Marks the strokes that are a target for erasure
     /// </summary>
     /// <param name="eraserPoint">The latest point in the eraser's stroke</param>
-    /// <param name="drawStrokes">Collection of all current strokes on the canvas</param>
+    /// <param name="canvasElements">Collection of all current elements on the canvas</param>
     /// <param name="eraserStroke">The active eraser stroke</param>
-    private void CheckAndErase(SKPoint eraserPoint, IEnumerable<DrawStroke> drawStrokes, EraserStroke eraserStroke)
+    private void CheckAndErase(SKPoint eraserPoint, IEnumerable<CanvasElement> canvasElements,
+        EraserStroke eraserStroke)
     {
-        foreach (var stroke in drawStrokes)
+        foreach (var element in canvasElements)
         {
-            var strokeId = stroke.Id;
-            switch (stroke.ToolType)
+            if (element is DrawStroke stroke)
             {
-                case ToolType.Line or ToolType.Arrow:
+                var strokeId = stroke.Id;
+                switch (stroke.ToolType)
                 {
-                    var endPoints = new[] { stroke.Path[0], stroke.Path[1] };
-                    if (Utilities.IsPointNearLine(eraserPoint, endPoints, 10.0f))
+                    case ToolType.Line or ToolType.Arrow:
                     {
-                        stroke.IsToBeErased = true;
-                        eraserStroke.Targets.Add(strokeId);
-                    }
+                        var endPoints = new[] { stroke.Path[0], stroke.Path[1] };
+                        if (Utilities.IsPointNearLine(eraserPoint, endPoints, 10.0f))
+                        {
+                            stroke.IsToBeErased = true;
+                            eraserStroke.Targets.Add(strokeId);
+                        }
 
-                    break;
+                        break;
+                    }
+                    default:
+                    {
+                        if (stroke.Path.Contains(eraserPoint.X, eraserPoint.Y))
+                        {
+                            stroke.IsToBeErased = true;
+                            eraserStroke.Targets.Add(strokeId);
+                        }
+
+                        break;
+                    }
                 }
-                default:
+            }
+            else if (element is CanvasImage image)
+            {
+                if (image.Bounds.Contains(eraserPoint.X, eraserPoint.Y))
                 {
-                    if (stroke.Path.Contains(eraserPoint.X, eraserPoint.Y))
-                    {
-                        stroke.IsToBeErased = true;
-                        eraserStroke.Targets.Add(strokeId);
-                    }
-
-                    break;
+                    image.IsToBeErased = true;
+                    eraserStroke.Targets.Add(image.Id);
                 }
             }
         }
