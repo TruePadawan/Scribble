@@ -636,8 +636,7 @@ public partial class MainViewModel : ViewModelBase
                     {
                         Id = ev.ImageId,
                         ImageBase64String = ev.ImageBase64String,
-                        Position = ev.Position,
-                        ImageSize = ev.ImageSize,
+                        Bounds = ev.Bounds,
                     };
                     break;
             }

@@ -68,8 +68,8 @@ public class ImageTool : PointerTool
             var actionId = Guid.NewGuid();
             var imageId = Guid.NewGuid();
             var imageSize = ScaleToFit(bitmap.Width, bitmap.Height, MaxImageDimension);
-            ViewModel.ApplyEvent(new AddImageEvent(actionId, imageId, base64String, imageSize,
-                Utilities.ToSkPoint(coord)));
+            var imageRect = SKRect.Create(Utilities.ToSkPoint(coord), imageSize);
+            ViewModel.ApplyEvent(new AddImageEvent(actionId, imageId, base64String, imageRect));
         });
     }
 

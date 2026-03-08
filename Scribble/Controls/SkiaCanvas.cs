@@ -88,8 +88,7 @@ public class SkiaCanvas : Control
                 var bitmap = SKBitmap.Decode(imageBytes);
                 if (bitmap != null)
                 {
-                    var destinationRect = SKRect.Create(canvasImage.Position, canvasImage.ImageSize);
-                    canvas.DrawBitmap(bitmap, destinationRect);
+                    canvas.DrawBitmap(bitmap, canvasImage.Bounds);
                 }
             }
         }
