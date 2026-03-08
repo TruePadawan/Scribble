@@ -340,7 +340,10 @@ public partial class MainViewModel : ViewModelBase
                         {
                             drawStrokes.Remove(targetId);
                             canvasImages.Remove(targetId);
-                            _deletedActions.Add(elementIdToActionId[targetId]);
+                            if (elementIdToActionId.ContainsKey(targetId))
+                            {
+                                _deletedActions.Add(elementIdToActionId[targetId]);
+                            }
                         }
 
                         if (eraserStrokes[ev.StrokeId].Targets.Count == 0)
@@ -523,11 +526,29 @@ public partial class MainViewModel : ViewModelBase
                     break;
                 case LoadCanvasEvent ev:
                     drawStrokes.Clear();
+                    canvasImages.Clear();
+
                     foreach (var element in ev.CanvasElements)
                     {
                         if (element is DrawStroke drawStroke)
                         {
-                            drawStrokes[drawStroke.Id] = drawStroke;
+                            drawStrokes[drawStroke.Id] = new DrawStroke
+                            {
+                                Id = drawStroke.Id,
+                                Paint = drawStroke.Paint.Clone(),
+                                ToolOptions = drawStroke.ToolOptions,
+                                ToolType = drawStroke.ToolType,
+                                Path = drawStroke.Path
+                            };
+                        }
+                        else if (element is CanvasImage canvasImage)
+                        {
+                            canvasImages[canvasImage.Id] = new CanvasImage
+                            {
+                                Id = canvasImage.Id,
+                                ImageBase64String = canvasImage.ImageBase64String,
+                                Bounds = canvasImage.Bounds,
+                            };
                         }
                     }
 

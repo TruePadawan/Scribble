@@ -16,15 +16,15 @@ public abstract class CanvasElement
 public abstract class Stroke : CanvasElement
 {
     [JsonConverter(typeof(SKPathJsonConverter))]
-    public SKPath Path { get; init; } = new();
+    public required SKPath Path { get; init; } = new();
 }
 
 public class DrawStroke : Stroke
 {
     public bool IsToBeErased = false;
-    public ToolType ToolType;
-    public HashSet<ToolOption> ToolOptions { get; init; } = [];
-    public StrokePaint Paint { get; init; } = new();
+    public required ToolType ToolType;
+    public required HashSet<ToolOption> ToolOptions { get; init; } = [];
+    public required StrokePaint Paint { get; init; } = new();
 }
 
 public class EraserStroke : Stroke
@@ -39,7 +39,7 @@ public class SelectionBound : Stroke
 
 public class CanvasImage : CanvasElement
 {
-    public required string ImageBase64String { get; init; }
+    [JsonIgnore] public required string ImageBase64String { get; init; }
     public required SKRect Bounds { get; init; }
     public bool IsToBeErased = false;
 }
