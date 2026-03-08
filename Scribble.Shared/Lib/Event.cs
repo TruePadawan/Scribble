@@ -20,7 +20,7 @@ namespace Scribble.Shared.Lib;
 [JsonDerivedType(typeof(EndSelectionEvent), typeDiscriminator: "EndSelection")]
 [JsonDerivedType(typeof(MoveCanvasElementsEvent), typeDiscriminator: "MoveCanvasElements")]
 [JsonDerivedType(typeof(RotateCanvasElementsEvent), typeDiscriminator: "RotateCanvasElements")]
-[JsonDerivedType(typeof(ScaleStrokesEvent), typeDiscriminator: "ScaleStrokes")]
+[JsonDerivedType(typeof(ScaleCanvasElementsEvent), typeDiscriminator: "ScaleCanvasElements")]
 [JsonDerivedType(typeof(UndoEvent), typeDiscriminator: "Undo")]
 [JsonDerivedType(typeof(RedoEvent), typeDiscriminator: "Redo")]
 [JsonDerivedType(typeof(LoadCanvasEvent), typeDiscriminator: "LoadCanvasEvent")]
@@ -89,7 +89,7 @@ public record MoveCanvasElementsEvent(Guid ActionId, Guid BoundId, SKPoint Delta
 public record RotateCanvasElementsEvent(Guid ActionId, Guid BoundId, float DegreesRad, SKPoint Center)
     : Event(ActionId);
 
-public record ScaleStrokesEvent(Guid ActionId, Guid BoundId, SKPoint Scale, SKPoint Center) : Event(ActionId);
+public record ScaleCanvasElementsEvent(Guid ActionId, Guid BoundId, SKPoint Scale, SKPoint Center) : Event(ActionId);
 
 // IMAGE TOOL
 public record AddImageEvent(

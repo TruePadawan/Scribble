@@ -93,6 +93,12 @@ public class SkiaCanvas : Control
                     canvas.Save();
                     canvas.RotateRadians(canvasImage.Rotation, canvasImage.Bounds.MidX, canvasImage.Bounds.MidY);
 
+                    // Flip the canvas to apply image-flips
+                    if (canvasImage.FlipX)
+                        canvas.Scale(-1, 1, canvasImage.Bounds.MidX, canvasImage.Bounds.MidY);
+                    if (canvasImage.FlipY)
+                        canvas.Scale(1, -1, canvasImage.Bounds.MidX, canvasImage.Bounds.MidY);
+
                     if (canvasImage.IsToBeErased)
                     {
                         using var lowOpacityPaint = new SKPaint();

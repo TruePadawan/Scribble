@@ -529,7 +529,7 @@ public partial class MainViewModel : ViewModelBase
                     }
 
                     break;
-                case ScaleStrokesEvent ev:
+                case ScaleCanvasElementsEvent ev:
                     if (selectionBounds.ContainsKey(ev.BoundId))
                     {
                         var bound = selectionBounds[ev.BoundId];
@@ -540,6 +540,33 @@ public partial class MainViewModel : ViewModelBase
                                 drawStrokes[boundTargetId].Path
                                     .Transform(SKMatrix.CreateScale(ev.Scale.X, ev.Scale.Y, ev.Center.X,
                                         ev.Center.Y));
+                            }
+                            else if (canvasImages.ContainsKey(boundTargetId))
+                            {
+                                var image = canvasImages[boundTargetId];
+                                var scaleMatrix =
+                                    SKMatrix.CreateScale(ev.Scale.X, ev.Scale.Y, ev.Center.X, ev.Center.Y);
+                                var topLeft = scaleMatrix.MapPoint(new SKPoint(image.Bounds.Left, image.Bounds.Top));
+                                var bottomRight =
+                                    scaleMatrix.MapPoint(new SKPoint(image.Bounds.Right, image.Bounds.Bottom));
+
+                                // If the x-axis becomes inverted, swap the x coordinates so that the bound's width stays positive
+                                // Then flip the image horizontally
+                                if (topLeft.X > bottomRight.X)
+                                {
+                                    (topLeft.X, bottomRight.X) = (bottomRight.X, topLeft.X);
+                                    image.FlipX = !image.FlipX;
+                                }
+
+                                // If the y-axis becomes inverted, swap the y coordinates so that the bound's height stays positive
+                                // Then flip the image vertically
+                                if (topLeft.Y > bottomRight.Y)
+                                {
+                                    (topLeft.Y, bottomRight.Y) = (bottomRight.Y, topLeft.Y);
+                                    image.FlipY = !image.FlipY;
+                                }
+
+                                image.Bounds = new SKRect(topLeft.X, topLeft.Y, bottomRight.X, bottomRight.Y);
                             }
                         }
                     }
@@ -570,6 +597,8 @@ public partial class MainViewModel : ViewModelBase
                                 ImageBase64String = canvasImage.ImageBase64String,
                                 Bounds = canvasImage.Bounds,
                                 Rotation = canvasImage.Rotation,
+                                FlipX = canvasImage.FlipX,
+                                FlipY = canvasImage.FlipY,
                             };
                         }
                     }

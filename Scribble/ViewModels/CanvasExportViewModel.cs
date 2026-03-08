@@ -248,6 +248,12 @@ public partial class CanvasExportViewModel : ViewModelBase
                     // Needed for drawing rotated images
                     canvas.Save();
                     canvas.RotateRadians(canvasImage.Rotation, canvasImage.Bounds.MidX, canvasImage.Bounds.MidY);
+
+                    // Flip the canvas to apply image-flips
+                    if (canvasImage.FlipX)
+                        canvas.Scale(-1, 1, canvasImage.Bounds.MidX, canvasImage.Bounds.MidY);
+                    if (canvasImage.FlipY)
+                        canvas.Scale(1, -1, canvasImage.Bounds.MidX, canvasImage.Bounds.MidY);
                     canvas.DrawBitmap(bitmap, canvasImage.Bounds);
                     canvas.Restore();
                 }
