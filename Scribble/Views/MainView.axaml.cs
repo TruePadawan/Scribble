@@ -10,6 +10,7 @@ using Avalonia.Media.Imaging;
 using Avalonia.Platform;
 using Avalonia.Threading;
 using Scribble.Lib;
+using Scribble.Services.DialogService;
 using Scribble.Services.FileService;
 using Scribble.Shared.Lib;
 using Scribble.Tools.PointerTools;
@@ -36,6 +37,7 @@ public partial class MainView : UserControl
     private MainViewModel? _viewModel;
     private readonly Selection _selection;
     private readonly IFileService _fileService;
+    private readonly IDialogService _dialogService;
 
     public MainView()
     {
@@ -49,6 +51,7 @@ public partial class MainView : UserControl
         SelectionBorder.Cursor = new Cursor(moveIconBitmap, new PixelPoint(18, 18));
         SelectionRotationBtn.Cursor = new Cursor(rotateIconBitmap, new PixelPoint(12, 12));
         _fileService = new AvaloniaFileService();
+        _dialogService = new AvaloniaDialogService();
     }
 
     protected override void OnDataContextChanged(EventArgs e)
@@ -86,7 +89,7 @@ public partial class MainView : UserControl
                 new RectangleTool("RectangleTool", viewModel),
                 new TextTool("TextTool", viewModel, CanvasContainer),
                 new SelectTool("SelectTool", viewModel, CanvasContainer),
-                new ImageTool("ImageTool", viewModel, _fileService)
+                new ImageTool("ImageTool", viewModel, _fileService, _dialogService),
             };
             foreach (var tool in tools)
             {

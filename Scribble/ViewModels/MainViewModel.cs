@@ -271,6 +271,7 @@ public partial class MainViewModel : ViewModelBase
         var staleActionIds = new List<Guid>();
         var strokeToActionMap = new Dictionary<Guid, Guid>();
         var strokeTexts = new Dictionary<Guid, string>();
+        var canvasImages = new Dictionary<Guid, CanvasImage>();
 
         foreach (var canvasEvent in CanvasEvents.Where(canvasEvent => !hiddenActionIds.Contains(canvasEvent.ActionId)))
         {
@@ -630,10 +631,19 @@ public partial class MainViewModel : ViewModelBase
                     }
 
                     break;
+                case AddImageEvent ev:
+                    canvasImages[ev.ImageId] = new CanvasImage
+                    {
+                        Id = ev.ImageId,
+                        ImageBase64String = ev.ImageBase64String,
+                        Position = ev.Position,
+                        ImageSize = ev.ImageSize,
+                    };
+                    break;
             }
         }
 
-        CanvasElements = new List<CanvasElement>(drawStrokes.Values.ToList());
+        CanvasElements = [..drawStrokes.Values.ToList(), ..canvasImages.Values.ToList()];
         // Show the selection only on the client that is doing the selection
         SelectionTargets = selectionBounds.Where(pair => _mySelections.Contains(pair.Key))
             .ToDictionary(k => k.Key, v => v.Value.Targets.ToList());
