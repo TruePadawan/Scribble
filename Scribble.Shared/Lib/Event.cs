@@ -105,7 +105,11 @@ public record UndoEvent(Guid ActionId, Guid TargetActionId) : Event(ActionId);
 public record RedoEvent(Guid ActionId, Guid TargetActionId) : Event(ActionId);
 
 public record UpdateStrokeColorEvent(Guid ActionId, List<Guid> StrokeIds, SKColor NewColor)
-    : Event(ActionId), ITerminalEvent;
+    : Event(ActionId), ITerminalEvent
+{
+    [JsonConverter(typeof(SKColorJsonConverter))]
+    public SKColor NewColor { get; } = NewColor;
+}
 
 public record UpdateStrokeThicknessEvent(Guid ActionId, List<Guid> StrokeIds, float NewThickness)
     : Event(ActionId), ITerminalEvent;
@@ -114,7 +118,11 @@ public record UpdateStrokeStyleEvent(Guid ActionId, List<Guid> StrokeIds, float[
     : Event(ActionId), ITerminalEvent;
 
 public record UpdateStrokeFillColorEvent(Guid ActionId, List<Guid> StrokeIds, SKColor NewFillColor)
-    : Event(ActionId), ITerminalEvent;
+    : Event(ActionId), ITerminalEvent
+{
+    [JsonConverter(typeof(SKColorJsonConverter))]
+    public SKColor NewFillColor { get; } = NewFillColor;
+}
 
 public record UpdateStrokeEdgeTypeEvent(Guid ActionId, List<Guid> StrokeIds, SKStrokeJoin NewStrokeJoin)
     : Event(ActionId), ITerminalEvent;
