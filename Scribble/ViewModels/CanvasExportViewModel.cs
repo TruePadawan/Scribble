@@ -244,7 +244,12 @@ public partial class CanvasExportViewModel : ViewModelBase
                 var bitmap = SKBitmap.Decode(imageBytes);
                 if (bitmap != null)
                 {
+                    // Pushes a snapshot of the current canvas state (transforms, clipping regions, etc.) onto an internal stack before rotating canvas
+                    // Needed for drawing rotated images
+                    canvas.Save();
+                    canvas.RotateRadians(canvasImage.Rotation, canvasImage.Bounds.MidX, canvasImage.Bounds.MidY);
                     canvas.DrawBitmap(bitmap, canvasImage.Bounds);
+                    canvas.Restore();
                 }
             }
         }

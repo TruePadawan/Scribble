@@ -434,7 +434,8 @@ public partial class MainView : UserControl
 
             foreach (var selection in _viewModel.SelectionTargets)
             {
-                _viewModel.ApplyEvent(new RotateStrokesEvent(_selection.RotateActionId, selection.Key, (float)deltaRad,
+                _viewModel.ApplyEvent(new RotateCanvasElementsEvent(_selection.RotateActionId, selection.Key,
+                    (float)deltaRad,
                     Utilities.ToSkPoint(_selection.SelectionCenter)));
             }
 

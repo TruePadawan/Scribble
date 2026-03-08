@@ -88,6 +88,11 @@ public class SkiaCanvas : Control
                 var bitmap = SKBitmap.Decode(imageBytes);
                 if (bitmap != null)
                 {
+                    // Pushes a snapshot of the current canvas state (transforms, clipping regions, etc.) onto an internal stack before rotating canvas
+                    // Needed for drawing rotated images
+                    canvas.Save();
+                    canvas.RotateRadians(canvasImage.Rotation, canvasImage.Bounds.MidX, canvasImage.Bounds.MidY);
+
                     if (canvasImage.IsToBeErased)
                     {
                         using var lowOpacityPaint = new SKPaint();
@@ -98,6 +103,8 @@ public class SkiaCanvas : Control
                     {
                         canvas.DrawBitmap(bitmap, canvasImage.Bounds);
                     }
+
+                    canvas.Restore();
                 }
             }
         }

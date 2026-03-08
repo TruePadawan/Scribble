@@ -40,8 +40,8 @@ public class SelectionBound : Stroke
 public class CanvasImage : CanvasElement
 {
     public required string ImageBase64String { get; init; }
-    public required SKRect Bounds { get; init; }
     public required SKRect Bounds { get; set; }
+    public float Rotation { get; set; }
     public bool IsToBeErased = false;
 }
 

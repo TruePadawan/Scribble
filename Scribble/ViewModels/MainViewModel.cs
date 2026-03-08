@@ -501,7 +501,7 @@ public partial class MainViewModel : ViewModelBase
                     }
 
                     break;
-                case RotateStrokesEvent ev:
+                case RotateCanvasElementsEvent ev:
                     if (selectionBounds.ContainsKey(ev.BoundId))
                     {
                         var bound = selectionBounds[ev.BoundId];
@@ -511,6 +511,19 @@ public partial class MainViewModel : ViewModelBase
                             {
                                 var stroke = drawStrokes[boundTargetId];
                                 stroke.Path.Transform(SKMatrix.CreateRotation(ev.DegreesRad, ev.Center.X, ev.Center.Y));
+                            }
+                            else if (canvasImages.ContainsKey(boundTargetId))
+                            {
+                                var image = canvasImages[boundTargetId];
+                                image.Rotation += ev.DegreesRad;
+
+                                // Rotate the bounds center around the rotation pivot
+                                var imgCenter = new SKPoint(image.Bounds.MidX, image.Bounds.MidY);
+                                var rotated = SKMatrix.CreateRotation(ev.DegreesRad, ev.Center.X, ev.Center.Y)
+                                    .MapPoint(imgCenter);
+                                var bounds = image.Bounds;
+                                bounds.Offset(rotated.X - imgCenter.X, rotated.Y - imgCenter.Y);
+                                image.Bounds = bounds;
                             }
                         }
                     }
@@ -556,6 +569,7 @@ public partial class MainViewModel : ViewModelBase
                                 Id = canvasImage.Id,
                                 ImageBase64String = canvasImage.ImageBase64String,
                                 Bounds = canvasImage.Bounds,
+                                Rotation = canvasImage.Rotation,
                             };
                         }
                     }
