@@ -18,7 +18,7 @@ namespace Scribble.Shared.Lib;
 [JsonDerivedType(typeof(CreateSelectionBoundEvent), typeDiscriminator: "CreateSelectionBound")]
 [JsonDerivedType(typeof(IncreaseSelectionBoundEvent), typeDiscriminator: "IncreaseSelectionBound")]
 [JsonDerivedType(typeof(EndSelectionEvent), typeDiscriminator: "EndSelection")]
-[JsonDerivedType(typeof(MoveStrokesEvent), typeDiscriminator: "MoveStrokes")]
+[JsonDerivedType(typeof(MoveCanvasElementsEvent), typeDiscriminator: "MoveCanvasElements")]
 [JsonDerivedType(typeof(RotateStrokesEvent), typeDiscriminator: "RotateStrokes")]
 [JsonDerivedType(typeof(ScaleStrokesEvent), typeDiscriminator: "ScaleStrokes")]
 [JsonDerivedType(typeof(UndoEvent), typeDiscriminator: "Undo")]
@@ -84,7 +84,7 @@ public record EndSelectionEvent(Guid ActionId, Guid BoundId) : Event(ActionId), 
 
 public record ClearSelectionEvent(Guid ActionId) : Event(ActionId), ITerminalEvent;
 
-public record MoveStrokesEvent(Guid ActionId, Guid BoundId, SKPoint Delta) : Event(ActionId);
+public record MoveCanvasElementsEvent(Guid ActionId, Guid BoundId, SKPoint Delta) : Event(ActionId);
 
 public record RotateStrokesEvent(Guid ActionId, Guid BoundId, float DegreesRad, SKPoint Center)
     : Event(ActionId);

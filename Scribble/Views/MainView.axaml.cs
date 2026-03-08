@@ -185,7 +185,11 @@ public partial class MainView : UserControl
                 .Where(element => allSelectedIds.Contains(element.Id) && element is DrawStroke)
                 .Cast<DrawStroke>()
                 .ToList();
-            if (selectedStrokes.Count == 0)
+            var selectedImages = _viewModel.CanvasElements
+                .Where(element => allSelectedIds.Contains(element.Id) && element is CanvasImage)
+                .Cast<CanvasImage>()
+                .ToList();
+            if (selectedStrokes.Count == 0 && selectedImages.Count == 0)
             {
                 SelectionOverlay.IsVisible = false;
                 return;
@@ -203,6 +207,19 @@ public partial class MainView : UserControl
                 else
                 {
                     combinedBounds.Union(strokeBounds);
+                }
+            }
+
+            foreach (var canvasImage in selectedImages)
+            {
+                SKRect imageBounds = canvasImage.Bounds;
+                if (combinedBounds == SKRect.Empty)
+                {
+                    combinedBounds = imageBounds;
+                }
+                else
+                {
+                    combinedBounds.Union(imageBounds);
                 }
             }
 
@@ -352,7 +369,7 @@ public partial class MainView : UserControl
             Point delta = pointerCoordinates - _selection.SelectionMoveCoord;
             foreach (var selection in _viewModel.SelectionTargets)
             {
-                _viewModel.ApplyEvent(new MoveStrokesEvent(_selection.MoveActionId, selection.Key,
+                _viewModel.ApplyEvent(new MoveCanvasElementsEvent(_selection.MoveActionId, selection.Key,
                     Utilities.ToSkPoint(delta)));
             }
         }

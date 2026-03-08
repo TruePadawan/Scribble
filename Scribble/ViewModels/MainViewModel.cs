@@ -460,7 +460,7 @@ public partial class MainViewModel : ViewModelBase
                         var top = Math.Min(boundOrigin.Y, ev.Point.Y);
                         var left = Math.Min(boundOrigin.X, ev.Point.X);
                         var boundRect = SKRect.Create(new SKPoint(left, top), Utilities.GetSize(boundOrigin, ev.Point));
-                        CheckAndSelect(boundRect, bound, drawStrokes.Values);
+                        CheckAndSelect(boundRect, bound, [..drawStrokes.Values, ..canvasImages.Values]);
                     }
 
                     break;
@@ -478,7 +478,7 @@ public partial class MainViewModel : ViewModelBase
                 case ClearSelectionEvent:
                     selectionBounds.Clear();
                     break;
-                case MoveStrokesEvent ev:
+                case MoveCanvasElementsEvent ev:
                     if (selectionBounds.ContainsKey(ev.BoundId))
                     {
                         var bound = selectionBounds[ev.BoundId];
@@ -488,6 +488,14 @@ public partial class MainViewModel : ViewModelBase
                             {
                                 var stroke = drawStrokes[boundTargetId];
                                 stroke.Path.Transform(SKMatrix.CreateTranslation(ev.Delta.X, ev.Delta.Y));
+                            }
+                            else if (canvasImages.ContainsKey(boundTargetId))
+                            {
+                                var image = canvasImages[boundTargetId];
+                                // SKRect is a struct (value-type), so we need to create a new one to modify
+                                var bounds = image.Bounds;
+                                bounds.Offset(ev.Delta);
+                                image.Bounds = bounds;
                             }
                         }
                     }
@@ -729,16 +737,25 @@ public partial class MainViewModel : ViewModelBase
     /// <summary>
     /// Finds all strokes that are within the selection boundary
     /// </summary>
-    private void CheckAndSelect(SKRect boundRect, SelectionBound bound, IEnumerable<DrawStroke> drawStrokes)
+    private void CheckAndSelect(SKRect boundRect, SelectionBound bound, IEnumerable<CanvasElement> canvasElements)
     {
         bound.Targets.Clear();
-        foreach (var stroke in drawStrokes)
+        foreach (var element in canvasElements)
         {
-            SKRect strokeBounds = stroke.Path.Bounds;
-
-            if (boundRect.Contains(strokeBounds))
+            if (element is DrawStroke stroke)
             {
-                bound.Targets.Add(stroke.Id);
+                SKRect strokeBounds = stroke.Path.Bounds;
+                if (boundRect.Contains(strokeBounds))
+                {
+                    bound.Targets.Add(stroke.Id);
+                }
+            }
+            else if (element is CanvasImage image)
+            {
+                if (boundRect.Contains(image.Bounds))
+                {
+                    bound.Targets.Add(image.Id);
+                }
             }
         }
     }
