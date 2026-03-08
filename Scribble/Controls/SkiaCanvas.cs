@@ -82,6 +82,16 @@ public class SkiaCanvas : Control
                     canvas.DrawPath(drawStroke.Path, paintToUse);
                 }
             }
+            else if (canvasElement is CanvasImage canvasImage)
+            {
+                var imageBytes = Convert.FromBase64String(canvasImage.ImageBase64String);
+                var bitmap = SKBitmap.Decode(imageBytes);
+                if (bitmap != null)
+                {
+                    var destinationRect = SKRect.Create(canvasImage.Position, canvasImage.ImageSize);
+                    canvas.DrawBitmap(bitmap, destinationRect);
+                }
+            }
         }
     }
 

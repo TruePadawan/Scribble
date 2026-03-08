@@ -40,6 +40,9 @@ public class SelectionBound : Stroke
 public class CanvasImage : CanvasElement
 {
     public required string ImageBase64String { get; init; }
+    public required SKPoint Position { get; init; }
+    public bool IsToBeErased = false;
+    public required SKSize ImageSize { get; init; }
 }
 
 public enum ToolType

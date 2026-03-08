@@ -95,6 +95,7 @@ public record AddImageEvent(
     Guid ActionId,
     Guid ImageId,
     string ImageBase64String,
+    SKSize ImageSize,
     SKPoint Position) : Event(ActionId), ITerminalEvent;
 
 // MISC
