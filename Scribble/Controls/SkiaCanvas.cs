@@ -57,29 +57,38 @@ public class SkiaCanvas : Control
         {
             if (canvasElement is DrawStroke drawStroke)
             {
-                using var paintToUse = drawStroke.Paint.ToSkPaint();
-                if (drawStroke.IsToBeErased)
+                var needsMutablePaint = drawStroke.IsToBeErased || drawStroke.Paint.FillColor.Alpha != 0;
+                var paintToUse = needsMutablePaint ? drawStroke.Paint.ToSkPaint() : drawStroke.Paint.GetCachedSkPaint();
+                try
                 {
-                    paintToUse.Color = paintToUse.Color.WithAlpha(80);
-                }
-
-                if (drawStroke.Path.PointCount == 1)
-                {
-                    canvas.DrawPoint(drawStroke.Path.Points[0], paintToUse);
-                }
-                else
-                {
-                    if (drawStroke.Paint.FillColor.Alpha != 0)
+                    if (drawStroke.IsToBeErased)
                     {
-                        var strokeColor = paintToUse.Color;
-                        paintToUse.Style = SKPaintStyle.StrokeAndFill;
-                        paintToUse.Color = drawStroke.Paint.FillColor;
-                        canvas.DrawPath(drawStroke.Path, paintToUse);
-                        paintToUse.Style = SKPaintStyle.Stroke;
-                        paintToUse.Color = strokeColor;
+                        paintToUse.Color = paintToUse.Color.WithAlpha(80);
                     }
 
-                    canvas.DrawPath(drawStroke.Path, paintToUse);
+                    if (drawStroke.Path.PointCount == 1)
+                    {
+                        canvas.DrawPoint(drawStroke.Path.Points[0], paintToUse);
+                    }
+                    else
+                    {
+                        if (drawStroke.Paint.FillColor.Alpha != 0)
+                        {
+                            var strokeColor = paintToUse.Color;
+                            paintToUse.Style = SKPaintStyle.StrokeAndFill;
+                            paintToUse.Color = drawStroke.Paint.FillColor;
+                            canvas.DrawPath(drawStroke.Path, paintToUse);
+                            paintToUse.Style = SKPaintStyle.Stroke;
+                            paintToUse.Color = strokeColor;
+                        }
+
+                        canvas.DrawPath(drawStroke.Path, paintToUse);
+                    }
+                }
+                finally
+                {
+                    if (needsMutablePaint)
+                        paintToUse.Dispose();
                 }
             }
             else if (canvasElement is CanvasImage canvasImage)
@@ -136,7 +145,7 @@ public class SkiaCanvas : Control
         }
     }
 
-    // runs when an element is added/removed from the canvas elements collection
+    // runs when an element is added/removed from the canvas elements collection, disposes bitmaps and SKPaint objects
     private void OnCanvasElementsCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
         if (e.OldItems != null)
@@ -145,6 +154,8 @@ public class SkiaCanvas : Control
             {
                 if (item is CanvasImage canvasImage)
                     canvasImage.DisposeBitmap();
+                else if (item is DrawStroke drawStroke)
+                    drawStroke.Paint.DisposeSkPaint();
             }
         }
 

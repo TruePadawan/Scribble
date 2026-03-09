@@ -34,9 +34,22 @@ public class StrokePaint
         }
     }
 
+    [JsonIgnore] private SKPaint? _cachedSkPaint;
+
     public StrokePaint Clone()
     {
         return (StrokePaint)MemberwiseClone();
+    }
+
+    public SKPaint GetCachedSkPaint()
+    {
+        return _cachedSkPaint ??= ToSkPaint();
+    }
+
+    public void DisposeSkPaint()
+    {
+        _cachedSkPaint?.Dispose();
+        _cachedSkPaint = null;
     }
 
     public SKPaint ToSkPaint()
