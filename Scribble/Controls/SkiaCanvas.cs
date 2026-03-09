@@ -84,34 +84,30 @@ public class SkiaCanvas : Control
             }
             else if (canvasElement is CanvasImage canvasImage)
             {
-                var imageBytes = Convert.FromBase64String(canvasImage.ImageBase64String);
-                var bitmap = SKBitmap.Decode(imageBytes);
-                if (bitmap != null)
+                var bitmap = canvasImage.GetBitmap();
+                // Pushes a snapshot of the current canvas state (transforms, clipping regions, etc.) onto an internal stack before rotating canvas
+                // Needed for drawing rotated images
+                canvas.Save();
+                canvas.RotateRadians(canvasImage.Rotation, canvasImage.Bounds.MidX, canvasImage.Bounds.MidY);
+
+                // Flip the canvas to apply image-flips
+                if (canvasImage.FlipX)
+                    canvas.Scale(-1, 1, canvasImage.Bounds.MidX, canvasImage.Bounds.MidY);
+                if (canvasImage.FlipY)
+                    canvas.Scale(1, -1, canvasImage.Bounds.MidX, canvasImage.Bounds.MidY);
+
+                if (canvasImage.IsToBeErased)
                 {
-                    // Pushes a snapshot of the current canvas state (transforms, clipping regions, etc.) onto an internal stack before rotating canvas
-                    // Needed for drawing rotated images
-                    canvas.Save();
-                    canvas.RotateRadians(canvasImage.Rotation, canvasImage.Bounds.MidX, canvasImage.Bounds.MidY);
-
-                    // Flip the canvas to apply image-flips
-                    if (canvasImage.FlipX)
-                        canvas.Scale(-1, 1, canvasImage.Bounds.MidX, canvasImage.Bounds.MidY);
-                    if (canvasImage.FlipY)
-                        canvas.Scale(1, -1, canvasImage.Bounds.MidX, canvasImage.Bounds.MidY);
-
-                    if (canvasImage.IsToBeErased)
-                    {
-                        using var lowOpacityPaint = new SKPaint();
-                        lowOpacityPaint.Color = SKColors.Black.WithAlpha(80);
-                        canvas.DrawBitmap(bitmap, canvasImage.Bounds, lowOpacityPaint);
-                    }
-                    else
-                    {
-                        canvas.DrawBitmap(bitmap, canvasImage.Bounds);
-                    }
-
-                    canvas.Restore();
+                    using var lowOpacityPaint = new SKPaint();
+                    lowOpacityPaint.Color = SKColors.Black.WithAlpha(80);
+                    canvas.DrawBitmap(bitmap, canvasImage.Bounds, lowOpacityPaint);
                 }
+                else
+                {
+                    canvas.DrawBitmap(bitmap, canvasImage.Bounds);
+                }
+
+                canvas.Restore();
             }
         }
     }
@@ -143,6 +139,15 @@ public class SkiaCanvas : Control
     // runs when an element is added/removed from the canvas elements collection
     private void OnCanvasElementsCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
+        if (e.OldItems != null)
+        {
+            foreach (var item in e.OldItems)
+            {
+                if (item is CanvasImage canvasImage)
+                    canvasImage.DisposeBitmap();
+            }
+        }
+
         InvalidateVisual();
     }
 }

@@ -45,6 +45,15 @@ public class CanvasImage : CanvasElement
     public bool FlipX { get; set; }
     public bool FlipY { get; set; }
     public bool IsToBeErased = false;
+
+    [JsonIgnore] private SKBitmap? _cachedBitmap;
+    public SKBitmap GetBitmap() => _cachedBitmap ??= SKBitmap.Decode(Convert.FromBase64String(ImageBase64String));
+
+    public void DisposeBitmap()
+    {
+        _cachedBitmap?.Dispose();
+        _cachedBitmap = null;
+    }
 }
 
 public enum ToolType

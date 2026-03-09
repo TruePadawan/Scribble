@@ -247,23 +247,19 @@ public partial class CanvasExportViewModel : ViewModelBase
             }
             else if (element is CanvasImage canvasImage)
             {
-                var imageBytes = Convert.FromBase64String(canvasImage.ImageBase64String);
-                var bitmap = SKBitmap.Decode(imageBytes);
-                if (bitmap != null)
-                {
-                    // Pushes a snapshot of the current canvas state (transforms, clipping regions, etc.) onto an internal stack before rotating canvas
-                    // Needed for drawing rotated images
-                    canvas.Save();
-                    canvas.RotateRadians(canvasImage.Rotation, canvasImage.Bounds.MidX, canvasImage.Bounds.MidY);
+                var bitmap = canvasImage.GetBitmap();
+                // Pushes a snapshot of the current canvas state (transforms, clipping regions, etc.) onto an internal stack before rotating canvas
+                // Needed for drawing rotated images
+                canvas.Save();
+                canvas.RotateRadians(canvasImage.Rotation, canvasImage.Bounds.MidX, canvasImage.Bounds.MidY);
 
-                    // Flip the canvas to apply image-flips
-                    if (canvasImage.FlipX)
-                        canvas.Scale(-1, 1, canvasImage.Bounds.MidX, canvasImage.Bounds.MidY);
-                    if (canvasImage.FlipY)
-                        canvas.Scale(1, -1, canvasImage.Bounds.MidX, canvasImage.Bounds.MidY);
-                    canvas.DrawBitmap(bitmap, canvasImage.Bounds);
-                    canvas.Restore();
-                }
+                // Flip the canvas to apply image-flips
+                if (canvasImage.FlipX)
+                    canvas.Scale(-1, 1, canvasImage.Bounds.MidX, canvasImage.Bounds.MidY);
+                if (canvasImage.FlipY)
+                    canvas.Scale(1, -1, canvasImage.Bounds.MidX, canvasImage.Bounds.MidY);
+                canvas.DrawBitmap(bitmap, canvasImage.Bounds);
+                canvas.Restore();
             }
         }
 
