@@ -46,10 +46,10 @@ public class SkiaCanvas : Control
         var elementsToDraw = CanvasElements;
         var bgColor = CanvasBackground;
         context.Custom(
-            new SkiaDrawOperation(bounds, canvas => { DrawStrokesOnCanvas(canvas, elementsToDraw, bgColor); }));
+            new SkiaDrawOperation(bounds, canvas => { DrawCanvasElementsOnCanvas(canvas, elementsToDraw, bgColor); }));
     }
 
-    private void DrawStrokesOnCanvas(SKCanvas canvas, IEnumerable<CanvasElement> elementsToDraw, Color bgColor)
+    private void DrawCanvasElementsOnCanvas(SKCanvas canvas, IEnumerable<CanvasElement> elementsToDraw, Color bgColor)
     {
         canvas.Clear(Utilities.ToSkColor(bgColor));
 
@@ -124,12 +124,12 @@ public class SkiaCanvas : Control
         {
             if (change.OldValue is INotifyCollectionChanged oldList)
             {
-                oldList.CollectionChanged -= OnStrokesCollectionChanged;
+                oldList.CollectionChanged -= OnCanvasElementsCollectionChanged;
             }
 
             if (change.NewValue is INotifyCollectionChanged newList)
             {
-                newList.CollectionChanged += OnStrokesCollectionChanged;
+                newList.CollectionChanged += OnCanvasElementsCollectionChanged;
             }
 
             InvalidateVisual();
@@ -140,8 +140,8 @@ public class SkiaCanvas : Control
         }
     }
 
-    // runs when a stroke is added/removed from the strokes collection
-    private void OnStrokesCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    // runs when an element is added/removed from the canvas elements collection
+    private void OnCanvasElementsCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
         InvalidateVisual();
     }
