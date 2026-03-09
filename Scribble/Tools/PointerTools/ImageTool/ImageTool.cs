@@ -31,6 +31,8 @@ public class ImageTool : PointerTool
         Cursor = new Cursor(plusBitmap, new PixelPoint(12, 12));
         _fileService = fileService;
         _dialogService = dialogService;
+        HotKey = new KeyGesture(Key.D0);
+        ToolTip = "Select Tool - 0";
     }
 
     public override void HandlePointerClick(Point coord)
