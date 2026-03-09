@@ -175,7 +175,14 @@ public partial class CanvasExportViewModel : ViewModelBase
             }
             else if (element is CanvasImage canvasImage)
             {
-                totalBounds.Union(canvasImage.Bounds);
+                if (totalBounds.IsEmpty)
+                {
+                    totalBounds = canvasImage.Bounds;
+                }
+                else
+                {
+                    totalBounds.Union(canvasImage.Bounds);
+                }
             }
         }
 
