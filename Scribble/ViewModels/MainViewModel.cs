@@ -27,7 +27,7 @@ public partial class MainViewModel : ViewModelBase
     private bool CanRedo => _redoStack.Count > 0;
 
     public event Action? RequestInvalidateSelection;
-    [ObservableProperty] private List<Stroke> _canvasStrokes = [];
+    [ObservableProperty] private List<CanvasElement> _canvasElements = [];
     private readonly HashSet<Guid> _deletedActions = [];
     public Dictionary<Guid, List<Guid>> SelectionTargets { get; private set; } = [];
     public Queue<Event> CanvasEvents { get; private set; } = [];
@@ -74,7 +74,7 @@ public partial class MainViewModel : ViewModelBase
         WeakReferenceMessenger.Default.Register<MainViewModel, RequestCanvasDataMessage>(this,
             (mainViewModel, message) =>
             {
-                message.Reply(new CanvasDataPayload(mainViewModel.CanvasStrokes,
+                message.Reply(new CanvasDataPayload(mainViewModel.CanvasElements,
                     mainViewModel.UiStateViewModel.BackgroundColor));
             });
 
@@ -82,7 +82,7 @@ public partial class MainViewModel : ViewModelBase
         WeakReferenceMessenger.Default.Register<MainViewModel, LoadCanvasDataMessage>(this,
             (mainViewModel, message) =>
             {
-                mainViewModel.ApplyEvent(new LoadCanvasEvent(Guid.NewGuid(), message.Strokes));
+                mainViewModel.ApplyEvent(new LoadCanvasEvent(Guid.NewGuid(), message.CanvasElements));
             });
 
         // Clear data when the DocumentViewModel triggers a reset
@@ -90,28 +90,33 @@ public partial class MainViewModel : ViewModelBase
             (mainViewModel, m) => { mainViewModel.ApplyEvent(new LoadCanvasEvent(Guid.NewGuid(), [])); });
 
         // Send the actively selected strokes to the recipient
-        WeakReferenceMessenger.Default.Register<MainViewModel, RequestSelectedStrokes>(this,
+        WeakReferenceMessenger.Default.Register<MainViewModel, RequestSelectedElements>(this,
             (mainViewModel, message) =>
             {
                 var hasActiveSelection = mainViewModel.SelectionTargets.Count > 0;
                 if (hasActiveSelection)
                 {
                     var id = mainViewModel.SelectionTargets.Keys.First();
-                    var selectedStrokesIds = mainViewModel.SelectionTargets[id];
-                    List<DrawStroke> selectedStrokes = [];
-                    foreach (var stroke in mainViewModel.CanvasStrokes)
+                    var selectedElementIds = mainViewModel.SelectionTargets[id];
+                    List<CanvasElement> selectedElements = [];
+                    foreach (var canvasElement in mainViewModel.CanvasElements)
                     {
-                        if (stroke is DrawStroke drawStroke && selectedStrokesIds.Contains(drawStroke.Id))
+                        if (canvasElement is DrawStroke drawStroke && selectedElementIds.Contains(drawStroke.Id))
                         {
-                            selectedStrokes.Add(drawStroke);
+                            selectedElements.Add(drawStroke);
+                        }
+                        else if (canvasElement is CanvasImage canvasImage &&
+                                 selectedElementIds.Contains(canvasImage.Id))
+                        {
+                            selectedElements.Add(canvasImage);
                         }
                     }
 
-                    message.Reply(new SelectedStrokesPayload(selectedStrokes));
+                    message.Reply(new SelectedElementsPayload(selectedElements));
                 }
                 else
                 {
-                    message.Reply(new SelectedStrokesPayload([]));
+                    message.Reply(new SelectedElementsPayload([]));
                 }
             });
     }
@@ -264,8 +269,9 @@ public partial class MainViewModel : ViewModelBase
         var selectionBounds = new Dictionary<Guid, SelectionBound>();
         var clearsSomething = new Dictionary<Guid, bool>();
         var staleActionIds = new List<Guid>();
-        var strokeToActionMap = new Dictionary<Guid, Guid>();
+        var elementIdToActionId = new Dictionary<Guid, Guid>();
         var strokeTexts = new Dictionary<Guid, string>();
+        var canvasImages = new Dictionary<Guid, CanvasImage>();
 
         foreach (var canvasEvent in CanvasEvents.Where(canvasEvent => !hiddenActionIds.Contains(canvasEvent.ActionId)))
         {
@@ -282,7 +288,7 @@ public partial class MainViewModel : ViewModelBase
                         ToolType = ev.ToolType,
                         ToolOptions = ev.ToolOptions
                     };
-                    strokeToActionMap[ev.StrokeId] = ev.ActionId;
+                    elementIdToActionId[ev.StrokeId] = ev.ActionId;
                     break;
                 case StartEraseStrokeEvent ev:
                     var eraserPath = new SKPath();
@@ -296,7 +302,7 @@ public partial class MainViewModel : ViewModelBase
                     eraserHeads[ev.StrokeId] = ev.StartPoint;
 
                     // Find all targets for erasing
-                    CheckAndErase(ev.StartPoint, drawStrokes.Values, newEraserStroke);
+                    CheckAndErase(ev.StartPoint, [..drawStrokes.Values, ..canvasImages.Values], newEraserStroke);
 
                     eraserStrokes[ev.StrokeId] = newEraserStroke;
                     break;
@@ -316,7 +322,8 @@ public partial class MainViewModel : ViewModelBase
                             var completionPercentage = s / stepSize;
                             var checkX = start.X + (end.X - start.X) * completionPercentage;
                             var checkY = start.Y + (end.Y - start.Y) * completionPercentage;
-                            CheckAndErase(new SKPoint((float)checkX, (float)checkY), drawStrokes.Values,
+                            CheckAndErase(new SKPoint((float)checkX, (float)checkY),
+                                [..drawStrokes.Values, ..canvasImages.Values],
                                 currentEraserStroke);
                         }
 
@@ -332,7 +339,11 @@ public partial class MainViewModel : ViewModelBase
                         foreach (var targetId in eraserStrokes[ev.StrokeId].Targets)
                         {
                             drawStrokes.Remove(targetId);
-                            _deletedActions.Add(strokeToActionMap[targetId]);
+                            canvasImages.Remove(targetId);
+                            if (elementIdToActionId.ContainsKey(targetId))
+                            {
+                                _deletedActions.Add(elementIdToActionId[targetId]);
+                            }
                         }
 
                         if (eraserStrokes[ev.StrokeId].Targets.Count == 0)
@@ -419,7 +430,7 @@ public partial class MainViewModel : ViewModelBase
                         ToolOptions = ev.ToolOptions
                     };
                     strokeTexts[ev.StrokeId] = ev.Text;
-                    strokeToActionMap[ev.StrokeId] = ev.ActionId;
+                    elementIdToActionId[ev.StrokeId] = ev.ActionId;
                     break;
                 case CreateSelectionBoundEvent ev:
                     var selectionPath = new SKPath();
@@ -449,7 +460,7 @@ public partial class MainViewModel : ViewModelBase
                         var top = Math.Min(boundOrigin.Y, ev.Point.Y);
                         var left = Math.Min(boundOrigin.X, ev.Point.X);
                         var boundRect = SKRect.Create(new SKPoint(left, top), Utilities.GetSize(boundOrigin, ev.Point));
-                        CheckAndSelect(boundRect, bound, drawStrokes.Values);
+                        CheckAndSelect(boundRect, bound, [..drawStrokes.Values, ..canvasImages.Values]);
                     }
 
                     break;
@@ -467,7 +478,7 @@ public partial class MainViewModel : ViewModelBase
                 case ClearSelectionEvent:
                     selectionBounds.Clear();
                     break;
-                case MoveStrokesEvent ev:
+                case MoveCanvasElementsEvent ev:
                     if (selectionBounds.ContainsKey(ev.BoundId))
                     {
                         var bound = selectionBounds[ev.BoundId];
@@ -478,11 +489,19 @@ public partial class MainViewModel : ViewModelBase
                                 var stroke = drawStrokes[boundTargetId];
                                 stroke.Path.Transform(SKMatrix.CreateTranslation(ev.Delta.X, ev.Delta.Y));
                             }
+                            else if (canvasImages.ContainsKey(boundTargetId))
+                            {
+                                var image = canvasImages[boundTargetId];
+                                // SKRect is a struct (value-type), so we need to create a new one to modify
+                                var bounds = image.Bounds;
+                                bounds.Offset(ev.Delta);
+                                image.Bounds = bounds;
+                            }
                         }
                     }
 
                     break;
-                case RotateStrokesEvent ev:
+                case RotateCanvasElementsEvent ev:
                     if (selectionBounds.ContainsKey(ev.BoundId))
                     {
                         var bound = selectionBounds[ev.BoundId];
@@ -493,11 +512,24 @@ public partial class MainViewModel : ViewModelBase
                                 var stroke = drawStrokes[boundTargetId];
                                 stroke.Path.Transform(SKMatrix.CreateRotation(ev.DegreesRad, ev.Center.X, ev.Center.Y));
                             }
+                            else if (canvasImages.ContainsKey(boundTargetId))
+                            {
+                                var image = canvasImages[boundTargetId];
+                                image.Rotation += ev.DegreesRad;
+
+                                // Rotate the bounds center around the rotation pivot
+                                var imgCenter = new SKPoint(image.Bounds.MidX, image.Bounds.MidY);
+                                var rotated = SKMatrix.CreateRotation(ev.DegreesRad, ev.Center.X, ev.Center.Y)
+                                    .MapPoint(imgCenter);
+                                var bounds = image.Bounds;
+                                bounds.Offset(rotated.X - imgCenter.X, rotated.Y - imgCenter.Y);
+                                image.Bounds = bounds;
+                            }
                         }
                     }
 
                     break;
-                case ScaleStrokesEvent ev:
+                case ScaleCanvasElementsEvent ev:
                     if (selectionBounds.ContainsKey(ev.BoundId))
                     {
                         var bound = selectionBounds[ev.BoundId];
@@ -509,17 +541,65 @@ public partial class MainViewModel : ViewModelBase
                                     .Transform(SKMatrix.CreateScale(ev.Scale.X, ev.Scale.Y, ev.Center.X,
                                         ev.Center.Y));
                             }
+                            else if (canvasImages.ContainsKey(boundTargetId))
+                            {
+                                var image = canvasImages[boundTargetId];
+                                var scaleMatrix =
+                                    SKMatrix.CreateScale(ev.Scale.X, ev.Scale.Y, ev.Center.X, ev.Center.Y);
+                                var topLeft = scaleMatrix.MapPoint(new SKPoint(image.Bounds.Left, image.Bounds.Top));
+                                var bottomRight =
+                                    scaleMatrix.MapPoint(new SKPoint(image.Bounds.Right, image.Bounds.Bottom));
+
+                                // If the x-axis becomes inverted, swap the x coordinates so that the bound's width stays positive
+                                // Then flip the image horizontally
+                                if (topLeft.X > bottomRight.X)
+                                {
+                                    (topLeft.X, bottomRight.X) = (bottomRight.X, topLeft.X);
+                                    image.FlipX = !image.FlipX;
+                                }
+
+                                // If the y-axis becomes inverted, swap the y coordinates so that the bound's height stays positive
+                                // Then flip the image vertically
+                                if (topLeft.Y > bottomRight.Y)
+                                {
+                                    (topLeft.Y, bottomRight.Y) = (bottomRight.Y, topLeft.Y);
+                                    image.FlipY = !image.FlipY;
+                                }
+
+                                image.Bounds = new SKRect(topLeft.X, topLeft.Y, bottomRight.X, bottomRight.Y);
+                            }
                         }
                     }
 
                     break;
                 case LoadCanvasEvent ev:
                     drawStrokes.Clear();
-                    foreach (Stroke stroke in ev.Strokes)
+                    canvasImages.Clear();
+
+                    foreach (var element in ev.CanvasElements)
                     {
-                        if (stroke is DrawStroke drawStroke)
+                        if (element is DrawStroke drawStroke)
                         {
-                            drawStrokes[drawStroke.Id] = drawStroke;
+                            drawStrokes[drawStroke.Id] = new DrawStroke
+                            {
+                                Id = drawStroke.Id,
+                                Paint = drawStroke.Paint.Clone(),
+                                ToolOptions = drawStroke.ToolOptions,
+                                ToolType = drawStroke.ToolType,
+                                Path = drawStroke.Path
+                            };
+                        }
+                        else if (element is CanvasImage canvasImage)
+                        {
+                            canvasImages[canvasImage.Id] = new CanvasImage
+                            {
+                                Id = canvasImage.Id,
+                                ImageBase64String = canvasImage.ImageBase64String,
+                                Bounds = canvasImage.Bounds,
+                                Rotation = canvasImage.Rotation,
+                                FlipX = canvasImage.FlipX,
+                                FlipY = canvasImage.FlipY,
+                            };
                         }
                     }
 
@@ -625,10 +705,20 @@ public partial class MainViewModel : ViewModelBase
                     }
 
                     break;
+                case AddImageEvent ev:
+                    var imageBounds = SKRect.Create(ev.Position, ev.Size);
+                    canvasImages[ev.ImageId] = new CanvasImage
+                    {
+                        Id = ev.ImageId,
+                        ImageBase64String = ev.ImageBase64String,
+                        Bounds = imageBounds,
+                    };
+                    elementIdToActionId[ev.ImageId] = ev.ActionId;
+                    break;
             }
         }
 
-        CanvasStrokes = new List<Stroke>(drawStrokes.Values.ToList());
+        CanvasElements = [..drawStrokes.Values.ToList(), ..canvasImages.Values.ToList()];
         // Show the selection only on the client that is doing the selection
         SelectionTargets = selectionBounds.Where(pair => _mySelections.Contains(pair.Key))
             .ToDictionary(k => k.Key, v => v.Value.Targets.ToList());
@@ -641,35 +731,47 @@ public partial class MainViewModel : ViewModelBase
     /// Marks the strokes that are a target for erasure
     /// </summary>
     /// <param name="eraserPoint">The latest point in the eraser's stroke</param>
-    /// <param name="drawStrokes">Collection of all current strokes on the canvas</param>
+    /// <param name="canvasElements">Collection of all current elements on the canvas</param>
     /// <param name="eraserStroke">The active eraser stroke</param>
-    private void CheckAndErase(SKPoint eraserPoint, IEnumerable<DrawStroke> drawStrokes, EraserStroke eraserStroke)
+    private void CheckAndErase(SKPoint eraserPoint, IEnumerable<CanvasElement> canvasElements,
+        EraserStroke eraserStroke)
     {
-        foreach (var stroke in drawStrokes)
+        foreach (var element in canvasElements)
         {
-            var strokeId = stroke.Id;
-            switch (stroke.ToolType)
+            if (element is DrawStroke stroke)
             {
-                case ToolType.Line or ToolType.Arrow:
+                var strokeId = stroke.Id;
+                switch (stroke.ToolType)
                 {
-                    var endPoints = new[] { stroke.Path[0], stroke.Path[1] };
-                    if (Utilities.IsPointNearLine(eraserPoint, endPoints, 10.0f))
+                    case ToolType.Line or ToolType.Arrow:
                     {
-                        stroke.IsToBeErased = true;
-                        eraserStroke.Targets.Add(strokeId);
-                    }
+                        var endPoints = new[] { stroke.Path[0], stroke.Path[1] };
+                        if (Utilities.IsPointNearLine(eraserPoint, endPoints, 10.0f))
+                        {
+                            stroke.IsToBeErased = true;
+                            eraserStroke.Targets.Add(strokeId);
+                        }
 
-                    break;
+                        break;
+                    }
+                    default:
+                    {
+                        if (stroke.Path.Contains(eraserPoint.X, eraserPoint.Y))
+                        {
+                            stroke.IsToBeErased = true;
+                            eraserStroke.Targets.Add(strokeId);
+                        }
+
+                        break;
+                    }
                 }
-                default:
+            }
+            else if (element is CanvasImage image)
+            {
+                if (image.Bounds.Contains(eraserPoint.X, eraserPoint.Y))
                 {
-                    if (stroke.Path.Contains(eraserPoint.X, eraserPoint.Y))
-                    {
-                        stroke.IsToBeErased = true;
-                        eraserStroke.Targets.Add(strokeId);
-                    }
-
-                    break;
+                    image.IsToBeErased = true;
+                    eraserStroke.Targets.Add(image.Id);
                 }
             }
         }
@@ -678,16 +780,25 @@ public partial class MainViewModel : ViewModelBase
     /// <summary>
     /// Finds all strokes that are within the selection boundary
     /// </summary>
-    private void CheckAndSelect(SKRect boundRect, SelectionBound bound, IEnumerable<DrawStroke> drawStrokes)
+    private void CheckAndSelect(SKRect boundRect, SelectionBound bound, IEnumerable<CanvasElement> canvasElements)
     {
         bound.Targets.Clear();
-        foreach (var stroke in drawStrokes)
+        foreach (var element in canvasElements)
         {
-            SKRect strokeBounds = stroke.Path.Bounds;
-
-            if (boundRect.Contains(strokeBounds))
+            if (element is DrawStroke stroke)
             {
-                bound.Targets.Add(stroke.Id);
+                SKRect strokeBounds = stroke.Path.Bounds;
+                if (boundRect.Contains(strokeBounds))
+                {
+                    bound.Targets.Add(stroke.Id);
+                }
+            }
+            else if (element is CanvasImage image)
+            {
+                if (boundRect.Contains(image.Bounds))
+                {
+                    bound.Targets.Add(image.Id);
+                }
             }
         }
     }

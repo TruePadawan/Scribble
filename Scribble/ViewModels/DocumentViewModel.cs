@@ -3,14 +3,17 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using Avalonia.Platform.Storage;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
+using Scribble.Lib.Dtos;
 using Scribble.Messages;
 using Scribble.Services.DialogService;
 using Scribble.Services.FileService;
 using Scribble.Shared.Lib;
+using SkiaSharp;
 
 namespace Scribble.ViewModels;
 
@@ -51,16 +54,62 @@ public partial class DocumentViewModel : ViewModelBase
         await using var stream = await file.OpenWriteAsync();
         await using var streamWriter = new StreamWriter(stream);
 
-        var serializerOptions = new JsonSerializerOptions { WriteIndented = true };
-        var jsonCanvasStrokes = new JsonArray();
-        foreach (var stroke in canvasData.Strokes)
+        var serializerOptions = new JsonSerializerOptions
         {
-            jsonCanvasStrokes.Add(JsonSerializer.SerializeToNode(stroke, serializerOptions));
+            WriteIndented = true,
+            Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) }
+        };
+        var jsonCanvasStrokes = new JsonArray();
+        var jsonCanvasImages = new JsonArray();
+        // base64 encoded string -> file id
+        Dictionary<string, Guid> imageBase64EncodedStrings = [];
+        foreach (var element in canvasData.CanvasElements)
+        {
+            if (element is Stroke stroke)
+            {
+                jsonCanvasStrokes.Add(JsonSerializer.SerializeToNode(stroke, serializerOptions));
+            }
+            else if (element is CanvasImage canvasImage)
+            {
+                Guid fileId;
+                if (imageBase64EncodedStrings.ContainsKey(canvasImage.ImageBase64String))
+                {
+                    fileId = imageBase64EncodedStrings[canvasImage.ImageBase64String];
+                }
+                else
+                {
+                    fileId = Guid.NewGuid();
+                    imageBase64EncodedStrings[canvasImage.ImageBase64String] = fileId;
+                }
+
+                var canvasImageDto = new CanvasImageDto
+                {
+                    Id = canvasImage.Id,
+                    Width = canvasImage.Bounds.Width,
+                    Height = canvasImage.Bounds.Height,
+                    X = canvasImage.Bounds.Left,
+                    Y = canvasImage.Bounds.Top,
+                    FileId = fileId
+                };
+                jsonCanvasImages.Add(JsonSerializer.SerializeToNode(canvasImageDto, serializerOptions));
+            }
         }
+
+        var files = new JsonObject();
+        foreach (var (base64String, fileId) in imageBase64EncodedStrings)
+        {
+            files.Add(fileId.ToString(), base64String);
+        }
+
 
         var canvasState = new JsonObject
         {
-            ["strokes"] = jsonCanvasStrokes,
+            ["elements"] = new JsonObject
+            {
+                ["strokes"] = jsonCanvasStrokes,
+                ["images"] = jsonCanvasImages
+            },
+            ["files"] = files,
             ["backgroundColor"] = canvasData.BackgroundColor.ToString()
         };
         await streamWriter.WriteAsync(canvasState.ToJsonString(serializerOptions));
@@ -88,8 +137,14 @@ public partial class DocumentViewModel : ViewModelBase
         using var streamReader = new StreamReader(stream);
         var json = await streamReader.ReadToEndAsync();
         var canvasState = JsonNode.Parse(json);
-        var rawStrokes = canvasState?["strokes"]?.AsArray();
-        if (canvasState is null || rawStrokes is null) return;
+        var jsonCanvasElements = canvasState?["elements"]?.AsObject() ??
+                                 throw new Exception("Invalid canvas file, cannot find elements");
+        var jsonEncodedFiles = canvasState["files"]?.AsObject() ??
+                               throw new Exception("Invalid canvas file, cannot find encoded files");
+        var jsonCanvasStrokes = jsonCanvasElements["strokes"]?.AsArray() ??
+                                throw new Exception("Invalid canvas file, cannot find strokes");
+        var jsonCanvasImages = jsonCanvasElements["images"]?.AsArray() ??
+                               throw new Exception("Invalid canvas file, cannot find images");
 
         var hasEvents = WeakReferenceMessenger.Default.Send<HasEventsRequestMessage>().Response;
         if (hasEvents)
@@ -99,16 +154,47 @@ public partial class DocumentViewModel : ViewModelBase
             if (!confirmed) return;
         }
 
-        List<Stroke> strokes = [];
-        foreach (var stroke in rawStrokes)
+        var deserializerOptions = new JsonSerializerOptions
         {
-            if (stroke is null) throw new Exception("Invalid canvas file");
-            var deserializedStroke = JsonSerializer.Deserialize<Stroke>(stroke.ToJsonString());
-            if (deserializedStroke is null) throw new Exception("Invalid canvas file");
-            strokes.Add(deserializedStroke);
+            Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) }
+        };
+        List<CanvasElement> canvasElements = [];
+        foreach (var jsonStroke in jsonCanvasStrokes)
+        {
+            if (jsonStroke is null) throw new Exception("Invalid canvas file");
+            var deserializedStroke = JsonSerializer.Deserialize<Stroke>(jsonStroke.ToJsonString(), deserializerOptions);
+            if (deserializedStroke is not null)
+            {
+                canvasElements.Add(deserializedStroke);
+            }
+        }
+
+        foreach (var jsonImageDto in jsonCanvasImages)
+        {
+            if (jsonImageDto is null) throw new Exception("Invalid canvas file");
+            var deserializedImageDto =
+                JsonSerializer.Deserialize<CanvasImageDto>(jsonImageDto.ToJsonString(), deserializerOptions);
+            if (deserializedImageDto is not null)
+            {
+                var fileId = deserializedImageDto.FileId.ToString();
+                var base64String = jsonEncodedFiles[fileId]?.ToString() ??
+                                   throw new Exception("Invalid canvas file, could not find encoded image");
+                var canvasImage = new CanvasImage
+                {
+                    Id = deserializedImageDto.Id,
+                    Bounds = SKRect.Create(
+                        deserializedImageDto.X,
+                        deserializedImageDto.Y,
+                        deserializedImageDto.Width,
+                        deserializedImageDto.Height
+                    ),
+                    ImageBase64String = base64String
+                };
+                canvasElements.Add(canvasImage);
+            }
         }
 
         var bgColor = canvasState["backgroundColor"]?.ToString();
-        WeakReferenceMessenger.Default.Send(new LoadCanvasDataMessage(strokes, bgColor));
+        WeakReferenceMessenger.Default.Send(new LoadCanvasDataMessage(canvasElements, bgColor));
     }
 }
