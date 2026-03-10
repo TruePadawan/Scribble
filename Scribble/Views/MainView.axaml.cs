@@ -10,6 +10,7 @@ using Avalonia.Media.Imaging;
 using Avalonia.Platform;
 using Avalonia.Threading;
 using Scribble.Lib;
+using Scribble.Services.CanvasState;
 using Scribble.Services.DialogService;
 using Scribble.Services.FileService;
 using Scribble.Shared.Lib;
@@ -35,6 +36,7 @@ public partial class MainView : UserControl
     private Point _prevCoord;
     private PointerTool? _activePointerTool;
     private MainViewModel? _viewModel;
+    private CanvasStateService? _canvasState;
     private readonly Selection _selection;
     private readonly IFileService _fileService;
     private readonly IDialogService _dialogService;
@@ -69,6 +71,7 @@ public partial class MainView : UserControl
         if (DataContext is MainViewModel viewModel)
         {
             _viewModel = viewModel;
+            _canvasState = viewModel.CanvasStateService;
             _viewModel.RequestInvalidateSelection += VisualizeSelection;
             _viewModel.RequestInvalidateCanvas = () => MainCanvas.InvalidateVisual();
             _viewModel.UiStateViewModel.CenterZoomRequested += OnCenterZoomRequested;
@@ -82,16 +85,16 @@ public partial class MainView : UserControl
             viewModel.UiStateViewModel.AvailableTools.Clear();
             var tools = new List<PointerTool>
             {
-                new PencilTool("PencilTool", viewModel),
-                new EraseTool("EraseTool", viewModel),
-                new PanningTool("PanningTool", viewModel, CanvasScrollViewer),
-                new LineTool("LineTool", viewModel),
-                new ArrowTool("ArrowTool", viewModel),
-                new EllipseTool("EllipseTool", viewModel),
-                new RectangleTool("RectangleTool", viewModel),
-                new TextTool("TextTool", viewModel, CanvasContainer),
-                new SelectTool("SelectTool", viewModel, CanvasContainer),
-                new ImageTool("ImageTool", viewModel, _fileService, _dialogService),
+                new PencilTool("PencilTool", _canvasState),
+                new EraseTool("EraseTool", _canvasState),
+                new PanningTool("PanningTool", _canvasState, CanvasScrollViewer),
+                new LineTool("LineTool", _canvasState),
+                new ArrowTool("ArrowTool", _canvasState),
+                new EllipseTool("EllipseTool", _canvasState),
+                new RectangleTool("RectangleTool", _canvasState),
+                new TextTool("TextTool", _canvasState, CanvasContainer),
+                new SelectTool("SelectTool", _canvasState, CanvasContainer),
+                new ImageTool("ImageTool", _canvasState, _fileService, _dialogService),
             };
             foreach (var tool in tools)
             {
@@ -177,12 +180,12 @@ public partial class MainView : UserControl
     {
         if (_viewModel == null) return;
 
-        var hasEvents = _viewModel.CanvasEvents.Count > 0;
+        var hasEvents = _canvasState!.CanvasEvents.Count > 0;
         // Am I triggering a selection?
         var triggeringSelectionAction = hasEvents &&
-                                        _viewModel.CanvasEvents.Last() is EndSelectionEvent es &&
-                                        _viewModel.IsLocalSelection(es.BoundId);
-        var allSelectedIds = _viewModel.SelectedElementIds;
+                                        _canvasState.CanvasEvents.Last() is EndSelectionEvent es &&
+                                        _canvasState.IsLocalSelection(es.BoundId);
+        var allSelectedIds = _canvasState.SelectedElementIds;
 
         if (allSelectedIds.Count > 0)
         {
@@ -278,7 +281,7 @@ public partial class MainView : UserControl
             }
         }
 
-        _viewModel.UiStateViewModel.BuildSelectionEditOptions(filteredStrokeIds, e => _viewModel.ApplyEvent(e));
+        _viewModel.UiStateViewModel.BuildSelectionEditOptions(filteredStrokeIds, e => _canvasState!.ApplyEvent(e));
     }
 
     private Point GetPointerPosition(PointerEventArgs e)
@@ -372,9 +375,9 @@ public partial class MainView : UserControl
         {
             // Move selected elements
             Point delta = pointerCoordinates - _selection.SelectionMoveCoord;
-            if (_viewModel.ActiveSelectionBoundId is { } moveBoundId)
+            if (_canvasState!.ActiveSelectionBoundId is { } moveBoundId)
             {
-                _viewModel.ApplyEvent(new MoveCanvasElementsEvent(_selection.MoveActionId, moveBoundId,
+                _canvasState.ApplyEvent(new MoveCanvasElementsEvent(_selection.MoveActionId, moveBoundId,
                     Utilities.ToSkPoint(delta)));
             }
         }
@@ -386,9 +389,9 @@ public partial class MainView : UserControl
     {
         if (e.InitialPressMouseButton == MouseButton.Left && _viewModel != null)
         {
-            if (_viewModel.ActiveSelectionBoundId != null)
+            if (_canvasState!.ActiveSelectionBoundId != null)
             {
-                _viewModel.ApplyEvent(new EndStrokeEvent(_selection.MoveActionId));
+                _canvasState.ApplyEvent(new EndStrokeEvent(_selection.MoveActionId));
             }
         }
 
@@ -437,9 +440,9 @@ public partial class MainView : UserControl
                 deltaRad += Math.PI * 2;
             }
 
-            if (_viewModel.ActiveSelectionBoundId is { } rotateBoundId)
+            if (_canvasState!.ActiveSelectionBoundId is { } rotateBoundId)
             {
-                _viewModel.ApplyEvent(new RotateCanvasElementsEvent(_selection.RotateActionId, rotateBoundId,
+                _canvasState.ApplyEvent(new RotateCanvasElementsEvent(_selection.RotateActionId, rotateBoundId,
                     (float)deltaRad,
                     Utilities.ToSkPoint(_selection.SelectionCenter)));
             }
@@ -452,9 +455,9 @@ public partial class MainView : UserControl
     {
         if (e.InitialPressMouseButton == MouseButton.Left && _viewModel != null)
         {
-            if (_viewModel.ActiveSelectionBoundId != null)
+            if (_canvasState!.ActiveSelectionBoundId != null)
             {
-                _viewModel.ApplyEvent(new EndStrokeEvent(_selection.RotateActionId));
+                _canvasState.ApplyEvent(new EndStrokeEvent(_selection.RotateActionId));
             }
         }
 
@@ -498,9 +501,9 @@ public partial class MainView : UserControl
             var scaleX = currVector.X / prevVector.X;
             var scaleY = currVector.Y / prevVector.Y;
 
-            if (_viewModel.ActiveSelectionBoundId is { } scaleBoundId)
+            if (_canvasState!.ActiveSelectionBoundId is { } scaleBoundId)
             {
-                _viewModel.ApplyEvent(new ScaleCanvasElementsEvent(_selection.ScaleActionId,
+                _canvasState.ApplyEvent(new ScaleCanvasElementsEvent(_selection.ScaleActionId,
                     scaleBoundId,
                     new SKPoint((float)scaleX, (float)scaleY),
                     Utilities.ToSkPoint(_selection.ScalePivot)));
@@ -515,9 +518,9 @@ public partial class MainView : UserControl
     {
         if (e.InitialPressMouseButton == MouseButton.Left && _viewModel != null && _selection.ActiveScaleHandle != null)
         {
-            if (_viewModel.ActiveSelectionBoundId != null)
+            if (_canvasState!.ActiveSelectionBoundId != null)
             {
-                _viewModel.ApplyEvent(new EndStrokeEvent(_selection.ScaleActionId));
+                _canvasState.ApplyEvent(new EndStrokeEvent(_selection.ScaleActionId));
             }
 
             _selection.ActiveScaleHandle = null;

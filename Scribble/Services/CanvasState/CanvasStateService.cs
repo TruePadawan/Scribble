@@ -99,6 +99,11 @@ public class CanvasStateService
         UndoRedoStateChanged?.Invoke();
     }
 
+    public void ClearSelection()
+    {
+        ApplyEvent(new ClearSelectionEvent(Guid.NewGuid()));
+    }
+
     public void ApplyEvent(Event @event, bool isLocalEvent = true)
     {
         if (@event is CreateSelectionBoundEvent ev)

@@ -3,7 +3,7 @@ using Avalonia;
 using Avalonia.Input;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
-using Scribble.ViewModels;
+using Scribble.Services.CanvasState;
 
 namespace Scribble.Tools.PointerTools;
 
@@ -12,10 +12,10 @@ namespace Scribble.Tools.PointerTools;
 /// </summary>
 /// <param name="name">The name of the tool</param>
 /// <param name="icon">The bitmap representing the tool's icon</param>
-public abstract class PointerTool(string name, MainViewModel viewModel, Bitmap icon)
+public abstract class PointerTool(string name, CanvasStateService canvasState, Bitmap icon)
 {
     public string Name { get; } = name;
-    protected MainViewModel ViewModel { get; } = viewModel;
+    protected CanvasStateService CanvasState { get; } = canvasState;
     public Bitmap ToolIcon { get; } = icon;
     public Cursor? Cursor { get; protected init; }
     public KeyGesture? HotKey { get; protected init; }

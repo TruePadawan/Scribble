@@ -6,9 +6,9 @@ using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
+using Scribble.Services.CanvasState;
 using Scribble.Shared.Lib;
 using Scribble.Utils;
-using Scribble.ViewModels;
 using SkiaSharp;
 
 namespace Scribble.Tools.PointerTools.TextTool;
@@ -19,7 +19,7 @@ public class TextTool : StrokeTool
     private TextBox? _currentTextBox;
     private Guid _actionId = Guid.NewGuid();
 
-    public TextTool(string name, MainViewModel viewModel, Canvas canvasContainer) : base(name, viewModel,
+    public TextTool(string name, CanvasStateService canvasState, Canvas canvasContainer) : base(name, canvasState,
         LoadToolBitmap(typeof(TextTool), "text.png"))
     {
         ToolOptions = [ToolOption.StrokeColor, ToolOption.FontSize];
@@ -94,7 +94,7 @@ public class TextTool : StrokeTool
             var textboxPos = new SKPoint((float)Canvas.GetLeft(_currentTextBox), (float)Canvas.GetTop(_currentTextBox));
             textboxPos.Y += StrokePaint.TextSize;
             var strokeId = Guid.NewGuid();
-            ViewModel.ApplyEvent(new AddTextEvent(_actionId, strokeId, textboxPos, text, StrokePaint.Clone(),
+            CanvasState.ApplyEvent(new AddTextEvent(_actionId, strokeId, textboxPos, text, StrokePaint.Clone(),
                 ToolOptions));
         }
 

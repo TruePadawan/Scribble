@@ -23,18 +23,14 @@ public partial class MainViewModel : ViewModelBase
 
     [ObservableProperty] private List<CanvasElement> _canvasElements = [];
 
-    public Guid? ActiveSelectionBoundId => _canvasStateService.ActiveSelectionBoundId;
-    public List<Guid> SelectedElementIds => _canvasStateService.SelectedElementIds;
-    public Queue<Event> CanvasEvents => _canvasStateService.CanvasEvents;
-
-    public bool IsLocalSelection(Guid boundId) => _canvasStateService.IsLocalSelection(boundId);
-
     private bool CanUndo => _canvasStateService.CanUndo;
     private bool CanRedo => _canvasStateService.CanRedo;
 
     // Services
     private readonly IDialogService _dialogService;
     private readonly CanvasStateService _canvasStateService;
+
+    public CanvasStateService CanvasStateService => _canvasStateService;
 
     public MultiUserDrawingViewModel MultiUserDrawingViewModel { get; }
     public DocumentViewModel DocumentViewModel { get; }
@@ -84,11 +80,6 @@ public partial class MainViewModel : ViewModelBase
         CanvasExportViewModel.GetBackgroundColor = () => UiStateViewModel.BackgroundColor;
     }
 
-    public void ApplyEvent(Event @event, bool isLocalEvent = true)
-    {
-        _canvasStateService.ApplyEvent(@event, isLocalEvent);
-    }
-
     public Vector GetCanvasDimensions() => new(CanvasWidth, CanvasHeight);
 
     [RelayCommand(CanExecute = nameof(CanUndo))]
@@ -118,11 +109,6 @@ public partial class MainViewModel : ViewModelBase
                 Console.WriteLine($"Could not open URL: {ex.Message}");
             }
         }
-    }
-
-    public void ClearSelection()
-    {
-        _canvasStateService.ApplyEvent(new ClearSelectionEvent(Guid.NewGuid()));
     }
 
     [RelayCommand]

@@ -6,11 +6,11 @@ using Avalonia.Media.Imaging;
 using Avalonia.Platform;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
+using Scribble.Services.CanvasState;
 using Scribble.Services.DialogService;
 using Scribble.Services.FileService;
 using Scribble.Shared.Lib;
 using Scribble.Utils;
-using Scribble.ViewModels;
 using SkiaSharp;
 
 namespace Scribble.Tools.PointerTools.ImageTool;
@@ -23,8 +23,8 @@ public class ImageTool : PointerTool
     private readonly IFileService _fileService;
     private readonly IDialogService _dialogService;
 
-    public ImageTool(string name, MainViewModel viewModel, IFileService fileService, IDialogService dialogService) :
-        base(name, viewModel,
+    public ImageTool(string name, CanvasStateService canvasState, IFileService fileService, IDialogService dialogService) :
+        base(name, canvasState,
             LoadToolBitmap(typeof(ImageTool), "image.png"))
     {
         var plusBitmap = new Bitmap(AssetLoader.Open(new Uri("avares://Scribble/Assets/plus.png")));
@@ -71,7 +71,7 @@ public class ImageTool : PointerTool
             var imageId = Guid.NewGuid();
             var imageSize = ScaleToFit(bitmap.Width, bitmap.Height, MaxImageDimension);
             var imagePosition = Utilities.ToSkPoint(coord);
-            ViewModel.ApplyEvent(new AddImageEvent(actionId, imageId, base64String, imagePosition, imageSize));
+            CanvasState.ApplyEvent(new AddImageEvent(actionId, imageId, base64String, imagePosition, imageSize));
         });
     }
 
