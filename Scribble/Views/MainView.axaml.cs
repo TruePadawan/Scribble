@@ -182,7 +182,7 @@ public partial class MainView : UserControl
         var triggeringSelectionAction = hasEvents &&
                                         _viewModel.CanvasEvents.Last() is EndSelectionEvent es &&
                                         _viewModel.MySelections.Contains(es.BoundId);
-        var allSelectedIds = _viewModel.SelectionTargets.Values.SelectMany(x => x).Distinct().ToList();
+        var allSelectedIds = _viewModel.SelectedElementIds;
 
         if (allSelectedIds.Count > 0)
         {
@@ -372,9 +372,9 @@ public partial class MainView : UserControl
         {
             // Move selected elements
             Point delta = pointerCoordinates - _selection.SelectionMoveCoord;
-            foreach (var selection in _viewModel.SelectionTargets)
+            if (_viewModel.ActiveSelectionBoundId is { } moveBoundId)
             {
-                _viewModel.ApplyEvent(new MoveCanvasElementsEvent(_selection.MoveActionId, selection.Key,
+                _viewModel.ApplyEvent(new MoveCanvasElementsEvent(_selection.MoveActionId, moveBoundId,
                     Utilities.ToSkPoint(delta)));
             }
         }
@@ -386,7 +386,7 @@ public partial class MainView : UserControl
     {
         if (e.InitialPressMouseButton == MouseButton.Left && _viewModel != null)
         {
-            foreach (var unused in _viewModel.SelectionTargets)
+            if (_viewModel.ActiveSelectionBoundId != null)
             {
                 _viewModel.ApplyEvent(new EndStrokeEvent(_selection.MoveActionId));
             }
@@ -437,9 +437,9 @@ public partial class MainView : UserControl
                 deltaRad += Math.PI * 2;
             }
 
-            foreach (var selection in _viewModel.SelectionTargets)
+            if (_viewModel.ActiveSelectionBoundId is { } rotateBoundId)
             {
-                _viewModel.ApplyEvent(new RotateCanvasElementsEvent(_selection.RotateActionId, selection.Key,
+                _viewModel.ApplyEvent(new RotateCanvasElementsEvent(_selection.RotateActionId, rotateBoundId,
                     (float)deltaRad,
                     Utilities.ToSkPoint(_selection.SelectionCenter)));
             }
@@ -452,7 +452,7 @@ public partial class MainView : UserControl
     {
         if (e.InitialPressMouseButton == MouseButton.Left && _viewModel != null)
         {
-            foreach (var unused in _viewModel.SelectionTargets)
+            if (_viewModel.ActiveSelectionBoundId != null)
             {
                 _viewModel.ApplyEvent(new EndStrokeEvent(_selection.RotateActionId));
             }
@@ -498,10 +498,10 @@ public partial class MainView : UserControl
             var scaleX = currVector.X / prevVector.X;
             var scaleY = currVector.Y / prevVector.Y;
 
-            foreach (var selection in _viewModel.SelectionTargets)
+            if (_viewModel.ActiveSelectionBoundId is { } scaleBoundId)
             {
                 _viewModel.ApplyEvent(new ScaleCanvasElementsEvent(_selection.ScaleActionId,
-                    selection.Key,
+                    scaleBoundId,
                     new SKPoint((float)scaleX, (float)scaleY),
                     Utilities.ToSkPoint(_selection.ScalePivot)));
             }
@@ -515,7 +515,7 @@ public partial class MainView : UserControl
     {
         if (e.InitialPressMouseButton == MouseButton.Left && _viewModel != null && _selection.ActiveScaleHandle != null)
         {
-            foreach (var unused in _viewModel.SelectionTargets)
+            if (_viewModel.ActiveSelectionBoundId != null)
             {
                 _viewModel.ApplyEvent(new EndStrokeEvent(_selection.ScaleActionId));
             }

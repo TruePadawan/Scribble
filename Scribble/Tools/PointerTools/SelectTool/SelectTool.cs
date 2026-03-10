@@ -42,7 +42,7 @@ class SelectTool : PointerTool
         _canvasContainer.Children.Add(_selectionBorder);
         _boundId = Guid.NewGuid();
         _actionId = Guid.NewGuid();
-        if (ViewModel.SelectionTargets.Count > 0)
+        if (ViewModel.ActiveSelectionBoundId != null)
         {
             ViewModel.ApplyEvent(new ClearSelectionEvent(Guid.NewGuid()));
         }

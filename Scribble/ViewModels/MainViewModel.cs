@@ -35,7 +35,8 @@ public partial class MainViewModel : ViewModelBase
     private Dictionary<Guid, SKPoint> _eraserHeadLookup = new();
     private Dictionary<Guid, SelectionBound> _selectionBoundLookup = new();
     private Dictionary<Guid, CanvasImage> _canvasImageLookup = new();
-    public Dictionary<Guid, List<Guid>> SelectionTargets { get; private set; } = [];
+    public Guid? ActiveSelectionBoundId { get; private set; }
+    public List<Guid> SelectedElementIds { get; private set; } = [];
     public Queue<Event> CanvasEvents { get; private set; } = [];
 
     private readonly IDialogService _dialogService;
@@ -99,11 +100,10 @@ public partial class MainViewModel : ViewModelBase
         WeakReferenceMessenger.Default.Register<MainViewModel, RequestSelectedElements>(this,
             (mainViewModel, message) =>
             {
-                var hasActiveSelection = mainViewModel.SelectionTargets.Count > 0;
+                var hasActiveSelection = mainViewModel.ActiveSelectionBoundId != null;
                 if (hasActiveSelection)
                 {
-                    var id = mainViewModel.SelectionTargets.Keys.First();
-                    var selectedElementIds = mainViewModel.SelectionTargets[id];
+                    var selectedElementIds = mainViewModel.SelectedElementIds;
                     List<CanvasElement> selectedElements = [];
                     foreach (var canvasElement in mainViewModel.CanvasElements)
                     {
@@ -276,9 +276,9 @@ public partial class MainViewModel : ViewModelBase
                     Utilities.GetSize(boundOrigin, increaseSelectionEvent.Point));
                 CheckAndSelect(boundRect, bound, CanvasElements);
 
-                SelectionTargets = _selectionBoundLookup
-                    .Where(pair => MySelections.Contains(pair.Key))
-                    .ToDictionary(pair => pair.Key, pair => pair.Value.Targets.ToList());
+                var myBound = _selectionBoundLookup.FirstOrDefault(pair => MySelections.Contains(pair.Key));
+                ActiveSelectionBoundId = myBound.Value != null ? myBound.Key : null;
+                SelectedElementIds = myBound.Value?.Targets.ToList() ?? [];
                 RequestInvalidateSelection?.Invoke();
                 return;
             }
@@ -844,8 +844,9 @@ public partial class MainViewModel : ViewModelBase
         _selectionBoundLookup = selectionBounds;
         _canvasImageLookup = canvasImages;
         // Show the selection only on the client that is doing the selection
-        SelectionTargets = selectionBounds.Where(pair => MySelections.Contains(pair.Key))
-            .ToDictionary(k => k.Key, v => v.Value.Targets.ToList());
+        var myReplayBound = selectionBounds.FirstOrDefault(pair => MySelections.Contains(pair.Key));
+        ActiveSelectionBoundId = myReplayBound.Value != null ? myReplayBound.Key : null;
+        SelectedElementIds = myReplayBound.Value?.Targets.ToList() ?? [];
         RequestInvalidateSelection?.Invoke();
 
         return staleActionIds;
