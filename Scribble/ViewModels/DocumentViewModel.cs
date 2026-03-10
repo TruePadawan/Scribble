@@ -5,11 +5,11 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
+using Avalonia.Media;
 using Avalonia.Platform.Storage;
 using CommunityToolkit.Mvvm.Input;
-using CommunityToolkit.Mvvm.Messaging;
 using Scribble.Lib.Dtos;
-using Scribble.Messages;
+using Scribble.Services.CanvasState;
 using Scribble.Services.DialogService;
 using Scribble.Services.FileService;
 using Scribble.Shared.Lib;
@@ -25,11 +25,17 @@ public partial class DocumentViewModel : ViewModelBase
 {
     private readonly IFileService _fileService;
     private readonly IDialogService _dialogService;
+    private readonly CanvasStateService _canvasStateService;
 
-    public DocumentViewModel(IFileService fileService, IDialogService dialogService)
+    public Func<Color>? GetBackgroundColor { get; set; }
+    public event Action<string?>? CanvasFileLoaded;
+
+    public DocumentViewModel(IFileService fileService, IDialogService dialogService,
+        CanvasStateService canvasStateService)
     {
         _fileService = fileService;
         _dialogService = dialogService;
+        _canvasStateService = canvasStateService;
     }
 
     [RelayCommand]
@@ -50,7 +56,8 @@ public partial class DocumentViewModel : ViewModelBase
 
     private async Task SaveCanvasToFileAsync(IStorageFile file)
     {
-        var canvasData = WeakReferenceMessenger.Default.Send<RequestCanvasDataMessage>().Response;
+        var canvasElements = _canvasStateService.CanvasElements;
+        var backgroundColor = GetBackgroundColor!();
         await using var stream = await file.OpenWriteAsync();
         await using var streamWriter = new StreamWriter(stream);
 
@@ -63,7 +70,7 @@ public partial class DocumentViewModel : ViewModelBase
         var jsonCanvasImages = new JsonArray();
         // base64 encoded string -> file id
         Dictionary<string, Guid> imageBase64EncodedStrings = [];
-        foreach (var element in canvasData.CanvasElements)
+        foreach (var element in canvasElements)
         {
             if (element is Stroke stroke)
             {
@@ -110,7 +117,7 @@ public partial class DocumentViewModel : ViewModelBase
                 ["images"] = jsonCanvasImages
             },
             ["files"] = files,
-            ["backgroundColor"] = canvasData.BackgroundColor.ToString()
+            ["backgroundColor"] = backgroundColor.ToString()
         };
         await streamWriter.WriteAsync(canvasState.ToJsonString(serializerOptions));
     }
@@ -146,7 +153,7 @@ public partial class DocumentViewModel : ViewModelBase
         var jsonCanvasImages = jsonCanvasElements["images"]?.AsArray() ??
                                throw new Exception("Invalid canvas file, cannot find images");
 
-        var hasEvents = WeakReferenceMessenger.Default.Send<HasEventsRequestMessage>().Response;
+        var hasEvents = _canvasStateService.HasEvents;
         if (hasEvents)
         {
             var confirmed = await _dialogService.ShowWarningConfirmationAsync("Warning",
@@ -195,6 +202,7 @@ public partial class DocumentViewModel : ViewModelBase
         }
 
         var bgColor = canvasState["backgroundColor"]?.ToString();
-        WeakReferenceMessenger.Default.Send(new LoadCanvasDataMessage(canvasElements, bgColor));
+        _canvasStateService.ApplyEvent(new LoadCanvasEvent(Guid.NewGuid(), canvasElements));
+        CanvasFileLoaded?.Invoke(bgColor);
     }
 }

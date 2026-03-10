@@ -1,13 +1,14 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
+using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform.Storage;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using CommunityToolkit.Mvvm.Messaging;
-using Scribble.Messages;
+using Scribble.Services.CanvasState;
 using Scribble.Services.FileService;
 using Scribble.Shared.Lib;
 using Scribble.Utils;
@@ -26,17 +27,21 @@ public partial class CanvasExportViewModel : ViewModelBase
     [ObservableProperty] private bool _includeBackground;
 
     private readonly IFileService _fileService;
+    private readonly CanvasStateService _canvasStateService;
+
+    public Func<Color>? GetBackgroundColor { get; set; }
 
     partial void OnIncludeBackgroundChanged(bool value)
     {
         UpdateCanvasPreview();
     }
 
-    public CanvasExportViewModel(IFileService fileService)
+    public CanvasExportViewModel(IFileService fileService, CanvasStateService canvasStateService)
     {
         _imageScale = 1;
         _includeBackground = true;
         _fileService = fileService;
+        _canvasStateService = canvasStateService;
     }
 
     [RelayCommand]
@@ -54,16 +59,16 @@ public partial class CanvasExportViewModel : ViewModelBase
     public void UpdateCanvasPreview()
     {
         List<CanvasElement> previewedElements = [];
-        var elementsPayload = WeakReferenceMessenger.Default.Send<RequestSelectedElements>().Response;
-        var canvasData = WeakReferenceMessenger.Default.Send<RequestCanvasDataMessage>().Response;
+        var selectedElements = _canvasStateService.GetSelectedElements();
+        var backgroundColor = GetBackgroundColor!();
 
-        if (elementsPayload.CanvasElements.Count > 0)
+        if (selectedElements.Count > 0)
         {
-            previewedElements = elementsPayload.CanvasElements;
+            previewedElements = selectedElements;
         }
         else
         {
-            foreach (var canvasElement in canvasData.CanvasElements)
+            foreach (var canvasElement in _canvasStateService.CanvasElements)
             {
                 if (canvasElement is DrawStroke drawStroke)
                 {
@@ -78,7 +83,7 @@ public partial class CanvasExportViewModel : ViewModelBase
 
         var pngData = GetImageData(previewedElements,
             includeBackground: IncludeBackground,
-            backgroundColor: Utilities.ToSkColor(canvasData.BackgroundColor),
+            backgroundColor: Utilities.ToSkColor(backgroundColor),
             ImageScale, SKEncodedImageFormat.Png);
         if (pngData == null || pngData.Length == 0)
         {
@@ -112,9 +117,8 @@ public partial class CanvasExportViewModel : ViewModelBase
     [RelayCommand]
     private async Task ExportCanvasToJpegAsync()
     {
-        var canvasData = WeakReferenceMessenger.Default.Send<RequestCanvasDataMessage>().Response;
         List<CanvasElement> elements = [];
-        foreach (var canvasStroke in canvasData.CanvasElements)
+        foreach (var canvasStroke in _canvasStateService.CanvasElements)
         {
             if (canvasStroke is DrawStroke drawStroke)
             {
@@ -124,7 +128,7 @@ public partial class CanvasExportViewModel : ViewModelBase
 
         var jpegData = GetImageData(elements,
             includeBackground: IncludeBackground,
-            backgroundColor: Utilities.ToSkColor(canvasData.BackgroundColor),
+            backgroundColor: Utilities.ToSkColor(GetBackgroundColor!()),
             ImageScale, SKEncodedImageFormat.Jpeg);
         if (jpegData != null && jpegData.Length > 0)
         {

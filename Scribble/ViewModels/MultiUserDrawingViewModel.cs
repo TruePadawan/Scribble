@@ -3,9 +3,8 @@ using System.Threading.Tasks;
 using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using CommunityToolkit.Mvvm.Messaging;
 using Scribble.Lib;
-using Scribble.Messages;
+using Scribble.Services.CanvasState;
 using Scribble.Services.DialogService;
 using Scribble.Services.MultiUserDrawing;
 
@@ -19,6 +18,7 @@ public partial class MultiUserDrawingViewModel : ViewModelBase
     // Services
     private readonly MultiUserDrawingService _multiUserDrawingService;
     private readonly IDialogService _dialogService;
+    private readonly CanvasStateService _canvasStateService;
 
     // Observable properties
     [ObservableProperty]
@@ -49,10 +49,12 @@ public partial class MultiUserDrawingViewModel : ViewModelBase
         IsLive ? new SolidColorBrush(Colors.Green) : new SolidColorBrush(Colors.Transparent);
 
 
-    public MultiUserDrawingViewModel(MultiUserDrawingService drawingService, IDialogService dialogService)
+    public MultiUserDrawingViewModel(MultiUserDrawingService drawingService, IDialogService dialogService,
+        CanvasStateService canvasStateService)
     {
         _multiUserDrawingService = drawingService;
         _dialogService = dialogService;
+        _canvasStateService = canvasStateService;
 
         _multiUserDrawingService.RoomChanged += room => { Room = room; };
     }
@@ -62,8 +64,7 @@ public partial class MultiUserDrawingViewModel : ViewModelBase
     {
         if (!_multiUserDrawingService.IsConnected)
         {
-            var hasEvents = WeakReferenceMessenger.Default.Send<HasEventsRequestMessage>();
-            if (hasEvents.Response)
+            if (_canvasStateService.HasEvents)
             {
                 var confirmed = await _dialogService.ShowWarningConfirmationAsync("Warning",
                     "This might clear your current canvas. Are you sure you want to proceed?");

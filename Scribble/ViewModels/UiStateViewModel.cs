@@ -4,9 +4,7 @@ using System.Collections.ObjectModel;
 using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using CommunityToolkit.Mvvm.Messaging;
 using Scribble.Lib;
-using Scribble.Messages;
 using Scribble.Shared.Lib;
 using Scribble.Tools.PointerTools;
 using Scribble.Utils;
@@ -43,18 +41,6 @@ public partial class UiStateViewModel : ViewModelBase
     public ObservableCollection<ToolOptionViewModelBase> ActiveToolOptions { get; } = [];
 
     private readonly ToolOptionsValues _toolOptionsValues = new();
-
-    public UiStateViewModel()
-    {
-        // Automatically listen for document loads to change the background color
-        WeakReferenceMessenger.Default.Register<LoadCanvasDataMessage>(this, (r, message) =>
-        {
-            if (message.BackgroundColorHex != null)
-            {
-                BackgroundColor = Color.Parse(message.BackgroundColorHex);
-            }
-        });
-    }
 
     [RelayCommand(CanExecute = nameof(CanZoomIn))]
     private void ZoomIn() => CenterZoomRequested?.Invoke(1.1);
