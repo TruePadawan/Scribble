@@ -55,69 +55,74 @@ public class SkiaCanvas : Control
 
         foreach (var canvasElement in elementsToDraw)
         {
-            if (canvasElement is DrawStroke drawStroke)
+            DrawSingleElement(canvas, canvasElement);
+        }
+    }
+
+    private void DrawSingleElement(SKCanvas canvas, CanvasElement canvasElement)
+    {
+        if (canvasElement is DrawStroke drawStroke)
+        {
+            var needsMutablePaint = drawStroke.IsToBeErased || drawStroke.Paint.FillColor.Alpha != 0;
+            var paintToUse = needsMutablePaint ? drawStroke.Paint.ToSkPaint() : drawStroke.Paint.GetCachedSkPaint();
+            try
             {
-                var needsMutablePaint = drawStroke.IsToBeErased || drawStroke.Paint.FillColor.Alpha != 0;
-                var paintToUse = needsMutablePaint ? drawStroke.Paint.ToSkPaint() : drawStroke.Paint.GetCachedSkPaint();
-                try
+                if (drawStroke.IsToBeErased)
                 {
-                    if (drawStroke.IsToBeErased)
-                    {
-                        paintToUse.Color = paintToUse.Color.WithAlpha(80);
-                    }
-
-                    if (drawStroke.Path.PointCount == 1)
-                    {
-                        canvas.DrawPoint(drawStroke.Path.Points[0], paintToUse);
-                    }
-                    else
-                    {
-                        if (drawStroke.Paint.FillColor.Alpha != 0)
-                        {
-                            var strokeColor = paintToUse.Color;
-                            paintToUse.Style = SKPaintStyle.StrokeAndFill;
-                            paintToUse.Color = drawStroke.Paint.FillColor;
-                            canvas.DrawPath(drawStroke.Path, paintToUse);
-                            paintToUse.Style = SKPaintStyle.Stroke;
-                            paintToUse.Color = strokeColor;
-                        }
-
-                        canvas.DrawPath(drawStroke.Path, paintToUse);
-                    }
+                    paintToUse.Color = paintToUse.Color.WithAlpha(80);
                 }
-                finally
-                {
-                    if (needsMutablePaint)
-                        paintToUse.Dispose();
-                }
-            }
-            else if (canvasElement is CanvasImage canvasImage)
-            {
-                var bitmap = canvasImage.GetBitmap();
-                // Pushes a snapshot of the current canvas state (transforms, clipping regions, etc.) onto an internal stack before rotating canvas
-                // Needed for drawing rotated images
-                canvas.Save();
-                canvas.RotateRadians(canvasImage.Rotation, canvasImage.Bounds.MidX, canvasImage.Bounds.MidY);
 
-                // Flip the canvas to apply image-flips
-                if (canvasImage.FlipX)
-                    canvas.Scale(-1, 1, canvasImage.Bounds.MidX, canvasImage.Bounds.MidY);
-                if (canvasImage.FlipY)
-                    canvas.Scale(1, -1, canvasImage.Bounds.MidX, canvasImage.Bounds.MidY);
-
-                if (canvasImage.IsToBeErased)
+                if (drawStroke.Path.PointCount == 1)
                 {
-                    using var lowOpacityPaint = new SKPaint();
-                    lowOpacityPaint.Color = SKColors.Black.WithAlpha(80);
-                    canvas.DrawBitmap(bitmap, canvasImage.Bounds, lowOpacityPaint);
+                    canvas.DrawPoint(drawStroke.Path.Points[0], paintToUse);
                 }
                 else
                 {
-                    canvas.DrawBitmap(bitmap, canvasImage.Bounds);
-                }
+                    if (drawStroke.Paint.FillColor.Alpha != 0)
+                    {
+                        var strokeColor = paintToUse.Color;
+                        paintToUse.Style = SKPaintStyle.StrokeAndFill;
+                        paintToUse.Color = drawStroke.Paint.FillColor;
+                        canvas.DrawPath(drawStroke.Path, paintToUse);
+                        paintToUse.Style = SKPaintStyle.Stroke;
+                        paintToUse.Color = strokeColor;
+                    }
 
-                canvas.Restore();
+                    canvas.DrawPath(drawStroke.Path, paintToUse);
+                }
             }
+            finally
+            {
+                if (needsMutablePaint)
+                    paintToUse.Dispose();
+            }
+        }
+        else if (canvasElement is CanvasImage canvasImage)
+        {
+            var bitmap = canvasImage.GetBitmap();
+            // Pushes a snapshot of the current canvas state (transforms, clipping regions, etc.) onto an internal stack before rotating canvas
+            // Needed for drawing rotated images
+            canvas.Save();
+            canvas.RotateRadians(canvasImage.Rotation, canvasImage.Bounds.MidX, canvasImage.Bounds.MidY);
+
+            // Flip the canvas to apply image-flips
+            if (canvasImage.FlipX)
+                canvas.Scale(-1, 1, canvasImage.Bounds.MidX, canvasImage.Bounds.MidY);
+            if (canvasImage.FlipY)
+                canvas.Scale(1, -1, canvasImage.Bounds.MidX, canvasImage.Bounds.MidY);
+
+            if (canvasImage.IsToBeErased)
+            {
+                using var lowOpacityPaint = new SKPaint();
+                lowOpacityPaint.Color = SKColors.Black.WithAlpha(80);
+                canvas.DrawBitmap(bitmap, canvasImage.Bounds, lowOpacityPaint);
+            }
+            else
+            {
+                canvas.DrawBitmap(bitmap, canvasImage.Bounds);
+            }
+
+            canvas.Restore();
         }
     }
 
@@ -145,7 +150,8 @@ public class SkiaCanvas : Control
         }
     }
 
-    // runs when an element is added/removed from the canvas elements collection, disposes bitmaps and SKPaint objects
+    // runs when an element is added/removed from the canvas elements collection
+    // it disposes bitmaps and SKPaint objects
     private void OnCanvasElementsCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
         if (e.OldItems != null)
@@ -153,14 +159,19 @@ public class SkiaCanvas : Control
             foreach (var item in e.OldItems)
             {
                 if (item is CanvasImage canvasImage)
+                {
                     canvasImage.DisposeBitmap();
+                }
                 else if (item is DrawStroke drawStroke)
+                {
                     drawStroke.Paint.DisposeSkPaint();
+                }
             }
         }
 
         InvalidateVisual();
     }
+
 }
 
 internal class SkiaDrawOperation(Rect bounds, Action<SKCanvas> drawAction) : ICustomDrawOperation
