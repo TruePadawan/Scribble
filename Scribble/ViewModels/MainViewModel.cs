@@ -23,14 +23,12 @@ public partial class MainViewModel : ViewModelBase
 
     [ObservableProperty] private List<CanvasElement> _canvasElements = [];
 
-    private bool CanUndo => _canvasStateService.CanUndo;
-    private bool CanRedo => _canvasStateService.CanRedo;
+    private bool CanUndo => CanvasStateService.CanUndo;
+    private bool CanRedo => CanvasStateService.CanRedo;
 
     // Services
     private readonly IDialogService _dialogService;
-    private readonly CanvasStateService _canvasStateService;
-
-    public CanvasStateService CanvasStateService => _canvasStateService;
+    public CanvasStateService CanvasStateService { get; }
 
     public MultiUserDrawingViewModel MultiUserDrawingViewModel { get; }
     public DocumentViewModel DocumentViewModel { get; }
@@ -44,7 +42,7 @@ public partial class MainViewModel : ViewModelBase
         CanvasStateService canvasStateService)
     {
         _dialogService = dialogService;
-        _canvasStateService = canvasStateService;
+        CanvasStateService = canvasStateService;
 
         CanvasExportViewModel = canvasExportViewModel;
         MultiUserDrawingViewModel = multiUserDrawingViewModel;
@@ -52,15 +50,15 @@ public partial class MainViewModel : ViewModelBase
         UiStateViewModel = uiStateViewModel;
 
         // Wire service events to UI invalidation
-        _canvasStateService.CanvasInvalidated += () =>
+        CanvasStateService.CanvasInvalidated += () =>
         {
-            CanvasElements = _canvasStateService.CanvasElements;
+            CanvasElements = CanvasStateService.CanvasElements;
             RequestInvalidateCanvas?.Invoke();
         };
 
-        _canvasStateService.SelectionInvalidated += () => { RequestInvalidateSelection?.Invoke(); };
+        CanvasStateService.SelectionInvalidated += () => { RequestInvalidateSelection?.Invoke(); };
 
-        _canvasStateService.UndoRedoStateChanged += () =>
+        CanvasStateService.UndoRedoStateChanged += () =>
         {
             UndoCommand.NotifyCanExecuteChanged();
             RedoCommand.NotifyCanExecuteChanged();
@@ -85,13 +83,13 @@ public partial class MainViewModel : ViewModelBase
     [RelayCommand(CanExecute = nameof(CanUndo))]
     private void Undo()
     {
-        _canvasStateService.Undo();
+        CanvasStateService.Undo();
     }
 
     [RelayCommand(CanExecute = nameof(CanRedo))]
     private void Redo()
     {
-        _canvasStateService.Redo();
+        CanvasStateService.Redo();
     }
 
     [RelayCommand]
@@ -114,7 +112,7 @@ public partial class MainViewModel : ViewModelBase
     [RelayCommand]
     private async Task ExitAsync()
     {
-        if (_canvasStateService.HasEvents)
+        if (CanvasStateService.HasEvents)
         {
             var confirmed = await _dialogService.ShowWarningConfirmationAsync("Warning",
                 "All unsaved work will be lost. Are you sure you want to proceed?");
@@ -130,13 +128,13 @@ public partial class MainViewModel : ViewModelBase
     [RelayCommand]
     private async Task ResetCanvas()
     {
-        if (_canvasStateService.HasEvents)
+        if (CanvasStateService.HasEvents)
         {
             var confirmed = await _dialogService.ShowWarningConfirmationAsync("Warning",
                 "This will clear your current canvas. Are you sure you want to proceed?");
             if (!confirmed) return;
         }
 
-        _canvasStateService.ApplyEvent(new LoadCanvasEvent(Guid.NewGuid(), []));
+        CanvasStateService.ApplyEvent(new LoadCanvasEvent(Guid.NewGuid(), []));
     }
 }
