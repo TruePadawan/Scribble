@@ -5,9 +5,9 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.SignalR.Client;
 using Scribble.Shared.Lib;
 
-namespace Scribble.Lib.CollaborativeDrawing;
+namespace Scribble.Services.MultiUserDrawingService;
 
-public class CollaborativeDrawingService(string serverUrl)
+public class MultiUserDrawingService(string serverUrl)
 {
     private readonly HubConnection _connection =
         new HubConnectionBuilder().WithUrl(serverUrl).Build();
@@ -19,8 +19,8 @@ public class CollaborativeDrawingService(string serverUrl)
     public event Action<Event>? EventReceived;
     public event Action<string>? CanvasStateRequested;
     public event Action<Queue<Event>>? CanvasStateReceived;
-    public event Action<CollaborativeDrawingUser, List<CollaborativeDrawingUser>>? ClientJoinedRoom;
-    public event Action<CollaborativeDrawingUser, List<CollaborativeDrawingUser>>? ClientLeftRoom;
+    public event Action<MultiUserDrawingClient, List<MultiUserDrawingClient>>? ClientJoinedRoom;
+    public event Action<MultiUserDrawingClient, List<MultiUserDrawingClient>>? ClientLeftRoom;
 
     // Set up the event handlers and starts a connection to the SignalR server
     public async Task StartAsync()
@@ -41,10 +41,10 @@ public class CollaborativeDrawingService(string serverUrl)
             }
         });
 
-        _connection.On<CollaborativeDrawingUser, List<CollaborativeDrawingUser>>("ClientJoined",
+        _connection.On<MultiUserDrawingClient, List<MultiUserDrawingClient>>("ClientJoined",
             (client, usersInRoom) => { ClientJoinedRoom?.Invoke(client, usersInRoom); });
 
-        _connection.On<CollaborativeDrawingUser, List<CollaborativeDrawingUser>>("ClientLeft",
+        _connection.On<MultiUserDrawingClient, List<MultiUserDrawingClient>>("ClientLeft",
             (client, usersInRoom) => ClientLeftRoom?.Invoke(client, usersInRoom));
 
         await _connection.StartAsync();
