@@ -178,7 +178,10 @@ public partial class MainView : UserControl
         if (_viewModel == null) return;
 
         var hasEvents = _viewModel.CanvasEvents.Count > 0;
-        var triggeringSelectionAction = hasEvents && _viewModel.CanvasEvents.Last() is EndSelectionEvent;
+        // Am I triggering a selection?
+        var triggeringSelectionAction = hasEvents &&
+                                        _viewModel.CanvasEvents.Last() is EndSelectionEvent es &&
+                                        _viewModel.MySelections.Contains(es.BoundId);
         var allSelectedIds = _viewModel.SelectionTargets.Values.SelectMany(x => x).Distinct().ToList();
 
         if (allSelectedIds.Count > 0)

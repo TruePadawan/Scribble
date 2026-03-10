@@ -42,7 +42,7 @@ public partial class MainViewModel : ViewModelBase
 
     private readonly Stack<Guid> _undoStack = [];
     private readonly Stack<Guid> _redoStack = [];
-    private readonly HashSet<Guid> _mySelections = [];
+    public readonly HashSet<Guid> MySelections = [];
 
     public MultiUserDrawingViewModel MultiUserDrawingViewModel { get; }
     public DocumentViewModel DocumentViewModel { get; }
@@ -198,7 +198,7 @@ public partial class MainViewModel : ViewModelBase
     {
         if (@event is CreateSelectionBoundEvent ev)
         {
-            _mySelections.Add(ev.BoundId);
+            MySelections.Add(ev.BoundId);
         }
 
         ProcessEvent(@event, isLocalEvent);
@@ -277,7 +277,7 @@ public partial class MainViewModel : ViewModelBase
                 CheckAndSelect(boundRect, bound, CanvasElements);
 
                 SelectionTargets = _selectionBoundLookup
-                    .Where(pair => _mySelections.Contains(pair.Key))
+                    .Where(pair => MySelections.Contains(pair.Key))
                     .ToDictionary(k => k.Key, v => v.Value.Targets.ToList());
                 RequestInvalidateSelection?.Invoke();
                 return;
@@ -848,7 +848,7 @@ public partial class MainViewModel : ViewModelBase
         _selectionBoundLookup = selectionBounds;
         _canvasImageLookup = canvasImages;
         // Show the selection only on the client that is doing the selection
-        SelectionTargets = selectionBounds.Where(pair => _mySelections.Contains(pair.Key))
+        SelectionTargets = selectionBounds.Where(pair => MySelections.Contains(pair.Key))
             .ToDictionary(k => k.Key, v => v.Value.Targets.ToList());
         RequestInvalidateSelection?.Invoke();
 
