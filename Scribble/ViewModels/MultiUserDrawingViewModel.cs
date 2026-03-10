@@ -7,7 +7,7 @@ using CommunityToolkit.Mvvm.Messaging;
 using Scribble.Lib;
 using Scribble.Messages;
 using Scribble.Services.DialogService;
-using Scribble.Services.MultiUserDrawingService;
+using Scribble.Services.MultiUserDrawing;
 
 namespace Scribble.ViewModels;
 

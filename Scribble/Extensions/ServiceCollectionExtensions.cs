@@ -3,7 +3,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Scribble.Services.DialogService;
 using Scribble.Services.FileService;
-using Scribble.Services.MultiUserDrawingService;
+using Scribble.Services.MultiUserDrawing;
 using Scribble.ViewModels;
 
 namespace Scribble.Extensions;
