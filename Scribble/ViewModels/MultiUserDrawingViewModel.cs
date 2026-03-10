@@ -7,6 +7,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.AspNetCore.SignalR.Client;
+using Scribble.Lib;
 using Scribble.Messages;
 using Scribble.Services.DialogService;
 using Scribble.Services.MultiUserDrawingService;
