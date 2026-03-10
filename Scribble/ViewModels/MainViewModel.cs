@@ -11,6 +11,7 @@ using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
 using Scribble.Messages;
 using Scribble.Services.DialogService;
+using Scribble.Services.MultiUserDrawingService;
 using Scribble.Shared.Lib;
 using Scribble.Tools.PointerTools.ArrowTool;
 using Scribble.Utils;
@@ -39,7 +40,9 @@ public partial class MainViewModel : ViewModelBase
     public List<Guid> SelectedElementIds { get; private set; } = [];
     public Queue<Event> CanvasEvents { get; private set; } = [];
 
+    // Services
     private readonly IDialogService _dialogService;
+    private readonly MultiUserDrawingService _multiUserDrawingService;
 
     private readonly Stack<Guid> _undoStack = [];
     private readonly Stack<Guid> _redoStack = [];
@@ -54,30 +57,27 @@ public partial class MainViewModel : ViewModelBase
 
     public MainViewModel(MultiUserDrawingViewModel multiplayer, DocumentViewModel documentViewModel,
         UiStateViewModel uiStateViewModel,
-        IDialogService dialogService, CanvasExportViewModel canvasExportViewModel)
+        IDialogService dialogService,
+        CanvasExportViewModel canvasExportViewModel,
+        MultiUserDrawingService multiUserDrawingService)
     {
         _dialogService = dialogService;
         CanvasExportViewModel = canvasExportViewModel;
+        _multiUserDrawingService = multiUserDrawingService;
         MultiUserDrawingViewModel = multiplayer;
         DocumentViewModel = documentViewModel;
         UiStateViewModel = uiStateViewModel;
 
+        _multiUserDrawingService.EventReceived += OnNetworkEventReceived;
+        _multiUserDrawingService.CanvasStateReceived += OnCanvasStateReceived;
+        _multiUserDrawingService.CanvasStateRequested += async (clientId) =>
+        {
+            await _multiUserDrawingService.SendCanvasStateToClientAsync(clientId, CanvasEvents);
+        };
+
         // Reply to requests asking if there are any canvas events
         WeakReferenceMessenger.Default.Register<MainViewModel, HasEventsRequestMessage>(this,
             (mainViewModel, message) => { message.Reply(mainViewModel.CanvasEvents.Count > 0); });
-
-        // Listen for incoming network events
-        WeakReferenceMessenger.Default.Register<NetworkEventReceivedMessage>(this,
-            (r, message) => { OnNetworkEventReceived(message.Event); });
-
-        WeakReferenceMessenger.Default.Register<CanvasStateReceivedMessage>(this,
-            (r, message) => { OnCanvasStateReceived(message.Events); });
-
-        WeakReferenceMessenger.Default.Register<CanvasStateRequestedMessage>(this,
-            (r, m) =>
-            {
-                WeakReferenceMessenger.Default.Send(new SendCanvasStateMessage(m.TargetConnectionId, CanvasEvents));
-            });
 
         // Send canvas data when the DocumentViewModel wants to save
         WeakReferenceMessenger.Default.Register<MainViewModel, RequestCanvasDataMessage>(this,
@@ -161,7 +161,7 @@ public partial class MainViewModel : ViewModelBase
     {
         if (_undoStack.Count == 0) return;
         var actionId = _undoStack.Pop();
-        if (MultiUserDrawingViewModel.Room != null)
+        if (_multiUserDrawingService.Room != null)
         {
             while (_deletedActions.Contains(actionId))
             {
@@ -181,7 +181,7 @@ public partial class MainViewModel : ViewModelBase
     {
         if (_redoStack.Count == 0) return;
         var actionId = _redoStack.Pop();
-        if (MultiUserDrawingViewModel.Room != null)
+        if (_multiUserDrawingService.Room != null)
         {
             while (_deletedActions.Contains(actionId))
             {
@@ -205,10 +205,10 @@ public partial class MainViewModel : ViewModelBase
 
         ProcessEvent(@event, isLocalEvent);
 
-        if (MultiUserDrawingViewModel.Room != null)
+        if (_multiUserDrawingService.Room != null)
         {
-            var roomId = MultiUserDrawingViewModel.Room.RoomId;
-            WeakReferenceMessenger.Default.Send(new BroadcastEventMessage(roomId, @event));
+            // If the client is in a room, it broadcasts the event to other clients in the room
+            _ = _multiUserDrawingService.BroadcastEventAsync(@event);
         }
     }
 

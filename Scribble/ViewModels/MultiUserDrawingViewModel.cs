@@ -1,17 +1,13 @@
 using System;
-using System.Collections.Generic;
 using System.Threading.Tasks;
 using Avalonia.Media;
-using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
-using Microsoft.AspNetCore.SignalR.Client;
 using Scribble.Lib;
 using Scribble.Messages;
 using Scribble.Services.DialogService;
 using Scribble.Services.MultiUserDrawingService;
-using Scribble.Shared.Lib;
 
 namespace Scribble.ViewModels;
 
@@ -58,86 +54,15 @@ public partial class MultiUserDrawingViewModel : ViewModelBase
         _multiUserDrawingService = drawingService;
         _dialogService = dialogService;
 
-        _multiUserDrawingService.EventReceived += @event =>
-        {
-            WeakReferenceMessenger.Default.Send(new NetworkEventReceivedMessage(@event));
-        };
-        _multiUserDrawingService.CanvasStateRequested += targetId =>
-        {
-            WeakReferenceMessenger.Default.Send(new CanvasStateRequestedMessage(targetId));
-        };
-
-        _multiUserDrawingService.CanvasStateReceived += events =>
-        {
-            WeakReferenceMessenger.Default.Send(new CanvasStateReceivedMessage(events));
-        };
-
-        _multiUserDrawingService.ClientJoinedRoom += UpdateRoomClients;
-        _multiUserDrawingService.ClientLeftRoom += UpdateRoomClients;
-
-        // Listen for requests from the Canvas to send data outward via SignalR
-        WeakReferenceMessenger.Default.Register<BroadcastEventMessage>(this,
-            async (r, message) =>
-            {
-                // Event handler for broadcasting events to all clients in the room
-                await _multiUserDrawingService.BroadcastEventAsync(message.RoomId, message.Event);
-            });
-
-        WeakReferenceMessenger.Default.Register<SendCanvasStateMessage>(this,
-            async (r, message) =>
-            {
-                // Event handler for sending canvas state to clients that just joined the room
-                await _multiUserDrawingService.SendCanvasStateToClientAsync(message.TargetId, message.Events);
-            });
-    }
-
-    private void UpdateRoomClients(MultiUserDrawingClient client, List<MultiUserDrawingClient> clients)
-    {
-        Dispatcher.UIThread.Post(() =>
-        {
-            if (Room == null || _multiUserDrawingService.ConnectionId == null) return;
-            Room = new MultiUserDrawingRoom(Room.RoomId, _multiUserDrawingService.ConnectionId, Room.Me.Name)
-            {
-                Clients = clients
-            };
-        });
-    }
-
-    private async Task JoinRoomAsync(string roomId, string displayName)
-    {
-        try
-        {
-            await _multiUserDrawingService.StartAsync();
-            if (_multiUserDrawingService.ConnectionId != null)
-            {
-                Room = new MultiUserDrawingRoom(roomId, _multiUserDrawingService.ConnectionId, displayName);
-            }
-
-            await _multiUserDrawingService.JoinRoomAsync(roomId, displayName);
-        }
-        catch (Exception)
-        {
-            await _multiUserDrawingService.StopAsync();
-            Room = null;
-        }
-    }
-
-    private async Task LeaveRoomAsync()
-    {
-        if (Room != null)
-        {
-            await _multiUserDrawingService.LeaveRoomAsync(Room.RoomId);
-            Room = null;
-        }
+        _multiUserDrawingService.RoomChanged += room => { Room = room; };
     }
 
     [RelayCommand(CanExecute = nameof(CanToggleRoomConnection))]
     private async Task ToggleRoomConnectionAsync()
     {
-        if (_multiUserDrawingService.ConnectionState == HubConnectionState.Disconnected)
+        if (!_multiUserDrawingService.IsConnected)
         {
             var hasEvents = WeakReferenceMessenger.Default.Send<HasEventsRequestMessage>();
-
             if (hasEvents.Response)
             {
                 var confirmed = await _dialogService.ShowWarningConfirmationAsync("Warning",
@@ -145,18 +70,18 @@ public partial class MultiUserDrawingViewModel : ViewModelBase
                 if (!confirmed) return;
             }
 
-            await JoinRoomAsync(RoomId, ClientDisplayName.Trim());
+            await _multiUserDrawingService.JoinRoomAsync(RoomId, ClientDisplayName.Trim());
         }
         else
         {
-            await LeaveRoomAsync();
+            await _multiUserDrawingService.LeaveRoomAsync();
         }
     }
 
     [RelayCommand(CanExecute = nameof(CanGenerateRoomId))]
     private void GenerateRoomId()
     {
-        if (_multiUserDrawingService.ConnectionState == HubConnectionState.Disconnected)
+        if (!_multiUserDrawingService.IsConnected)
         {
             RoomId = Guid.NewGuid().ToString("N");
         }
