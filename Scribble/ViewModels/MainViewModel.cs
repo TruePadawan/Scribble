@@ -55,16 +55,17 @@ public partial class MainViewModel : ViewModelBase
     public UiStateViewModel UiStateViewModel { get; }
     public CanvasExportViewModel CanvasExportViewModel { get; }
 
-    public MainViewModel(MultiUserDrawingViewModel multiplayer, DocumentViewModel documentViewModel,
+    public MainViewModel(MultiUserDrawingViewModel multiUserDrawingViewModel, DocumentViewModel documentViewModel,
         UiStateViewModel uiStateViewModel,
         IDialogService dialogService,
         CanvasExportViewModel canvasExportViewModel,
         MultiUserDrawingService multiUserDrawingService)
     {
         _dialogService = dialogService;
-        CanvasExportViewModel = canvasExportViewModel;
         _multiUserDrawingService = multiUserDrawingService;
-        MultiUserDrawingViewModel = multiplayer;
+
+        CanvasExportViewModel = canvasExportViewModel;
+        MultiUserDrawingViewModel = multiUserDrawingViewModel;
         DocumentViewModel = documentViewModel;
         UiStateViewModel = uiStateViewModel;
 
