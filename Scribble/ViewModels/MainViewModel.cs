@@ -27,8 +27,10 @@ public partial class MainViewModel : ViewModelBase
     private bool CanRedo => _redoStack.Count > 0;
 
     public event Action? RequestInvalidateSelection;
+    public Action? RequestInvalidateCanvas { get; set; }
     [ObservableProperty] private List<CanvasElement> _canvasElements = [];
     private readonly HashSet<Guid> _deletedActions = [];
+    private Dictionary<Guid, DrawStroke> _strokeLookup = new();
     public Dictionary<Guid, List<Guid>> SelectionTargets { get; private set; } = [];
     public Queue<Event> CanvasEvents { get; private set; } = [];
 
@@ -208,6 +210,28 @@ public partial class MainViewModel : ViewModelBase
     {
         CanvasEvents.Enqueue(@event);
 
+        // Fast path: for pencil/line line-to events during active drawing,
+        // apply directly to the existing stroke — no replay needed
+        if (@event is PencilStrokeLineToEvent pencilLineToEvent)
+        {
+            if (_strokeLookup.TryGetValue(pencilLineToEvent.StrokeId, out var stroke))
+            {
+                stroke.Path.LineTo(pencilLineToEvent.Point);
+                RequestInvalidateCanvas?.Invoke();
+                return;
+            }
+        }
+
+        if (@event is LineStrokeLineToEvent lineStrokeEvent)
+        {
+            if (_strokeLookup.TryGetValue(lineStrokeEvent.StrokeId, out var stroke))
+            {
+                RebuildLinePath(stroke, lineStrokeEvent.EndPoint);
+                RequestInvalidateCanvas?.Invoke();
+                return;
+            }
+        }
+
         var staleActionIds = ReplayEvents();
         bool changed = false;
         bool currentActionIsStale = false;
@@ -363,55 +387,7 @@ public partial class MainViewModel : ViewModelBase
                 case LineStrokeLineToEvent ev:
                     if (drawStrokes.ContainsKey(ev.StrokeId))
                     {
-                        var stroke = drawStrokes[ev.StrokeId];
-                        var lineStartPoint = stroke.Path.Points[0];
-                        var lineEndPoint = ev.EndPoint;
-
-                        stroke.Path.Reset();
-
-                        if (stroke.ToolType == ToolType.Rectangle)
-                        {
-                            stroke.Path.MoveTo(lineStartPoint);
-                            var left = Math.Min(lineStartPoint.X, lineEndPoint.X);
-                            var top = Math.Min(lineStartPoint.Y, lineEndPoint.Y);
-                            var rect = SKRect.Create(new SKPoint(left, top),
-                                Utilities.GetSize(lineStartPoint, lineEndPoint));
-                            if (stroke.Paint.StrokeJoin == SKStrokeJoin.Miter)
-                            {
-                                stroke.Path.AddRect(rect);
-                            }
-                            else
-                            {
-                                stroke.Path.AddRoundRect(rect, 24f, 24f);
-                            }
-                        }
-                        else if (stroke.ToolType == ToolType.Ellipse)
-                        {
-                            stroke.Path.MoveTo(lineStartPoint);
-                            var left = Math.Min(lineStartPoint.X, lineEndPoint.X);
-                            var top = Math.Min(lineStartPoint.Y, lineEndPoint.Y);
-                            var rect = SKRect.Create(new SKPoint(left, top),
-                                Utilities.GetSize(lineStartPoint, lineEndPoint));
-                            stroke.Path.AddOval(rect);
-                        }
-                        else
-                        {
-                            stroke.Path.MoveTo(lineStartPoint);
-                            stroke.Path.LineTo(lineEndPoint);
-
-                            if (stroke.ToolType == ToolType.Arrow)
-                            {
-                                var (p1, p2) =
-                                    ArrowTool.GetArrowHeadPoints(lineStartPoint, lineEndPoint,
-                                        stroke.Paint.StrokeWidth);
-
-                                stroke.Path.MoveTo(lineEndPoint);
-                                stroke.Path.LineTo(p1);
-
-                                stroke.Path.MoveTo(lineEndPoint);
-                                stroke.Path.LineTo(p2);
-                            }
-                        }
+                        RebuildLinePath(drawStrokes[ev.StrokeId], ev.EndPoint);
                     }
 
                     break;
@@ -719,12 +695,63 @@ public partial class MainViewModel : ViewModelBase
         }
 
         CanvasElements = [..drawStrokes.Values.ToList(), ..canvasImages.Values.ToList()];
+        _strokeLookup = drawStrokes;
         // Show the selection only on the client that is doing the selection
         SelectionTargets = selectionBounds.Where(pair => _mySelections.Contains(pair.Key))
             .ToDictionary(k => k.Key, v => v.Value.Targets.ToList());
         RequestInvalidateSelection?.Invoke();
 
         return staleActionIds;
+    }
+
+    private static void RebuildLinePath(DrawStroke stroke, SKPoint endPoint)
+    {
+        var lineStartPoint = stroke.Path.Points[0];
+        stroke.Path.Reset();
+
+        if (stroke.ToolType == ToolType.Rectangle)
+        {
+            stroke.Path.MoveTo(lineStartPoint);
+            var left = Math.Min(lineStartPoint.X, endPoint.X);
+            var top = Math.Min(lineStartPoint.Y, endPoint.Y);
+            var rect = SKRect.Create(new SKPoint(left, top),
+                Utilities.GetSize(lineStartPoint, endPoint));
+            if (stroke.Paint.StrokeJoin == SKStrokeJoin.Miter)
+            {
+                stroke.Path.AddRect(rect);
+            }
+            else
+            {
+                stroke.Path.AddRoundRect(rect, 24f, 24f);
+            }
+        }
+        else if (stroke.ToolType == ToolType.Ellipse)
+        {
+            stroke.Path.MoveTo(lineStartPoint);
+            var left = Math.Min(lineStartPoint.X, endPoint.X);
+            var top = Math.Min(lineStartPoint.Y, endPoint.Y);
+            var rect = SKRect.Create(new SKPoint(left, top),
+                Utilities.GetSize(lineStartPoint, endPoint));
+            stroke.Path.AddOval(rect);
+        }
+        else
+        {
+            stroke.Path.MoveTo(lineStartPoint);
+            stroke.Path.LineTo(endPoint);
+
+            if (stroke.ToolType == ToolType.Arrow)
+            {
+                var (p1, p2) =
+                    ArrowTool.GetArrowHeadPoints(lineStartPoint, endPoint,
+                        stroke.Paint.StrokeWidth);
+
+                stroke.Path.MoveTo(endPoint);
+                stroke.Path.LineTo(p1);
+
+                stroke.Path.MoveTo(endPoint);
+                stroke.Path.LineTo(p2);
+            }
+        }
     }
 
     /// <summary>

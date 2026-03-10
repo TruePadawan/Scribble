@@ -59,6 +59,7 @@ public partial class MainView : UserControl
         if (_viewModel != null)
         {
             _viewModel.RequestInvalidateSelection -= VisualizeSelection;
+            _viewModel.RequestInvalidateCanvas = null;
             _viewModel.UiStateViewModel.CenterZoomRequested -= OnCenterZoomRequested;
             _viewModel.UiStateViewModel.ActiveToolChanged -= OnActiveToolChanged;
         }
@@ -69,6 +70,7 @@ public partial class MainView : UserControl
         {
             _viewModel = viewModel;
             _viewModel.RequestInvalidateSelection += VisualizeSelection;
+            _viewModel.RequestInvalidateCanvas = () => MainCanvas.InvalidateVisual();
             _viewModel.UiStateViewModel.CenterZoomRequested += OnCenterZoomRequested;
             _viewModel.UiStateViewModel.ActiveToolChanged += OnActiveToolChanged;
 
