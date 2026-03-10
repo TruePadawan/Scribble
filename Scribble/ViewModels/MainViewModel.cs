@@ -278,7 +278,7 @@ public partial class MainViewModel : ViewModelBase
 
                 SelectionTargets = _selectionBoundLookup
                     .Where(pair => MySelections.Contains(pair.Key))
-                    .ToDictionary(k => k.Key, v => v.Value.Targets.ToList());
+                    .ToDictionary(pair => pair.Key, pair => pair.Value.Targets.ToList());
                 RequestInvalidateSelection?.Invoke();
                 return;
             }
@@ -438,7 +438,6 @@ public partial class MainViewModel : ViewModelBase
         var eraserStrokes = new Dictionary<Guid, EraserStroke>();
         var eraserHeads = new Dictionary<Guid, SKPoint>();
         var selectionBounds = new Dictionary<Guid, SelectionBound>();
-        var clearsSomething = new Dictionary<Guid, bool>();
         var staleActionIds = new List<Guid>();
         var elementIdToActionId = new Dictionary<Guid, Guid>();
         var strokeTexts = new Dictionary<Guid, string>();
@@ -559,8 +558,6 @@ public partial class MainViewModel : ViewModelBase
                     var selectionPath = new SKPath();
                     selectionPath.MoveTo(ev.StartPoint);
 
-                    // Track if there's any active selection before clearing
-                    clearsSomething[ev.BoundId] = selectionBounds.Any(sb => sb.Value.Targets.Count > 0);
                     selectionBounds.Clear();
 
                     var selectionBound = new SelectionBound
@@ -590,8 +587,7 @@ public partial class MainViewModel : ViewModelBase
                 case EndSelectionEvent ev:
                     if (selectionBounds.ContainsKey(ev.BoundId))
                     {
-                        if (selectionBounds[ev.BoundId].Targets.Count == 0 &&
-                            !clearsSomething.GetValueOrDefault(ev.BoundId))
+                        if (selectionBounds[ev.BoundId].Targets.Count == 0)
                         {
                             staleActionIds.Add(ev.ActionId);
                         }
