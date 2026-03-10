@@ -43,7 +43,9 @@ public partial class MainViewModel : ViewModelBase
 
     private readonly Stack<Guid> _undoStack = [];
     private readonly Stack<Guid> _redoStack = [];
-    public readonly HashSet<Guid> MySelections = [];
+    private readonly HashSet<Guid> _localSelectionBoundIds = [];
+
+    public bool IsLocalSelection(Guid boundId) => _localSelectionBoundIds.Contains(boundId);
 
     public MultiUserDrawingViewModel MultiUserDrawingViewModel { get; }
     public DocumentViewModel DocumentViewModel { get; }
@@ -198,7 +200,7 @@ public partial class MainViewModel : ViewModelBase
     {
         if (@event is CreateSelectionBoundEvent ev)
         {
-            MySelections.Add(ev.BoundId);
+            _localSelectionBoundIds.Add(ev.BoundId);
         }
 
         ProcessEvent(@event, isLocalEvent);
@@ -276,7 +278,7 @@ public partial class MainViewModel : ViewModelBase
                     Utilities.GetSize(boundOrigin, increaseSelectionEvent.Point));
                 CheckAndSelect(boundRect, bound, CanvasElements);
 
-                var myBound = _selectionBoundLookup.FirstOrDefault(pair => MySelections.Contains(pair.Key));
+                var myBound = _selectionBoundLookup.FirstOrDefault(pair => _localSelectionBoundIds.Contains(pair.Key));
                 ActiveSelectionBoundId = myBound.Value != null ? myBound.Key : null;
                 SelectedElementIds = myBound.Value?.Targets.ToList() ?? [];
                 RequestInvalidateSelection?.Invoke();
@@ -844,7 +846,7 @@ public partial class MainViewModel : ViewModelBase
         _selectionBoundLookup = selectionBounds;
         _canvasImageLookup = canvasImages;
         // Show the selection only on the client that is doing the selection
-        var myReplayBound = selectionBounds.FirstOrDefault(pair => MySelections.Contains(pair.Key));
+        var myReplayBound = selectionBounds.FirstOrDefault(pair => _localSelectionBoundIds.Contains(pair.Key));
         ActiveSelectionBoundId = myReplayBound.Value != null ? myReplayBound.Key : null;
         SelectedElementIds = myReplayBound.Value?.Targets.ToList() ?? [];
         RequestInvalidateSelection?.Invoke();

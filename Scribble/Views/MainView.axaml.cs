@@ -181,7 +181,7 @@ public partial class MainView : UserControl
         // Am I triggering a selection?
         var triggeringSelectionAction = hasEvents &&
                                         _viewModel.CanvasEvents.Last() is EndSelectionEvent es &&
-                                        _viewModel.MySelections.Contains(es.BoundId);
+                                        _viewModel.IsLocalSelection(es.BoundId);
         var allSelectedIds = _viewModel.SelectedElementIds;
 
         if (allSelectedIds.Count > 0)
