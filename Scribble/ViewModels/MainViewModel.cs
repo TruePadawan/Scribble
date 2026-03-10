@@ -31,6 +31,10 @@ public partial class MainViewModel : ViewModelBase
     [ObservableProperty] private List<CanvasElement> _canvasElements = [];
     private readonly HashSet<Guid> _deletedActions = [];
     private Dictionary<Guid, DrawStroke> _strokeLookup = new();
+    private Dictionary<Guid, EraserStroke> _eraserStrokeLookup = new();
+    private Dictionary<Guid, SKPoint> _eraserHeadLookup = new();
+    private Dictionary<Guid, SelectionBound> _selectionBoundLookup = new();
+    private Dictionary<Guid, CanvasImage> _canvasImageLookup = new();
     public Dictionary<Guid, List<Guid>> SelectionTargets { get; private set; } = [];
     public Queue<Event> CanvasEvents { get; private set; } = [];
 
@@ -228,6 +232,149 @@ public partial class MainViewModel : ViewModelBase
             {
                 RebuildLinePath(stroke, lineStrokeEvent.EndPoint);
                 RequestInvalidateCanvas?.Invoke();
+                return;
+            }
+        }
+
+        if (@event is EraseStrokeLineToEvent eraseLineToEvent)
+        {
+            if (_eraserStrokeLookup.TryGetValue(eraseLineToEvent.StrokeId, out var currentEraserStroke))
+            {
+                var start = _eraserHeadLookup[eraseLineToEvent.StrokeId];
+                var end = eraseLineToEvent.Point;
+                var distance = Math.Sqrt(Math.Pow(end.X - start.X, 2) + Math.Pow(end.Y - start.Y, 2));
+
+                var stepSize = 5.0;
+                var steps = (int)Math.Ceiling(distance / stepSize);
+                for (int s = 1; s <= steps; s++)
+                {
+                    var completionPercentage = s / stepSize;
+                    var checkX = start.X + (end.X - start.X) * completionPercentage;
+                    var checkY = start.Y + (end.Y - start.Y) * completionPercentage;
+                    CheckAndErase(new SKPoint((float)checkX, (float)checkY), CanvasElements, currentEraserStroke);
+                }
+
+                currentEraserStroke.Path.LineTo(eraseLineToEvent.Point);
+                _eraserHeadLookup[eraseLineToEvent.StrokeId] = eraseLineToEvent.Point;
+                RequestInvalidateCanvas?.Invoke();
+                return;
+            }
+        }
+
+        if (@event is IncreaseSelectionBoundEvent increaseSelectionEvent)
+        {
+            if (_selectionBoundLookup.TryGetValue(increaseSelectionEvent.BoundId, out var bound))
+            {
+                var boundOrigin = bound.Path.Points[0];
+                bound.Path.Reset();
+                bound.Path.MoveTo(boundOrigin);
+                bound.Path.LineTo(increaseSelectionEvent.Point);
+
+                var top = Math.Min(boundOrigin.Y, increaseSelectionEvent.Point.Y);
+                var left = Math.Min(boundOrigin.X, increaseSelectionEvent.Point.X);
+                var boundRect = SKRect.Create(new SKPoint(left, top),
+                    Utilities.GetSize(boundOrigin, increaseSelectionEvent.Point));
+                CheckAndSelect(boundRect, bound, CanvasElements);
+
+                SelectionTargets = _selectionBoundLookup
+                    .Where(pair => _mySelections.Contains(pair.Key))
+                    .ToDictionary(k => k.Key, v => v.Value.Targets.ToList());
+                RequestInvalidateSelection?.Invoke();
+                return;
+            }
+        }
+
+        if (@event is MoveCanvasElementsEvent moveEvent)
+        {
+            if (_selectionBoundLookup.TryGetValue(moveEvent.BoundId, out var bound))
+            {
+                foreach (var boundTargetId in bound.Targets)
+                {
+                    if (_strokeLookup.TryGetValue(boundTargetId, out var stroke))
+                    {
+                        stroke.Path.Transform(SKMatrix.CreateTranslation(moveEvent.Delta.X, moveEvent.Delta.Y));
+                    }
+                    else if (_canvasImageLookup.TryGetValue(boundTargetId, out var image))
+                    {
+                        var bounds = image.Bounds;
+                        bounds.Offset(moveEvent.Delta);
+                        image.Bounds = bounds;
+                    }
+                }
+
+                RequestInvalidateCanvas?.Invoke();
+                RequestInvalidateSelection?.Invoke();
+                return;
+            }
+        }
+
+        if (@event is RotateCanvasElementsEvent rotateEvent)
+        {
+            if (_selectionBoundLookup.TryGetValue(rotateEvent.BoundId, out var bound))
+            {
+                foreach (var boundTargetId in bound.Targets)
+                {
+                    if (_strokeLookup.TryGetValue(boundTargetId, out var stroke))
+                    {
+                        stroke.Path.Transform(SKMatrix.CreateRotation(rotateEvent.DegreesRad, rotateEvent.Center.X,
+                            rotateEvent.Center.Y));
+                    }
+                    else if (_canvasImageLookup.TryGetValue(boundTargetId, out var image))
+                    {
+                        image.Rotation += rotateEvent.DegreesRad;
+                        var imgCenter = new SKPoint(image.Bounds.MidX, image.Bounds.MidY);
+                        var rotated = SKMatrix
+                            .CreateRotation(rotateEvent.DegreesRad, rotateEvent.Center.X, rotateEvent.Center.Y)
+                            .MapPoint(imgCenter);
+                        var bounds = image.Bounds;
+                        bounds.Offset(rotated.X - imgCenter.X, rotated.Y - imgCenter.Y);
+                        image.Bounds = bounds;
+                    }
+                }
+
+                RequestInvalidateCanvas?.Invoke();
+                RequestInvalidateSelection?.Invoke();
+                return;
+            }
+        }
+
+        if (@event is ScaleCanvasElementsEvent scaleEvent)
+        {
+            if (_selectionBoundLookup.TryGetValue(scaleEvent.BoundId, out var bound))
+            {
+                foreach (var boundTargetId in bound.Targets)
+                {
+                    if (_strokeLookup.TryGetValue(boundTargetId, out var stroke))
+                    {
+                        stroke.Path.Transform(SKMatrix.CreateScale(scaleEvent.Scale.X, scaleEvent.Scale.Y,
+                            scaleEvent.Center.X, scaleEvent.Center.Y));
+                    }
+                    else if (_canvasImageLookup.TryGetValue(boundTargetId, out var image))
+                    {
+                        var scaleMatrix = SKMatrix.CreateScale(scaleEvent.Scale.X, scaleEvent.Scale.Y,
+                            scaleEvent.Center.X, scaleEvent.Center.Y);
+                        var topLeft = scaleMatrix.MapPoint(new SKPoint(image.Bounds.Left, image.Bounds.Top));
+                        var bottomRight =
+                            scaleMatrix.MapPoint(new SKPoint(image.Bounds.Right, image.Bounds.Bottom));
+
+                        if (topLeft.X > bottomRight.X)
+                        {
+                            (topLeft.X, bottomRight.X) = (bottomRight.X, topLeft.X);
+                            image.FlipX = !image.FlipX;
+                        }
+
+                        if (topLeft.Y > bottomRight.Y)
+                        {
+                            (topLeft.Y, bottomRight.Y) = (bottomRight.Y, topLeft.Y);
+                            image.FlipY = !image.FlipY;
+                        }
+
+                        image.Bounds = new SKRect(topLeft.X, topLeft.Y, bottomRight.X, bottomRight.Y);
+                    }
+                }
+
+                RequestInvalidateCanvas?.Invoke();
+                RequestInvalidateSelection?.Invoke();
                 return;
             }
         }
@@ -696,6 +843,10 @@ public partial class MainViewModel : ViewModelBase
 
         CanvasElements = [..drawStrokes.Values.ToList(), ..canvasImages.Values.ToList()];
         _strokeLookup = drawStrokes;
+        _eraserStrokeLookup = eraserStrokes;
+        _eraserHeadLookup = eraserHeads;
+        _selectionBoundLookup = selectionBounds;
+        _canvasImageLookup = canvasImages;
         // Show the selection only on the client that is doing the selection
         SelectionTargets = selectionBounds.Where(pair => _mySelections.Contains(pair.Key))
             .ToDictionary(k => k.Key, v => v.Value.Targets.ToList());
@@ -814,7 +965,7 @@ public partial class MainViewModel : ViewModelBase
         {
             if (element is DrawStroke stroke)
             {
-                SKRect strokeBounds = stroke.Path.Bounds;
+                SKRect strokeBounds = stroke.Path.TightBounds;
                 if (boundRect.Contains(strokeBounds))
                 {
                     bound.Targets.Add(stroke.Id);

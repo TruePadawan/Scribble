@@ -201,7 +201,7 @@ public partial class MainView : UserControl
 
             foreach (var stroke in selectedStrokes)
             {
-                SKRect strokeBounds = stroke.Path.Bounds;
+                SKRect strokeBounds = stroke.Path.TightBounds;
                 if (combinedBounds == SKRect.Empty)
                 {
                     combinedBounds = strokeBounds;
