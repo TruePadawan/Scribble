@@ -1,7 +1,7 @@
 using Avalonia.Media;
 using Scribble.Shared.Lib;
 
-namespace Scribble.Lib;
+namespace Scribble.State;
 
 /// <summary>
 /// Represents the values of the tool options
