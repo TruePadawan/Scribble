@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Scribble.Services.DialogService;
 using Scribble.Services.FileService;
 using Scribble.Services;
+using Scribble.Services.MultiUserDrawing;
 using Scribble.ViewModels;
 
 namespace Scribble.Extensions;

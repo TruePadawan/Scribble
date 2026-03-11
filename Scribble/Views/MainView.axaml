@@ -265,7 +265,7 @@
                         Padding="4"
                         CornerRadius="32"
                         Background="Black">
-                        <TextBlock Text="{Binding MultiUserDrawingViewModel.Room.Clients.Count}"
+                        <TextBlock Text="{Binding MultiUserDrawingViewModel.ClientCount}"
                                    Foreground="White"
                                    FontSize="14" />
                     </Border>

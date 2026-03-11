@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Avalonia.Threading;
+using Scribble.Services.MultiUserDrawing;
 using Scribble.Shared.Lib;
 using Scribble.Tools.PointerTools.ArrowTool;
 using Scribble.Utils;

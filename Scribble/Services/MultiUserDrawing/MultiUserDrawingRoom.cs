@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using Scribble.Shared.Lib;
 
-namespace Scribble.Lib;
+namespace Scribble.Services.MultiUserDrawing;
 
 /// <summary>
 /// Represents a multi-user drawing room

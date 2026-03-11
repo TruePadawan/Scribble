@@ -3,10 +3,9 @@ using System.Collections.Generic;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.SignalR.Client;
-using Scribble.Lib;
 using Scribble.Shared.Lib;
 
-namespace Scribble.Services;
+namespace Scribble.Services.MultiUserDrawing;
 
 public class MultiUserDrawingService(string serverUrl)
 {

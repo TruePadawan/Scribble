@@ -3,9 +3,9 @@ using System.Threading.Tasks;
 using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using Scribble.Lib;
 using Scribble.Services;
 using Scribble.Services.DialogService;
+using Scribble.Services.MultiUserDrawing;
 
 namespace Scribble.ViewModels;
 
@@ -25,6 +25,7 @@ public partial class MultiUserDrawingViewModel : ViewModelBase
     [NotifyPropertyChangedFor(nameof(IsLive))]
     [NotifyPropertyChangedFor(nameof(RoomButtonText))]
     [NotifyPropertyChangedFor(nameof(LiveDrawingButtonBackground))]
+    [NotifyPropertyChangedFor(nameof(ClientCount))]
     [NotifyCanExecuteChangedFor(nameof(GenerateRoomIdCommand))]
     private MultiUserDrawingRoom? _room;
 
@@ -35,6 +36,7 @@ public partial class MultiUserDrawingViewModel : ViewModelBase
     [ObservableProperty] [NotifyCanExecuteChangedFor(nameof(ToggleRoomConnectionCommand))]
     private string _clientDisplayName = "Bootlicker";
 
+    public int ClientCount => Room?.Clients.Count ?? 0;
     public bool CanResetCanvas => Room == null || Room.IsHost;
     public bool IsLive => Room != null;
     private bool CanGenerateRoomId => Room == null;
