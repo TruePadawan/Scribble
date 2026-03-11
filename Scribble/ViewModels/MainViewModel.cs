@@ -18,8 +18,8 @@ public partial class MainViewModel : ViewModelBase
     public static int CanvasWidth => 10000;
     public static int CanvasHeight => 10000;
 
-    public event Action? RequestInvalidateSelection;
-    public Action? RequestInvalidateCanvas { get; set; }
+    public event Action? RequestRefreshSelection;
+    public Action? RequestInvalidateSkiaCanvas { get; set; }
 
     [ObservableProperty] private List<CanvasElement> _canvasElements = [];
 
@@ -53,10 +53,10 @@ public partial class MainViewModel : ViewModelBase
         CanvasStateService.CanvasInvalidated += () =>
         {
             CanvasElements = CanvasStateService.CanvasElements;
-            RequestInvalidateCanvas?.Invoke();
+            RequestInvalidateSkiaCanvas?.Invoke();
         };
 
-        CanvasStateService.SelectionInvalidated += () => { RequestInvalidateSelection?.Invoke(); };
+        CanvasStateService.SelectionInvalidated += () => { RequestRefreshSelection?.Invoke(); };
 
         CanvasStateService.UndoRedoStateChanged += () =>
         {
