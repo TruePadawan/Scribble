@@ -1,6 +1,6 @@
 using System;
 
-namespace Scribble.Lib.Dtos;
+namespace Scribble.Dtos;
 
 public record CanvasImageDto
 {

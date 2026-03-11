@@ -5,7 +5,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
-using Scribble.Lib.Dtos;
+using Scribble.Dtos;
 using Scribble.Shared.Lib;
 using SkiaSharp;
 
