@@ -166,6 +166,10 @@ public class CanvasStateService
         });
     }
 
+    /// <summary>
+    /// Pushes an action unto the undo stack
+    /// </summary>
+    /// <param name="actionId"></param>
     private void TrackAction(Guid actionId)
     {
         _undoStack.Push(actionId);
@@ -215,7 +219,8 @@ public class CanvasStateService
                     var completionPercentage = s / stepSize;
                     var checkX = start.X + (end.X - start.X) * completionPercentage;
                     var checkY = start.Y + (end.Y - start.Y) * completionPercentage;
-                    CheckAndErase(new SKPoint((float)checkX, (float)checkY), CanvasElements, currentEraserStroke);
+                    CheckAndErase(new SKPoint((float)checkX, (float)checkY), CanvasElements, currentEraserStroke,
+                        ownerFilter: currentEraserStroke.CreatorConnectionId);
                 }
 
                 currentEraserStroke.Path.LineTo(eraseLineToEvent.Point);
@@ -238,7 +243,8 @@ public class CanvasStateService
                 var left = Math.Min(boundOrigin.X, increaseSelectionEvent.Point.X);
                 var boundRect = SKRect.Create(new SKPoint(left, top),
                     Utilities.GetSize(boundOrigin, increaseSelectionEvent.Point));
-                CheckAndSelect(boundRect, bound, CanvasElements);
+                CheckAndSelect(boundRect, bound, CanvasElements,
+                    ownerFilter: bound.CreatorConnectionId);
 
                 var myBound = _selectionBoundLookup.FirstOrDefault(pair => _localSelectionBoundIds.Contains(pair.Key));
                 ActiveSelectionBoundId = myBound.Value != null ? myBound.Key : null;
@@ -420,7 +426,8 @@ public class CanvasStateService
                         Paint = ev.StrokePaint.Clone(),
                         Path = newLinePath,
                         ToolType = ev.ToolType,
-                        ToolOptions = ev.ToolOptions
+                        ToolOptions = ev.ToolOptions,
+                        CreatorConnectionId = ev.CreatorConnectionId
                     };
                     elementIdToActionId[ev.StrokeId] = ev.ActionId;
                     break;
@@ -429,14 +436,16 @@ public class CanvasStateService
                     eraserPath.MoveTo(ev.StartPoint);
                     var newEraserStroke = new EraserStroke
                     {
-                        Path = eraserPath
+                        Path = eraserPath,
+                        CreatorConnectionId = ev.CreatorConnectionId
                     };
 
                     // Keep track of the eraser heads for linear interpolation
                     eraserHeads[ev.StrokeId] = ev.StartPoint;
 
                     // Find all targets for erasing
-                    CheckAndErase(ev.StartPoint, [..drawStrokes.Values, ..canvasImages.Values], newEraserStroke);
+                    CheckAndErase(ev.StartPoint, [..drawStrokes.Values, ..canvasImages.Values], newEraserStroke,
+                        ownerFilter: ev.CreatorConnectionId);
 
                     eraserStrokes[ev.StrokeId] = newEraserStroke;
                     break;
@@ -458,7 +467,8 @@ public class CanvasStateService
                             var checkY = start.Y + (end.Y - start.Y) * completionPercentage;
                             CheckAndErase(new SKPoint((float)checkX, (float)checkY),
                                 [..drawStrokes.Values, ..canvasImages.Values],
-                                currentEraserStroke);
+                                currentEraserStroke,
+                                ownerFilter: currentEraserStroke.CreatorConnectionId);
                         }
 
                         currentEraserStroke.Path.LineTo(ev.Point);
@@ -513,7 +523,8 @@ public class CanvasStateService
                         Paint = ev.Paint.Clone(),
                         Path = textPath,
                         ToolType = ToolType.Text,
-                        ToolOptions = ev.ToolOptions
+                        ToolOptions = ev.ToolOptions,
+                        CreatorConnectionId = ev.CreatorConnectionId
                     };
                     strokeTexts[ev.StrokeId] = ev.Text;
                     elementIdToActionId[ev.StrokeId] = ev.ActionId;
@@ -527,7 +538,8 @@ public class CanvasStateService
                     var selectionBound = new SelectionBound
                     {
                         Id = ev.BoundId,
-                        Path = selectionPath
+                        Path = selectionPath,
+                        CreatorConnectionId = ev.CreatorConnectionId
                     };
                     selectionBounds[ev.BoundId] = selectionBound;
                     break;
@@ -544,7 +556,8 @@ public class CanvasStateService
                         var top = Math.Min(boundOrigin.Y, ev.Point.Y);
                         var left = Math.Min(boundOrigin.X, ev.Point.X);
                         var boundRect = SKRect.Create(new SKPoint(left, top), Utilities.GetSize(boundOrigin, ev.Point));
-                        CheckAndSelect(boundRect, bound, [..drawStrokes.Values, ..canvasImages.Values]);
+                        CheckAndSelect(boundRect, bound, [..drawStrokes.Values, ..canvasImages.Values],
+                            ownerFilter: bound.CreatorConnectionId);
                     }
 
                     break;
@@ -800,6 +813,7 @@ public class CanvasStateService
                         Id = ev.ImageId,
                         ImageBase64String = ev.ImageBase64String,
                         Bounds = imageBounds,
+                        CreatorConnectionId = ev.CreatorConnectionId
                     };
                     elementIdToActionId[ev.ImageId] = ev.ActionId;
                     break;
@@ -823,6 +837,11 @@ public class CanvasStateService
         return staleActionIds;
     }
 
+    /// <summary>
+    /// Builds the path for strokes: Rectangles, Ellipses, Lines, and Arrows
+    /// </summary>
+    /// <param name="stroke">The DrawStroke object</param>
+    /// <param name="endPoint">The line endpoint</param>
     private static void RebuildLinePath(DrawStroke stroke, SKPoint endPoint)
     {
         var lineStartPoint = stroke.Path.Points[0];
@@ -879,11 +898,16 @@ public class CanvasStateService
     /// <param name="eraserPoint">The latest point in the eraser's stroke</param>
     /// <param name="canvasElements">Collection of all current elements on the canvas</param>
     /// <param name="eraserStroke">The active eraser stroke</param>
+    /// <param name="ownerFilter">SignalR connection id for the current client</param>
     private static void CheckAndErase(SKPoint eraserPoint, IEnumerable<CanvasElement> canvasElements,
-        EraserStroke eraserStroke)
+        EraserStroke eraserStroke, string? ownerFilter = null)
     {
         foreach (var element in canvasElements)
         {
+            // In multi-user mode, only erase elements the eraser's creator owns.
+            if (ownerFilter != null && element.CreatorConnectionId != ownerFilter)
+                continue;
+
             if (element is DrawStroke stroke)
             {
                 var strokeId = stroke.Id;
@@ -926,12 +950,20 @@ public class CanvasStateService
     /// <summary>
     /// Finds all strokes that are within the selection boundary
     /// </summary>
+    /// <param name="boundRect">The selection bound's SKRect</param>
+    /// <param name="bound">The selection bound</param>
+    /// <param name="canvasElements">Collection of all current elements on the canvas</param>
+    /// <param name="ownerFilter">SignalR connection id for the current client</param>
     private static void CheckAndSelect(SKRect boundRect, SelectionBound bound,
-        IEnumerable<CanvasElement> canvasElements)
+        IEnumerable<CanvasElement> canvasElements, string? ownerFilter = null)
     {
         bound.Targets.Clear();
         foreach (var element in canvasElements)
         {
+            // In multi-user mode, only select elements the selector's creator owns.
+            if (ownerFilter != null && element.CreatorConnectionId != ownerFilter)
+                continue;
+
             if (element is DrawStroke stroke)
             {
                 SKRect strokeBounds = stroke.Path.TightBounds;
