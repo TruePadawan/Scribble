@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Avalonia.Skia;
 using Avalonia.Threading;
 using Scribble.Services.MultiUserDrawing;
 using Scribble.Shared.Lib;
@@ -666,7 +667,7 @@ public class CanvasStateService
                                 Paint = drawStroke.Paint.Clone(),
                                 ToolOptions = drawStroke.ToolOptions,
                                 ToolType = drawStroke.ToolType,
-                                Path = drawStroke.Path
+                                Path = drawStroke.Path.Clone()
                             };
                         }
                         else if (element is CanvasImage canvasImage)
