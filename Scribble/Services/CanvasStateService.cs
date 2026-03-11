@@ -113,6 +113,19 @@ public class CanvasStateService
         ApplyEvent(new ClearSelectionEvent(Guid.NewGuid()));
     }
 
+    public void LoadCanvas(List<CanvasElement> elements)
+    {
+        _undoStack.Clear();
+        _redoStack.Clear();
+        _deletedActions.Clear();
+        _localSelectionBoundIds.Clear();
+
+        CanvasEvents.Clear();
+        ApplyEvent(new LoadCanvasEvent(Guid.NewGuid(), elements), isLocalEvent: false);
+
+        UndoRedoStateChanged?.Invoke();
+    }
+
     public void ApplyEvent(Event @event, bool isLocalEvent = true)
     {
         if (@event is CreateSelectionBoundEvent ev)
@@ -637,6 +650,11 @@ public class CanvasStateService
                 case LoadCanvasEvent ev:
                     drawStrokes.Clear();
                     canvasImages.Clear();
+                    eraserStrokes.Clear();
+                    eraserHeads.Clear();
+                    selectionBounds.Clear();
+                    elementIdToActionId.Clear();
+                    strokeTexts.Clear();
 
                     foreach (var element in ev.CanvasElements)
                     {

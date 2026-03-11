@@ -9,6 +9,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Scribble.Services;
 using Scribble.Services.DialogService;
+using Scribble.Services.MultiUserDrawing;
 using Scribble.Shared.Lib;
 
 namespace Scribble.ViewModels;
@@ -28,6 +29,7 @@ public partial class MainViewModel : ViewModelBase
 
     // Services
     private readonly IDialogService _dialogService;
+    private readonly MultiUserDrawingService _multiUserDrawingService;
     public CanvasStateService CanvasStateService { get; }
 
     public MultiUserDrawingViewModel MultiUserDrawingViewModel { get; }
@@ -39,9 +41,11 @@ public partial class MainViewModel : ViewModelBase
         UiStateViewModel uiStateViewModel,
         IDialogService dialogService,
         CanvasExportViewModel canvasExportViewModel,
-        CanvasStateService canvasStateService)
+        CanvasStateService canvasStateService,
+        MultiUserDrawingService multiUserDrawingService)
     {
         _dialogService = dialogService;
+        _multiUserDrawingService = multiUserDrawingService;
         CanvasStateService = canvasStateService;
 
         CanvasExportViewModel = canvasExportViewModel;
@@ -115,6 +119,8 @@ public partial class MainViewModel : ViewModelBase
     [RelayCommand]
     private async Task ResetCanvas()
     {
+        if (_multiUserDrawingService.Room != null) return;
+
         if (CanvasStateService.HasEvents)
         {
             var confirmed = await _dialogService.ShowWarningConfirmationAsync("Warning",
@@ -122,6 +128,6 @@ public partial class MainViewModel : ViewModelBase
             if (!confirmed) return;
         }
 
-        CanvasStateService.ApplyEvent(new LoadCanvasEvent(Guid.NewGuid(), []));
+        CanvasStateService.LoadCanvas([]);
     }
 }

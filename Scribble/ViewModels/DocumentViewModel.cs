@@ -4,6 +4,7 @@ using CommunityToolkit.Mvvm.Input;
 using Scribble.Services;
 using Scribble.Services.DialogService;
 using Scribble.Services.FileService;
+using Scribble.Services.MultiUserDrawing;
 
 namespace Scribble.ViewModels;
 
@@ -17,14 +18,17 @@ public partial class DocumentViewModel : ViewModelBase
     private readonly IDialogService _dialogService;
     private readonly CanvasStateService _canvasStateService;
     private readonly DocumentService _documentService;
+    private readonly MultiUserDrawingService _multiUserDrawingService;
 
     public DocumentViewModel(IFileService fileService, IDialogService dialogService,
-        CanvasStateService canvasStateService, DocumentService documentService)
+        CanvasStateService canvasStateService, DocumentService documentService,
+        MultiUserDrawingService multiUserDrawingService)
     {
         _fileService = fileService;
         _dialogService = dialogService;
         _canvasStateService = canvasStateService;
         _documentService = documentService;
+        _multiUserDrawingService = multiUserDrawingService;
     }
 
     [RelayCommand]
@@ -47,6 +51,8 @@ public partial class DocumentViewModel : ViewModelBase
     [RelayCommand]
     private async Task LoadCanvasFromFileAction()
     {
+        if (_multiUserDrawingService.Room != null) return;
+
         var filePickerOptions = new FilePickerOpenOptions
         {
             SuggestedFileName = "Scribble",

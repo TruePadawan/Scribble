@@ -130,6 +130,7 @@
                     <StackPanel Spacing="4">
                         <Button Name="OpenFileMenuOption" HorizontalAlignment="Stretch"
                                 Command="{Binding DocumentViewModel.LoadCanvasFromFileActionCommand}"
+                                IsVisible="{Binding MultiUserDrawingViewModel.CanResetCanvas}"
                                 HotKey="Ctrl+O"
                                 ToolTip.Tip="Ctrl+O">
                             <StackPanel Orientation="Horizontal" Spacing="4">
