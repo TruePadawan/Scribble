@@ -3,12 +3,11 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform.Storage;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using Scribble.Services.CanvasState;
+using Scribble.Services;
 using Scribble.Services.FileService;
 using Scribble.Shared.Lib;
 using Scribble.Utils;
@@ -28,8 +27,6 @@ public partial class CanvasExportViewModel : ViewModelBase
 
     private readonly IFileService _fileService;
     private readonly CanvasStateService _canvasStateService;
-
-    public Func<Color>? GetBackgroundColor { get; set; }
 
     partial void OnIncludeBackgroundChanged(bool value)
     {
@@ -60,7 +57,6 @@ public partial class CanvasExportViewModel : ViewModelBase
     {
         List<CanvasElement> previewedElements = [];
         var selectedElements = _canvasStateService.GetSelectedElements();
-        var backgroundColor = GetBackgroundColor!();
 
         if (selectedElements.Count > 0)
         {
@@ -83,7 +79,7 @@ public partial class CanvasExportViewModel : ViewModelBase
 
         var pngData = GetImageData(previewedElements,
             includeBackground: IncludeBackground,
-            backgroundColor: Utilities.ToSkColor(backgroundColor),
+            backgroundColor: _canvasStateService.BackgroundColor,
             ImageScale, SKEncodedImageFormat.Png);
         if (pngData == null || pngData.Length == 0)
         {
@@ -128,7 +124,7 @@ public partial class CanvasExportViewModel : ViewModelBase
 
         var jpegData = GetImageData(elements,
             includeBackground: IncludeBackground,
-            backgroundColor: Utilities.ToSkColor(GetBackgroundColor!()),
+            backgroundColor: _canvasStateService.BackgroundColor,
             ImageScale, SKEncodedImageFormat.Jpeg);
         if (jpegData != null && jpegData.Length > 0)
         {

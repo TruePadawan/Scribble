@@ -4,9 +4,8 @@ using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Scribble.Lib;
-using Scribble.Services.CanvasState;
+using Scribble.Services;
 using Scribble.Services.DialogService;
-using Scribble.Services.MultiUserDrawing;
 
 namespace Scribble.ViewModels;
 

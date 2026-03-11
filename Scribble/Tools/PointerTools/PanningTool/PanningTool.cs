@@ -1,7 +1,7 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
-using Scribble.Services.CanvasState;
+using Scribble.Services;
 
 namespace Scribble.Tools.PointerTools.PanningTool;
 

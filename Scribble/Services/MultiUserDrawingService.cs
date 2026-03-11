@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.SignalR.Client;
 using Scribble.Lib;
 using Scribble.Shared.Lib;
 
-namespace Scribble.Services.MultiUserDrawing;
+namespace Scribble.Services;
 
 public class MultiUserDrawingService(string serverUrl)
 {

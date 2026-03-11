@@ -2,13 +2,12 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Avalonia.Threading;
-using Scribble.Services.MultiUserDrawing;
 using Scribble.Shared.Lib;
 using Scribble.Tools.PointerTools.ArrowTool;
 using Scribble.Utils;
 using SkiaSharp;
 
-namespace Scribble.Services.CanvasState;
+namespace Scribble.Services;
 
 public class CanvasStateService
 {
@@ -17,6 +16,7 @@ public class CanvasStateService
     public Queue<Event> CanvasEvents { get; private set; } = [];
     public Guid? ActiveSelectionBoundId { get; private set; }
     public List<Guid> SelectedElementIds { get; private set; } = [];
+    public SKColor BackgroundColor { get; private set; } = new(0, 0, 0, 162);
 
     public bool HasEvents => CanvasEvents.Count > 0;
     public bool IsLocalSelection(Guid boundId) => _localSelectionBoundIds.Contains(boundId);
@@ -50,6 +50,14 @@ public class CanvasStateService
     public event Action? CanvasInvalidated;
     public event Action? SelectionInvalidated;
     public event Action? UndoRedoStateChanged;
+    public event Action? BackgroundColorChanged;
+
+    public void SetBackgroundColor(SKColor color)
+    {
+        if (BackgroundColor == color) return;
+        BackgroundColor = color;
+        BackgroundColorChanged?.Invoke();
+    }
 
     public CanvasStateService(MultiUserDrawingService multiUserDrawingService)
     {

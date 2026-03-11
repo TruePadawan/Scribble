@@ -4,10 +4,9 @@ using System.Diagnostics;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
-using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using Scribble.Services.CanvasState;
+using Scribble.Services;
 using Scribble.Services.DialogService;
 using Scribble.Shared.Lib;
 
@@ -64,18 +63,6 @@ public partial class MainViewModel : ViewModelBase
             RedoCommand.NotifyCanExecuteChanged();
         };
 
-        // Wire DocumentViewModel background color handling
-        DocumentViewModel.GetBackgroundColor = () => UiStateViewModel.BackgroundColor;
-        DocumentViewModel.CanvasFileLoaded += bgColorHex =>
-        {
-            if (bgColorHex != null)
-            {
-                UiStateViewModel.BackgroundColor = Color.Parse(bgColorHex);
-            }
-        };
-
-        // Wire CanvasExportViewModel background color access
-        CanvasExportViewModel.GetBackgroundColor = () => UiStateViewModel.BackgroundColor;
     }
 
     public Vector GetCanvasDimensions() => new(CanvasWidth, CanvasHeight);

@@ -5,6 +5,7 @@ using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Scribble.Lib;
+using Scribble.Services;
 using Scribble.Shared.Lib;
 using Scribble.Tools.PointerTools;
 using Scribble.Utils;
@@ -29,7 +30,7 @@ public partial class UiStateViewModel : ViewModelBase
     public event Action<PointerTool?>? ActiveToolChanged;
     public event Action<double>? CenterZoomRequested;
 
-    [ObservableProperty] private Color _backgroundColor = Color.Parse("#a2000000");
+    [ObservableProperty] private Color _backgroundColor;
     [ObservableProperty] private PointerTool? _activePointerTool;
     [ObservableProperty] private bool _toolOptionsVisible;
 
@@ -40,7 +41,24 @@ public partial class UiStateViewModel : ViewModelBase
     public ObservableCollection<PointerTool> AvailableTools { get; } = [];
     public ObservableCollection<ToolOptionViewModelBase> ActiveToolOptions { get; } = [];
 
+    private readonly CanvasStateService _canvasStateService;
     private readonly ToolOptionsValues _toolOptionsValues = new();
+
+    public UiStateViewModel(CanvasStateService canvasStateService)
+    {
+        _canvasStateService = canvasStateService;
+        _backgroundColor = Utilities.FromSkColor(canvasStateService.BackgroundColor);
+
+        canvasStateService.BackgroundColorChanged += () =>
+        {
+            BackgroundColor = Utilities.FromSkColor(_canvasStateService.BackgroundColor);
+        };
+    }
+
+    partial void OnBackgroundColorChanged(Color value)
+    {
+        _canvasStateService.SetBackgroundColor(Utilities.ToSkColor(value));
+    }
 
     [RelayCommand(CanExecute = nameof(CanZoomIn))]
     private void ZoomIn() => CenterZoomRequested?.Invoke(1.1);
