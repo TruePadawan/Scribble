@@ -37,7 +37,7 @@ public partial class MultiUserDrawingViewModel : ViewModelBase
     private string _clientDisplayName = "Bootlicker";
 
     public int ClientCount => Room?.Clients.Count ?? 0;
-    public bool CanResetCanvas => Room == null || Room.IsHost;
+    public bool CanResetCanvas => Room == null;
     public bool IsLive => Room != null;
     private bool CanGenerateRoomId => Room == null;
 

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Avalonia.Skia;
 using Avalonia.Threading;
 using Scribble.Services.MultiUserDrawing;
 using Scribble.Shared.Lib;
@@ -21,14 +22,6 @@ public class CanvasStateService
 
     public bool HasEvents => CanvasEvents.Count > 0;
     public bool IsLocalSelection(Guid boundId) => _localSelectionBoundIds.Contains(boundId);
-
-    public List<CanvasElement> GetSelectedElements()
-    {
-        if (ActiveSelectionBoundId == null) return [];
-        return CanvasElements
-            .Where(e => SelectedElementIds.Contains(e.Id))
-            .ToList();
-    }
 
     private readonly HashSet<Guid> _localSelectionBoundIds = [];
 
@@ -113,9 +106,30 @@ public class CanvasStateService
         ApplyEvent(new ClearSelectionEvent(Guid.NewGuid()));
     }
 
+    public List<CanvasElement> GetSelectedElements()
+    {
+        if (ActiveSelectionBoundId == null) return [];
+        return CanvasElements
+            .Where(e => SelectedElementIds.Contains(e.Id))
+            .ToList();
+    }
+
+    public void LoadCanvas(List<CanvasElement> elements)
+    {
+        _undoStack.Clear();
+        _redoStack.Clear();
+        _deletedActions.Clear();
+        _localSelectionBoundIds.Clear();
+
+        CanvasEvents.Clear();
+        ApplyEvent(new LoadCanvasEvent(Guid.NewGuid(), elements), isLocalEvent: false);
+
+        UndoRedoStateChanged?.Invoke();
+    }
+
     public void ApplyEvent(Event @event, bool isLocalEvent = true)
     {
-        if (@event is CreateSelectionBoundEvent ev)
+        if (@event is CreateSelectionBoundEvent ev && isLocalEvent)
         {
             _localSelectionBoundIds.Add(ev.BoundId);
         }
@@ -637,6 +651,11 @@ public class CanvasStateService
                 case LoadCanvasEvent ev:
                     drawStrokes.Clear();
                     canvasImages.Clear();
+                    eraserStrokes.Clear();
+                    eraserHeads.Clear();
+                    selectionBounds.Clear();
+                    elementIdToActionId.Clear();
+                    strokeTexts.Clear();
 
                     foreach (var element in ev.CanvasElements)
                     {
@@ -648,7 +667,7 @@ public class CanvasStateService
                                 Paint = drawStroke.Paint.Clone(),
                                 ToolOptions = drawStroke.ToolOptions,
                                 ToolType = drawStroke.ToolType,
-                                Path = drawStroke.Path
+                                Path = drawStroke.Path.Clone()
                             };
                         }
                         else if (element is CanvasImage canvasImage)
@@ -786,10 +805,11 @@ public class CanvasStateService
         _eraserHeadLookup = eraserHeads;
         _selectionBoundLookup = selectionBounds;
         _canvasImageLookup = canvasImages;
+
         // Show the selection only on the client that is doing the selection
-        var myReplayBound = selectionBounds.FirstOrDefault(pair => _localSelectionBoundIds.Contains(pair.Key));
-        ActiveSelectionBoundId = myReplayBound.Value != null ? myReplayBound.Key : null;
-        SelectedElementIds = myReplayBound.Value?.Targets.ToList() ?? [];
+        var mySelectionBound = selectionBounds.FirstOrDefault(pair => _localSelectionBoundIds.Contains(pair.Key));
+        ActiveSelectionBoundId = mySelectionBound.Value != null ? mySelectionBound.Key : null;
+        SelectedElementIds = mySelectionBound.Value?.Targets.ToList() ?? [];
 
         CanvasInvalidated?.Invoke();
         SelectionInvalidated?.Invoke();
@@ -852,7 +872,7 @@ public class CanvasStateService
     /// <param name="eraserPoint">The latest point in the eraser's stroke</param>
     /// <param name="canvasElements">Collection of all current elements on the canvas</param>
     /// <param name="eraserStroke">The active eraser stroke</param>
-    private void CheckAndErase(SKPoint eraserPoint, IEnumerable<CanvasElement> canvasElements,
+    private static void CheckAndErase(SKPoint eraserPoint, IEnumerable<CanvasElement> canvasElements,
         EraserStroke eraserStroke)
     {
         foreach (var element in canvasElements)
@@ -899,7 +919,8 @@ public class CanvasStateService
     /// <summary>
     /// Finds all strokes that are within the selection boundary
     /// </summary>
-    private void CheckAndSelect(SKRect boundRect, SelectionBound bound, IEnumerable<CanvasElement> canvasElements)
+    private static void CheckAndSelect(SKRect boundRect, SelectionBound bound,
+        IEnumerable<CanvasElement> canvasElements)
     {
         bound.Targets.Clear();
         foreach (var element in canvasElements)

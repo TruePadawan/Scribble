@@ -140,7 +140,7 @@ public class DocumentService
             }
         }
 
-        _canvasStateService.ApplyEvent(new LoadCanvasEvent(Guid.NewGuid(), canvasElements));
+        _canvasStateService.LoadCanvas(canvasElements);
 
         var bgColorString = canvasState["backgroundColor"]?.ToString();
         if (bgColorString != null && SKColor.TryParse(bgColorString, out var bgColor))
