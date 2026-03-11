@@ -17,4 +17,11 @@ public class AvaloniaDialogService : IDialogService
         var result = await box.ShowAsync();
         return result == ButtonResult.Yes;
     }
+
+    public async Task ShowInfoAsync(string title, string message)
+    {
+        var box = MessageBoxManager
+            .GetMessageBoxStandard(title, message, ButtonEnum.Ok, Icon.Info);
+        await box.ShowAsync();
+    }
 }

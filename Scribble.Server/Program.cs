@@ -22,5 +22,5 @@ builder.Services.AddCors(options =>
 var app = builder.Build();
 app.UseCors();
 
-app.MapHub<CollaborativeDrawingHub>("/drawingHub");
+app.MapHub<MultiUserDrawingHub>("/drawingHub");
 app.Run();

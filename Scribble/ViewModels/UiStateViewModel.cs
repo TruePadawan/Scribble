@@ -4,10 +4,9 @@ using System.Collections.ObjectModel;
 using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using CommunityToolkit.Mvvm.Messaging;
-using Scribble.Lib;
-using Scribble.Messages;
+using Scribble.Services;
 using Scribble.Shared.Lib;
+using Scribble.State;
 using Scribble.Tools.PointerTools;
 using Scribble.Utils;
 using Scribble.ViewModels.ToolOptions;
@@ -31,7 +30,7 @@ public partial class UiStateViewModel : ViewModelBase
     public event Action<PointerTool?>? ActiveToolChanged;
     public event Action<double>? CenterZoomRequested;
 
-    [ObservableProperty] private Color _backgroundColor = Color.Parse("#a2000000");
+    [ObservableProperty] private Color _backgroundColor;
     [ObservableProperty] private PointerTool? _activePointerTool;
     [ObservableProperty] private bool _toolOptionsVisible;
 
@@ -42,18 +41,23 @@ public partial class UiStateViewModel : ViewModelBase
     public ObservableCollection<PointerTool> AvailableTools { get; } = [];
     public ObservableCollection<ToolOptionViewModelBase> ActiveToolOptions { get; } = [];
 
+    private readonly CanvasStateService _canvasStateService;
     private readonly ToolOptionsValues _toolOptionsValues = new();
 
-    public UiStateViewModel()
+    public UiStateViewModel(CanvasStateService canvasStateService)
     {
-        // Automatically listen for document loads to change the background color
-        WeakReferenceMessenger.Default.Register<LoadCanvasDataMessage>(this, (r, message) =>
+        _canvasStateService = canvasStateService;
+        _backgroundColor = Utilities.FromSkColor(canvasStateService.BackgroundColor);
+
+        canvasStateService.BackgroundColorChanged += () =>
         {
-            if (message.BackgroundColorHex != null)
-            {
-                BackgroundColor = Color.Parse(message.BackgroundColorHex);
-            }
-        });
+            BackgroundColor = Utilities.FromSkColor(_canvasStateService.BackgroundColor);
+        };
+    }
+
+    partial void OnBackgroundColorChanged(Color value)
+    {
+        _canvasStateService.SetBackgroundColor(Utilities.ToSkColor(value));
     }
 
     [RelayCommand(CanExecute = nameof(CanZoomIn))]
@@ -77,8 +81,9 @@ public partial class UiStateViewModel : ViewModelBase
 
     partial void OnActivePointerToolChanged(PointerTool? oldValue, PointerTool? newValue)
     {
-        oldValue?.Dispose();
+        oldValue?.HandleToolSwitchOut();
         ActiveToolChanged?.Invoke(newValue);
+        newValue?.HandleToolSwitchIn();
     }
 
     [RelayCommand]

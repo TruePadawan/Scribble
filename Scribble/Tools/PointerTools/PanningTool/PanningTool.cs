@@ -1,7 +1,7 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
-using Scribble.ViewModels;
+using Scribble.Services;
 
 namespace Scribble.Tools.PointerTools.PanningTool;
 
@@ -9,8 +9,8 @@ public class PanningTool : PointerTool
 {
     private readonly ScrollViewer _scrollViewer;
 
-    public PanningTool(string name, MainViewModel viewModel, ScrollViewer scrollViewer)
-        : base(name, viewModel, LoadToolBitmap(typeof(PanningTool), "hand.png"))
+    public PanningTool(string name, CanvasStateService canvasState, ScrollViewer scrollViewer)
+        : base(name, canvasState, LoadToolBitmap(typeof(PanningTool), "hand.png"))
     {
         _scrollViewer = scrollViewer;
         Cursor = new Cursor(ToolIcon.CreateScaledBitmap(new PixelSize(30, 30)), new PixelPoint(15, 15));

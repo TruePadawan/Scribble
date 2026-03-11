@@ -5,4 +5,5 @@ namespace Scribble.Services.DialogService;
 public interface IDialogService
 {
     Task<bool> ShowWarningConfirmationAsync(string title, string message);
+    Task ShowInfoAsync(string title, string message);
 }

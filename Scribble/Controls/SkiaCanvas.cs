@@ -18,13 +18,13 @@ namespace Scribble.Controls;
 /// </summary>
 public class SkiaCanvas : Control
 {
-    public static readonly StyledProperty<List<Stroke>> StrokesProperty =
-        AvaloniaProperty.Register<SkiaCanvas, List<Stroke>>(nameof(Strokes));
+    public static readonly StyledProperty<List<CanvasElement>> CanvasElementsProperty =
+        AvaloniaProperty.Register<SkiaCanvas, List<CanvasElement>>(nameof(CanvasElements));
 
-    public List<Stroke> Strokes
+    public List<CanvasElement> CanvasElements
     {
-        get => GetValue(StrokesProperty);
-        set => SetValue(StrokesProperty, value);
+        get => GetValue(CanvasElementsProperty);
+        set => SetValue(CanvasElementsProperty, value);
     }
 
     public static readonly StyledProperty<Color> CanvasBackgroundProperty =
@@ -43,21 +43,30 @@ public class SkiaCanvas : Control
 
         var bounds = new Rect(0, 0, Bounds.Width, Bounds.Height);
         // Have to capture the data outside the Render thread else it throws an exception
-        var strokesToDraw = Strokes;
+        var elementsToDraw = CanvasElements;
         var bgColor = CanvasBackground;
         context.Custom(
-            new SkiaDrawOperation(bounds, canvas => { DrawStrokesOnCanvas(canvas, strokesToDraw, bgColor); }));
+            new SkiaDrawOperation(bounds, canvas => { DrawCanvasElementsOnCanvas(canvas, elementsToDraw, bgColor); }));
     }
 
-    private void DrawStrokesOnCanvas(SKCanvas canvas, IEnumerable<Stroke> strokesToDraw, Color bgColor)
+    private void DrawCanvasElementsOnCanvas(SKCanvas canvas, IEnumerable<CanvasElement> elementsToDraw, Color bgColor)
     {
         canvas.Clear(Utilities.ToSkColor(bgColor));
 
-        foreach (var stroke in strokesToDraw)
+        foreach (var canvasElement in elementsToDraw)
         {
-            if (stroke is DrawStroke drawStroke)
+            DrawSingleElement(canvas, canvasElement);
+        }
+    }
+
+    private void DrawSingleElement(SKCanvas canvas, CanvasElement canvasElement)
+    {
+        if (canvasElement is DrawStroke drawStroke)
+        {
+            var needsMutablePaint = drawStroke.IsToBeErased || drawStroke.Paint.FillColor.Alpha != 0;
+            var paintToUse = needsMutablePaint ? drawStroke.Paint.ToSkPaint() : drawStroke.Paint.GetCachedSkPaint();
+            try
             {
-                using var paintToUse = drawStroke.Paint.ToSkPaint();
                 if (drawStroke.IsToBeErased)
                 {
                     paintToUse.Color = paintToUse.Color.WithAlpha(80);
@@ -82,6 +91,38 @@ public class SkiaCanvas : Control
                     canvas.DrawPath(drawStroke.Path, paintToUse);
                 }
             }
+            finally
+            {
+                if (needsMutablePaint)
+                    paintToUse.Dispose();
+            }
+        }
+        else if (canvasElement is CanvasImage canvasImage)
+        {
+            var bitmap = canvasImage.GetBitmap();
+            // Pushes a snapshot of the current canvas state (transforms, clipping regions, etc.) onto an internal stack before rotating canvas
+            // Needed for drawing rotated images
+            canvas.Save();
+            canvas.RotateRadians(canvasImage.Rotation, canvasImage.Bounds.MidX, canvasImage.Bounds.MidY);
+
+            // Flip the canvas to apply image-flips
+            if (canvasImage.FlipX)
+                canvas.Scale(-1, 1, canvasImage.Bounds.MidX, canvasImage.Bounds.MidY);
+            if (canvasImage.FlipY)
+                canvas.Scale(1, -1, canvasImage.Bounds.MidX, canvasImage.Bounds.MidY);
+
+            if (canvasImage.IsToBeErased)
+            {
+                using var lowOpacityPaint = new SKPaint();
+                lowOpacityPaint.Color = SKColors.Black.WithAlpha(80);
+                canvas.DrawBitmap(bitmap, canvasImage.Bounds, lowOpacityPaint);
+            }
+            else
+            {
+                canvas.DrawBitmap(bitmap, canvasImage.Bounds);
+            }
+
+            canvas.Restore();
         }
     }
 
@@ -89,16 +130,16 @@ public class SkiaCanvas : Control
     {
         base.OnPropertyChanged(change);
 
-        if (change.Property == StrokesProperty)
+        if (change.Property == CanvasElementsProperty)
         {
             if (change.OldValue is INotifyCollectionChanged oldList)
             {
-                oldList.CollectionChanged -= OnStrokesCollectionChanged;
+                oldList.CollectionChanged -= OnCanvasElementsCollectionChanged;
             }
 
             if (change.NewValue is INotifyCollectionChanged newList)
             {
-                newList.CollectionChanged += OnStrokesCollectionChanged;
+                newList.CollectionChanged += OnCanvasElementsCollectionChanged;
             }
 
             InvalidateVisual();
@@ -109,11 +150,28 @@ public class SkiaCanvas : Control
         }
     }
 
-    // runs when a stroke is added/removed from the strokes collection
-    private void OnStrokesCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    // runs when an element is added/removed from the canvas elements collection
+    // it disposes bitmaps and SKPaint objects
+    private void OnCanvasElementsCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
+        if (e.OldItems != null)
+        {
+            foreach (var item in e.OldItems)
+            {
+                if (item is CanvasImage canvasImage)
+                {
+                    canvasImage.DisposeBitmap();
+                }
+                else if (item is DrawStroke drawStroke)
+                {
+                    drawStroke.Paint.DisposeSkPaint();
+                }
+            }
+        }
+
         InvalidateVisual();
     }
+
 }
 
 internal class SkiaDrawOperation(Rect bounds, Action<SKCanvas> drawAction) : ICustomDrawOperation

@@ -2,7 +2,7 @@ using System;
 using Avalonia;
 using SkiaSharp;
 
-namespace Scribble.Lib;
+namespace Scribble.State;
 
 /// <summary>
 /// Represents the current selection in the application

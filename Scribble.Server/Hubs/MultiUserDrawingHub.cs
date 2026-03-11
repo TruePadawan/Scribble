@@ -4,9 +4,9 @@ using Scribble.Shared.Lib;
 
 namespace Scribble.Server.Hubs;
 
-public class CollaborativeDrawingHub : Hub
+public class MultiUserDrawingHub : Hub
 {
-    private static readonly ConcurrentDictionary<string, List<CollaborativeDrawingUser>> Rooms = new();
+    private static readonly ConcurrentDictionary<string, List<MultiUserDrawingClient>> Rooms = new();
     private static readonly ConcurrentDictionary<string, string> UserToRoom = new();
 
     public override async Task OnDisconnectedAsync(Exception? exception)
@@ -30,7 +30,7 @@ public class CollaborativeDrawingHub : Hub
     public async Task JoinRoom(string roomId, string displayName)
     {
         await Groups.AddToGroupAsync(Context.ConnectionId, roomId);
-        var user = new CollaborativeDrawingUser(Context.ConnectionId, displayName);
+        var user = new MultiUserDrawingClient(Context.ConnectionId, displayName);
 
         Rooms.AddOrUpdate(roomId,
             [user],

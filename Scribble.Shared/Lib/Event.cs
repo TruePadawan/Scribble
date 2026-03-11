@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using Scribble.Shared.Converters;
 using SkiaSharp;
 
 namespace Scribble.Shared.Lib;
@@ -17,9 +18,9 @@ namespace Scribble.Shared.Lib;
 [JsonDerivedType(typeof(CreateSelectionBoundEvent), typeDiscriminator: "CreateSelectionBound")]
 [JsonDerivedType(typeof(IncreaseSelectionBoundEvent), typeDiscriminator: "IncreaseSelectionBound")]
 [JsonDerivedType(typeof(EndSelectionEvent), typeDiscriminator: "EndSelection")]
-[JsonDerivedType(typeof(MoveStrokesEvent), typeDiscriminator: "MoveStrokes")]
-[JsonDerivedType(typeof(RotateStrokesEvent), typeDiscriminator: "RotateStrokes")]
-[JsonDerivedType(typeof(ScaleStrokesEvent), typeDiscriminator: "ScaleStrokes")]
+[JsonDerivedType(typeof(MoveCanvasElementsEvent), typeDiscriminator: "MoveCanvasElements")]
+[JsonDerivedType(typeof(RotateCanvasElementsEvent), typeDiscriminator: "RotateCanvasElements")]
+[JsonDerivedType(typeof(ScaleCanvasElementsEvent), typeDiscriminator: "ScaleCanvasElements")]
 [JsonDerivedType(typeof(UndoEvent), typeDiscriminator: "Undo")]
 [JsonDerivedType(typeof(RedoEvent), typeDiscriminator: "Redo")]
 [JsonDerivedType(typeof(LoadCanvasEvent), typeDiscriminator: "LoadCanvasEvent")]
@@ -30,6 +31,7 @@ namespace Scribble.Shared.Lib;
 [JsonDerivedType(typeof(UpdateStrokeStyleEvent), typeDiscriminator: "UpdateStrokeStyleEvent")]
 [JsonDerivedType(typeof(UpdateStrokeThicknessEvent), typeDiscriminator: "UpdateStrokeThicknessEvent")]
 [JsonDerivedType(typeof(ClearSelectionEvent), typeDiscriminator: "ClearSelectionEvent")]
+[JsonDerivedType(typeof(AddImageEvent), typeDiscriminator: "AddImageEvent")]
 public abstract record Event(Guid ActionId)
 {
     public DateTime TimeStamp { get; init; } = DateTime.UtcNow;
@@ -82,22 +84,34 @@ public record EndSelectionEvent(Guid ActionId, Guid BoundId) : Event(ActionId), 
 
 public record ClearSelectionEvent(Guid ActionId) : Event(ActionId), ITerminalEvent;
 
-public record MoveStrokesEvent(Guid ActionId, Guid BoundId, SKPoint Delta) : Event(ActionId);
+public record MoveCanvasElementsEvent(Guid ActionId, Guid BoundId, SKPoint Delta) : Event(ActionId);
 
-public record RotateStrokesEvent(Guid ActionId, Guid BoundId, float DegreesRad, SKPoint Center)
+public record RotateCanvasElementsEvent(Guid ActionId, Guid BoundId, float DegreesRad, SKPoint Center)
     : Event(ActionId);
 
-public record ScaleStrokesEvent(Guid ActionId, Guid BoundId, SKPoint Scale, SKPoint Center) : Event(ActionId);
+public record ScaleCanvasElementsEvent(Guid ActionId, Guid BoundId, SKPoint Scale, SKPoint Center) : Event(ActionId);
+
+// IMAGE TOOL
+public record AddImageEvent(
+    Guid ActionId,
+    Guid ImageId,
+    string ImageBase64String,
+    SKPoint Position,
+    SKSize Size) : Event(ActionId), ITerminalEvent;
 
 // MISC
-public record LoadCanvasEvent(Guid ActionId, List<Stroke> Strokes) : Event(ActionId), ITerminalEvent;
+public record LoadCanvasEvent(Guid ActionId, List<CanvasElement> CanvasElements) : Event(ActionId), ITerminalEvent;
 
 public record UndoEvent(Guid ActionId, Guid TargetActionId) : Event(ActionId);
 
 public record RedoEvent(Guid ActionId, Guid TargetActionId) : Event(ActionId);
 
 public record UpdateStrokeColorEvent(Guid ActionId, List<Guid> StrokeIds, SKColor NewColor)
-    : Event(ActionId), ITerminalEvent;
+    : Event(ActionId), ITerminalEvent
+{
+    [JsonConverter(typeof(SKColorJsonConverter))]
+    public SKColor NewColor { get; } = NewColor;
+}
 
 public record UpdateStrokeThicknessEvent(Guid ActionId, List<Guid> StrokeIds, float NewThickness)
     : Event(ActionId), ITerminalEvent;
@@ -106,7 +120,11 @@ public record UpdateStrokeStyleEvent(Guid ActionId, List<Guid> StrokeIds, float[
     : Event(ActionId), ITerminalEvent;
 
 public record UpdateStrokeFillColorEvent(Guid ActionId, List<Guid> StrokeIds, SKColor NewFillColor)
-    : Event(ActionId), ITerminalEvent;
+    : Event(ActionId), ITerminalEvent
+{
+    [JsonConverter(typeof(SKColorJsonConverter))]
+    public SKColor NewFillColor { get; } = NewFillColor;
+}
 
 public record UpdateStrokeEdgeTypeEvent(Guid ActionId, List<Guid> StrokeIds, SKStrokeJoin NewStrokeJoin)
     : Event(ActionId), ITerminalEvent;

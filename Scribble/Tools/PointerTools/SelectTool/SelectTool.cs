@@ -3,9 +3,9 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Media;
+using Scribble.Services;
 using Scribble.Shared.Lib;
 using Scribble.Utils;
-using Scribble.ViewModels;
 using SkiaSharp;
 
 namespace Scribble.Tools.PointerTools.SelectTool;
@@ -18,7 +18,7 @@ class SelectTool : PointerTool
     private Guid _boundId = Guid.NewGuid();
     private Guid _actionId = Guid.NewGuid();
 
-    public SelectTool(string name, MainViewModel viewModel, Canvas canvasContainer) : base(name, viewModel,
+    public SelectTool(string name, CanvasStateService canvasState, Canvas canvasContainer) : base(name, canvasState,
         LoadToolBitmap(typeof(SelectTool), "cursor.png"))
     {
         Cursor = Cursor.Default;
@@ -42,7 +42,11 @@ class SelectTool : PointerTool
         _canvasContainer.Children.Add(_selectionBorder);
         _boundId = Guid.NewGuid();
         _actionId = Guid.NewGuid();
-        ViewModel.ApplyEvent(new CreateSelectionBoundEvent(_actionId, _boundId,
+        if (CanvasState.ActiveSelectionBoundId != null)
+        {
+            CanvasState.ClearSelection();
+        }
+        CanvasState.ApplyEvent(new CreateSelectionBoundEvent(_actionId, _boundId,
             new SKPoint((float)coord.X, (float)coord.Y)));
     }
 
@@ -54,7 +58,7 @@ class SelectTool : PointerTool
 
         Canvas.SetLeft(_selectionBorder, Math.Min(_startPoint.X, currentCoord.X));
         Canvas.SetTop(_selectionBorder, Math.Min(_startPoint.Y, currentCoord.Y));
-        ViewModel.ApplyEvent(new IncreaseSelectionBoundEvent(_actionId, _boundId, Utilities.ToSkPoint(currentCoord)));
+        CanvasState.ApplyEvent(new IncreaseSelectionBoundEvent(_actionId, _boundId, Utilities.ToSkPoint(currentCoord)));
     }
 
     public override void HandlePointerRelease(Point prevCoord, Point currentCoord)
@@ -63,11 +67,11 @@ class SelectTool : PointerTool
 
         _canvasContainer.Children.Remove(_selectionBorder);
         _selectionBorder = null;
-        ViewModel.ApplyEvent(new EndSelectionEvent(_actionId, _boundId));
+        CanvasState.ApplyEvent(new EndSelectionEvent(_actionId, _boundId));
     }
 
-    public override void Dispose()
+    public override void HandleToolSwitchOut()
     {
-        ViewModel.ClearSelection();
+        CanvasState.ClearSelection();
     }
 }

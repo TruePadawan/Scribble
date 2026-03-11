@@ -5,6 +5,7 @@ using System.Linq;
 using Avalonia.Markup.Xaml;
 using Microsoft.Extensions.DependencyInjection;
 using Scribble.Extensions;
+using Scribble.Services.FileService;
 using Scribble.ViewModels;
 using Scribble.Views;
 
@@ -41,7 +42,7 @@ public partial class App : Application
         {
             singleViewPlatform.MainView = new MainView
             {
-                DataContext = viewModel
+                DataContext = viewModel,
             };
         }
 

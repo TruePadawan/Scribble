@@ -41,7 +41,7 @@
                                          PointerMoved="MainCanvas_OnPointerMoved"
                                          PointerReleased="MainCanvas_OnPointerReleased"
                                          PointerWheelChanged="MainCanvas_OnPointerWheelChanged"
-                                         Strokes="{Binding CanvasStrokes}"
+                                         CanvasElements="{Binding CanvasElements}"
                                          RenderTransformOrigin="0 0" />
                     <!-- COVERS SELECTED ELEMENTS -->
                     <StackPanel Name="SelectionOverlay" Spacing="6" IsVisible="False">
@@ -265,7 +265,7 @@
                         Padding="4"
                         CornerRadius="32"
                         Background="Black">
-                        <TextBlock Text="{Binding MultiUserDrawingViewModel.Room.Clients.Count}"
+                        <TextBlock Text="{Binding MultiUserDrawingViewModel.ClientCount}"
                                    Foreground="White"
                                    FontSize="14" />
                     </Border>
