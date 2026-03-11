@@ -25,8 +25,6 @@ public class CanvasStateService
 
     private readonly HashSet<Guid> _localSelectionBoundIds = [];
 
-    private readonly HashSet<Guid> _deletedActions = [];
-
     // For fast-path optimizations
     private Dictionary<Guid, DrawStroke> _strokeLookup = new();
     private Dictionary<Guid, EraserStroke> _eraserStrokeLookup = new();
@@ -69,13 +67,6 @@ public class CanvasStateService
     {
         if (_undoStack.Count == 0) return;
         var actionId = _undoStack.Pop();
-        if (_multiUserDrawingService.Room != null)
-        {
-            while (_deletedActions.Contains(actionId))
-            {
-                actionId = _undoStack.Pop();
-            }
-        }
 
         _redoStack.Push(actionId);
         ApplyEvent(new UndoEvent(Guid.NewGuid(), actionId), isLocalEvent: true);
@@ -87,13 +78,6 @@ public class CanvasStateService
     {
         if (_redoStack.Count == 0) return;
         var actionId = _redoStack.Pop();
-        if (_multiUserDrawingService.Room != null)
-        {
-            while (_deletedActions.Contains(actionId))
-            {
-                actionId = _redoStack.Pop();
-            }
-        }
 
         _undoStack.Push(actionId);
         ApplyEvent(new RedoEvent(Guid.NewGuid(), actionId), isLocalEvent: true);
@@ -118,7 +102,6 @@ public class CanvasStateService
     {
         _undoStack.Clear();
         _redoStack.Clear();
-        _deletedActions.Clear();
         _localSelectionBoundIds.Clear();
 
         CanvasEvents.Clear();
@@ -403,13 +386,11 @@ public class CanvasStateService
             }
         }
 
-        _deletedActions.Clear();
         var drawStrokes = new Dictionary<Guid, DrawStroke>();
         var eraserStrokes = new Dictionary<Guid, EraserStroke>();
         var eraserHeads = new Dictionary<Guid, SKPoint>();
         var selectionBounds = new Dictionary<Guid, SelectionBound>();
         var staleActionIds = new List<Guid>();
-        var elementIdToActionId = new Dictionary<Guid, Guid>();
         var strokeTexts = new Dictionary<Guid, string>();
         var canvasImages = new Dictionary<Guid, CanvasImage>();
 
@@ -429,7 +410,6 @@ public class CanvasStateService
                         ToolOptions = ev.ToolOptions,
                         CreatorConnectionId = ev.CreatorConnectionId
                     };
-                    elementIdToActionId[ev.StrokeId] = ev.ActionId;
                     break;
                 case StartEraseStrokeEvent ev:
                     var eraserPath = new SKPath();
@@ -484,10 +464,6 @@ public class CanvasStateService
                         {
                             drawStrokes.Remove(targetId);
                             canvasImages.Remove(targetId);
-                            if (elementIdToActionId.ContainsKey(targetId))
-                            {
-                                _deletedActions.Add(elementIdToActionId[targetId]);
-                            }
                         }
 
                         if (eraserStrokes[ev.StrokeId].Targets.Count == 0)
@@ -527,7 +503,6 @@ public class CanvasStateService
                         CreatorConnectionId = ev.CreatorConnectionId
                     };
                     strokeTexts[ev.StrokeId] = ev.Text;
-                    elementIdToActionId[ev.StrokeId] = ev.ActionId;
                     break;
                 case CreateSelectionBoundEvent ev:
                     var selectionPath = new SKPath();
@@ -674,7 +649,6 @@ public class CanvasStateService
                     eraserStrokes.Clear();
                     eraserHeads.Clear();
                     selectionBounds.Clear();
-                    elementIdToActionId.Clear();
                     strokeTexts.Clear();
 
                     foreach (var element in ev.CanvasElements)
@@ -815,7 +789,6 @@ public class CanvasStateService
                         Bounds = imageBounds,
                         CreatorConnectionId = ev.CreatorConnectionId
                     };
-                    elementIdToActionId[ev.ImageId] = ev.ActionId;
                     break;
             }
         }
