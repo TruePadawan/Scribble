@@ -76,6 +76,15 @@ public class MultiUserDrawingHub : Hub
 
     public async Task SendEvent(string roomId, Event @event)
     {
+        // Reject events that falsely claim to originate from a different connection.
+        // A well-behaved client always stamps its own ConnectionId (set in CanvasStateService.ApplyEvent);
+        // this guard prevents a malicious client from spoofing another user's creator ID.
+        if (@event.CreatorConnectionId != null &&
+            @event.CreatorConnectionId != Context.ConnectionId)
+        {
+            return;
+        }
+
         await Clients.OthersInGroup(roomId).SendAsync("ReceiveEvent", @event);
     }
 
