@@ -8,6 +8,12 @@ namespace Scribble.Shared.Lib;
 public abstract class CanvasElement
 {
     public Guid Id { get; init; } = Guid.NewGuid();
+
+    /// <summary>
+    /// The SignalR ConnectionId of the client that created this element.
+    /// Null when the element was created in solo mode or loaded from a saved file.
+    /// </summary>
+    public string? CreatorConnectionId { get; set; }
 }
 
 [JsonDerivedType(typeof(DrawStroke), typeDiscriminator: "DrawStroke")]

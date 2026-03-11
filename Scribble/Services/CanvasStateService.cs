@@ -129,6 +129,13 @@ public class CanvasStateService
 
     public void ApplyEvent(Event @event, bool isLocalEvent = true)
     {
+        // Stamp the creator's connection ID on every local event while in a room.
+        // Remote events arrive pre-stamped by their originating client.
+        if (isLocalEvent && _multiUserDrawingService.Room != null)
+        {
+            @event = @event with { CreatorConnectionId = _multiUserDrawingService.Room.Me.ConnectionId };
+        }
+
         if (@event is CreateSelectionBoundEvent ev && isLocalEvent)
         {
             _localSelectionBoundIds.Add(ev.BoundId);
