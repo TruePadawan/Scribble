@@ -35,6 +35,12 @@ namespace Scribble.Shared.Lib;
 public abstract record Event(Guid ActionId)
 {
     public DateTime TimeStamp { get; init; } = DateTime.UtcNow;
+
+    /// <summary>
+    /// The SignalR ConnectionId of the client that originally produced this event.
+    /// Null for events created in solo mode (no active room).
+    /// </summary>
+    public string? CreatorConnectionId { get; init; }
 }
 
 public interface ITerminalEvent
