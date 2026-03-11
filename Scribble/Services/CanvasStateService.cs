@@ -12,7 +12,7 @@ namespace Scribble.Services;
 public class CanvasStateService
 {
     // State
-    public List<CanvasElement> CanvasElements { get; private set; } = [];
+    public IReadOnlyList<CanvasElement> CanvasElements { get; private set; } = [];
     public Queue<Event> CanvasEvents { get; private set; } = [];
     public Guid? ActiveSelectionBoundId { get; private set; }
     public List<Guid> SelectedElementIds { get; private set; } = [];

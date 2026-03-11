@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
@@ -51,7 +52,7 @@ public partial class MainViewModel : ViewModelBase
         // Wire service events to UI invalidation
         CanvasStateService.CanvasInvalidated += () =>
         {
-            CanvasElements = CanvasStateService.CanvasElements;
+            CanvasElements = CanvasStateService.CanvasElements.ToList();
             RequestInvalidateSkiaCanvas?.Invoke();
         };
 
@@ -62,7 +63,6 @@ public partial class MainViewModel : ViewModelBase
             UndoCommand.NotifyCanExecuteChanged();
             RedoCommand.NotifyCanExecuteChanged();
         };
-
     }
 
     public Vector GetCanvasDimensions() => new(CanvasWidth, CanvasHeight);
