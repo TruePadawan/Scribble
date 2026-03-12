@@ -250,7 +250,7 @@ public partial class MainView : UserControl
 
             if (triggeringSelectionAction)
             {
-                ShowSelectedStrokesOptions(selectedStrokes);
+                _viewModel.UiStateViewModel.ShowSelectedStrokesOptions(selectedStrokes);
             }
         }
         else
@@ -262,30 +262,6 @@ public partial class MainView : UserControl
                 _viewModel.UiStateViewModel.ClearToolOptions();
             }
         }
-    }
-
-    private void ShowSelectedStrokesOptions(List<DrawStroke> selectedStrokes)
-    {
-        if (_viewModel == null) return;
-        var filteredStrokeIds = new Dictionary<ToolOption, List<Guid>>();
-        foreach (var selectedStroke in selectedStrokes)
-        {
-            var strokeOptions = selectedStroke.ToolOptions;
-            foreach (var strokeOption in strokeOptions)
-            {
-                if (filteredStrokeIds.TryGetValue(strokeOption, out var strokeIds))
-                {
-                    strokeIds.Add(selectedStroke.Id);
-                }
-                else
-                {
-                    filteredStrokeIds[strokeOption] = [selectedStroke.Id];
-                }
-            }
-        }
-
-        _viewModel.UiStateViewModel.BuildSelectionEditOptions(filteredStrokeIds,
-            e => _canvasStateService.ApplyEvent(e));
     }
 
     private Point GetPointerPosition(PointerEventArgs e)

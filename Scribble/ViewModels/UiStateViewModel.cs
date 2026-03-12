@@ -188,8 +188,29 @@ public partial class UiStateViewModel : ViewModelBase
         ToolOptionsVisible = ActiveToolOptions.Count > 0;
     }
 
-    public void BuildSelectionEditOptions(Dictionary<ToolOption, List<Guid>> categorizedStrokeIds,
-        Action<Event> applyEvent)
+    public void ShowSelectedStrokesOptions(List<DrawStroke> selectedStrokes)
+    {
+        var filteredStrokeIds = new Dictionary<ToolOption, List<Guid>>();
+        foreach (var selectedStroke in selectedStrokes)
+        {
+            var strokeOptions = selectedStroke.ToolOptions;
+            foreach (var strokeOption in strokeOptions)
+            {
+                if (filteredStrokeIds.TryGetValue(strokeOption, out var strokeIds))
+                {
+                    strokeIds.Add(selectedStroke.Id);
+                }
+                else
+                {
+                    filteredStrokeIds[strokeOption] = [selectedStroke.Id];
+                }
+            }
+        }
+
+        BuildSelectionEditOptions(filteredStrokeIds);
+    }
+
+    private void BuildSelectionEditOptions(Dictionary<ToolOption, List<Guid>> categorizedStrokeIds)
     {
         ActiveToolOptions.Clear();
 
@@ -203,7 +224,8 @@ public partial class UiStateViewModel : ViewModelBase
                         ThicknessChanged = v =>
                         {
                             _toolOptionsValues.StrokeThickness = v;
-                            applyEvent(new UpdateStrokeThicknessEvent(Guid.NewGuid(), strokeIds, v));
+                            _canvasStateService.ApplyEvent(
+                                new UpdateStrokeThicknessEvent(Guid.NewGuid(), strokeIds, v));
                         }
                     };
                     ActiveToolOptions.Add(thicknessVm);
@@ -215,7 +237,8 @@ public partial class UiStateViewModel : ViewModelBase
                         ColorChanged = c =>
                         {
                             _toolOptionsValues.StrokeColor = c;
-                            applyEvent(new UpdateStrokeColorEvent(Guid.NewGuid(), strokeIds, Utilities.ToSkColor(c)));
+                            _canvasStateService.ApplyEvent(new UpdateStrokeColorEvent(Guid.NewGuid(), strokeIds,
+                                Utilities.ToSkColor(c)));
                         }
                     };
                     ActiveToolOptions.Add(colorVm);
@@ -228,7 +251,8 @@ public partial class UiStateViewModel : ViewModelBase
                         {
                             _toolOptionsValues.StrokeStyle = style;
                             _toolOptionsValues.DashIntervals = intervals;
-                            applyEvent(new UpdateStrokeStyleEvent(Guid.NewGuid(), strokeIds, intervals));
+                            _canvasStateService.ApplyEvent(new UpdateStrokeStyleEvent(Guid.NewGuid(), strokeIds,
+                                intervals));
                         }
                     };
                     ActiveToolOptions.Add(styleVm);
@@ -240,7 +264,7 @@ public partial class UiStateViewModel : ViewModelBase
                         FillColorChanged = c =>
                         {
                             _toolOptionsValues.FillColor = c;
-                            applyEvent(
+                            _canvasStateService.ApplyEvent(
                                 new UpdateStrokeFillColorEvent(Guid.NewGuid(), strokeIds, Utilities.ToSkColor(c)));
                         }
                     };
@@ -254,7 +278,8 @@ public partial class UiStateViewModel : ViewModelBase
                         {
                             _toolOptionsValues.EdgeType = et;
                             var join = et == EdgeType.Rounded ? SKStrokeJoin.Round : SKStrokeJoin.Miter;
-                            applyEvent(new UpdateStrokeEdgeTypeEvent(Guid.NewGuid(), strokeIds, join));
+                            _canvasStateService.ApplyEvent(
+                                new UpdateStrokeEdgeTypeEvent(Guid.NewGuid(), strokeIds, join));
                         }
                     };
                     ActiveToolOptions.Add(edgeVm);
@@ -266,7 +291,8 @@ public partial class UiStateViewModel : ViewModelBase
                         FontSizeChanged = fs =>
                         {
                             _toolOptionsValues.FontSize = fs;
-                            applyEvent(new UpdateStrokeFontSizeEvent(Guid.NewGuid(), strokeIds, fs));
+                            _canvasStateService.ApplyEvent(
+                                new UpdateStrokeFontSizeEvent(Guid.NewGuid(), strokeIds, fs));
                         }
                     };
                     ActiveToolOptions.Add(fontVm);
