@@ -10,8 +10,6 @@ using Avalonia.Media.Imaging;
 using Avalonia.Platform;
 using Avalonia.Threading;
 using Scribble.Services;
-using Scribble.Services.DialogService;
-using Scribble.Services.FileService;
 using Scribble.Shared.Lib;
 using Scribble.State;
 using Scribble.Tools.PointerTools;
@@ -38,8 +36,6 @@ public partial class MainView : UserControl
     private MainViewModel? _viewModel;
     private CanvasStateService? _canvasState;
     private readonly Selection _selection;
-    private readonly IFileService _fileService;
-    private readonly IDialogService _dialogService;
 
     public MainView()
     {
@@ -52,8 +48,6 @@ public partial class MainView : UserControl
             Bitmap.DecodeToWidth(AssetLoader.Open(new Uri("avares://Scribble/Assets/rotate.png")), 24);
         SelectionBorder.Cursor = new Cursor(moveIconBitmap, new PixelPoint(18, 18));
         SelectionRotationBtn.Cursor = new Cursor(rotateIconBitmap, new PixelPoint(12, 12));
-        _fileService = new AvaloniaFileService();
-        _dialogService = new AvaloniaDialogService();
     }
 
     protected override void OnDataContextChanged(EventArgs e)
@@ -94,7 +88,7 @@ public partial class MainView : UserControl
                 new RectangleTool("RectangleTool", _canvasState),
                 new TextTool("TextTool", _canvasState, CanvasContainer),
                 new SelectTool("SelectTool", _canvasState, CanvasContainer),
-                new ImageTool("ImageTool", _canvasState, _fileService, _dialogService),
+                new ImageTool("ImageTool", _canvasState, _viewModel.FileService, _viewModel.DialogService),
             };
             foreach (var tool in tools)
             {

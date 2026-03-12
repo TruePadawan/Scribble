@@ -9,6 +9,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Scribble.Services;
 using Scribble.Services.DialogService;
+using Scribble.Services.FileService;
 using Scribble.Services.MultiUserDrawing;
 using Scribble.Shared.Lib;
 
@@ -28,7 +29,8 @@ public partial class MainViewModel : ViewModelBase
     private bool CanRedo => CanvasStateService.CanRedo;
 
     // Services
-    private readonly IDialogService _dialogService;
+    public readonly IDialogService DialogService;
+    public readonly IFileService FileService;
     private readonly MultiUserDrawingService _multiUserDrawingService;
     public CanvasStateService CanvasStateService { get; }
 
@@ -42,10 +44,11 @@ public partial class MainViewModel : ViewModelBase
         IDialogService dialogService,
         CanvasExportViewModel canvasExportViewModel,
         CanvasStateService canvasStateService,
-        MultiUserDrawingService multiUserDrawingService)
+        MultiUserDrawingService multiUserDrawingService, IFileService fileService)
     {
-        _dialogService = dialogService;
+        DialogService = dialogService;
         _multiUserDrawingService = multiUserDrawingService;
+        FileService = fileService;
         CanvasStateService = canvasStateService;
 
         CanvasExportViewModel = canvasExportViewModel;
@@ -105,7 +108,7 @@ public partial class MainViewModel : ViewModelBase
     {
         if (CanvasStateService.HasEvents)
         {
-            var confirmed = await _dialogService.ShowWarningConfirmationAsync("Warning",
+            var confirmed = await DialogService.ShowWarningConfirmationAsync("Warning",
                 "All unsaved work will be lost. Are you sure you want to proceed?");
             if (!confirmed) return;
         }
@@ -123,7 +126,7 @@ public partial class MainViewModel : ViewModelBase
 
         if (CanvasStateService.HasEvents)
         {
-            var confirmed = await _dialogService.ShowWarningConfirmationAsync("Warning",
+            var confirmed = await DialogService.ShowWarningConfirmationAsync("Warning",
                 "This will clear your current canvas. Are you sure you want to proceed?");
             if (!confirmed) return;
         }
