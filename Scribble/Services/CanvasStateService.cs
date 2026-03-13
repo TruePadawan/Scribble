@@ -394,6 +394,8 @@ public class CanvasStateService
         var strokeTexts = new Dictionary<Guid, string>();
         var canvasImages = new Dictionary<Guid, CanvasImage>();
 
+        var currentMaxLayerIndex = 0;
+
         foreach (var canvasEvent in CanvasEvents.Where(canvasEvent => !hiddenActionIds.Contains(canvasEvent.ActionId)))
         {
             switch (canvasEvent)
@@ -410,6 +412,7 @@ public class CanvasStateService
                         ToolOptions = ev.ToolOptions,
                         CreatorConnectionId = ev.CreatorConnectionId
                     };
+                    currentMaxLayerIndex = Math.Max(currentMaxLayerIndex, drawStrokes[ev.StrokeId].LayerIndex);
                     break;
                 case StartEraseStrokeEvent ev:
                     var eraserPath = new SKPath();
@@ -503,6 +506,7 @@ public class CanvasStateService
                         CreatorConnectionId = ev.CreatorConnectionId
                     };
                     strokeTexts[ev.StrokeId] = ev.Text;
+                    currentMaxLayerIndex = Math.Max(currentMaxLayerIndex, drawStrokes[ev.StrokeId].LayerIndex);
                     break;
                 case CreateSelectionBoundEvent ev:
                     var selectionPath = new SKPath();
@@ -661,8 +665,12 @@ public class CanvasStateService
                                 Paint = drawStroke.Paint.Clone(),
                                 ToolOptions = drawStroke.ToolOptions,
                                 ToolType = drawStroke.ToolType,
-                                Path = drawStroke.Path.Clone()
+                                Path = drawStroke.Path.Clone(),
+                                LayerIndex = drawStroke.LayerIndex,
+                                CreatorConnectionId = drawStroke.CreatorConnectionId
                             };
+                            currentMaxLayerIndex =
+                                Math.Max(currentMaxLayerIndex, drawStrokes[drawStroke.Id].LayerIndex);
                         }
                         else if (element is CanvasImage canvasImage)
                         {
@@ -674,7 +682,55 @@ public class CanvasStateService
                                 Rotation = canvasImage.Rotation,
                                 FlipX = canvasImage.FlipX,
                                 FlipY = canvasImage.FlipY,
+                                LayerIndex = canvasImage.LayerIndex,
+                                CreatorConnectionId = canvasImage.CreatorConnectionId
                             };
+                            currentMaxLayerIndex =
+                                Math.Max(currentMaxLayerIndex, canvasImages[canvasImage.Id].LayerIndex);
+                        }
+                    }
+
+                    break;
+                case SetElementLayerEvent ev:
+                    foreach (var elementId in ev.TargetElementIds)
+                    {
+                        if (drawStrokes.TryGetValue(elementId, out var stroke))
+                        {
+                            stroke.LayerIndex = ev.NewLayerIndex;
+                            currentMaxLayerIndex = Math.Max(currentMaxLayerIndex, stroke.LayerIndex);
+                        }
+                        else if (canvasImages.TryGetValue(elementId, out var image))
+                        {
+                            image.LayerIndex = ev.NewLayerIndex;
+                            currentMaxLayerIndex = Math.Max(currentMaxLayerIndex, image.LayerIndex);
+                        }
+                    }
+
+                    break;
+                case NudgeElementLayerEvent ev:
+                    foreach (var elementId in ev.TargetElementIds)
+                    {
+                        if (drawStrokes.TryGetValue(elementId, out var stroke))
+                        {
+                            var newLayer = stroke.LayerIndex + ev.Offset;
+                            if (newLayer < 0)
+                            {
+                                newLayer = 0;
+                            }
+
+                            stroke.LayerIndex = newLayer;
+                            currentMaxLayerIndex = Math.Max(currentMaxLayerIndex, stroke.LayerIndex);
+                        }
+                        else if (canvasImages.TryGetValue(elementId, out var image))
+                        {
+                            var newLayer = image.LayerIndex + ev.Offset;
+                            if (newLayer < 0)
+                            {
+                                newLayer = 0;
+                            }
+
+                            image.LayerIndex = newLayer;
+                            currentMaxLayerIndex = Math.Max(currentMaxLayerIndex, image.LayerIndex);
                         }
                     }
 
