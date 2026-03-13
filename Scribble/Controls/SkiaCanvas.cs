@@ -53,7 +53,9 @@ public class SkiaCanvas : Control
     {
         canvas.Clear(Utilities.ToSkColor(bgColor));
 
-        foreach (var canvasElement in elementsToDraw)
+        // Draw elements in layer-aware order: lower LayerIndex values are rendered first,
+        // while preserving the existing relative order within each layer.
+        foreach (var canvasElement in System.Linq.Enumerable.OrderBy(elementsToDraw, e => e.LayerIndex))
         {
             DrawSingleElement(canvas, canvasElement);
         }
