@@ -208,6 +208,48 @@ public partial class UiStateViewModel : ViewModelBase
         }
 
         BuildSelectionEditOptions(filteredStrokeIds);
+
+        if (_canvasStateService.SelectedElementIds.Count > 0)
+        {
+            var targetElementIds = _canvasStateService.SelectedElementIds.ToArray();
+            var currentElements = _canvasStateService.CanvasElements;
+            var currentMaxLayer = 0;
+            foreach (var element in currentElements)
+            {
+                if (element.LayerIndex > currentMaxLayer)
+                {
+                    currentMaxLayer = element.LayerIndex;
+                }
+            }
+
+            var layerOptionsVm = new LayerOrderOptionViewModel(
+                moveUp: () =>
+                {
+                    _canvasStateService.ApplyEvent(
+                        new NudgeElementLayerEvent(Guid.NewGuid(), targetElementIds, 1));
+                },
+                moveDown: () =>
+                {
+                    _canvasStateService.ApplyEvent(
+                        new NudgeElementLayerEvent(Guid.NewGuid(), targetElementIds, -1));
+                },
+                sendToFront: () =>
+                {
+                    // Move selection to a new top-most layer
+                    var newTopLayer = currentMaxLayer + 1;
+                    _canvasStateService.ApplyEvent(
+                        new SetElementLayerEvent(Guid.NewGuid(), targetElementIds, newTopLayer));
+                },
+                sendToBack: () =>
+                {
+                    // Move selection to the lowest layer (0)
+                    _canvasStateService.ApplyEvent(
+                        new SetElementLayerEvent(Guid.NewGuid(), targetElementIds, 0));
+                });
+
+            ActiveToolOptions.Add(layerOptionsVm);
+            ToolOptionsVisible = ActiveToolOptions.Count > 0;
+        }
     }
 
     private void BuildSelectionEditOptions(Dictionary<ToolOption, List<Guid>> categorizedStrokeIds)
