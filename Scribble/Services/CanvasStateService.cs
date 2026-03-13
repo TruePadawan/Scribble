@@ -849,7 +849,30 @@ public class CanvasStateService
             }
         }
 
-        CanvasElements = [..drawStrokes.Values.ToList(), ..canvasImages.Values.ToList()];
+        // Normalize layer indices to be contiguous (0..N-1) while preserving relative ordering.
+        List<CanvasElement> elementsWithLayers = [..drawStrokes.Values.ToList(), ..canvasImages.Values.ToList()];
+
+        if (elementsWithLayers.Count > 0)
+        {
+            var distinctLayerIndices = elementsWithLayers
+                .Select(e => e.LayerIndex)
+                .Distinct()
+                .OrderBy(index => index)
+                .ToList();
+
+            var layerRemap = new Dictionary<int, int>(distinctLayerIndices.Count);
+            for (var i = 0; i < distinctLayerIndices.Count; i++)
+            {
+                layerRemap[distinctLayerIndices[i]] = i;
+            }
+
+            foreach (var element in elementsWithLayers)
+            {
+                element.LayerIndex = layerRemap[element.LayerIndex];
+            }
+        }
+
+        CanvasElements = elementsWithLayers;
         _strokeLookup = drawStrokes;
         _eraserStrokeLookup = eraserStrokes;
         _eraserHeadLookup = eraserHeads;
