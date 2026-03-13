@@ -61,6 +61,7 @@ public class DocumentService
                     Height = canvasImage.Bounds.Height,
                     X = canvasImage.Bounds.Left,
                     Y = canvasImage.Bounds.Top,
+                    LayerIndex = canvasImage.LayerIndex,
                     FileId = fileId
                 };
                 jsonCanvasImages.Add(JsonSerializer.SerializeToNode(canvasImageDto, serializerOptions));
@@ -128,6 +129,7 @@ public class DocumentService
                 var canvasImage = new CanvasImage
                 {
                     Id = deserializedImageDto.Id,
+                    LayerIndex = deserializedImageDto.LayerIndex,
                     Bounds = SKRect.Create(
                         deserializedImageDto.X,
                         deserializedImageDto.Y,
