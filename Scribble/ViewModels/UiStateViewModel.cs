@@ -188,11 +188,16 @@ public partial class UiStateViewModel : ViewModelBase
         ToolOptionsVisible = ActiveToolOptions.Count > 0;
     }
 
-    public void ShowSelectedStrokesOptions(List<DrawStroke> selectedStrokes)
+    public void ShowSelectedCanvasElementOptions(List<CanvasElement> selectedElements)
     {
         var filteredStrokeIds = new Dictionary<ToolOption, List<Guid>>();
-        foreach (var selectedStroke in selectedStrokes)
+        foreach (var element in selectedElements)
         {
+            if (element is not DrawStroke selectedStroke)
+            {
+                continue;
+            }
+
             var strokeOptions = selectedStroke.ToolOptions;
             foreach (var strokeOption in strokeOptions)
             {

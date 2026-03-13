@@ -208,9 +208,8 @@ public partial class MainView : UserControl
 
             SKRect combinedBounds = SKRect.Empty;
 
-            foreach (var stroke in selectedStrokes)
+            foreach (var strokeBounds in selectedStrokes.Select(stroke => stroke.Path.TightBounds))
             {
-                SKRect strokeBounds = stroke.Path.TightBounds;
                 if (combinedBounds == SKRect.Empty)
                 {
                     combinedBounds = strokeBounds;
@@ -221,9 +220,8 @@ public partial class MainView : UserControl
                 }
             }
 
-            foreach (var canvasImage in selectedImages)
+            foreach (var imageBounds in selectedImages.Select(canvasImage => canvasImage.Bounds))
             {
-                SKRect imageBounds = canvasImage.Bounds;
                 if (combinedBounds == SKRect.Empty)
                 {
                     combinedBounds = imageBounds;
@@ -250,7 +248,7 @@ public partial class MainView : UserControl
 
             if (triggeringSelectionAction)
             {
-                _viewModel.UiStateViewModel.ShowSelectedStrokesOptions(selectedStrokes);
+                _viewModel.UiStateViewModel.ShowSelectedCanvasElementOptions([..selectedStrokes, ..selectedImages]);
             }
         }
         else
