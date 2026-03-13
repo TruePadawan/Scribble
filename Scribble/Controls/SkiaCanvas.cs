@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
+using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media;
@@ -55,7 +56,9 @@ public class SkiaCanvas : Control
 
         // Draw elements in layer-aware order: lower LayerIndex values are rendered first,
         // while preserving the existing relative order within each layer.
-        foreach (var canvasElement in System.Linq.Enumerable.OrderBy(elementsToDraw, e => e.LayerIndex))
+        foreach (var canvasElement in elementsToDraw
+                     .OrderBy(e => e.LayerIndex)
+                     .ThenBy(e => e.CreatedAt))
         {
             DrawSingleElement(canvas, canvasElement);
         }
@@ -173,7 +176,6 @@ public class SkiaCanvas : Control
 
         InvalidateVisual();
     }
-
 }
 
 internal class SkiaDrawOperation(Rect bounds, Action<SKCanvas> drawAction) : ICustomDrawOperation

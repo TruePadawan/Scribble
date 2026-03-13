@@ -19,6 +19,11 @@ public abstract class CanvasElement
     /// Null when the element was created in solo mode or loaded from a saved file.
     /// </summary>
     public string? CreatorConnectionId { get; set; }
+
+    /// <summary>
+    /// The time this element was created.
+    /// </summary>
+    public DateTime CreatedAt { get; init; } = DateTime.UtcNow;
 }
 
 [JsonDerivedType(typeof(DrawStroke), typeDiscriminator: "DrawStroke")]
