@@ -25,8 +25,6 @@ public class CanvasStateService
 
     private readonly HashSet<Guid> _localSelectionBoundIds = [];
 
-    private readonly HashSet<Guid> _deletedActions = [];
-
     // For fast-path optimizations
     private Dictionary<Guid, DrawStroke> _strokeLookup = new();
     private Dictionary<Guid, EraserStroke> _eraserStrokeLookup = new();
@@ -69,13 +67,6 @@ public class CanvasStateService
     {
         if (_undoStack.Count == 0) return;
         var actionId = _undoStack.Pop();
-        if (_multiUserDrawingService.Room != null)
-        {
-            while (_deletedActions.Contains(actionId))
-            {
-                actionId = _undoStack.Pop();
-            }
-        }
 
         _redoStack.Push(actionId);
         ApplyEvent(new UndoEvent(Guid.NewGuid(), actionId), isLocalEvent: true);
@@ -87,13 +78,6 @@ public class CanvasStateService
     {
         if (_redoStack.Count == 0) return;
         var actionId = _redoStack.Pop();
-        if (_multiUserDrawingService.Room != null)
-        {
-            while (_deletedActions.Contains(actionId))
-            {
-                actionId = _redoStack.Pop();
-            }
-        }
 
         _undoStack.Push(actionId);
         ApplyEvent(new RedoEvent(Guid.NewGuid(), actionId), isLocalEvent: true);
@@ -118,7 +102,6 @@ public class CanvasStateService
     {
         _undoStack.Clear();
         _redoStack.Clear();
-        _deletedActions.Clear();
         _localSelectionBoundIds.Clear();
 
         CanvasEvents.Clear();
@@ -403,16 +386,16 @@ public class CanvasStateService
             }
         }
 
-        _deletedActions.Clear();
         var drawStrokes = new Dictionary<Guid, DrawStroke>();
         var eraserStrokes = new Dictionary<Guid, EraserStroke>();
         var eraserHeads = new Dictionary<Guid, SKPoint>();
         var selectionBounds = new Dictionary<Guid, SelectionBound>();
         var staleActionIds = new List<Guid>();
-        var elementIdToActionId = new Dictionary<Guid, Guid>();
         var strokeTexts = new Dictionary<Guid, string>();
         var canvasImages = new Dictionary<Guid, CanvasImage>();
 
+        var currentMaxLayerIndex = 0;
+        var currentMinLayerIndex = 0;
         foreach (var canvasEvent in CanvasEvents.Where(canvasEvent => !hiddenActionIds.Contains(canvasEvent.ActionId)))
         {
             switch (canvasEvent)
@@ -427,9 +410,9 @@ public class CanvasStateService
                         Path = newLinePath,
                         ToolType = ev.ToolType,
                         ToolOptions = ev.ToolOptions,
-                        CreatorConnectionId = ev.CreatorConnectionId
+                        CreatorConnectionId = ev.CreatorConnectionId,
+                        LayerIndex = currentMaxLayerIndex
                     };
-                    elementIdToActionId[ev.StrokeId] = ev.ActionId;
                     break;
                 case StartEraseStrokeEvent ev:
                     var eraserPath = new SKPath();
@@ -484,10 +467,6 @@ public class CanvasStateService
                         {
                             drawStrokes.Remove(targetId);
                             canvasImages.Remove(targetId);
-                            if (elementIdToActionId.ContainsKey(targetId))
-                            {
-                                _deletedActions.Add(elementIdToActionId[targetId]);
-                            }
                         }
 
                         if (eraserStrokes[ev.StrokeId].Targets.Count == 0)
@@ -524,10 +503,10 @@ public class CanvasStateService
                         Path = textPath,
                         ToolType = ToolType.Text,
                         ToolOptions = ev.ToolOptions,
-                        CreatorConnectionId = ev.CreatorConnectionId
+                        CreatorConnectionId = ev.CreatorConnectionId,
+                        LayerIndex = currentMaxLayerIndex
                     };
                     strokeTexts[ev.StrokeId] = ev.Text;
-                    elementIdToActionId[ev.StrokeId] = ev.ActionId;
                     break;
                 case CreateSelectionBoundEvent ev:
                     var selectionPath = new SKPath();
@@ -674,7 +653,6 @@ public class CanvasStateService
                     eraserStrokes.Clear();
                     eraserHeads.Clear();
                     selectionBounds.Clear();
-                    elementIdToActionId.Clear();
                     strokeTexts.Clear();
 
                     foreach (var element in ev.CanvasElements)
@@ -687,8 +665,12 @@ public class CanvasStateService
                                 Paint = drawStroke.Paint.Clone(),
                                 ToolOptions = drawStroke.ToolOptions,
                                 ToolType = drawStroke.ToolType,
-                                Path = drawStroke.Path.Clone()
+                                Path = drawStroke.Path.Clone(),
+                                LayerIndex = drawStroke.LayerIndex,
+                                CreatorConnectionId = drawStroke.CreatorConnectionId
                             };
+                            currentMaxLayerIndex =
+                                Math.Max(currentMaxLayerIndex, drawStrokes[drawStroke.Id].LayerIndex);
                         }
                         else if (element is CanvasImage canvasImage)
                         {
@@ -700,9 +682,58 @@ public class CanvasStateService
                                 Rotation = canvasImage.Rotation,
                                 FlipX = canvasImage.FlipX,
                                 FlipY = canvasImage.FlipY,
+                                LayerIndex = canvasImage.LayerIndex,
+                                CreatorConnectionId = canvasImage.CreatorConnectionId
                             };
+                            currentMaxLayerIndex =
+                                Math.Max(currentMaxLayerIndex, canvasImages[canvasImage.Id].LayerIndex);
                         }
                     }
+
+                    break;
+                case SetElementLayerEvent ev:
+                    foreach (var elementId in ev.TargetElementIds)
+                    {
+                        if (drawStrokes.TryGetValue(elementId, out var stroke))
+                        {
+                            stroke.LayerIndex = ev.NewLayerIndex;
+                            currentMaxLayerIndex = Math.Max(currentMaxLayerIndex, stroke.LayerIndex);
+                        }
+                        else if (canvasImages.TryGetValue(elementId, out var image))
+                        {
+                            image.LayerIndex = ev.NewLayerIndex;
+                            currentMaxLayerIndex = Math.Max(currentMaxLayerIndex, image.LayerIndex);
+                        }
+                    }
+
+                    currentMaxLayerIndex = Math.Max(currentMaxLayerIndex, ev.NewLayerIndex);
+                    currentMinLayerIndex = Math.Min(currentMinLayerIndex, ev.NewLayerIndex);
+                    break;
+                case NudgeElementLayerEvent ev:
+                    int newMinLayerIndex = 0;
+                    int newMaxLayerIndex = 0;
+                    foreach (var elementId in ev.TargetElementIds)
+                    {
+                        if (drawStrokes.TryGetValue(elementId, out var stroke))
+                        {
+                            var newLayer = stroke.LayerIndex + ev.Offset;
+
+                            stroke.LayerIndex = newLayer;
+                            newMaxLayerIndex = Math.Max(newMaxLayerIndex, newLayer);
+                            newMinLayerIndex = Math.Min(newMinLayerIndex, newLayer);
+                        }
+                        else if (canvasImages.TryGetValue(elementId, out var image))
+                        {
+                            var newLayer = image.LayerIndex + ev.Offset;
+
+                            image.LayerIndex = newLayer;
+                            newMaxLayerIndex = Math.Max(newMaxLayerIndex, newLayer);
+                            newMinLayerIndex = Math.Min(newMinLayerIndex, newLayer);
+                        }
+                    }
+
+                    currentMinLayerIndex = Math.Min(currentMinLayerIndex, newMinLayerIndex);
+                    currentMaxLayerIndex = Math.Max(currentMaxLayerIndex, newMaxLayerIndex);
 
                     break;
                 case UpdateStrokeColorEvent ev:
@@ -813,14 +844,37 @@ public class CanvasStateService
                         Id = ev.ImageId,
                         ImageBase64String = ev.ImageBase64String,
                         Bounds = imageBounds,
-                        CreatorConnectionId = ev.CreatorConnectionId
+                        CreatorConnectionId = ev.CreatorConnectionId,
+                        LayerIndex = currentMaxLayerIndex
                     };
-                    elementIdToActionId[ev.ImageId] = ev.ActionId;
                     break;
             }
         }
 
-        CanvasElements = [..drawStrokes.Values.ToList(), ..canvasImages.Values.ToList()];
+        // Normalize layer indices to be contiguous (0..N-1) while preserving relative ordering.
+        List<CanvasElement> elementsWithLayers = [..drawStrokes.Values.ToList(), ..canvasImages.Values.ToList()];
+
+        if (elementsWithLayers.Count > 0)
+        {
+            var distinctLayerIndices = elementsWithLayers
+                .Select(e => e.LayerIndex)
+                .Distinct()
+                .OrderBy(index => index)
+                .ToList();
+
+            var layerRemap = new Dictionary<int, int>(distinctLayerIndices.Count);
+            for (var i = 0; i < distinctLayerIndices.Count; i++)
+            {
+                layerRemap[distinctLayerIndices[i]] = i;
+            }
+
+            foreach (var element in elementsWithLayers)
+            {
+                element.LayerIndex = layerRemap[element.LayerIndex];
+            }
+        }
+
+        CanvasElements = elementsWithLayers;
         _strokeLookup = drawStrokes;
         _eraserStrokeLookup = eraserStrokes;
         _eraserHeadLookup = eraserHeads;

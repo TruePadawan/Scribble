@@ -469,6 +469,31 @@
                             </StackPanel>
                         </DataTemplate>
 
+                        <!-- Layer Order -->
+                        <DataTemplate DataType="toolOpts:LayerOrderOptionViewModel">
+                            <StackPanel Margin="8" Spacing="2">
+                                <Label Content="{Binding Label}" />
+                                <UniformGrid Columns="4" Rows="1">
+                                    <Button Command="{Binding SendToBackCommand}"
+                                            ToolTip.Tip="Send selection to lowest layer">
+                                        <Image Source="avares://Scribble/Assets/layer_lowest.png" Width="20" Height="20" />
+                                    </Button>
+                                    <Button Command="{Binding MoveDownCommand}"
+                                            ToolTip.Tip="Move selection down one layer">
+                                        <Image Source="avares://Scribble/Assets/arrow_down.png" Width="20" Height="20" />
+                                    </Button>
+                                    <Button Command="{Binding MoveUpCommand}"
+                                            ToolTip.Tip="Move selection up one layer">
+                                        <Image Source="avares://Scribble/Assets/arrow_up.png" Width="20" Height="20" />
+                                    </Button>
+                                    <Button Command="{Binding SendToFrontCommand}"
+                                            ToolTip.Tip="Bring selection to top layer">
+                                        <Image Source="avares://Scribble/Assets/layer_highest.png" Width="20" Height="20" />
+                                    </Button>
+                                </UniformGrid>
+                            </StackPanel>
+                        </DataTemplate>
+
                     </ItemsControl.DataTemplates>
                 </ItemsControl>
             </Border>

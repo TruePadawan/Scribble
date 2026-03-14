@@ -9,5 +9,6 @@ public record CanvasImageDto
     public float Height { get; init; }
     public float X { get; init; }
     public float Y { get; init; }
+    public int LayerIndex { get; init; }
     public Guid FileId { get; init; }
 }

@@ -30,7 +30,7 @@ public partial class MainViewModel : ViewModelBase
     // Services
     private readonly IDialogService _dialogService;
     private readonly MultiUserDrawingService _multiUserDrawingService;
-    public CanvasStateService CanvasStateService { get; }
+    private CanvasStateService CanvasStateService { get; }
 
     public MultiUserDrawingViewModel MultiUserDrawingViewModel { get; }
     public DocumentViewModel DocumentViewModel { get; }

@@ -1,3 +1,4 @@
+using System;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Data.Core.Plugins;
@@ -5,7 +6,6 @@ using System.Linq;
 using Avalonia.Markup.Xaml;
 using Microsoft.Extensions.DependencyInjection;
 using Scribble.Extensions;
-using Scribble.Services.FileService;
 using Scribble.ViewModels;
 using Scribble.Views;
 
@@ -13,6 +13,8 @@ namespace Scribble;
 
 public partial class App : Application
 {
+    public IServiceProvider Services { get; private set; } = null!;
+
     public override void Initialize()
     {
         AvaloniaXamlLoader.Load(this);
@@ -24,8 +26,8 @@ public partial class App : Application
         var serviceCollection = new ServiceCollection();
         serviceCollection.AddCommonServices();
 
-        var services = serviceCollection.BuildServiceProvider();
-        var viewModel = services.GetRequiredService<MainViewModel>();
+        Services = serviceCollection.BuildServiceProvider();
+        var viewModel = Services.GetRequiredService<MainViewModel>();
 
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
