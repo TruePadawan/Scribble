@@ -13,7 +13,8 @@ A cross-platform (windows/linux) digital whiteboard application
 **Existing tools**: Pencil, Eraser, Pan, Line, Arrow, Ellipse, Rectangle, Select, Text  
 
 **I'm working on**:
-- UI/UX Improvements
+- UI/UX improvements
+- Layering system
 
 <img width="1916" height="1048" alt="image" src="https://github.com/user-attachments/assets/9ba0d5c9-af75-4aa1-b8c6-5b954c4b161b" />
 
@@ -22,3 +23,29 @@ A cross-platform (windows/linux) digital whiteboard application
 <img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/4a817026-a4a6-41fd-b684-1323a2f0f9d8" />
 
 <img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/b48e97ab-129e-4466-8df5-fdab73ac8b98" />
+
+## Local Setup
+
+### Prerequisites
+* [.NET SDK](https://dotnet.microsoft.com/download) (Version 8.0 or newer recommended)
+
+### Running the Application
+
+To run Scribble locally, you will need to start both the backend server and the client application.
+
+1. **Clone the repository and restore the packages:**
+   ```bash
+   git clone https://github.com/TruePadawan/Scribble.git
+   cd Scribble
+   dotnet restore
+   ```
+2. **Run the program**
+   ```bash
+   cd Scribble.Desktop
+   dotnet run
+   ```
+3. If you want to use multi-user drawing, you have to run the Scribble.Server project first (can just set up multi project launch on whatever IDE you're using)
+   ```bash
+   cd Scribble.Server
+   dotnet run
+   ``` 
