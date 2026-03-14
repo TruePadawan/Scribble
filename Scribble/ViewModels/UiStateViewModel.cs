@@ -219,12 +219,11 @@ public partial class UiStateViewModel : ViewModelBase
             var targetElementIds = _canvasStateService.SelectedElementIds.ToArray();
             var currentElements = _canvasStateService.CanvasElements;
             var currentMaxLayer = 0;
+            var currentMinLayer = 0;
             foreach (var element in currentElements)
             {
-                if (element.LayerIndex > currentMaxLayer)
-                {
-                    currentMaxLayer = element.LayerIndex;
-                }
+                currentMinLayer = Math.Min(currentMinLayer, element.LayerIndex);
+                currentMaxLayer = Math.Max(currentMaxLayer, element.LayerIndex);
             }
 
             var layerOptionsVm = new LayerOrderOptionViewModel(
@@ -247,9 +246,10 @@ public partial class UiStateViewModel : ViewModelBase
                 },
                 sendToBack: () =>
                 {
-                    // Move selection to the lowest layer (0)
+                    // Move selection to the lowest layer
+                    var newMinLayer = currentMinLayer - 1;
                     _canvasStateService.ApplyEvent(
-                        new SetElementLayerEvent(Guid.NewGuid(), targetElementIds, 0));
+                        new SetElementLayerEvent(Guid.NewGuid(), targetElementIds, newMinLayer));
                 });
 
             ActiveToolOptions.Add(layerOptionsVm);

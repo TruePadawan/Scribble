@@ -395,7 +395,7 @@ public class CanvasStateService
         var canvasImages = new Dictionary<Guid, CanvasImage>();
 
         var currentMaxLayerIndex = 0;
-
+        var currentMinLayerIndex = 0;
         foreach (var canvasEvent in CanvasEvents.Where(canvasEvent => !hiddenActionIds.Contains(canvasEvent.ActionId)))
         {
             switch (canvasEvent)
@@ -410,9 +410,9 @@ public class CanvasStateService
                         Path = newLinePath,
                         ToolType = ev.ToolType,
                         ToolOptions = ev.ToolOptions,
-                        CreatorConnectionId = ev.CreatorConnectionId
+                        CreatorConnectionId = ev.CreatorConnectionId,
+                        LayerIndex = currentMaxLayerIndex
                     };
-                    currentMaxLayerIndex = Math.Max(currentMaxLayerIndex, drawStrokes[ev.StrokeId].LayerIndex);
                     break;
                 case StartEraseStrokeEvent ev:
                     var eraserPath = new SKPath();
@@ -503,10 +503,10 @@ public class CanvasStateService
                         Path = textPath,
                         ToolType = ToolType.Text,
                         ToolOptions = ev.ToolOptions,
-                        CreatorConnectionId = ev.CreatorConnectionId
+                        CreatorConnectionId = ev.CreatorConnectionId,
+                        LayerIndex = currentMaxLayerIndex
                     };
                     strokeTexts[ev.StrokeId] = ev.Text;
-                    currentMaxLayerIndex = Math.Max(currentMaxLayerIndex, drawStrokes[ev.StrokeId].LayerIndex);
                     break;
                 case CreateSelectionBoundEvent ev:
                     var selectionPath = new SKPath();
@@ -706,33 +706,34 @@ public class CanvasStateService
                         }
                     }
 
+                    currentMaxLayerIndex = Math.Max(currentMaxLayerIndex, ev.NewLayerIndex);
+                    currentMinLayerIndex = Math.Min(currentMinLayerIndex, ev.NewLayerIndex);
                     break;
                 case NudgeElementLayerEvent ev:
+                    int newMinLayerIndex = 0;
+                    int newMaxLayerIndex = 0;
                     foreach (var elementId in ev.TargetElementIds)
                     {
                         if (drawStrokes.TryGetValue(elementId, out var stroke))
                         {
                             var newLayer = stroke.LayerIndex + ev.Offset;
-                            if (newLayer < 0)
-                            {
-                                newLayer = 0;
-                            }
 
                             stroke.LayerIndex = newLayer;
-                            currentMaxLayerIndex = Math.Max(currentMaxLayerIndex, stroke.LayerIndex);
+                            newMaxLayerIndex = Math.Max(newMaxLayerIndex, newLayer);
+                            newMinLayerIndex = Math.Min(newMinLayerIndex, newLayer);
                         }
                         else if (canvasImages.TryGetValue(elementId, out var image))
                         {
                             var newLayer = image.LayerIndex + ev.Offset;
-                            if (newLayer < 0)
-                            {
-                                newLayer = 0;
-                            }
 
                             image.LayerIndex = newLayer;
-                            currentMaxLayerIndex = Math.Max(currentMaxLayerIndex, image.LayerIndex);
+                            newMaxLayerIndex = Math.Max(newMaxLayerIndex, newLayer);
+                            newMinLayerIndex = Math.Min(newMinLayerIndex, newLayer);
                         }
                     }
+
+                    currentMinLayerIndex = Math.Min(currentMinLayerIndex, newMinLayerIndex);
+                    currentMaxLayerIndex = Math.Max(currentMaxLayerIndex, newMaxLayerIndex);
 
                     break;
                 case UpdateStrokeColorEvent ev:
@@ -843,7 +844,8 @@ public class CanvasStateService
                         Id = ev.ImageId,
                         ImageBase64String = ev.ImageBase64String,
                         Bounds = imageBounds,
-                        CreatorConnectionId = ev.CreatorConnectionId
+                        CreatorConnectionId = ev.CreatorConnectionId,
+                        LayerIndex = currentMaxLayerIndex
                     };
                     break;
             }
