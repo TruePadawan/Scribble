@@ -756,12 +756,12 @@
                                         Command="{Binding CanvasExportViewModel.ExportCanvasToJpegCommand}">
                                     Export as JPEG
                                 </Button>
-                                <Button HorizontalAlignment="Stretch"
-                                        HorizontalContentAlignment="Center"
-                                        Padding="8"
-                                        Command="{Binding CanvasExportViewModel.CopyCanvasToClipboardCommand}">
-                                    Copy to Clipboard
-                                </Button>
+                                <!-- <Button HorizontalAlignment="Stretch" -->
+                                <!--         HorizontalContentAlignment="Center" -->
+                                <!--         Padding="8" -->
+                                <!--         Command="{Binding CanvasExportViewModel.CopyCanvasToClipboardCommand}"> -->
+                                <!--     Copy to Clipboard -->
+                                <!-- </Button> -->
                             </StackPanel>
                         </Grid>
                     </Border>

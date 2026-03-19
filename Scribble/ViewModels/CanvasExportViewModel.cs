@@ -146,13 +146,14 @@ public partial class CanvasExportViewModel : ViewModelBase
         }
     }
 
-    [RelayCommand]
-    private async Task CopyCanvasToClipboardAsync()
-    {
-        var clipboard = Utilities.GetTopLevel()?.Clipboard;
-        if (clipboard == null) return;
-        await clipboard.SetBitmapAsync(PreviewImage);
-    }
+    // SetBitmapAsync is present on Avalonia 11.3.7+
+    // [RelayCommand]
+    // private async Task CopyCanvasToClipboardAsync()
+    // {
+    //     var clipboard = Utilities.GetTopLevel()?.Clipboard;
+    //     if (clipboard == null) return;
+    //     await clipboard.SetBitmapAsync(PreviewImage);
+    // }
 
     private SKRect GetElementsBounds(IEnumerable<CanvasElement> elements)
     {
