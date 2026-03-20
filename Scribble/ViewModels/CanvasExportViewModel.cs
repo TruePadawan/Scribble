@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using Avalonia.Input;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform.Storage;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -150,8 +151,16 @@ public partial class CanvasExportViewModel : ViewModelBase
     private async Task CopyCanvasToClipboardAsync()
     {
         var clipboard = Utilities.GetTopLevel()?.Clipboard;
-        if (clipboard == null) return;
-        await clipboard.SetBitmapAsync(PreviewImage);
+        if (clipboard == null || PreviewImage == null) return;
+
+        // Encode bitmap to PNG bytes for clipboard
+        using var memoryStream = new MemoryStream();
+        PreviewImage.Save(memoryStream);
+        memoryStream.Position = 0;
+
+        var dataObject = new DataObject();
+        dataObject.Set("image/png", memoryStream.ToArray());
+        await clipboard.SetDataObjectAsync(dataObject);
     }
 
     private SKRect GetElementsBounds(IEnumerable<CanvasElement> elements)

@@ -23,7 +23,8 @@ public class ImageTool : PointerTool
     private readonly IFileService _fileService;
     private readonly IDialogService _dialogService;
 
-    public ImageTool(string name, CanvasStateService canvasState, IFileService fileService, IDialogService dialogService) :
+    public ImageTool(string name, CanvasStateService canvasState, IFileService fileService,
+        IDialogService dialogService) :
         base(name, canvasState,
             LoadToolBitmap(typeof(ImageTool), "image.png"))
     {
@@ -44,7 +45,7 @@ public class ImageTool : PointerTool
             {
                 Title = "Select an image",
                 AllowMultiple = false,
-                SuggestedFileType = FilePickerFileTypes.ImageAll
+                FileTypeFilter = [FilePickerFileTypes.ImageAll]
             };
             var imageFile = await _fileService.PickFileToOpenAsync(filePickerOptions);
             if (imageFile is null)
