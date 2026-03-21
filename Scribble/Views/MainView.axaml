@@ -215,7 +215,7 @@
 
                     <ListBox.ItemTemplate>
                         <DataTemplate>
-                            <Image Source="{Binding ToolIcon}" Margin="4" />
+                            <Image Source="{Binding ToolIcon}" Margin="4" ToolTip.Tip="{Binding ToolTip}" />
                         </DataTemplate>
                     </ListBox.ItemTemplate>
 
@@ -256,7 +256,7 @@
                     <Button Name="LiveDrawingButton"
                             Click="LiveDrawingButton_OnClick"
                             Background="{Binding MultiUserDrawingViewModel.LiveDrawingButtonBackground}"
-                            ToolTip.Tip="Collaborative Drawing">
+                            ToolTip.Tip="Multi-User Drawing">
                         <Image Margin="4" Source="avares://Scribble/Assets/group.png" />
                     </Button>
                     <Border
@@ -476,7 +476,8 @@
                                 <UniformGrid Columns="4" Rows="1">
                                     <Button Command="{Binding SendToBackCommand}"
                                             ToolTip.Tip="Send selection to lowest layer">
-                                        <Image Source="avares://Scribble/Assets/layer_lowest.png" Width="20" Height="20" />
+                                        <Image Source="avares://Scribble/Assets/layer_lowest.png" Width="20"
+                                               Height="20" />
                                     </Button>
                                     <Button Command="{Binding MoveDownCommand}"
                                             ToolTip.Tip="Move selection down one layer">
@@ -488,7 +489,8 @@
                                     </Button>
                                     <Button Command="{Binding SendToFrontCommand}"
                                             ToolTip.Tip="Bring selection to top layer">
-                                        <Image Source="avares://Scribble/Assets/layer_highest.png" Width="20" Height="20" />
+                                        <Image Source="avares://Scribble/Assets/layer_highest.png" Width="20"
+                                               Height="20" />
                                     </Button>
                                 </UniformGrid>
                             </StackPanel>
@@ -507,7 +509,7 @@
             </StackPanel.Styles>
         </StackPanel>
 
-        <!-- Collaborative Drawing Dialog -->
+        <!-- Multi-User Drawing Dialog -->
         <Panel Name="LiveDrawingWindow" IsVisible="False">
             <!-- Invisible Background that catches clicks -->
             <Rectangle Name="LiveDrawingWindowOverlay"
@@ -519,7 +521,7 @@
                     Padding="18"
                     CornerRadius="12">
                 <StackPanel MinWidth="400" Spacing="12">
-                    <TextBlock HorizontalAlignment="Center" Foreground="#AAAAAA" Margin="0, 0, 0, 12">Collaborative Drawing (DEMO)</TextBlock>
+                    <TextBlock HorizontalAlignment="Center" Foreground="#AAAAAA" Margin="0, 0, 0, 12">Multi-User Drawing (DEMO)</TextBlock>
                     <StackPanel Orientation="Vertical" Spacing="8">
                         <TextBlock FontSize="12" TextWrapping="Wrap" Foreground="WhiteSmoke">
                             If the room id doesn't belong to any active room, the room is automatically created
