@@ -15,7 +15,7 @@
 
     <ItemGroup>
         <PackageReference Include="Avalonia"/>
-        <PackageReference Include="Avalonia.Controls.ColorPicker" />
+        <PackageReference Include="Avalonia.Controls.ColorPicker"/>
         <PackageReference Include="Avalonia.Skia"/>
         <PackageReference Include="Avalonia.Themes.Fluent"/>
         <PackageReference Include="Avalonia.Fonts.Inter"/>
@@ -28,7 +28,7 @@
         <PackageReference Include="MessageBox.Avalonia"/>
         <PackageReference Include="Microsoft.AspNetCore.SignalR.Client"/>
         <PackageReference Include="Microsoft.Extensions.Configuration.Json"/>
-        <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection"/>
     </ItemGroup>
 
     <ItemGroup>

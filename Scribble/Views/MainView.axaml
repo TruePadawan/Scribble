@@ -6,8 +6,8 @@
              xmlns:controls="using:Scribble.Controls"
              xmlns:toolOpts="using:Scribble.ViewModels.ToolOptions"
              xmlns:behaviours="using:Scribble.Behaviours"
-             xmlns:shared="using:Scribble.Shared.Lib"
              xmlns:scribbleColorPicker="clr-namespace:Scribble.Controls.ScribbleColorPicker"
+             xmlns:strokes="clr-namespace:Scribble.Shared.Lib.CanvasElements.Strokes;assembly=Scribble.Shared"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:Class="Scribble.Views.MainView"
              x:DataType="vm:MainViewModel"
@@ -394,21 +394,21 @@
                                                   behaviours:ToggleButtonGroup.GroupName="LineStyle"
                                                   IsChecked="{Binding StrokeStyle,
                                                       Converter={StaticResource EnumBoolConverter},
-                                                      ConverterParameter={x:Static shared:StrokeStyle.Solid}}">
+                                                      ConverterParameter={x:Static strokes:StrokeStyle.Solid}}">
                                         <Image Source="avares://Scribble/Assets/line.png" Width="20" />
                                     </ToggleButton>
                                     <ToggleButton Width="36" Height="36"
                                                   behaviours:ToggleButtonGroup.GroupName="LineStyle"
                                                   IsChecked="{Binding StrokeStyle,
                                                       Converter={StaticResource EnumBoolConverter},
-                                                      ConverterParameter={x:Static shared:StrokeStyle.Dash}}">
+                                                      ConverterParameter={x:Static strokes:StrokeStyle.Dash}}">
                                         <Image Source="avares://Scribble/Assets/dashed_line.png" Width="20" />
                                     </ToggleButton>
                                     <ToggleButton Width="36" Height="36"
                                                   behaviours:ToggleButtonGroup.GroupName="LineStyle"
                                                   IsChecked="{Binding StrokeStyle,
                                                       Converter={StaticResource EnumBoolConverter},
-                                                      ConverterParameter={x:Static shared:StrokeStyle.Dotted}}">
+                                                      ConverterParameter={x:Static strokes:StrokeStyle.Dotted}}">
                                         <Image Source="avares://Scribble/Assets/dotted_line.png" Width="20" />
                                     </ToggleButton>
                                 </StackPanel>
@@ -442,14 +442,14 @@
                                                   behaviours:ToggleButtonGroup.GroupName="EdgeStyle"
                                                   IsChecked="{Binding EdgeType,
                                                       Converter={StaticResource EnumBoolConverter},
-                                                      ConverterParameter={x:Static shared:EdgeType.Sharp}}">
+                                                      ConverterParameter={x:Static strokes:EdgeType.Sharp}}">
                                         <Image Source="avares://Scribble/Assets/sharp_edge.png" Width="20" />
                                     </ToggleButton>
                                     <ToggleButton Width="36" Height="36"
                                                   behaviours:ToggleButtonGroup.GroupName="EdgeStyle"
                                                   IsChecked="{Binding EdgeType,
                                                       Converter={StaticResource EnumBoolConverter},
-                                                      ConverterParameter={x:Static shared:EdgeType.Rounded}}">
+                                                      ConverterParameter={x:Static strokes:EdgeType.Rounded}}">
                                         <Image Source="avares://Scribble/Assets/rounded_edge.png" Width="20" />
                                     </ToggleButton>
                                 </StackPanel>

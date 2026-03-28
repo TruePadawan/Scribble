@@ -14,6 +14,8 @@ using Scribble.Services;
 using Scribble.Services.DialogService;
 using Scribble.Services.FileService;
 using Scribble.Shared.Lib;
+using Scribble.Shared.Lib.CanvasElements;
+using Scribble.Shared.Lib.CanvasElements.Strokes;
 using Scribble.State;
 using Scribble.Tools.PointerTools;
 using Scribble.Tools.PointerTools.ArrowTool;

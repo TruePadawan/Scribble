@@ -1,5 +1,6 @@
 using System.Text.Json.Serialization;
 using Scribble.Shared.Converters;
+using Scribble.Shared.Lib.CanvasElements;
 using SkiaSharp;
 
 namespace Scribble.Shared.Lib;
@@ -145,3 +146,5 @@ public record SetElementLayerEvent(Guid ActionId, Guid[] TargetElementIds, int N
 
 public record NudgeElementLayerEvent(Guid ActionId, Guid[] TargetElementIds, int Offset)
     : Event(ActionId), ITerminalEvent;
+
+public record UpdateTextEvent(Guid ActionId, Guid TextStrokeId, string NewText) : Event(ActionId), ITerminalEvent;

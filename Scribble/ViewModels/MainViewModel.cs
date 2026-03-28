@@ -10,7 +10,7 @@ using CommunityToolkit.Mvvm.Input;
 using Scribble.Services;
 using Scribble.Services.DialogService;
 using Scribble.Services.MultiUserDrawing;
-using Scribble.Shared.Lib;
+using Scribble.Shared.Lib.CanvasElements;
 
 namespace Scribble.ViewModels;
 

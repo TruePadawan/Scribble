@@ -5,6 +5,8 @@ using Avalonia.Skia;
 using Avalonia.Threading;
 using Scribble.Services.MultiUserDrawing;
 using Scribble.Shared.Lib;
+using Scribble.Shared.Lib.CanvasElements;
+using Scribble.Shared.Lib.CanvasElements.Strokes;
 using Scribble.Tools.PointerTools.ArrowTool;
 using Scribble.Utils;
 using SkiaSharp;

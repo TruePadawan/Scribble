@@ -6,6 +6,8 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Scribble.Services;
 using Scribble.Shared.Lib;
+using Scribble.Shared.Lib.CanvasElements;
+using Scribble.Shared.Lib.CanvasElements.Strokes;
 using Scribble.State;
 using Scribble.Tools.PointerTools;
 using Scribble.Utils;

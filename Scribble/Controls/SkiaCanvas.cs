@@ -8,7 +8,8 @@ using Avalonia.Media;
 using Avalonia.Platform;
 using Avalonia.Rendering.SceneGraph;
 using Avalonia.Skia;
-using Scribble.Shared.Lib;
+using Scribble.Shared.Lib.CanvasElements;
+using Scribble.Shared.Lib.CanvasElements.Strokes;
 using Scribble.Utils;
 using SkiaSharp;
 

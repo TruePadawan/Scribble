@@ -46,4 +46,3 @@ public partial class LayerOrderOptionViewModel : ToolOptionViewModelBase
         _sendToBack?.Invoke();
     }
 }
-

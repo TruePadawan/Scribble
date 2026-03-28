@@ -46,6 +46,7 @@ class SelectTool : PointerTool
         {
             CanvasState.ClearSelection();
         }
+
         CanvasState.ApplyEvent(new CreateSelectionBoundEvent(_actionId, _boundId,
             new SKPoint((float)coord.X, (float)coord.Y)));
     }

@@ -1,6 +1,6 @@
 using System;
 using CommunityToolkit.Mvvm.ComponentModel;
-using Scribble.Shared.Lib;
+using Scribble.Shared.Lib.CanvasElements.Strokes;
 
 namespace Scribble.ViewModels.ToolOptions;
 
