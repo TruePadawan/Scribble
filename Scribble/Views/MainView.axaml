@@ -84,6 +84,7 @@
                                     PointerReleased="ScaleHandle_OnPointerReleased" />
                         </Grid>
                     </StackPanel>
+                    <Canvas Name="TextStrokeEditBorders"></Canvas>
                     <Canvas.Styles>
                         <Style Selector="TextBox:focus /template/ Border">
                             <Setter Property="BorderBrush" Value="Gray" />

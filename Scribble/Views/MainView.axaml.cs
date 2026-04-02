@@ -67,7 +67,8 @@ public partial class MainView : UserControl
         if (_viewModel != null)
         {
             _viewModel.RequestRefreshSelection -= VisualizeSelection;
-            _viewModel.RequestInvalidateSkiaCanvas = null;
+            _viewModel.RequestInvalidateSkiaCanvas -= MainCanvas.InvalidateVisual;
+            _viewModel.RequestInvalidateSkiaCanvas -= MarkTextStrokesForEditing;
             _viewModel.UiStateViewModel.CenterZoomRequested -= OnCenterZoomRequested;
             _viewModel.UiStateViewModel.ActiveToolChanged -= OnActiveToolChanged;
         }
@@ -78,7 +79,8 @@ public partial class MainView : UserControl
         {
             _viewModel = viewModel;
             _viewModel.RequestRefreshSelection += VisualizeSelection;
-            _viewModel.RequestInvalidateSkiaCanvas = () => MainCanvas.InvalidateVisual();
+            _viewModel.RequestInvalidateSkiaCanvas += MainCanvas.InvalidateVisual;
+            _viewModel.RequestInvalidateSkiaCanvas += MarkTextStrokesForEditing;
             _viewModel.UiStateViewModel.CenterZoomRequested += OnCenterZoomRequested;
             _viewModel.UiStateViewModel.ActiveToolChanged += OnActiveToolChanged;
 
@@ -119,6 +121,40 @@ public partial class MainView : UserControl
 
             viewModel.UiStateViewModel.ActivePointerTool = tools.FirstOrDefault();
         }
+    }
+
+    /**
+     * Identify all text strokes and put an invisible Border control on them that triggers
+     * a pop-up for editing the text
+     */
+    private void MarkTextStrokesForEditing()
+    {
+        TextStrokeEditBorders.Children.Clear();
+
+        // Don't show edit border when the selection is visible so they don't conflict
+        if (SelectionOverlay.IsVisible) return;
+
+        var textStrokes = _canvasStateService.CanvasElements
+            .Where(canvasEl => canvasEl is DrawStroke { ToolType: ToolType.Text })
+            .Cast<DrawStroke>()
+            .ToList();
+        var borders = new List<Border>();
+        foreach (var textStroke in textStrokes)
+        {
+            var strokeBounds = textStroke.Path.Bounds;
+            var border = new Border
+            {
+                Background = Brushes.Transparent,
+                Width = strokeBounds.Width,
+                Height = strokeBounds.Height,
+                Cursor = new Cursor(StandardCursorType.Ibeam),
+            };
+            Canvas.SetLeft(border, strokeBounds.Left);
+            Canvas.SetTop(border, strokeBounds.Top);
+            borders.Add(border);
+        }
+
+        TextStrokeEditBorders.Children.AddRange(borders);
     }
 
     // If the active tool is a stroke tool, show its options else clear and hide the tool options UI
@@ -234,6 +270,7 @@ public partial class MainView : UserControl
                 }
             }
 
+            // Align the selection overlay with what it has selected
             Canvas.SetLeft(SelectionOverlay, combinedBounds.Left);
             Canvas.SetTop(SelectionOverlay, combinedBounds.Top - 15 - 6);
 
