@@ -247,10 +247,11 @@ public class CanvasStateService
                 {
                     if (_strokeLookup.TryGetValue(boundTargetId, out var stroke))
                     {
-                        stroke.Path.Transform(SKMatrix.CreateTranslation(moveEvent.Delta.X, moveEvent.Delta.Y));
+                        var matrix = SKMatrix.CreateTranslation(moveEvent.Delta.X, moveEvent.Delta.Y);
+                        stroke.Path.Transform(matrix);
                         if (stroke is TextStroke textStroke)
                         {
-                            textStroke.Position = new SKPoint(textStroke.Position.X + moveEvent.Delta.X, textStroke.Position.Y + moveEvent.Delta.Y);
+                            textStroke.TransformMatrix = textStroke.TransformMatrix.PostConcat(matrix);
                         }
                     }
                     else if (_canvasImageLookup.TryGetValue(boundTargetId, out var image))
@@ -279,7 +280,7 @@ public class CanvasStateService
                         stroke.Path.Transform(matrix);
                         if (stroke is TextStroke textStroke)
                         {
-                            textStroke.Position = matrix.MapPoint(textStroke.Position);
+                            textStroke.TransformMatrix = textStroke.TransformMatrix.PostConcat(matrix);
                         }
                     }
                     else if (_canvasImageLookup.TryGetValue(boundTargetId, out var image))
@@ -313,7 +314,7 @@ public class CanvasStateService
                         stroke.Path.Transform(matrix);
                         if (stroke is TextStroke textStroke)
                         {
-                            textStroke.Position = matrix.MapPoint(textStroke.Position);
+                            textStroke.TransformMatrix = textStroke.TransformMatrix.PostConcat(matrix);
                         }
                     }
                     else if (_canvasImageLookup.TryGetValue(boundTargetId, out var image))
@@ -526,13 +527,14 @@ public class CanvasStateService
                         existingStroke is TextStroke textStroke)
                     {
                         textStroke.Text = ev.NewText;
-                        // Rebuild the text path preserving the original first point
-                        var startPoint = textStroke.Path[0];
                         var newTextPath = new SKPath();
-                        newTextPath.MoveTo(startPoint);
+                        newTextPath.MoveTo(textStroke.Position);
                         newTextPath.AddPath(
                             new SKPaint { TextSize = textStroke.Paint.TextSize }
-                                .GetTextPath(ev.NewText, startPoint.X, startPoint.Y));
+                                .GetTextPath(ev.NewText, textStroke.Position.X, textStroke.Position.Y));
+                        
+                        newTextPath.Transform(textStroke.TransformMatrix);
+                        
                         textStroke.Path.Reset();
                         textStroke.Path.AddPath(newTextPath);
                     }
@@ -591,10 +593,11 @@ public class CanvasStateService
                             if (paintableStrokes.ContainsKey(boundTargetId))
                             {
                                 var stroke = paintableStrokes[boundTargetId];
-                                stroke.Path.Transform(SKMatrix.CreateTranslation(ev.Delta.X, ev.Delta.Y));
+                                var matrix = SKMatrix.CreateTranslation(ev.Delta.X, ev.Delta.Y);
+                                stroke.Path.Transform(matrix);
                                 if (stroke is TextStroke movedText)
                                 {
-                                    movedText.Position = new SKPoint(movedText.Position.X + ev.Delta.X, movedText.Position.Y + ev.Delta.Y);
+                                    movedText.TransformMatrix = movedText.TransformMatrix.PostConcat(matrix);
                                 }
                             }
                             else if (canvasImages.ContainsKey(boundTargetId))
@@ -622,7 +625,7 @@ public class CanvasStateService
                                 stroke.Path.Transform(matrix);
                                 if (stroke is TextStroke rotatedText)
                                 {
-                                    rotatedText.Position = matrix.MapPoint(rotatedText.Position);
+                                    rotatedText.TransformMatrix = rotatedText.TransformMatrix.PostConcat(matrix);
                                 }
                             }
                             else if (canvasImages.ContainsKey(boundTargetId))
@@ -655,7 +658,7 @@ public class CanvasStateService
                                 stroke.Path.Transform(matrix);
                                 if (stroke is TextStroke scaledText)
                                 {
-                                    scaledText.Position = matrix.MapPoint(scaledText.Position);
+                                    scaledText.TransformMatrix = scaledText.TransformMatrix.PostConcat(matrix);
                                 }
                             }
                             else if (canvasImages.ContainsKey(boundTargetId))
@@ -724,6 +727,7 @@ public class CanvasStateService
                                 ToolOptions = loadedText.ToolOptions,
                                 Path = loadedText.Path.Clone(),
                                 LayerIndex = loadedText.LayerIndex,
+                                TransformMatrix = loadedText.TransformMatrix,
                                 CreatorConnectionId = loadedText.CreatorConnectionId
                             };
                             currentMaxLayerIndex =
@@ -881,14 +885,14 @@ public class CanvasStateService
                 case UpdateStrokeFontSizeEvent ev:
                     foreach (var strokeId in ev.StrokeIds)
                     {
-                        if (paintableStrokes[strokeId] is TextStroke ts)
+                        if (paintableStrokes.TryGetValue(strokeId, out var stroke) && stroke is TextStroke ts)
                         {
                             var noTransformTextPath = new SKPath();
-                            var startPoint = ts.Path[0];
-                            noTransformTextPath.MoveTo(startPoint);
+                            noTransformTextPath.MoveTo(ts.Position);
                             noTransformTextPath.AddPath(
-                                new SKPaint { TextSize = ev.FontSize }.GetTextPath(ts.Text, startPoint.X,
-                                    startPoint.Y));
+                                new SKPaint { TextSize = ev.FontSize }.GetTextPath(ts.Text, ts.Position.X,
+                                    ts.Position.Y));
+                            noTransformTextPath.Transform(ts.TransformMatrix);
                             ts.Path.Reset();
                             ts.Path.AddPath(noTransformTextPath);
                         }

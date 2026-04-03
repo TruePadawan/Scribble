@@ -104,8 +104,9 @@ public class TextTool : StrokeTool
         // Prevent the Scroll Viewer from jumping when the textbox gets focus
         _currentTextBox.AddHandler(Control.RequestBringIntoViewEvent, (sender, args) => { args.Handled = true; });
 
-        Canvas.SetLeft(_currentTextBox, textStroke.Position.X);
-        Canvas.SetTop(_currentTextBox, textStroke.Position.Y - textStroke.Paint.TextSize);
+        var actualPosition = textStroke.TransformMatrix.MapPoint(textStroke.Position);
+        Canvas.SetLeft(_currentTextBox, actualPosition.X);
+        Canvas.SetTop(_currentTextBox, actualPosition.Y - textStroke.Paint.TextSize);
 
         // Intercept the key before the TextBox consumes it and adds a newline
         _currentTextBox.AddHandler(InputElement.KeyDownEvent, (sender, args) =>
