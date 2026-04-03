@@ -8,7 +8,8 @@ using Avalonia.Media;
 using Avalonia.Platform;
 using Avalonia.Rendering.SceneGraph;
 using Avalonia.Skia;
-using Scribble.Shared.Lib;
+using Scribble.Shared.Lib.CanvasElements;
+using Scribble.Shared.Lib.CanvasElements.Strokes;
 using Scribble.Utils;
 using SkiaSharp;
 
@@ -66,34 +67,34 @@ public class SkiaCanvas : Control
 
     private void DrawSingleElement(SKCanvas canvas, CanvasElement canvasElement)
     {
-        if (canvasElement is DrawStroke drawStroke)
+        if (canvasElement is PaintableStroke paintableStroke)
         {
-            var needsMutablePaint = drawStroke.IsToBeErased || drawStroke.Paint.FillColor.Alpha != 0;
-            var paintToUse = needsMutablePaint ? drawStroke.Paint.ToSkPaint() : drawStroke.Paint.GetCachedSkPaint();
+            var needsMutablePaint = paintableStroke.IsToBeErased || paintableStroke.Paint.FillColor.Alpha != 0;
+            var paintToUse = needsMutablePaint ? paintableStroke.Paint.ToSkPaint() : paintableStroke.Paint.GetCachedSkPaint();
             try
             {
-                if (drawStroke.IsToBeErased)
+                if (paintableStroke.IsToBeErased)
                 {
                     paintToUse.Color = paintToUse.Color.WithAlpha(80);
                 }
 
-                if (drawStroke.Path.PointCount == 1)
+                if (paintableStroke.Path.PointCount == 1)
                 {
-                    canvas.DrawPoint(drawStroke.Path.Points[0], paintToUse);
+                    canvas.DrawPoint(paintableStroke.Path.Points[0], paintToUse);
                 }
                 else
                 {
-                    if (drawStroke.Paint.FillColor.Alpha != 0)
+                    if (paintableStroke.Paint.FillColor.Alpha != 0)
                     {
                         var strokeColor = paintToUse.Color;
                         paintToUse.Style = SKPaintStyle.StrokeAndFill;
-                        paintToUse.Color = drawStroke.Paint.FillColor;
-                        canvas.DrawPath(drawStroke.Path, paintToUse);
+                        paintToUse.Color = paintableStroke.Paint.FillColor;
+                        canvas.DrawPath(paintableStroke.Path, paintToUse);
                         paintToUse.Style = SKPaintStyle.Stroke;
                         paintToUse.Color = strokeColor;
                     }
 
-                    canvas.DrawPath(drawStroke.Path, paintToUse);
+                    canvas.DrawPath(paintableStroke.Path, paintToUse);
                 }
             }
             finally
@@ -167,9 +168,9 @@ public class SkiaCanvas : Control
                 {
                     canvasImage.DisposeBitmap();
                 }
-                else if (item is DrawStroke drawStroke)
+                else if (item is PaintableStroke paintableStroke)
                 {
-                    drawStroke.Paint.DisposeSkPaint();
+                    paintableStroke.Paint.DisposeSkPaint();
                 }
             }
         }

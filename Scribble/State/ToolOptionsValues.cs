@@ -1,5 +1,5 @@
 using Avalonia.Media;
-using Scribble.Shared.Lib;
+using Scribble.Shared.Lib.CanvasElements.Strokes;
 
 namespace Scribble.State;
 

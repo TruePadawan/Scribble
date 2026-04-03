@@ -14,6 +14,8 @@ using Scribble.Services;
 using Scribble.Services.DialogService;
 using Scribble.Services.FileService;
 using Scribble.Shared.Lib;
+using Scribble.Shared.Lib.CanvasElements;
+using Scribble.Shared.Lib.CanvasElements.Strokes;
 using Scribble.State;
 using Scribble.Tools.PointerTools;
 using Scribble.Tools.PointerTools.ArrowTool;
@@ -65,7 +67,8 @@ public partial class MainView : UserControl
         if (_viewModel != null)
         {
             _viewModel.RequestRefreshSelection -= VisualizeSelection;
-            _viewModel.RequestInvalidateSkiaCanvas = null;
+            _viewModel.RequestInvalidateSkiaCanvas -= MainCanvas.InvalidateVisual;
+            _viewModel.RequestInvalidateSkiaCanvas -= MarkTextStrokesForEditing;
             _viewModel.UiStateViewModel.CenterZoomRequested -= OnCenterZoomRequested;
             _viewModel.UiStateViewModel.ActiveToolChanged -= OnActiveToolChanged;
         }
@@ -76,7 +79,8 @@ public partial class MainView : UserControl
         {
             _viewModel = viewModel;
             _viewModel.RequestRefreshSelection += VisualizeSelection;
-            _viewModel.RequestInvalidateSkiaCanvas = () => MainCanvas.InvalidateVisual();
+            _viewModel.RequestInvalidateSkiaCanvas += MainCanvas.InvalidateVisual;
+            _viewModel.RequestInvalidateSkiaCanvas += MarkTextStrokesForEditing;
             _viewModel.UiStateViewModel.CenterZoomRequested += OnCenterZoomRequested;
             _viewModel.UiStateViewModel.ActiveToolChanged += OnActiveToolChanged;
 
@@ -116,6 +120,53 @@ public partial class MainView : UserControl
             }
 
             viewModel.UiStateViewModel.ActivePointerTool = tools.FirstOrDefault();
+        }
+    }
+
+    /// <summary>
+    /// Identify all text strokes and put an invisible Border control on them that triggers
+    /// a pop-up for editing the text
+    /// </summary>
+    private void MarkTextStrokesForEditing()
+    {
+        TextStrokeEditBorders.Children.Clear();
+
+        // Don't show edit border when there is an active selection so they don't conflict
+        if (_canvasStateService.SelectedElementIds.Count > 0) return;
+
+        var textStrokes = _canvasStateService.CanvasElements
+            .Where(canvasEl => canvasEl is TextStroke)
+            .Cast<TextStroke>()
+            .ToList();
+        var borders = new List<Border>();
+        foreach (var textStroke in textStrokes)
+        {
+            var strokeBounds = textStroke.Path.Bounds;
+            var border = new Border
+            {
+                Background = Brushes.Transparent,
+                Width = strokeBounds.Width,
+                Height = strokeBounds.Height,
+                Cursor = new Cursor(StandardCursorType.Ibeam),
+                Tag = textStroke
+            };
+
+            border.PointerPressed += TextStrokeBorder_OnPointerPressed;
+
+            Canvas.SetLeft(border, strokeBounds.Left);
+            Canvas.SetTop(border, strokeBounds.Top);
+            borders.Add(border);
+        }
+
+        TextStrokeEditBorders.Children.AddRange(borders);
+    }
+
+    private void TextStrokeBorder_OnPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (e.Properties.IsLeftButtonPressed && sender is Border { Tag: TextStroke textStroke })
+        {
+            var textTool = _viewModel?.UiStateViewModel.AvailableTools.OfType<TextTool>().FirstOrDefault();
+            textTool?.StartEditing(textStroke);
         }
     }
 
@@ -193,8 +244,8 @@ public partial class MainView : UserControl
         if (allSelectedIds.Count > 0)
         {
             var selectedStrokes = _viewModel.CanvasElements
-                .Where(element => allSelectedIds.Contains(element.Id) && element is DrawStroke)
-                .Cast<DrawStroke>()
+                .Where(element => allSelectedIds.Contains(element.Id) && element is PaintableStroke)
+                .Cast<PaintableStroke>()
                 .ToList();
             var selectedImages = _viewModel.CanvasElements
                 .Where(element => allSelectedIds.Contains(element.Id) && element is CanvasImage)
@@ -232,6 +283,7 @@ public partial class MainView : UserControl
                 }
             }
 
+            // Align the selection overlay with what it has selected
             Canvas.SetLeft(SelectionOverlay, combinedBounds.Left);
             Canvas.SetTop(SelectionOverlay, combinedBounds.Top - 15 - 6);
 

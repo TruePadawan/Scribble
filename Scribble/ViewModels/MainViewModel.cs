@@ -10,7 +10,7 @@ using CommunityToolkit.Mvvm.Input;
 using Scribble.Services;
 using Scribble.Services.DialogService;
 using Scribble.Services.MultiUserDrawing;
-using Scribble.Shared.Lib;
+using Scribble.Shared.Lib.CanvasElements;
 
 namespace Scribble.ViewModels;
 
@@ -20,7 +20,7 @@ public partial class MainViewModel : ViewModelBase
     public static int CanvasHeight => 10000;
 
     public event Action? RequestRefreshSelection;
-    public Action? RequestInvalidateSkiaCanvas { get; set; }
+    public event Action? RequestInvalidateSkiaCanvas;
 
     [ObservableProperty] private List<CanvasElement> _canvasElements = [];
 
