@@ -7,7 +7,7 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\Scribble.Shared\Scribble.Shared.csproj" />
+        <ProjectReference Include="..\Scribble.Shared\Scribble.Shared.csproj"/>
     </ItemGroup>
 
 </Project>

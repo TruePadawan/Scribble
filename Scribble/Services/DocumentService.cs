@@ -6,7 +6,8 @@ using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using Scribble.Dtos;
-using Scribble.Shared.Lib;
+using Scribble.Shared.Lib.CanvasElements;
+using Scribble.Shared.Lib.CanvasElements.Strokes;
 using SkiaSharp;
 
 namespace Scribble.Services;
