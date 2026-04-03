@@ -65,9 +65,9 @@ public partial class CanvasExportViewModel : ViewModelBase
         {
             foreach (var canvasElement in _canvasStateService.CanvasElements)
             {
-                if (canvasElement is DrawStroke drawStroke)
+                if (canvasElement is PaintableStroke paintableStroke)
                 {
-                    previewedElements.Add(drawStroke);
+                    previewedElements.Add(paintableStroke);
                 }
                 else if (canvasElement is CanvasImage canvasImage)
                 {
@@ -115,9 +115,9 @@ public partial class CanvasExportViewModel : ViewModelBase
         List<CanvasElement> elements = [];
         foreach (var canvasStroke in _canvasStateService.CanvasElements)
         {
-            if (canvasStroke is DrawStroke drawStroke)
+            if (canvasStroke is PaintableStroke paintableStroke)
             {
-                elements.Add(drawStroke);
+                elements.Add(paintableStroke);
             }
         }
 
@@ -166,7 +166,7 @@ public partial class CanvasExportViewModel : ViewModelBase
         SKRect totalBounds = SKRect.Empty;
         foreach (var element in elements)
         {
-            if (element is DrawStroke stroke)
+            if (element is PaintableStroke stroke)
             {
                 SKRect pathBounds = stroke.Path.Bounds;
                 float halfStrokeWidth = stroke.Paint.StrokeWidth / 2;
@@ -230,26 +230,26 @@ public partial class CanvasExportViewModel : ViewModelBase
         // Render the strokes
         foreach (var element in elements)
         {
-            if (element is DrawStroke drawStroke)
+            if (element is PaintableStroke paintableStroke)
             {
-                using var paintToUse = drawStroke.Paint.ToSkPaint();
-                if (drawStroke.Path.PointCount == 1)
+                using var paintToUse = paintableStroke.Paint.ToSkPaint();
+                if (paintableStroke.Path.PointCount == 1)
                 {
-                    canvas.DrawPoint(drawStroke.Path.Points[0], paintToUse);
+                    canvas.DrawPoint(paintableStroke.Path.Points[0], paintToUse);
                 }
                 else
                 {
-                    if (drawStroke.Paint.FillColor.Alpha != 0)
+                    if (paintableStroke.Paint.FillColor.Alpha != 0)
                     {
                         var strokeColor = paintToUse.Color;
                         paintToUse.Style = SKPaintStyle.StrokeAndFill;
-                        paintToUse.Color = drawStroke.Paint.FillColor;
-                        canvas.DrawPath(drawStroke.Path, paintToUse);
+                        paintToUse.Color = paintableStroke.Paint.FillColor;
+                        canvas.DrawPath(paintableStroke.Path, paintToUse);
                         paintToUse.Style = SKPaintStyle.Stroke;
                         paintToUse.Color = strokeColor;
                     }
 
-                    canvas.DrawPath(drawStroke.Path, paintToUse);
+                    canvas.DrawPath(paintableStroke.Path, paintToUse);
                 }
             }
             else if (element is CanvasImage canvasImage)
