@@ -195,7 +195,7 @@ public partial class UiStateViewModel : ViewModelBase
         var filteredStrokeIds = new Dictionary<ToolOption, List<Guid>>();
         foreach (var element in selectedElements)
         {
-            if (element is not DrawStroke selectedStroke)
+            if (element is not PaintableStroke selectedStroke)
             {
                 continue;
             }
