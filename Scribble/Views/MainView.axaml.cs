@@ -123,10 +123,10 @@ public partial class MainView : UserControl
         }
     }
 
-    /**
-     * Identify all text strokes and put an invisible Border control on them that triggers
-     * a pop-up for editing the text
-     */
+    /// <summary>
+    /// Identify all text strokes and put an invisible Border control on them that triggers
+    /// a pop-up for editing the text
+    /// </summary>
     private void MarkTextStrokesForEditing()
     {
         TextStrokeEditBorders.Children.Clear();
