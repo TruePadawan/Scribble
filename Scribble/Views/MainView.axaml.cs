@@ -244,8 +244,8 @@ public partial class MainView : UserControl
         if (allSelectedIds.Count > 0)
         {
             var selectedStrokes = _viewModel.CanvasElements
-                .Where(element => allSelectedIds.Contains(element.Id) && element is DrawStroke)
-                .Cast<DrawStroke>()
+                .Where(element => allSelectedIds.Contains(element.Id) && element is PaintableStroke)
+                .Cast<PaintableStroke>()
                 .ToList();
             var selectedImages = _viewModel.CanvasElements
                 .Where(element => allSelectedIds.Contains(element.Id) && element is CanvasImage)
