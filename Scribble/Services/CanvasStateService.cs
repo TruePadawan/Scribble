@@ -28,7 +28,7 @@ public class CanvasStateService
     private readonly HashSet<Guid> _localSelectionBoundIds = [];
 
     // For fast-path optimizations
-    private Dictionary<Guid, DrawStroke> _strokeLookup = new();
+    private Dictionary<Guid, PaintableStroke> _strokeLookup = new();
     private Dictionary<Guid, EraserStroke> _eraserStrokeLookup = new();
     private Dictionary<Guid, SKPoint> _eraserHeadLookup = new();
     private Dictionary<Guid, SelectionBound> _selectionBoundLookup = new();
@@ -181,9 +181,9 @@ public class CanvasStateService
 
         if (@event is LineStrokeLineToEvent lineStrokeEvent)
         {
-            if (_strokeLookup.TryGetValue(lineStrokeEvent.StrokeId, out var stroke))
+            if (_strokeLookup.TryGetValue(lineStrokeEvent.StrokeId, out var stroke) && stroke is DrawStroke drawStroke)
             {
-                RebuildLinePath(stroke, lineStrokeEvent.EndPoint);
+                RebuildLinePath(drawStroke, lineStrokeEvent.EndPoint);
                 CanvasInvalidated?.Invoke();
                 return;
             }
@@ -388,12 +388,11 @@ public class CanvasStateService
             }
         }
 
-        var drawStrokes = new Dictionary<Guid, DrawStroke>();
+        var paintableStrokes = new Dictionary<Guid, PaintableStroke>();
         var eraserStrokes = new Dictionary<Guid, EraserStroke>();
         var eraserHeads = new Dictionary<Guid, SKPoint>();
         var selectionBounds = new Dictionary<Guid, SelectionBound>();
         var staleActionIds = new List<Guid>();
-        var strokeTexts = new Dictionary<Guid, string>();
         var canvasImages = new Dictionary<Guid, CanvasImage>();
 
         var currentMaxLayerIndex = 0;
@@ -405,7 +404,7 @@ public class CanvasStateService
                 case StartStrokeEvent ev:
                     var newLinePath = new SKPath();
                     newLinePath.MoveTo(ev.StartPoint);
-                    drawStrokes[ev.StrokeId] = new DrawStroke
+                    paintableStrokes[ev.StrokeId] = new DrawStroke
                     {
                         Id = ev.StrokeId,
                         Paint = ev.StrokePaint.Clone(),
@@ -429,7 +428,7 @@ public class CanvasStateService
                     eraserHeads[ev.StrokeId] = ev.StartPoint;
 
                     // Find all targets for erasing
-                    CheckAndErase(ev.StartPoint, [..drawStrokes.Values, ..canvasImages.Values], newEraserStroke,
+                    CheckAndErase(ev.StartPoint, [..paintableStrokes.Values, ..canvasImages.Values], newEraserStroke,
                         ownerFilter: ev.CreatorConnectionId);
 
                     eraserStrokes[ev.StrokeId] = newEraserStroke;
@@ -451,7 +450,7 @@ public class CanvasStateService
                             var checkX = start.X + (end.X - start.X) * completionPercentage;
                             var checkY = start.Y + (end.Y - start.Y) * completionPercentage;
                             CheckAndErase(new SKPoint((float)checkX, (float)checkY),
-                                [..drawStrokes.Values, ..canvasImages.Values],
+                                [..paintableStrokes.Values, ..canvasImages.Values],
                                 currentEraserStroke,
                                 ownerFilter: currentEraserStroke.CreatorConnectionId);
                         }
@@ -467,7 +466,7 @@ public class CanvasStateService
                         // Erase all targets
                         foreach (var targetId in eraserStrokes[ev.StrokeId].Targets)
                         {
-                            drawStrokes.Remove(targetId);
+                            paintableStrokes.Remove(targetId);
                             canvasImages.Remove(targetId);
                         }
 
@@ -479,16 +478,16 @@ public class CanvasStateService
 
                     break;
                 case PencilStrokeLineToEvent ev:
-                    if (drawStrokes.ContainsKey(ev.StrokeId))
+                    if (paintableStrokes.ContainsKey(ev.StrokeId))
                     {
-                        drawStrokes[ev.StrokeId].Path.LineTo(ev.Point);
+                        paintableStrokes[ev.StrokeId].Path.LineTo(ev.Point);
                     }
 
                     break;
                 case LineStrokeLineToEvent ev:
-                    if (drawStrokes.ContainsKey(ev.StrokeId))
+                    if (paintableStrokes.TryGetValue(ev.StrokeId, out var paintableStroke) && paintableStroke is DrawStroke ds)
                     {
-                        RebuildLinePath(drawStrokes[ev.StrokeId], ev.EndPoint);
+                        RebuildLinePath(ds, ev.EndPoint);
                     }
 
                     break;
@@ -498,17 +497,33 @@ public class CanvasStateService
                     textPath.AddPath(
                         new SKPaint { TextSize = ev.Paint.TextSize }.GetTextPath(ev.Text, ev.Position.X,
                             ev.Position.Y));
-                    drawStrokes[ev.StrokeId] = new DrawStroke
+                    paintableStrokes[ev.StrokeId] = new TextStroke
                     {
                         Id = ev.StrokeId,
                         Paint = ev.Paint.Clone(),
                         Path = textPath,
-                        ToolType = ToolType.Text,
                         ToolOptions = ev.ToolOptions,
+                        Text = ev.Text,
+                        Position = ev.Position,
                         CreatorConnectionId = ev.CreatorConnectionId,
                         LayerIndex = currentMaxLayerIndex
                     };
-                    strokeTexts[ev.StrokeId] = ev.Text;
+                    break;
+                case UpdateTextEvent ev:
+                    if (paintableStrokes.TryGetValue(ev.TextStrokeId, out var existingStroke) &&
+                        existingStroke is TextStroke textStroke)
+                    {
+                        textStroke.Text = ev.NewText;
+                        // Rebuild the text path preserving the original first point
+                        var startPoint = textStroke.Path[0];
+                        var newTextPath = new SKPath();
+                        newTextPath.MoveTo(startPoint);
+                        newTextPath.AddPath(
+                            new SKPaint { TextSize = textStroke.Paint.TextSize }
+                                .GetTextPath(ev.NewText, startPoint.X, startPoint.Y));
+                        textStroke.Path.Reset();
+                        textStroke.Path.AddPath(newTextPath);
+                    }
                     break;
                 case CreateSelectionBoundEvent ev:
                     var selectionPath = new SKPath();
@@ -537,7 +552,7 @@ public class CanvasStateService
                         var top = Math.Min(boundOrigin.Y, ev.Point.Y);
                         var left = Math.Min(boundOrigin.X, ev.Point.X);
                         var boundRect = SKRect.Create(new SKPoint(left, top), Utilities.GetSize(boundOrigin, ev.Point));
-                        CheckAndSelect(boundRect, bound, [..drawStrokes.Values, ..canvasImages.Values],
+                        CheckAndSelect(boundRect, bound, [..paintableStrokes.Values, ..canvasImages.Values],
                             ownerFilter: bound.CreatorConnectionId);
                     }
 
@@ -561,9 +576,9 @@ public class CanvasStateService
                         var bound = selectionBounds[ev.BoundId];
                         foreach (var boundTargetId in bound.Targets)
                         {
-                            if (drawStrokes.ContainsKey(boundTargetId))
+                            if (paintableStrokes.ContainsKey(boundTargetId))
                             {
-                                var stroke = drawStrokes[boundTargetId];
+                                var stroke = paintableStrokes[boundTargetId];
                                 stroke.Path.Transform(SKMatrix.CreateTranslation(ev.Delta.X, ev.Delta.Y));
                             }
                             else if (canvasImages.ContainsKey(boundTargetId))
@@ -584,9 +599,9 @@ public class CanvasStateService
                         var bound = selectionBounds[ev.BoundId];
                         foreach (var boundTargetId in bound.Targets)
                         {
-                            if (drawStrokes.ContainsKey(boundTargetId))
+                            if (paintableStrokes.ContainsKey(boundTargetId))
                             {
-                                var stroke = drawStrokes[boundTargetId];
+                                var stroke = paintableStrokes[boundTargetId];
                                 stroke.Path.Transform(SKMatrix.CreateRotation(ev.DegreesRad, ev.Center.X, ev.Center.Y));
                             }
                             else if (canvasImages.ContainsKey(boundTargetId))
@@ -612,9 +627,9 @@ public class CanvasStateService
                         var bound = selectionBounds[ev.BoundId];
                         foreach (var boundTargetId in bound.Targets)
                         {
-                            if (drawStrokes.ContainsKey(boundTargetId))
+                            if (paintableStrokes.ContainsKey(boundTargetId))
                             {
-                                drawStrokes[boundTargetId].Path
+                                paintableStrokes[boundTargetId].Path
                                     .Transform(SKMatrix.CreateScale(ev.Scale.X, ev.Scale.Y, ev.Center.X,
                                         ev.Center.Y));
                             }
@@ -650,18 +665,17 @@ public class CanvasStateService
 
                     break;
                 case LoadCanvasEvent ev:
-                    drawStrokes.Clear();
+                    paintableStrokes.Clear();
                     canvasImages.Clear();
                     eraserStrokes.Clear();
                     eraserHeads.Clear();
                     selectionBounds.Clear();
-                    strokeTexts.Clear();
 
                     foreach (var element in ev.CanvasElements)
                     {
                         if (element is DrawStroke drawStroke)
                         {
-                            drawStrokes[drawStroke.Id] = new DrawStroke
+                            paintableStrokes[drawStroke.Id] = new DrawStroke
                             {
                                 Id = drawStroke.Id,
                                 Paint = drawStroke.Paint.Clone(),
@@ -672,7 +686,23 @@ public class CanvasStateService
                                 CreatorConnectionId = drawStroke.CreatorConnectionId
                             };
                             currentMaxLayerIndex =
-                                Math.Max(currentMaxLayerIndex, drawStrokes[drawStroke.Id].LayerIndex);
+                                Math.Max(currentMaxLayerIndex, paintableStrokes[drawStroke.Id].LayerIndex);
+                        }
+                        else if (element is TextStroke loadedText)
+                        {
+                            paintableStrokes[loadedText.Id] = new TextStroke
+                            {
+                                Id = loadedText.Id,
+                                Text = loadedText.Text,
+                                Position = loadedText.Position,
+                                Paint = loadedText.Paint.Clone(),
+                                ToolOptions = loadedText.ToolOptions,
+                                Path = loadedText.Path.Clone(),
+                                LayerIndex = loadedText.LayerIndex,
+                                CreatorConnectionId = loadedText.CreatorConnectionId
+                            };
+                            currentMaxLayerIndex =
+                                Math.Max(currentMaxLayerIndex, paintableStrokes[loadedText.Id].LayerIndex);
                         }
                         else if (element is CanvasImage canvasImage)
                         {
@@ -696,7 +726,7 @@ public class CanvasStateService
                 case SetElementLayerEvent ev:
                     foreach (var elementId in ev.TargetElementIds)
                     {
-                        if (drawStrokes.TryGetValue(elementId, out var stroke))
+                        if (paintableStrokes.TryGetValue(elementId, out var stroke))
                         {
                             stroke.LayerIndex = ev.NewLayerIndex;
                             currentMaxLayerIndex = Math.Max(currentMaxLayerIndex, stroke.LayerIndex);
@@ -716,7 +746,7 @@ public class CanvasStateService
                     int newMaxLayerIndex = 0;
                     foreach (var elementId in ev.TargetElementIds)
                     {
-                        if (drawStrokes.TryGetValue(elementId, out var stroke))
+                        if (paintableStrokes.TryGetValue(elementId, out var stroke))
                         {
                             var newLayer = stroke.LayerIndex + ev.Offset;
 
@@ -741,35 +771,35 @@ public class CanvasStateService
                 case UpdateStrokeColorEvent ev:
                     foreach (var strokeId in ev.StrokeIds)
                     {
-                        drawStrokes[strokeId].Paint.Color = ev.NewColor;
+                        paintableStrokes[strokeId].Paint.Color = ev.NewColor;
                     }
 
                     break;
                 case UpdateStrokeThicknessEvent ev:
                     foreach (var strokeId in ev.StrokeIds)
                     {
-                        drawStrokes[strokeId].Paint.StrokeWidth = ev.NewThickness;
+                        paintableStrokes[strokeId].Paint.StrokeWidth = ev.NewThickness;
                     }
 
                     break;
                 case UpdateStrokeStyleEvent ev:
                     foreach (var strokeId in ev.StrokeIds)
                     {
-                        drawStrokes[strokeId].Paint.DashIntervals = ev.NewDashIntervals;
+                        paintableStrokes[strokeId].Paint.DashIntervals = ev.NewDashIntervals;
                     }
 
                     break;
                 case UpdateStrokeFillColorEvent ev:
                     foreach (var strokeId in ev.StrokeIds)
                     {
-                        drawStrokes[strokeId].Paint.FillColor = ev.NewFillColor;
+                        paintableStrokes[strokeId].Paint.FillColor = ev.NewFillColor;
                     }
 
                     break;
                 case UpdateStrokeEdgeTypeEvent ev:
                     foreach (var strokeId in ev.StrokeIds)
                     {
-                        var stroke = drawStrokes[strokeId];
+                        var stroke = paintableStrokes[strokeId];
                         stroke.Paint.StrokeJoin = ev.NewStrokeJoin;
                         // Recreate the stroke paths, preserving any rotation
 
@@ -826,16 +856,17 @@ public class CanvasStateService
                 case UpdateStrokeFontSizeEvent ev:
                     foreach (var strokeId in ev.StrokeIds)
                     {
-                        // Recreate the text's paths
-                        var textStroke = drawStrokes[strokeId];
-                        var noTransformTextPath = new SKPath();
-                        var startPoint = textStroke.Path[0];
-                        noTransformTextPath.MoveTo(startPoint);
-                        noTransformTextPath.AddPath(
-                            new SKPaint { TextSize = ev.FontSize }.GetTextPath(strokeTexts[strokeId], startPoint.X,
-                                startPoint.Y));
-                        drawStrokes[strokeId].Path.Reset();
-                        drawStrokes[strokeId].Path.AddPath(noTransformTextPath);
+                        if (paintableStrokes[strokeId] is TextStroke ts)
+                        {
+                            var noTransformTextPath = new SKPath();
+                            var startPoint = ts.Path[0];
+                            noTransformTextPath.MoveTo(startPoint);
+                            noTransformTextPath.AddPath(
+                                new SKPaint { TextSize = ev.FontSize }.GetTextPath(ts.Text, startPoint.X,
+                                    startPoint.Y));
+                            ts.Path.Reset();
+                            ts.Path.AddPath(noTransformTextPath);
+                        }
                     }
 
                     break;
@@ -854,7 +885,7 @@ public class CanvasStateService
         }
 
         // Normalize layer indices to be contiguous (0..N-1) while preserving relative ordering.
-        List<CanvasElement> elementsWithLayers = [..drawStrokes.Values.ToList(), ..canvasImages.Values.ToList()];
+        List<CanvasElement> elementsWithLayers = [..paintableStrokes.Values.ToList(), ..canvasImages.Values.ToList()];
 
         if (elementsWithLayers.Count > 0)
         {
@@ -877,7 +908,7 @@ public class CanvasStateService
         }
 
         CanvasElements = elementsWithLayers;
-        _strokeLookup = drawStrokes;
+        _strokeLookup = paintableStrokes;
         _eraserStrokeLookup = eraserStrokes;
         _eraserHeadLookup = eraserHeads;
         _selectionBoundLookup = selectionBounds;
@@ -964,31 +995,24 @@ public class CanvasStateService
             if (ownerFilter != null && element.CreatorConnectionId != ownerFilter)
                 continue;
 
-            if (element is DrawStroke stroke)
+            if (element is PaintableStroke stroke)
             {
                 var strokeId = stroke.Id;
-                switch (stroke.ToolType)
+                if (stroke is DrawStroke ds && (ds.ToolType == ToolType.Line || ds.ToolType == ToolType.Arrow))
                 {
-                    case ToolType.Line or ToolType.Arrow:
+                    var endPoints = new[] { stroke.Path[0], stroke.Path[1] };
+                    if (Utilities.IsPointNearLine(eraserPoint, endPoints, 10.0f))
                     {
-                        var endPoints = new[] { stroke.Path[0], stroke.Path[1] };
-                        if (Utilities.IsPointNearLine(eraserPoint, endPoints, 10.0f))
-                        {
-                            stroke.IsToBeErased = true;
-                            eraserStroke.Targets.Add(strokeId);
-                        }
-
-                        break;
+                        stroke.IsToBeErased = true;
+                        eraserStroke.Targets.Add(strokeId);
                     }
-                    default:
+                }
+                else
+                {
+                    if (stroke.Path.Contains(eraserPoint.X, eraserPoint.Y))
                     {
-                        if (stroke.Path.Contains(eraserPoint.X, eraserPoint.Y))
-                        {
-                            stroke.IsToBeErased = true;
-                            eraserStroke.Targets.Add(strokeId);
-                        }
-
-                        break;
+                        stroke.IsToBeErased = true;
+                        eraserStroke.Targets.Add(strokeId);
                     }
                 }
             }
@@ -1020,7 +1044,7 @@ public class CanvasStateService
             if (ownerFilter != null && element.CreatorConnectionId != ownerFilter)
                 continue;
 
-            if (element is DrawStroke stroke)
+            if (element is PaintableStroke stroke)
             {
                 SKRect strokeBounds = stroke.Path.TightBounds;
                 if (boundRect.Contains(strokeBounds))
