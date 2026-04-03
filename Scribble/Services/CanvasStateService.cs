@@ -248,6 +248,10 @@ public class CanvasStateService
                     if (_strokeLookup.TryGetValue(boundTargetId, out var stroke))
                     {
                         stroke.Path.Transform(SKMatrix.CreateTranslation(moveEvent.Delta.X, moveEvent.Delta.Y));
+                        if (stroke is TextStroke textStroke)
+                        {
+                            textStroke.Position = new SKPoint(textStroke.Position.X + moveEvent.Delta.X, textStroke.Position.Y + moveEvent.Delta.Y);
+                        }
                     }
                     else if (_canvasImageLookup.TryGetValue(boundTargetId, out var image))
                     {
@@ -271,8 +275,12 @@ public class CanvasStateService
                 {
                     if (_strokeLookup.TryGetValue(boundTargetId, out var stroke))
                     {
-                        stroke.Path.Transform(SKMatrix.CreateRotation(rotateEvent.DegreesRad, rotateEvent.Center.X,
-                            rotateEvent.Center.Y));
+                        var matrix = SKMatrix.CreateRotation(rotateEvent.DegreesRad, rotateEvent.Center.X, rotateEvent.Center.Y);
+                        stroke.Path.Transform(matrix);
+                        if (stroke is TextStroke textStroke)
+                        {
+                            textStroke.Position = matrix.MapPoint(textStroke.Position);
+                        }
                     }
                     else if (_canvasImageLookup.TryGetValue(boundTargetId, out var image))
                     {
@@ -301,8 +309,12 @@ public class CanvasStateService
                 {
                     if (_strokeLookup.TryGetValue(boundTargetId, out var stroke))
                     {
-                        stroke.Path.Transform(SKMatrix.CreateScale(scaleEvent.Scale.X, scaleEvent.Scale.Y,
-                            scaleEvent.Center.X, scaleEvent.Center.Y));
+                        var matrix = SKMatrix.CreateScale(scaleEvent.Scale.X, scaleEvent.Scale.Y, scaleEvent.Center.X, scaleEvent.Center.Y);
+                        stroke.Path.Transform(matrix);
+                        if (stroke is TextStroke textStroke)
+                        {
+                            textStroke.Position = matrix.MapPoint(textStroke.Position);
+                        }
                     }
                     else if (_canvasImageLookup.TryGetValue(boundTargetId, out var image))
                     {
@@ -580,6 +592,10 @@ public class CanvasStateService
                             {
                                 var stroke = paintableStrokes[boundTargetId];
                                 stroke.Path.Transform(SKMatrix.CreateTranslation(ev.Delta.X, ev.Delta.Y));
+                                if (stroke is TextStroke movedText)
+                                {
+                                    movedText.Position = new SKPoint(movedText.Position.X + ev.Delta.X, movedText.Position.Y + ev.Delta.Y);
+                                }
                             }
                             else if (canvasImages.ContainsKey(boundTargetId))
                             {
@@ -602,7 +618,12 @@ public class CanvasStateService
                             if (paintableStrokes.ContainsKey(boundTargetId))
                             {
                                 var stroke = paintableStrokes[boundTargetId];
-                                stroke.Path.Transform(SKMatrix.CreateRotation(ev.DegreesRad, ev.Center.X, ev.Center.Y));
+                                var matrix = SKMatrix.CreateRotation(ev.DegreesRad, ev.Center.X, ev.Center.Y);
+                                stroke.Path.Transform(matrix);
+                                if (stroke is TextStroke rotatedText)
+                                {
+                                    rotatedText.Position = matrix.MapPoint(rotatedText.Position);
+                                }
                             }
                             else if (canvasImages.ContainsKey(boundTargetId))
                             {
@@ -629,9 +650,13 @@ public class CanvasStateService
                         {
                             if (paintableStrokes.ContainsKey(boundTargetId))
                             {
-                                paintableStrokes[boundTargetId].Path
-                                    .Transform(SKMatrix.CreateScale(ev.Scale.X, ev.Scale.Y, ev.Center.X,
-                                        ev.Center.Y));
+                                var stroke = paintableStrokes[boundTargetId];
+                                var matrix = SKMatrix.CreateScale(ev.Scale.X, ev.Scale.Y, ev.Center.X, ev.Center.Y);
+                                stroke.Path.Transform(matrix);
+                                if (stroke is TextStroke scaledText)
+                                {
+                                    scaledText.Position = matrix.MapPoint(scaledText.Position);
+                                }
                             }
                             else if (canvasImages.ContainsKey(boundTargetId))
                             {
