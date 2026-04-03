@@ -5,6 +5,7 @@ using SkiaSharp;
 namespace Scribble.Shared.Lib.CanvasElements.Strokes;
 
 [JsonDerivedType(typeof(DrawStroke), typeDiscriminator: "DrawStroke")]
+[JsonDerivedType(typeof(TextStroke), typeDiscriminator: "TextStroke")]
 [JsonDerivedType(typeof(EraserStroke), typeDiscriminator: "EraserStroke")]
 [JsonDerivedType(typeof(SelectionBound), typeDiscriminator: "SelectionBound")]
 public abstract class Stroke : CanvasElement

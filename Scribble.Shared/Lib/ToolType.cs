@@ -7,5 +7,6 @@ public enum ToolType
     Arrow,
     Ellipse,
     Rectangle,
+    [Obsolete("Use TextStroke instead of DrawStroke with ToolType.Text")]
     Text
 }

@@ -1,9 +1,12 @@
 namespace Scribble.Shared.Lib.CanvasElements.Strokes;
 
-public class DrawStroke : Stroke
+/// <summary>
+/// Represents a non-text stroke on the canvas (lines, arrows, rectangles, ellipses)
+/// </summary>
+public class DrawStroke : PaintableStroke
 {
-    public bool IsToBeErased = false;
+    /// <summary>
+    /// The Tool that produced the stroke
+    /// </summary>
     public required ToolType ToolType;
-    public required HashSet<ToolOption> ToolOptions { get; init; } = [];
-    public required StrokePaint Paint { get; init; } = new();
 }
