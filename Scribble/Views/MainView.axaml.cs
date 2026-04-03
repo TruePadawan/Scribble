@@ -135,8 +135,8 @@ public partial class MainView : UserControl
         if (SelectionOverlay.IsVisible) return;
 
         var textStrokes = _canvasStateService.CanvasElements
-            .Where(canvasEl => canvasEl is DrawStroke { ToolType: ToolType.Text })
-            .Cast<DrawStroke>()
+            .Where(canvasEl => canvasEl is TextStroke)
+            .Cast<TextStroke>()
             .ToList();
         var borders = new List<Border>();
         foreach (var textStroke in textStrokes)
@@ -148,13 +148,26 @@ public partial class MainView : UserControl
                 Width = strokeBounds.Width,
                 Height = strokeBounds.Height,
                 Cursor = new Cursor(StandardCursorType.Ibeam),
+                Tag = textStroke
             };
+            
+            border.PointerPressed += TextStrokeBorder_OnPointerPressed;
+
             Canvas.SetLeft(border, strokeBounds.Left);
             Canvas.SetTop(border, strokeBounds.Top);
             borders.Add(border);
         }
 
         TextStrokeEditBorders.Children.AddRange(borders);
+    }
+
+    private void TextStrokeBorder_OnPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (e.Properties.IsLeftButtonPressed && sender is Border { Tag: TextStroke textStroke })
+        {
+            var textTool = _viewModel?.UiStateViewModel.AvailableTools.OfType<TextTool>().FirstOrDefault();
+            textTool?.StartEditing(textStroke);
+        }
     }
 
     // If the active tool is a stroke tool, show its options else clear and hide the tool options UI

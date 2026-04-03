@@ -8,6 +8,7 @@ using Avalonia.Media.Imaging;
 using Avalonia.Platform;
 using Scribble.Services;
 using Scribble.Shared.Lib;
+using Scribble.Shared.Lib.CanvasElements.Strokes;
 using Scribble.Utils;
 using SkiaSharp;
 
@@ -17,6 +18,7 @@ public class TextTool : StrokeTool
 {
     private readonly Canvas _canvasContainer;
     private TextBox? _currentTextBox;
+    private TextStroke? _editingStroke;
     private Guid _actionId = Guid.NewGuid();
 
     public TextTool(string name, CanvasStateService canvasState, Canvas canvasContainer) : base(name, canvasState,
@@ -79,6 +81,51 @@ public class TextTool : StrokeTool
         _currentTextBox.Focus();
     }
 
+    public void StartEditing(TextStroke textStroke)
+    {
+        if (_currentTextBox != null)
+        {
+            FinalizeText(true);
+        }
+
+        _editingStroke = textStroke;
+        _actionId = Guid.NewGuid();
+        _currentTextBox = new TextBox
+        {
+            Text = textStroke.Text,
+            MinWidth = 100,
+            Background = Brushes.Transparent,
+            Foreground = new SolidColorBrush(Utilities.FromSkColor(StrokePaint.Color)),
+            FontSize = textStroke.Paint.TextSize,
+            BorderThickness = new Thickness(1),
+            AcceptsReturn = true
+        };
+
+        // Prevent the Scroll Viewer from jumping when the textbox gets focus
+        _currentTextBox.AddHandler(Control.RequestBringIntoViewEvent, (sender, args) => { args.Handled = true; });
+
+        Canvas.SetLeft(_currentTextBox, textStroke.Position.X);
+        Canvas.SetTop(_currentTextBox, textStroke.Position.Y - textStroke.Paint.TextSize);
+
+        // Intercept the key before the TextBox consumes it and adds a newline
+        _currentTextBox.AddHandler(InputElement.KeyDownEvent, (sender, args) =>
+        {
+            // Commit when the only Enter key is pressed, don't accept Shift + Enter (used for new line)
+            if (args.Key == Key.Enter && (args.KeyModifiers & KeyModifiers.Shift) == 0)
+            {
+                _currentTextBox.LostFocus -= TextboxLostFocusHandler;
+                FinalizeText(true);
+                // Mark as handled to prevent the newline character
+                args.Handled = true;
+            }
+        }, RoutingStrategies.Tunnel);
+
+        _currentTextBox.LostFocus += TextboxLostFocusHandler;
+        _canvasContainer.Children.Add(_currentTextBox);
+        _currentTextBox.Focus();
+        _currentTextBox.CaretIndex = _currentTextBox.Text?.Length ?? 0;
+    }
+
     private void TextboxLostFocusHandler(object? sender, RoutedEventArgs args)
     {
         FinalizeText(false);
@@ -91,15 +138,23 @@ public class TextTool : StrokeTool
         var text = _currentTextBox.Text;
         if (!string.IsNullOrWhiteSpace(text))
         {
-            var textboxPos = new SKPoint((float)Canvas.GetLeft(_currentTextBox), (float)Canvas.GetTop(_currentTextBox));
-            textboxPos.Y += StrokePaint.TextSize;
-            var strokeId = Guid.NewGuid();
-            CanvasState.ApplyEvent(new AddTextEvent(_actionId, strokeId, textboxPos, text, StrokePaint.Clone(),
-                ToolOptions));
+            if (_editingStroke != null && _editingStroke.Text != text)
+            {
+                CanvasState.ApplyEvent(new UpdateTextEvent(_actionId, _editingStroke.Id, text));
+            }
+            else if (_editingStroke == null)
+            {
+                var textboxPos = new SKPoint((float)Canvas.GetLeft(_currentTextBox), (float)Canvas.GetTop(_currentTextBox));
+                textboxPos.Y += StrokePaint.TextSize;
+                var strokeId = Guid.NewGuid();
+                CanvasState.ApplyEvent(new AddTextEvent(_actionId, strokeId, textboxPos, text, StrokePaint.Clone(),
+                    ToolOptions));
+            }
         }
 
         _canvasContainer.Children.Remove(_currentTextBox);
         _currentTextBox = null;
+        _editingStroke = null;
         if (restoreFocus)
         {
             _canvasContainer.Focus();
