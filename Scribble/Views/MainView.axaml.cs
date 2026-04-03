@@ -131,8 +131,8 @@ public partial class MainView : UserControl
     {
         TextStrokeEditBorders.Children.Clear();
 
-        // Don't show edit border when the selection is visible so they don't conflict
-        if (SelectionOverlay.IsVisible) return;
+        // Don't show edit border when there is an active selection so they don't conflict
+        if (_canvasStateService.SelectedElementIds.Count > 0) return;
 
         var textStrokes = _canvasStateService.CanvasElements
             .Where(canvasEl => canvasEl is TextStroke)
@@ -150,7 +150,7 @@ public partial class MainView : UserControl
                 Cursor = new Cursor(StandardCursorType.Ibeam),
                 Tag = textStroke
             };
-            
+
             border.PointerPressed += TextStrokeBorder_OnPointerPressed;
 
             Canvas.SetLeft(border, strokeBounds.Left);
