@@ -508,8 +508,7 @@ public class CanvasStateService
                     var textPath = new SKPath();
                     textPath.MoveTo(ev.Position);
                     textPath.AddPath(
-                        new SKPaint { TextSize = ev.Paint.TextSize }.GetTextPath(ev.Text, ev.Position.X,
-                            ev.Position.Y));
+                        TextPathBuilder.Build(ev.Text, ev.Position.X, ev.Position.Y, ev.Paint.TextSize));
                     paintableStrokes[ev.StrokeId] = new TextStroke
                     {
                         Id = ev.StrokeId,
@@ -530,8 +529,7 @@ public class CanvasStateService
                         var newTextPath = new SKPath();
                         newTextPath.MoveTo(textStroke.Position);
                         newTextPath.AddPath(
-                            new SKPaint { TextSize = textStroke.Paint.TextSize }
-                                .GetTextPath(ev.NewText, textStroke.Position.X, textStroke.Position.Y));
+                            TextPathBuilder.Build(ev.NewText, textStroke.Position.X, textStroke.Position.Y, textStroke.Paint.TextSize));
                         
                         newTextPath.Transform(textStroke.TransformMatrix);
                         
@@ -890,8 +888,7 @@ public class CanvasStateService
                             var noTransformTextPath = new SKPath();
                             noTransformTextPath.MoveTo(ts.Position);
                             noTransformTextPath.AddPath(
-                                new SKPaint { TextSize = ev.FontSize }.GetTextPath(ts.Text, ts.Position.X,
-                                    ts.Position.Y));
+                                TextPathBuilder.Build(ts.Text, ts.Position.X, ts.Position.Y, ev.FontSize));
                             noTransformTextPath.Transform(ts.TransformMatrix);
                             ts.Path.Reset();
                             ts.Path.AddPath(noTransformTextPath);

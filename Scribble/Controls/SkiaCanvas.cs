@@ -70,7 +70,9 @@ public class SkiaCanvas : Control
         if (canvasElement is PaintableStroke paintableStroke)
         {
             var needsMutablePaint = paintableStroke.IsToBeErased || paintableStroke.Paint.FillColor.Alpha != 0;
-            var paintToUse = needsMutablePaint ? paintableStroke.Paint.ToSkPaint() : paintableStroke.Paint.GetCachedSkPaint();
+            var paintToUse = needsMutablePaint
+                ? paintableStroke.Paint.ToSkPaint()
+                : paintableStroke.Paint.GetCachedSkPaint();
             try
             {
                 if (paintableStroke.IsToBeErased)
