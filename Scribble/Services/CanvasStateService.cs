@@ -530,11 +530,13 @@ public class CanvasStateService
                         existingStroke is TextStroke textStroke)
                     {
                         textStroke.Text = ev.NewText;
+                        var updateTextTypeface = SKTypeface.FromFamilyName(
+                            StrokePaint.DefaultTypeFace.FamilyName, textStroke.SkFontStyle);
                         var newTextPath = new SKPath();
                         newTextPath.MoveTo(textStroke.Position);
                         newTextPath.AddPath(
                             TextPathBuilder.Build(ev.NewText, textStroke.Position.X, textStroke.Position.Y,
-                                textStroke.Paint.TextSize, textStroke.Paint.GetCachedSkPaint().Typeface));
+                                textStroke.Paint.TextSize, updateTextTypeface));
 
                         newTextPath.Transform(textStroke.TransformMatrix);
 
@@ -732,6 +734,8 @@ public class CanvasStateService
                                 Path = loadedText.Path.Clone(),
                                 LayerIndex = loadedText.LayerIndex,
                                 TransformMatrix = loadedText.TransformMatrix,
+                                IsBold = loadedText.IsBold,
+                                IsItalic = loadedText.IsItalic,
                                 CreatorConnectionId = loadedText.CreatorConnectionId
                             };
                             currentMaxLayerIndex =
@@ -891,11 +895,13 @@ public class CanvasStateService
                     {
                         if (paintableStrokes.TryGetValue(strokeId, out var stroke) && stroke is TextStroke ts)
                         {
+                            var fontSizeTypeface = SKTypeface.FromFamilyName(
+                                StrokePaint.DefaultTypeFace.FamilyName, ts.SkFontStyle);
                             var noTransformTextPath = new SKPath();
                             noTransformTextPath.MoveTo(ts.Position);
                             noTransformTextPath.AddPath(
                                 TextPathBuilder.Build(ts.Text, ts.Position.X, ts.Position.Y, ev.FontSize,
-                                    ts.Paint.GetCachedSkPaint().Typeface));
+                                    fontSizeTypeface));
                             noTransformTextPath.Transform(ts.TransformMatrix);
                             ts.Path.Reset();
                             ts.Path.AddPath(noTransformTextPath);
@@ -922,11 +928,54 @@ public class CanvasStateService
                             ts.Text = ev.NewCasing == FontCasing.UpperCase ? ts.Text.ToUpper() : ts.Text.ToLower();
 
                             // Recreate stroke paths
+                            var casingTypeface = SKTypeface.FromFamilyName(
+                                StrokePaint.DefaultTypeFace.FamilyName, ts.SkFontStyle);
                             var newTextPath = new SKPath();
                             newTextPath.MoveTo(ts.Position);
                             newTextPath.AddPath(
                                 TextPathBuilder.Build(ts.Text, ts.Position.X, ts.Position.Y,
-                                    ts.Paint.TextSize, ts.Paint.GetCachedSkPaint().Typeface));
+                                    ts.Paint.TextSize, casingTypeface));
+
+                            newTextPath.Transform(ts.TransformMatrix);
+
+                            ts.Path.Reset();
+                            ts.Path.AddPath(newTextPath);
+                        }
+                    }
+
+                    break;
+                case UpdateFontStyleEvent ev:
+                    foreach (var strokeId in ev.TextStrokeIds)
+                    {
+                        if (paintableStrokes.TryGetValue(strokeId, out var stroke) && stroke is TextStroke ts)
+                        {
+                            if (ev.NewStyle == FontStyle.Normal)
+                            {
+                                // resets both bold and italic
+                                ts.IsBold = false;
+                                ts.IsItalic = false;
+                            }
+                            else if (ev.NewStyle == FontStyle.Bold)
+                            {
+                                // Toggle bold
+                                ts.IsBold = !ts.IsBold;
+                            }
+                            else if (ev.NewStyle == FontStyle.Italic)
+                            {
+                                // Toggle italic
+                                ts.IsItalic = !ts.IsItalic;
+                            }
+
+                            // Derive typeface from the updated bold/italic state
+                            var newTypeFace = SKTypeface.FromFamilyName(
+                                StrokePaint.DefaultTypeFace.FamilyName, ts.SkFontStyle);
+
+                            // Recreate stroke paths
+                            var newTextPath = new SKPath();
+                            newTextPath.MoveTo(ts.Position);
+                            newTextPath.AddPath(
+                                TextPathBuilder.Build(ts.Text, ts.Position.X, ts.Position.Y,
+                                    ts.Paint.TextSize, newTypeFace));
 
                             newTextPath.Transform(ts.TransformMatrix);
 

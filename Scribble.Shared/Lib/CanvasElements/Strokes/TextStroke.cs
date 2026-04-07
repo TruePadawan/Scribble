@@ -26,10 +26,42 @@ public class TextStroke : PaintableStroke
     /// </summary>
     [JsonConverter(typeof(SKMatrixJsonConverter))]
     public SKMatrix TransformMatrix { get; set; } = SKMatrix.Identity;
+
+    /// <summary>
+    /// Whether this text stroke is rendered in bold.
+    /// </summary>
+    public bool IsBold { get; set; }
+
+    /// <summary>
+    /// Whether this text stroke is rendered in italic.
+    /// </summary>
+    public bool IsItalic { get; set; }
+
+    /// <summary>
+    /// Returns the SkiaSharp font style derived from the current IsBold/IsItalic state.
+    /// </summary>
+    [JsonIgnore]
+    public SKFontStyle SkFontStyle
+    {
+        get
+        {
+            if (IsBold && IsItalic) return SKFontStyle.BoldItalic;
+            if (IsBold) return SKFontStyle.Bold;
+            if (IsItalic) return SKFontStyle.Italic;
+            return SKFontStyle.Normal;
+        }
+    }
 }
 
 public enum FontCasing
 {
     UpperCase,
     LowerCase
+}
+
+public enum FontStyle
+{
+    Normal,
+    Bold,
+    Italic
 }

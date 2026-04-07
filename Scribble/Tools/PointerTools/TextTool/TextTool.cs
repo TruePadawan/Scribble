@@ -24,7 +24,7 @@ public class TextTool : StrokeTool
     public TextTool(string name, CanvasStateService canvasState, Canvas canvasContainer) : base(name, canvasState,
         LoadToolBitmap(typeof(TextTool), "text.png"))
     {
-        ToolOptions = [ToolOption.StrokeColor, ToolOption.FontSize, ToolOption.FontCasing];
+        ToolOptions = [ToolOption.StrokeColor, ToolOption.FontSize, ToolOption.FontCasing, ToolOption.FontStyle];
         _canvasContainer = canvasContainer;
         _canvasContainer.Focusable = true;
         var plusBitmap = new Bitmap(AssetLoader.Open(new Uri("avares://Scribble/Assets/plus.png")));
