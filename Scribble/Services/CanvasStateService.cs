@@ -886,7 +886,7 @@ public class CanvasStateService
                     }
 
                     break;
-                case UpdateStrokeFontSizeEvent ev:
+                case UpdateFontSizeEvent ev:
                     foreach (var strokeId in ev.StrokeIds)
                     {
                         if (paintableStrokes.TryGetValue(strokeId, out var stroke) && stroke is TextStroke ts)

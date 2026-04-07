@@ -30,7 +30,7 @@ namespace Scribble.Shared.Lib;
 [JsonDerivedType(typeof(NudgeElementLayerEvent), typeDiscriminator: "NudgeElementLayerEvent")]
 [JsonDerivedType(typeof(UpdateStrokeEdgeTypeEvent), typeDiscriminator: "UpdateStrokeEdgeTypeEvent")]
 [JsonDerivedType(typeof(UpdateStrokeFillColorEvent), typeDiscriminator: "UpdateStrokeFillColorEvent")]
-[JsonDerivedType(typeof(UpdateStrokeFontSizeEvent), typeDiscriminator: "UpdateStrokeFontSizeEvent")]
+[JsonDerivedType(typeof(UpdateFontSizeEvent), typeDiscriminator: "UpdateFontSizeEvent")]
 [JsonDerivedType(typeof(UpdateStrokeStyleEvent), typeDiscriminator: "UpdateStrokeStyleEvent")]
 [JsonDerivedType(typeof(UpdateStrokeThicknessEvent), typeDiscriminator: "UpdateStrokeThicknessEvent")]
 [JsonDerivedType(typeof(ClearSelectionEvent), typeDiscriminator: "ClearSelectionEvent")]
@@ -138,7 +138,7 @@ public record UpdateStrokeFillColorEvent(Guid ActionId, List<Guid> StrokeIds, SK
 public record UpdateStrokeEdgeTypeEvent(Guid ActionId, List<Guid> StrokeIds, SKStrokeJoin NewStrokeJoin)
     : Event(ActionId), ITerminalEvent;
 
-public record UpdateStrokeFontSizeEvent(Guid ActionId, List<Guid> StrokeIds, float FontSize)
+public record UpdateFontSizeEvent(Guid ActionId, List<Guid> StrokeIds, float FontSize)
     : Event(ActionId), ITerminalEvent;
 
 public record SetElementLayerEvent(Guid ActionId, Guid[] TargetElementIds, int NewLayerIndex)

@@ -341,7 +341,7 @@ public partial class UiStateViewModel : ViewModelBase
                         {
                             _toolOptionsValues.FontSize = fs;
                             _canvasStateService.ApplyEvent(
-                                new UpdateStrokeFontSizeEvent(Guid.NewGuid(), strokeIds, fs));
+                                new UpdateFontSizeEvent(Guid.NewGuid(), strokeIds, fs));
                         }
                     };
                     ActiveToolOptions.Add(fontVm);
