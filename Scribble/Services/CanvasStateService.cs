@@ -914,6 +914,28 @@ public class CanvasStateService
                         LayerIndex = currentMaxLayerIndex
                     };
                     break;
+                case UpdateFontCasingEvent ev:
+                    foreach (var strokeId in ev.TextStrokeIds)
+                    {
+                        if (paintableStrokes.TryGetValue(strokeId, out var stroke) && stroke is TextStroke ts)
+                        {
+                            ts.Text = ev.NewCasing == FontCasing.UpperCase ? ts.Text.ToUpper() : ts.Text.ToLower();
+
+                            // Recreate stroke paths
+                            var newTextPath = new SKPath();
+                            newTextPath.MoveTo(ts.Position);
+                            newTextPath.AddPath(
+                                TextPathBuilder.Build(ts.Text, ts.Position.X, ts.Position.Y,
+                                    ts.Paint.TextSize, ts.Paint.GetCachedSkPaint().Typeface));
+
+                            newTextPath.Transform(ts.TransformMatrix);
+
+                            ts.Path.Reset();
+                            ts.Path.AddPath(newTextPath);
+                        }
+                    }
+
+                    break;
             }
         }
 

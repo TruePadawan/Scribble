@@ -27,3 +27,9 @@ public class TextStroke : PaintableStroke
     [JsonConverter(typeof(SKMatrixJsonConverter))]
     public SKMatrix TransformMatrix { get; set; } = SKMatrix.Identity;
 }
+
+public enum FontCasing
+{
+    UpperCase,
+    LowerCase
+}

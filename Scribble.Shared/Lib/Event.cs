@@ -1,6 +1,7 @@
 using System.Text.Json.Serialization;
 using Scribble.Shared.Converters;
 using Scribble.Shared.Lib.CanvasElements;
+using Scribble.Shared.Lib.CanvasElements.Strokes;
 using SkiaSharp;
 
 namespace Scribble.Shared.Lib;
@@ -35,6 +36,8 @@ namespace Scribble.Shared.Lib;
 [JsonDerivedType(typeof(UpdateStrokeThicknessEvent), typeDiscriminator: "UpdateStrokeThicknessEvent")]
 [JsonDerivedType(typeof(ClearSelectionEvent), typeDiscriminator: "ClearSelectionEvent")]
 [JsonDerivedType(typeof(AddImageEvent), typeDiscriminator: "AddImageEvent")]
+[JsonDerivedType(typeof(UpdateTextEvent), typeDiscriminator: "UpdateTextEvent")]
+[JsonDerivedType(typeof(UpdateFontCasingEvent), typeDiscriminator: "UpdateFontCasingEvent")]
 public abstract record Event(Guid ActionId)
 {
     public DateTime TimeStamp { get; init; } = DateTime.UtcNow;
@@ -148,3 +151,6 @@ public record NudgeElementLayerEvent(Guid ActionId, Guid[] TargetElementIds, int
     : Event(ActionId), ITerminalEvent;
 
 public record UpdateTextEvent(Guid ActionId, Guid TextStrokeId, string NewText) : Event(ActionId), ITerminalEvent;
+
+public record UpdateFontCasingEvent(Guid ActionId, List<Guid> TextStrokeIds, FontCasing NewCasing)
+    : Event(ActionId), ITerminalEvent;
