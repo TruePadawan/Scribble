@@ -279,6 +279,18 @@ public partial class UiStateViewModel : ViewModelBase
                     };
                     ActiveToolOptions.Add(fontCasingVm);
                     break;
+                case ToolOption.FontStyle:
+                    var fontStyleVm = new FontStyleOptionViewModel()
+                    {
+                        FontStyleChanged = newStyle =>
+                        {
+                            _canvasStateService.ApplyEvent(
+                                new UpdateFontStyleEvent(Guid.NewGuid(), strokeIds, newStyle)
+                            );
+                        }
+                    };
+                    ActiveToolOptions.Add(fontStyleVm);
+                    break;
                 case ToolOption.StrokeThickness:
                     var thicknessVm = new StrokeThicknessOptionViewModel(_toolOptionsValues.StrokeThickness)
                     {

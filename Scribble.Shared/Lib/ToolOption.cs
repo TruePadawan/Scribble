@@ -8,5 +8,6 @@ public enum ToolOption
     FillColor,
     EdgeType,
     FontSize,
-    FontCasing
+    FontCasing,
+    FontStyle
 }

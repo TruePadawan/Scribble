@@ -154,3 +154,6 @@ public record UpdateTextEvent(Guid ActionId, Guid TextStrokeId, string NewText) 
 
 public record UpdateFontCasingEvent(Guid ActionId, List<Guid> TextStrokeIds, FontCasing NewCasing)
     : Event(ActionId), ITerminalEvent;
+
+public record UpdateFontStyleEvent(Guid ActionId, List<Guid> TextStrokeIds, FontStyle NewStyle)
+    : Event(ActionId), ITerminalEvent;
