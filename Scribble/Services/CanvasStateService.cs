@@ -276,7 +276,8 @@ public class CanvasStateService
                 {
                     if (_strokeLookup.TryGetValue(boundTargetId, out var stroke))
                     {
-                        var matrix = SKMatrix.CreateRotation(rotateEvent.DegreesRad, rotateEvent.Center.X, rotateEvent.Center.Y);
+                        var matrix = SKMatrix.CreateRotation(rotateEvent.DegreesRad, rotateEvent.Center.X,
+                            rotateEvent.Center.Y);
                         stroke.Path.Transform(matrix);
                         if (stroke is TextStroke textStroke)
                         {
@@ -310,7 +311,8 @@ public class CanvasStateService
                 {
                     if (_strokeLookup.TryGetValue(boundTargetId, out var stroke))
                     {
-                        var matrix = SKMatrix.CreateScale(scaleEvent.Scale.X, scaleEvent.Scale.Y, scaleEvent.Center.X, scaleEvent.Center.Y);
+                        var matrix = SKMatrix.CreateScale(scaleEvent.Scale.X, scaleEvent.Scale.Y, scaleEvent.Center.X,
+                            scaleEvent.Center.Y);
                         stroke.Path.Transform(matrix);
                         if (stroke is TextStroke textStroke)
                         {
@@ -498,7 +500,8 @@ public class CanvasStateService
 
                     break;
                 case LineStrokeLineToEvent ev:
-                    if (paintableStrokes.TryGetValue(ev.StrokeId, out var paintableStroke) && paintableStroke is DrawStroke ds)
+                    if (paintableStrokes.TryGetValue(ev.StrokeId, out var paintableStroke) &&
+                        paintableStroke is DrawStroke ds)
                     {
                         RebuildLinePath(ds, ev.EndPoint);
                     }
@@ -508,7 +511,8 @@ public class CanvasStateService
                     var textPath = new SKPath();
                     textPath.MoveTo(ev.Position);
                     textPath.AddPath(
-                        TextPathBuilder.Build(ev.Text, ev.Position.X, ev.Position.Y, ev.Paint.TextSize));
+                        TextPathBuilder.Build(ev.Text, ev.Position.X, ev.Position.Y, ev.Paint.TextSize,
+                            ev.Paint.GetCachedSkPaint().Typeface));
                     paintableStrokes[ev.StrokeId] = new TextStroke
                     {
                         Id = ev.StrokeId,
@@ -529,13 +533,15 @@ public class CanvasStateService
                         var newTextPath = new SKPath();
                         newTextPath.MoveTo(textStroke.Position);
                         newTextPath.AddPath(
-                            TextPathBuilder.Build(ev.NewText, textStroke.Position.X, textStroke.Position.Y, textStroke.Paint.TextSize));
-                        
+                            TextPathBuilder.Build(ev.NewText, textStroke.Position.X, textStroke.Position.Y,
+                                textStroke.Paint.TextSize, textStroke.Paint.GetCachedSkPaint().Typeface));
+
                         newTextPath.Transform(textStroke.TransformMatrix);
-                        
+
                         textStroke.Path.Reset();
                         textStroke.Path.AddPath(newTextPath);
                     }
+
                     break;
                 case CreateSelectionBoundEvent ev:
                     var selectionPath = new SKPath();
@@ -888,7 +894,8 @@ public class CanvasStateService
                             var noTransformTextPath = new SKPath();
                             noTransformTextPath.MoveTo(ts.Position);
                             noTransformTextPath.AddPath(
-                                TextPathBuilder.Build(ts.Text, ts.Position.X, ts.Position.Y, ev.FontSize));
+                                TextPathBuilder.Build(ts.Text, ts.Position.X, ts.Position.Y, ev.FontSize,
+                                    ts.Paint.GetCachedSkPaint().Typeface));
                             noTransformTextPath.Transform(ts.TransformMatrix);
                             ts.Path.Reset();
                             ts.Path.AddPath(noTransformTextPath);

@@ -63,7 +63,8 @@ public class StrokePaint
             StrokeWidth = this.StrokeWidth,
             Color = this.Color,
             TextSize = this.TextSize,
-            PathEffect = this.PathEffect
+            PathEffect = this.PathEffect,
+            Typeface = SKTypeface.FromFamilyName("JetBrains Mono")
         };
         return paint;
     }
