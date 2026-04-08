@@ -24,7 +24,7 @@ public class TextTool : StrokeTool
     public TextTool(string name, CanvasStateService canvasState, Canvas canvasContainer) : base(name, canvasState,
         LoadToolBitmap(typeof(TextTool), "text.png"))
     {
-        ToolOptions = [ToolOption.StrokeColor, ToolOption.FontSize];
+        ToolOptions = [ToolOption.StrokeColor, ToolOption.FontSize, ToolOption.FontCasing, ToolOption.FontStyle];
         _canvasContainer = canvasContainer;
         _canvasContainer.Focusable = true;
         var plusBitmap = new Bitmap(AssetLoader.Open(new Uri("avares://Scribble/Assets/plus.png")));
@@ -145,7 +145,8 @@ public class TextTool : StrokeTool
             }
             else if (_editingStroke == null)
             {
-                var textboxPos = new SKPoint((float)Canvas.GetLeft(_currentTextBox), (float)Canvas.GetTop(_currentTextBox));
+                var textboxPos = new SKPoint((float)Canvas.GetLeft(_currentTextBox),
+                    (float)Canvas.GetTop(_currentTextBox));
                 textboxPos.Y += StrokePaint.TextSize;
                 var strokeId = Guid.NewGuid();
                 CanvasState.ApplyEvent(new AddTextEvent(_actionId, strokeId, textboxPos, text, StrokePaint.Clone(),

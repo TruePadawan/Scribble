@@ -276,7 +276,8 @@ public class CanvasStateService
                 {
                     if (_strokeLookup.TryGetValue(boundTargetId, out var stroke))
                     {
-                        var matrix = SKMatrix.CreateRotation(rotateEvent.DegreesRad, rotateEvent.Center.X, rotateEvent.Center.Y);
+                        var matrix = SKMatrix.CreateRotation(rotateEvent.DegreesRad, rotateEvent.Center.X,
+                            rotateEvent.Center.Y);
                         stroke.Path.Transform(matrix);
                         if (stroke is TextStroke textStroke)
                         {
@@ -310,7 +311,8 @@ public class CanvasStateService
                 {
                     if (_strokeLookup.TryGetValue(boundTargetId, out var stroke))
                     {
-                        var matrix = SKMatrix.CreateScale(scaleEvent.Scale.X, scaleEvent.Scale.Y, scaleEvent.Center.X, scaleEvent.Center.Y);
+                        var matrix = SKMatrix.CreateScale(scaleEvent.Scale.X, scaleEvent.Scale.Y, scaleEvent.Center.X,
+                            scaleEvent.Center.Y);
                         stroke.Path.Transform(matrix);
                         if (stroke is TextStroke textStroke)
                         {
@@ -498,7 +500,8 @@ public class CanvasStateService
 
                     break;
                 case LineStrokeLineToEvent ev:
-                    if (paintableStrokes.TryGetValue(ev.StrokeId, out var paintableStroke) && paintableStroke is DrawStroke ds)
+                    if (paintableStrokes.TryGetValue(ev.StrokeId, out var paintableStroke) &&
+                        paintableStroke is DrawStroke ds)
                     {
                         RebuildLinePath(ds, ev.EndPoint);
                     }
@@ -508,7 +511,8 @@ public class CanvasStateService
                     var textPath = new SKPath();
                     textPath.MoveTo(ev.Position);
                     textPath.AddPath(
-                        TextPathBuilder.Build(ev.Text, ev.Position.X, ev.Position.Y, ev.Paint.TextSize));
+                        TextPathBuilder.Build(ev.Text, ev.Position.X, ev.Position.Y, ev.Paint.TextSize,
+                            StrokePaint.DefaultTypeFace));
                     paintableStrokes[ev.StrokeId] = new TextStroke
                     {
                         Id = ev.StrokeId,
@@ -526,16 +530,20 @@ public class CanvasStateService
                         existingStroke is TextStroke textStroke)
                     {
                         textStroke.Text = ev.NewText;
+                        var updateTextTypeface = SKTypeface.FromFamilyName(
+                            StrokePaint.DefaultTypeFace.FamilyName, textStroke.SkFontStyle);
                         var newTextPath = new SKPath();
                         newTextPath.MoveTo(textStroke.Position);
                         newTextPath.AddPath(
-                            TextPathBuilder.Build(ev.NewText, textStroke.Position.X, textStroke.Position.Y, textStroke.Paint.TextSize));
-                        
+                            TextPathBuilder.Build(ev.NewText, textStroke.Position.X, textStroke.Position.Y,
+                                textStroke.Paint.TextSize, updateTextTypeface));
+
                         newTextPath.Transform(textStroke.TransformMatrix);
-                        
+
                         textStroke.Path.Reset();
                         textStroke.Path.AddPath(newTextPath);
                     }
+
                     break;
                 case CreateSelectionBoundEvent ev:
                     var selectionPath = new SKPath();
@@ -726,6 +734,8 @@ public class CanvasStateService
                                 Path = loadedText.Path.Clone(),
                                 LayerIndex = loadedText.LayerIndex,
                                 TransformMatrix = loadedText.TransformMatrix,
+                                IsBold = loadedText.IsBold,
+                                IsItalic = loadedText.IsItalic,
                                 CreatorConnectionId = loadedText.CreatorConnectionId
                             };
                             currentMaxLayerIndex =
@@ -880,15 +890,18 @@ public class CanvasStateService
                     }
 
                     break;
-                case UpdateStrokeFontSizeEvent ev:
+                case UpdateFontSizeEvent ev:
                     foreach (var strokeId in ev.StrokeIds)
                     {
                         if (paintableStrokes.TryGetValue(strokeId, out var stroke) && stroke is TextStroke ts)
                         {
+                            var fontSizeTypeface = SKTypeface.FromFamilyName(
+                                StrokePaint.DefaultTypeFace.FamilyName, ts.SkFontStyle);
                             var noTransformTextPath = new SKPath();
                             noTransformTextPath.MoveTo(ts.Position);
                             noTransformTextPath.AddPath(
-                                TextPathBuilder.Build(ts.Text, ts.Position.X, ts.Position.Y, ev.FontSize));
+                                TextPathBuilder.Build(ts.Text, ts.Position.X, ts.Position.Y, ev.FontSize,
+                                    fontSizeTypeface));
                             noTransformTextPath.Transform(ts.TransformMatrix);
                             ts.Path.Reset();
                             ts.Path.AddPath(noTransformTextPath);
@@ -906,6 +919,71 @@ public class CanvasStateService
                         CreatorConnectionId = ev.CreatorConnectionId,
                         LayerIndex = currentMaxLayerIndex
                     };
+                    break;
+                case UpdateFontCasingEvent ev:
+                    foreach (var strokeId in ev.TextStrokeIds)
+                    {
+                        if (paintableStrokes.TryGetValue(strokeId, out var stroke) && stroke is TextStroke ts)
+                        {
+                            ts.Text = ev.NewCasing == FontCasing.UpperCase ? ts.Text.ToUpper() : ts.Text.ToLower();
+
+                            // Recreate stroke paths
+                            var casingTypeface = SKTypeface.FromFamilyName(
+                                StrokePaint.DefaultTypeFace.FamilyName, ts.SkFontStyle);
+                            var newTextPath = new SKPath();
+                            newTextPath.MoveTo(ts.Position);
+                            newTextPath.AddPath(
+                                TextPathBuilder.Build(ts.Text, ts.Position.X, ts.Position.Y,
+                                    ts.Paint.TextSize, casingTypeface));
+
+                            newTextPath.Transform(ts.TransformMatrix);
+
+                            ts.Path.Reset();
+                            ts.Path.AddPath(newTextPath);
+                        }
+                    }
+
+                    break;
+                case UpdateFontStyleEvent ev:
+                    foreach (var strokeId in ev.TextStrokeIds)
+                    {
+                        if (paintableStrokes.TryGetValue(strokeId, out var stroke) && stroke is TextStroke ts)
+                        {
+                            if (ev.NewStyle == FontStyle.Normal)
+                            {
+                                // resets both bold and italic
+                                ts.IsBold = false;
+                                ts.IsItalic = false;
+                            }
+                            else if (ev.NewStyle == FontStyle.Bold)
+                            {
+                                // Toggle bold
+                                ts.IsBold = !ts.IsBold;
+                            }
+                            else if (ev.NewStyle == FontStyle.Italic)
+                            {
+                                // Toggle italic
+                                ts.IsItalic = !ts.IsItalic;
+                            }
+
+                            // Derive typeface from the updated bold/italic state
+                            var newTypeFace = SKTypeface.FromFamilyName(
+                                StrokePaint.DefaultTypeFace.FamilyName, ts.SkFontStyle);
+
+                            // Recreate stroke paths
+                            var newTextPath = new SKPath();
+                            newTextPath.MoveTo(ts.Position);
+                            newTextPath.AddPath(
+                                TextPathBuilder.Build(ts.Text, ts.Position.X, ts.Position.Y,
+                                    ts.Paint.TextSize, newTypeFace));
+
+                            newTextPath.Transform(ts.TransformMatrix);
+
+                            ts.Path.Reset();
+                            ts.Path.AddPath(newTextPath);
+                        }
+                    }
+
                     break;
             }
         }

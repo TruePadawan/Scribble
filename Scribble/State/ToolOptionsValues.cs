@@ -14,5 +14,5 @@ public class ToolOptionsValues
     public float[]? DashIntervals { get; set; }
     public Color FillColor { get; set; } = Colors.Transparent;
     public EdgeType EdgeType { get; set; } = EdgeType.Sharp;
-    public float FontSize { get; set; } = 10;
+    public float FontSize { get; set; } = 30;
 }

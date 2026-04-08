@@ -7,5 +7,7 @@ public enum ToolOption
     StrokeStyle,
     FillColor,
     EdgeType,
-    FontSize
+    FontSize,
+    FontCasing,
+    FontStyle
 }

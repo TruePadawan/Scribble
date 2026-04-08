@@ -11,11 +11,12 @@ public static class TextPathBuilder
 {
     private const string TabReplacement = "    "; // 4 spaces
 
-    public static SKPath Build(string text, float xPos, float yPos, float textSize)
+    public static SKPath Build(string text, float xPos, float yPos, float textSize, SKTypeface typeface)
     {
         var combinedPath = new SKPath();
         using var paint = new SKPaint();
         paint.TextSize = textSize;
+        paint.Typeface = typeface;
 
         // Replace tabs with spaces
         text = text.Replace("\t", TabReplacement);
