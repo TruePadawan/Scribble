@@ -512,7 +512,7 @@ public class CanvasStateService
                     textPath.MoveTo(ev.Position);
                     textPath.AddPath(
                         TextPathBuilder.Build(ev.Text, ev.Position.X, ev.Position.Y, ev.Paint.TextSize,
-                            ev.Paint.GetCachedSkPaint().Typeface));
+                            StrokePaint.DefaultTypeFace));
                     paintableStrokes[ev.StrokeId] = new TextStroke
                     {
                         Id = ev.StrokeId,
