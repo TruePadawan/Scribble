@@ -38,6 +38,7 @@ namespace Scribble.Shared.Lib;
 [JsonDerivedType(typeof(AddImageEvent), typeDiscriminator: "AddImageEvent")]
 [JsonDerivedType(typeof(UpdateTextEvent), typeDiscriminator: "UpdateTextEvent")]
 [JsonDerivedType(typeof(UpdateFontCasingEvent), typeDiscriminator: "UpdateFontCasingEvent")]
+[JsonDerivedType(typeof(UpdateFontStyleEvent), typeDiscriminator: "UpdateFontStyleEvent")]
 public abstract record Event(Guid ActionId)
 {
     public DateTime TimeStamp { get; init; } = DateTime.UtcNow;
