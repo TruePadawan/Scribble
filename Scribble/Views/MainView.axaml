@@ -84,6 +84,8 @@
                                     PointerReleased="ScaleHandle_OnPointerReleased" />
                         </Grid>
                     </StackPanel>
+
+                    <!-- COVERS TEXT STROKES, TRIGGERS EDIT MODE -->
                     <Canvas Name="TextStrokeEditBorders"></Canvas>
                     <Canvas.Styles>
                         <Style Selector="TextBox:focus /template/ Border">
