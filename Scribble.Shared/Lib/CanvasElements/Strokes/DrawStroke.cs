@@ -13,5 +13,6 @@ public class DrawStroke : PaintableStroke
     /// <summary>
     /// The raw input points that build up the stroke
     /// </summary>
+    [System.Text.Json.Serialization.JsonIgnore]
     public List<StrokePoint> RawPoints { get; init; } = [];
 }
