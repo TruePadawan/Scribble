@@ -487,3 +487,5 @@ staging
 out
 
 Directory.Build.props
+
+docs
