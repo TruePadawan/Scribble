@@ -11,6 +11,8 @@ public class PencilTool : StrokeTool
 {
     private Guid _strokeId = Guid.NewGuid();
     private Guid _actionId = Guid.NewGuid();
+    private SKPoint _lastAcceptedPoint;
+    private const float DistanceThreshold = 2.0f;
 
     public PencilTool(string name, CanvasStateService canvasState) : base(name, canvasState,
         LoadToolBitmap(typeof(PencilTool), "pencil.png"))
@@ -26,6 +28,7 @@ public class PencilTool : StrokeTool
         var startPoint = new SKPoint((float)coord.X, (float)coord.Y);
         _strokeId = Guid.NewGuid();
         _actionId = Guid.NewGuid();
+        _lastAcceptedPoint = startPoint;
         CanvasState.ApplyEvent(
             new StartStrokeEvent(_actionId, _strokeId, startPoint, StrokePaint.Clone(), ToolType.Pencil, ToolOptions));
     }
@@ -33,6 +36,15 @@ public class PencilTool : StrokeTool
     public override void HandlePointerMove(Point prevCoord, Point currentCoord)
     {
         var nextPoint = new SKPoint((float)currentCoord.X, (float)currentCoord.Y);
+        
+        var distance = SKPoint.Distance(_lastAcceptedPoint, nextPoint);
+        if (distance < DistanceThreshold)
+        {
+            return;
+        }
+
+        _lastAcceptedPoint = nextPoint;
+
         CanvasState.ApplyEvent(new PencilStrokeLineToEvent(_actionId, _strokeId, nextPoint));
     }
 

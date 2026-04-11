@@ -171,9 +171,13 @@ public class CanvasStateService
         // apply directly to the existing stroke — no replay needed
         if (@event is PencilStrokeLineToEvent pencilLineToEvent)
         {
-            if (_strokeLookup.TryGetValue(pencilLineToEvent.StrokeId, out var stroke))
+            if (_strokeLookup.TryGetValue(pencilLineToEvent.StrokeId, out var stroke) && stroke is DrawStroke ds)
             {
-                stroke.Path.LineTo(pencilLineToEvent.Point);
+                ds.RawPoints.Add(new StrokePoint(pencilLineToEvent.Point, pencilLineToEvent.TimeStamp.Ticks / TimeSpan.TicksPerMillisecond));
+                var newPath = FreehandPathBuilder.Build(ds.RawPoints);
+                ds.Path.Reset();
+                ds.Path.AddPath(newPath);
+
                 CanvasInvalidated?.Invoke();
                 return;
             }
@@ -424,6 +428,7 @@ public class CanvasStateService
                         Id = ev.StrokeId,
                         Paint = ev.StrokePaint.Clone(),
                         Path = newLinePath,
+                        RawPoints = [new StrokePoint(ev.StartPoint, ev.TimeStamp.Ticks / TimeSpan.TicksPerMillisecond)],
                         ToolType = ev.ToolType,
                         ToolOptions = ev.ToolOptions,
                         CreatorConnectionId = ev.CreatorConnectionId,
@@ -493,9 +498,12 @@ public class CanvasStateService
 
                     break;
                 case PencilStrokeLineToEvent ev:
-                    if (paintableStrokes.ContainsKey(ev.StrokeId))
+                    if (paintableStrokes.TryGetValue(ev.StrokeId, out var pStroke) && pStroke is DrawStroke dsPencil)
                     {
-                        paintableStrokes[ev.StrokeId].Path.LineTo(ev.Point);
+                        dsPencil.RawPoints.Add(new StrokePoint(ev.Point, ev.TimeStamp.Ticks / TimeSpan.TicksPerMillisecond));
+                        var newPath = FreehandPathBuilder.Build(dsPencil.RawPoints);
+                        dsPencil.Path.Reset();
+                        dsPencil.Path.AddPath(newPath);
                     }
 
                     break;
@@ -716,6 +724,7 @@ public class CanvasStateService
                                 ToolOptions = drawStroke.ToolOptions,
                                 ToolType = drawStroke.ToolType,
                                 Path = drawStroke.Path.Clone(),
+                                RawPoints = [..drawStroke.RawPoints],
                                 LayerIndex = drawStroke.LayerIndex,
                                 CreatorConnectionId = drawStroke.CreatorConnectionId
                             };
