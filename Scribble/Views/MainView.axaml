@@ -84,6 +84,8 @@
                                     PointerReleased="ScaleHandle_OnPointerReleased" />
                         </Grid>
                     </StackPanel>
+
+                    <!-- COVERS TEXT STROKES, TRIGGERS EDIT MODE -->
                     <Canvas Name="TextStrokeEditBorders"></Canvas>
                     <Canvas.Styles>
                         <Style Selector="TextBox:focus /template/ Border">
@@ -453,6 +455,39 @@
                                                       ConverterParameter={x:Static strokes:EdgeType.Rounded}}">
                                         <Image Source="avares://Scribble/Assets/rounded_edge.png" Width="20" />
                                     </ToggleButton>
+                                </StackPanel>
+                            </StackPanel>
+                        </DataTemplate>
+
+                        <!-- Font Casing -->
+                        <DataTemplate DataType="toolOpts:FontCasingOptionViewModel">
+                            <StackPanel Margin="8" Spacing="2">
+                                <Label Content="{Binding Label}" />
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <Button Width="36" Height="36" Command="{Binding SetUppercaseCommand}">
+                                        <Image Source="avares://Scribble/Assets/uppercase.png" Width="20" />
+                                    </Button>
+                                    <Button Width="36" Height="36" Command="{Binding SetLowercaseCommand}">
+                                        <Image Source="avares://Scribble/Assets/lowercase.png" Width="20" />
+                                    </Button>
+                                </StackPanel>
+                            </StackPanel>
+                        </DataTemplate>
+
+                        <!-- Font Style -->
+                        <DataTemplate DataType="toolOpts:FontStyleOptionViewModel">
+                            <StackPanel Margin="8" Spacing="2">
+                                <Label Content="{Binding Label}" />
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <Button Width="36" Height="36" Command="{Binding SetNormalStyleCommand}">
+                                        <Image Source="avares://Scribble/Assets/normal_style.png" Width="20" />
+                                    </Button>
+                                    <Button Width="36" Height="36" Command="{Binding SetBoldStyleCommand}">
+                                        <Image Source="avares://Scribble/Assets/bold_style.png" Width="20" />
+                                    </Button>
+                                    <Button Width="36" Height="36" Command="{Binding SetItalicStyleCommand}">
+                                        <Image Source="avares://Scribble/Assets/italic_style.png" Width="20" />
+                                    </Button>
                                 </StackPanel>
                             </StackPanel>
                         </DataTemplate>

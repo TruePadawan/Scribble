@@ -13,6 +13,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Scribble.Services;
 using Scribble.Services.DialogService;
 using Scribble.Services.FileService;
+using Scribble.Services.MultiUserDrawing;
 using Scribble.Shared.Lib;
 using Scribble.Shared.Lib.CanvasElements;
 using Scribble.Shared.Lib.CanvasElements.Strokes;
@@ -40,6 +41,7 @@ public partial class MainView : UserControl
     private PointerTool? _activePointerTool;
     private MainViewModel? _viewModel;
     private readonly CanvasStateService _canvasStateService;
+    private readonly MultiUserDrawingService _multiUserDrawingService;
     private readonly IDialogService _dialogService;
     private readonly IFileService _fileService;
     private readonly Selection _selection;
@@ -60,6 +62,7 @@ public partial class MainView : UserControl
         _canvasStateService = services.GetRequiredService<CanvasStateService>();
         _dialogService = services.GetRequiredService<IDialogService>();
         _fileService = services.GetRequiredService<IFileService>();
+        _multiUserDrawingService = services.GetRequiredService<MultiUserDrawingService>();
     }
 
     protected override void OnDataContextChanged(EventArgs e)
@@ -136,6 +139,9 @@ public partial class MainView : UserControl
 
         var textStrokes = _canvasStateService.CanvasElements
             .Where(canvasEl => canvasEl is TextStroke)
+            // Only allow editing for text strokes created by the current user
+            .Where(canvasEl => canvasEl.CreatorConnectionId == null ||
+                               canvasEl.CreatorConnectionId == _multiUserDrawingService.Room?.Me.ConnectionId)
             .Cast<TextStroke>()
             .ToList();
         var borders = new List<Border>();

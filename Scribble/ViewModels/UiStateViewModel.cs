@@ -267,6 +267,30 @@ public partial class UiStateViewModel : ViewModelBase
         {
             switch (option)
             {
+                case ToolOption.FontCasing:
+                    var fontCasingVm = new FontCasingOptionViewModel()
+                    {
+                        FontCasingChanged = newCasing =>
+                        {
+                            _canvasStateService.ApplyEvent(
+                                new UpdateFontCasingEvent(Guid.NewGuid(), strokeIds, newCasing)
+                            );
+                        }
+                    };
+                    ActiveToolOptions.Add(fontCasingVm);
+                    break;
+                case ToolOption.FontStyle:
+                    var fontStyleVm = new FontStyleOptionViewModel()
+                    {
+                        FontStyleChanged = newStyle =>
+                        {
+                            _canvasStateService.ApplyEvent(
+                                new UpdateFontStyleEvent(Guid.NewGuid(), strokeIds, newStyle)
+                            );
+                        }
+                    };
+                    ActiveToolOptions.Add(fontStyleVm);
+                    break;
                 case ToolOption.StrokeThickness:
                     var thicknessVm = new StrokeThicknessOptionViewModel(_toolOptionsValues.StrokeThickness)
                     {
@@ -341,7 +365,7 @@ public partial class UiStateViewModel : ViewModelBase
                         {
                             _toolOptionsValues.FontSize = fs;
                             _canvasStateService.ApplyEvent(
-                                new UpdateStrokeFontSizeEvent(Guid.NewGuid(), strokeIds, fs));
+                                new UpdateFontSizeEvent(Guid.NewGuid(), strokeIds, fs));
                         }
                     };
                     ActiveToolOptions.Add(fontVm);

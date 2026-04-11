@@ -1,6 +1,7 @@
 using System.Text.Json.Serialization;
 using Scribble.Shared.Converters;
 using Scribble.Shared.Lib.CanvasElements;
+using Scribble.Shared.Lib.CanvasElements.Strokes;
 using SkiaSharp;
 
 namespace Scribble.Shared.Lib;
@@ -30,11 +31,14 @@ namespace Scribble.Shared.Lib;
 [JsonDerivedType(typeof(NudgeElementLayerEvent), typeDiscriminator: "NudgeElementLayerEvent")]
 [JsonDerivedType(typeof(UpdateStrokeEdgeTypeEvent), typeDiscriminator: "UpdateStrokeEdgeTypeEvent")]
 [JsonDerivedType(typeof(UpdateStrokeFillColorEvent), typeDiscriminator: "UpdateStrokeFillColorEvent")]
-[JsonDerivedType(typeof(UpdateStrokeFontSizeEvent), typeDiscriminator: "UpdateStrokeFontSizeEvent")]
+[JsonDerivedType(typeof(UpdateFontSizeEvent), typeDiscriminator: "UpdateFontSizeEvent")]
 [JsonDerivedType(typeof(UpdateStrokeStyleEvent), typeDiscriminator: "UpdateStrokeStyleEvent")]
 [JsonDerivedType(typeof(UpdateStrokeThicknessEvent), typeDiscriminator: "UpdateStrokeThicknessEvent")]
 [JsonDerivedType(typeof(ClearSelectionEvent), typeDiscriminator: "ClearSelectionEvent")]
 [JsonDerivedType(typeof(AddImageEvent), typeDiscriminator: "AddImageEvent")]
+[JsonDerivedType(typeof(UpdateTextEvent), typeDiscriminator: "UpdateTextEvent")]
+[JsonDerivedType(typeof(UpdateFontCasingEvent), typeDiscriminator: "UpdateFontCasingEvent")]
+[JsonDerivedType(typeof(UpdateFontStyleEvent), typeDiscriminator: "UpdateFontStyleEvent")]
 public abstract record Event(Guid ActionId)
 {
     public DateTime TimeStamp { get; init; } = DateTime.UtcNow;
@@ -138,7 +142,7 @@ public record UpdateStrokeFillColorEvent(Guid ActionId, List<Guid> StrokeIds, SK
 public record UpdateStrokeEdgeTypeEvent(Guid ActionId, List<Guid> StrokeIds, SKStrokeJoin NewStrokeJoin)
     : Event(ActionId), ITerminalEvent;
 
-public record UpdateStrokeFontSizeEvent(Guid ActionId, List<Guid> StrokeIds, float FontSize)
+public record UpdateFontSizeEvent(Guid ActionId, List<Guid> StrokeIds, float FontSize)
     : Event(ActionId), ITerminalEvent;
 
 public record SetElementLayerEvent(Guid ActionId, Guid[] TargetElementIds, int NewLayerIndex)
@@ -148,3 +152,9 @@ public record NudgeElementLayerEvent(Guid ActionId, Guid[] TargetElementIds, int
     : Event(ActionId), ITerminalEvent;
 
 public record UpdateTextEvent(Guid ActionId, Guid TextStrokeId, string NewText) : Event(ActionId), ITerminalEvent;
+
+public record UpdateFontCasingEvent(Guid ActionId, List<Guid> TextStrokeIds, FontCasing NewCasing)
+    : Event(ActionId), ITerminalEvent;
+
+public record UpdateFontStyleEvent(Guid ActionId, List<Guid> TextStrokeIds, FontStyle NewStyle)
+    : Event(ActionId), ITerminalEvent;
