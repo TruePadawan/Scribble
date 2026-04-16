@@ -13,8 +13,8 @@ A cross-platform (windows/linux) digital whiteboard application
 **Existing tools**: Pencil, Eraser, Pan, Line, Arrow, Ellipse, Rectangle, Select, Text  
 
 **I'm working on**:
-- UI/UX improvements
-- Layering system
+- Implementing non-solid color Canvas backgrounds
+- Implementing an infinite canvas
 
 <img width="1916" height="1048" alt="image" src="https://github.com/user-attachments/assets/9ba0d5c9-af75-4aa1-b8c6-5b954c4b161b" />
 
