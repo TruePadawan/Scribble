@@ -22,12 +22,8 @@ namespace Scribble.ViewModels;
 /// </summary>
 public partial class UiStateViewModel : ViewModelBase
 {
-    public const double MinZoom = 1.0f;
-    public const double MaxZoom = 3.0f;
-    public ScaleTransform ScaleTransform { get; } = new ScaleTransform(1, 1);
-
-    private bool CanZoomIn => ZoomLevel < MaxZoom;
-    private bool CanZoomOut => ZoomLevel > MinZoom;
+    private bool CanZoomIn => ZoomLevel < CameraState.MaxZoom;
+    private bool CanZoomOut => ZoomLevel > CameraState.MinZoom;
 
     public event Action<PointerTool?>? ActiveToolChanged;
     public event Action<double>? CenterZoomRequested;
@@ -37,9 +33,9 @@ public partial class UiStateViewModel : ViewModelBase
     [ObservableProperty] private bool _toolOptionsVisible;
 
     [ObservableProperty] [NotifyPropertyChangedFor(nameof(ScaleFactorText))]
-    private double _zoomLevel = 1.0f;
+    private float _zoomLevel = 1.0f;
 
-    public string ScaleFactorText => $"{Math.Floor(ZoomLevel / MinZoom * 100)}%";
+    public string ScaleFactorText => $"{Math.Floor(ZoomLevel * 100)}%";
     public ObservableCollection<PointerTool> AvailableTools { get; } = [];
     public ObservableCollection<ToolOptionViewModelBase> ActiveToolOptions { get; } = [];
 
@@ -68,13 +64,10 @@ public partial class UiStateViewModel : ViewModelBase
     [RelayCommand(CanExecute = nameof(CanZoomOut))]
     private void ZoomOut() => CenterZoomRequested?.Invoke(0.9);
 
-    public void ApplyZoom(double newScale)
+    public void UpdateZoomLevel(float newScale)
     {
         // Clamp the zoom level between the min and max zoom
-        ZoomLevel = Math.Max(MinZoom, Math.Min(MaxZoom, newScale));
-
-        ScaleTransform.ScaleX = ZoomLevel;
-        ScaleTransform.ScaleY = ZoomLevel;
+        ZoomLevel = Math.Clamp(newScale, CameraState.MinZoom, CameraState.MaxZoom);
 
         // Tell the UI that it should refresh controls that are bound to CanZoomIn and CanZoomOut
         ZoomInCommand.NotifyCanExecuteChanged();

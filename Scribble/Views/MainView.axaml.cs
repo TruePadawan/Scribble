@@ -87,17 +87,13 @@ public partial class MainView : UserControl
             _viewModel.UiStateViewModel.CenterZoomRequested += OnCenterZoomRequested;
             _viewModel.UiStateViewModel.ActiveToolChanged += OnActiveToolChanged;
 
-            // Center the whiteboard
-            (double canvasWidth, double canvasHeight) = viewModel.GetCanvasDimensions();
-            CanvasScrollViewer.Offset = new Vector(canvasWidth / 2, canvasHeight / 2);
-
             // Load in all the pointer tools
             viewModel.UiStateViewModel.AvailableTools.Clear();
             var tools = new List<PointerTool>
             {
                 new PencilTool("PencilTool", _canvasStateService),
                 new EraseTool("EraseTool", _canvasStateService),
-                new PanningTool("PanningTool", _canvasStateService, CanvasScrollViewer),
+                new PanningTool("PanningTool", _canvasStateService, MainCanvas.InvalidateVisual),
                 new LineTool("LineTool", _canvasStateService),
                 new ArrowTool("ArrowTool", _canvasStateService),
                 new EllipseTool("EllipseTool", _canvasStateService),
@@ -202,38 +198,38 @@ public partial class MainView : UserControl
         if (_viewModel == null) return;
 
         // Zoom in as if the pointer was in the middle of the viewport
-        Point centerOnViewport = new Point(
-            CanvasScrollViewer.Viewport.Width / 2,
-            CanvasScrollViewer.Viewport.Height / 2
+        var viewportCenter = new SKPoint(
+            (float)(MainCanvas.Bounds.Width / 2),
+            (float)(MainCanvas.Bounds.Height / 2)
         );
 
-        double currentZoomLevel = _viewModel.UiStateViewModel.ZoomLevel;
-        Vector currentOffset = CanvasScrollViewer.Offset;
-
-        Point centerOnCanvas = new Point(
-            (currentOffset.X + centerOnViewport.X) / currentZoomLevel,
-            (currentOffset.Y + centerOnViewport.Y) / currentZoomLevel
-        );
-
-        PerformZoom(zoomFactor, centerOnViewport, centerOnCanvas);
+        PerformZoom(zoomFactor, viewportCenter);
     }
 
-    private void PerformZoom(double zoomFactor, Point pointerViewPortPos, Point pointerCanvasPos)
+    /// <summary>
+    /// Zoom-to-point: adjusts CameraState.Zoom while keeping the world point
+    /// under the pointer fixed on screen.
+    /// </summary>
+    private void PerformZoom(double zoomFactor, SKPoint screenPivot)
     {
         if (_viewModel == null) return;
 
-        double newScale = _viewModel.UiStateViewModel.ZoomLevel * zoomFactor;
-        // Clamp new scale between min and max zoom
-        newScale = Math.Max(UiStateViewModel.MinZoom, Math.Min(newScale, UiStateViewModel.MaxZoom));
-        if (Math.Abs(newScale - _viewModel.UiStateViewModel.ZoomLevel) < 0.0001f) return;
+        var worldPosBeforeZoom = CameraState.ScreenToWorld(screenPivot);
+        var oldZoom = CameraState.Zoom;
+        var newZoom = (float)(oldZoom * zoomFactor);
+        CameraState.SetZoom(newZoom);
+        newZoom = CameraState.Zoom; // re-read in case it was clamped
 
-        _viewModel.UiStateViewModel.ApplyZoom(newScale);
+        if (Math.Abs(newZoom - oldZoom) < 0.0001f) return;
 
-        // Needed to prevent weird zooming at the edge of the canvas
-        CanvasScrollViewer.UpdateLayout();
-        // Implement zoom to point
-        var newOffset = (pointerCanvasPos * newScale) - pointerViewPortPos;
-        CanvasScrollViewer.Offset = new Vector(newOffset.X, newOffset.Y);
+        var worldPosAfterZoom = CameraState.ScreenToWorld(screenPivot);
+
+        // Adjust the world offset so the world point under the pointer stays fixed.
+        CameraState.WorldOffSetX -= worldPosAfterZoom.X - worldPosBeforeZoom.X;
+        CameraState.WorldOffSetY -= worldPosAfterZoom.Y - worldPosBeforeZoom.Y;
+
+        _viewModel.UiStateViewModel.UpdateZoomLevel(newZoom);
+        MainCanvas.InvalidateVisual();
     }
 
     private void VisualizeSelection()
@@ -322,15 +318,17 @@ public partial class MainView : UserControl
 
     private Point GetPointerPosition(PointerEventArgs e)
     {
-        // For panning, we need coordinates relative to the viewport (ScrollViewer)
-        // because Canvas itself moves, creating a feedback loop if we use its coordinates
+        // For panning, we need screen-space coordinates (raw viewport pixels)
+        // so the panning delta can be correctly converted to world-space offset changes
         if (_activePointerTool is PanningTool)
         {
-            return e.GetPosition(CanvasScrollViewer);
+            return e.GetPosition(MainCanvas);
         }
 
-        // For drawing/erasing, we need coordinates relative to the Canvas content
-        return e.GetPosition(MainCanvas);
+        // For all other tools, convert screen pixels to world coordinates
+        var screenPos = Utilities.ToSkPoint(e.GetPosition(MainCanvas));
+        var worldPos = CameraState.ScreenToWorld(screenPos);
+        return Utilities.FromSkPoint(worldPos);
     }
 
     private void MainCanvas_OnPointerMoved(object? sender, PointerEventArgs e)
@@ -379,14 +377,12 @@ public partial class MainView : UserControl
         if (!ctrlKeyIsActive) return;
         if (_viewModel == null) throw new Exception("View Model not initialized");
 
-        Point mousePosOnViewPort = e.GetPosition(CanvasScrollViewer);
-        Point mousePosOnCanvas = e.GetPosition(MainCanvas);
+        var screenPos = Utilities.ToSkPoint(e.GetPosition(MainCanvas));
 
         // Multiplicative Zoom
         double zoomFactor = e.Delta.Y > 0 ? 1.1f : 0.9f;
-        PerformZoom(zoomFactor, mousePosOnViewPort, mousePosOnCanvas);
+        PerformZoom(zoomFactor, screenPos);
 
-        // Stop the scroll viewer from applying its own scrolling logic
         e.Handled = true;
     }
 

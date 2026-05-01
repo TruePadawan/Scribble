@@ -21,80 +21,72 @@
         <KeyBinding Gesture="Ctrl+Z" Command="{Binding UndoCommand}" />
         <KeyBinding Gesture="Ctrl+Shift+Z" Command="{Binding RedoCommand}" />
     </UserControl.KeyBindings>
-    <!-- Simulate a wide canvas -->
-    <!-- Use a RenderTransformOrigin to tell the ScrollViewer to scale from top left -->
+    <!-- Infinite canvas: SkiaCanvas fills the viewport, camera transform handles panning/zooming -->
     <Panel>
-        <ScrollViewer Name="CanvasScrollViewer" HorizontalScrollBarVisibility="Auto">
-            <LayoutTransformControl Name="MainCanvasLayoutTransform"
-                                    LayoutTransform="{Binding UiStateViewModel.ScaleTransform}">
-                <Canvas Name="CanvasContainer"
-                        Width="{Binding CanvasWidth}"
-                        Height="{Binding CanvasHeight}"
-                        HorizontalAlignment="Left"
-                        Background="Transparent">
-                    <controls:SkiaCanvas Name="MainCanvas"
-                                         HorizontalAlignment="Left"
-                                         CanvasBackground="{Binding UiStateViewModel.BackgroundColor}"
-                                         Width="{Binding CanvasWidth}"
-                                         Height="{Binding CanvasHeight}"
-                                         PointerPressed="MainCanvas_OnPointerPressed"
-                                         PointerMoved="MainCanvas_OnPointerMoved"
-                                         PointerReleased="MainCanvas_OnPointerReleased"
-                                         PointerWheelChanged="MainCanvas_OnPointerWheelChanged"
-                                         CanvasElements="{Binding CanvasElements}"
-                                         RenderTransformOrigin="0 0" />
-                    <!-- COVERS SELECTED ELEMENTS -->
-                    <StackPanel Name="SelectionOverlay" Spacing="6" IsVisible="False">
-                        <Border Name="SelectionRotationBtn" CornerRadius="100" BorderThickness="2" BorderBrush="Gray"
-                                Height="15" Width="15"
-                                Background="Gray" HorizontalAlignment="Center"
-                                PointerPressed="SelectionRotationBtn_OnPointerPressed"
-                                PointerMoved="SelectionRotationBtn_OnPointerMoved"
-                                PointerReleased="SelectionRotationBtn_OnPointerReleased" />
-                        <Grid Name="SelectionBoxContainer">
-                            <Border Name="SelectionBorder" BorderThickness="2" BorderBrush="Gray"
-                                    HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
-                                    Background="Transparent" PointerPressed="SelectionBorder_OnPointerPressed"
-                                    PointerMoved="SelectionBorder_OnPointerMoved"
-                                    PointerReleased="SelectionBorder_OnPointerReleased">
-                            </Border>
-                            <Border Name="ScaleHandleTl" Width="10" Height="10" Background="White" BorderBrush="Gray"
-                                    BorderThickness="1" CornerRadius="5" HorizontalAlignment="Left"
-                                    VerticalAlignment="Top" Cursor="TopLeftCorner" Margin="-5,-5,0,0"
-                                    PointerPressed="ScaleHandle_OnPointerPressed"
-                                    PointerMoved="ScaleHandle_OnPointerMoved"
-                                    PointerReleased="ScaleHandle_OnPointerReleased" />
-                            <Border Name="ScaleHandleTr" Width="10" Height="10" Background="White" BorderBrush="Gray"
-                                    BorderThickness="1" CornerRadius="5" HorizontalAlignment="Right"
-                                    VerticalAlignment="Top" Cursor="TopRightCorner" Margin="0,-5,-5,0"
-                                    PointerPressed="ScaleHandle_OnPointerPressed"
-                                    PointerMoved="ScaleHandle_OnPointerMoved"
-                                    PointerReleased="ScaleHandle_OnPointerReleased" />
-                            <Border Name="ScaleHandleBl" Width="10" Height="10" Background="White" BorderBrush="Gray"
-                                    BorderThickness="1" CornerRadius="5" HorizontalAlignment="Left"
-                                    VerticalAlignment="Bottom" Cursor="BottomLeftCorner" Margin="-5,0,0,-5"
-                                    PointerPressed="ScaleHandle_OnPointerPressed"
-                                    PointerMoved="ScaleHandle_OnPointerMoved"
-                                    PointerReleased="ScaleHandle_OnPointerReleased" />
-                            <Border Name="ScaleHandleBr" Width="10" Height="10" Background="White" BorderBrush="Gray"
-                                    BorderThickness="1" CornerRadius="5" HorizontalAlignment="Right"
-                                    VerticalAlignment="Bottom" Cursor="BottomRightCorner" Margin="0,0,-5,-5"
-                                    PointerPressed="ScaleHandle_OnPointerPressed"
-                                    PointerMoved="ScaleHandle_OnPointerMoved"
-                                    PointerReleased="ScaleHandle_OnPointerReleased" />
-                        </Grid>
-                    </StackPanel>
+        <controls:SkiaCanvas Name="MainCanvas"
+                             CanvasBackground="{Binding UiStateViewModel.BackgroundColor}"
+                             PointerPressed="MainCanvas_OnPointerPressed"
+                             PointerMoved="MainCanvas_OnPointerMoved"
+                             PointerReleased="MainCanvas_OnPointerReleased"
+                             PointerWheelChanged="MainCanvas_OnPointerWheelChanged"
+                             CanvasElements="{Binding CanvasElements}" />
 
-                    <!-- COVERS TEXT STROKES, TRIGGERS EDIT MODE -->
-                    <Canvas Name="TextStrokeEditBorders"></Canvas>
-                    <Canvas.Styles>
-                        <Style Selector="TextBox:focus /template/ Border">
-                            <Setter Property="BorderBrush" Value="Gray" />
-                        </Style>
-                    </Canvas.Styles>
-                </Canvas>
-            </LayoutTransformControl>
-        </ScrollViewer>
+        <!-- Overlay canvas for selection UI and text edit borders (layered on top of SkiaCanvas) -->
+        <!-- IsHitTestVisible=False lets pointer events pass through to SkiaCanvas below -->
+        <Canvas Name="CanvasContainer"
+                IsHitTestVisible="False"
+                HorizontalAlignment="Stretch"
+                VerticalAlignment="Stretch">
+            <!-- COVERS SELECTED ELEMENTS -->
+            <StackPanel Name="SelectionOverlay" Spacing="6" IsVisible="False">
+                <Border Name="SelectionRotationBtn" CornerRadius="100" BorderThickness="2" BorderBrush="Gray"
+                        Height="15" Width="15"
+                        Background="Gray" HorizontalAlignment="Center"
+                        PointerPressed="SelectionRotationBtn_OnPointerPressed"
+                        PointerMoved="SelectionRotationBtn_OnPointerMoved"
+                        PointerReleased="SelectionRotationBtn_OnPointerReleased" />
+                <Grid Name="SelectionBoxContainer">
+                    <Border Name="SelectionBorder" BorderThickness="2" BorderBrush="Gray"
+                            HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+                            Background="Transparent" PointerPressed="SelectionBorder_OnPointerPressed"
+                            PointerMoved="SelectionBorder_OnPointerMoved"
+                            PointerReleased="SelectionBorder_OnPointerReleased">
+                    </Border>
+                    <Border Name="ScaleHandleTl" Width="10" Height="10" Background="White" BorderBrush="Gray"
+                            BorderThickness="1" CornerRadius="5" HorizontalAlignment="Left"
+                            VerticalAlignment="Top" Cursor="TopLeftCorner" Margin="-5,-5,0,0"
+                            PointerPressed="ScaleHandle_OnPointerPressed"
+                            PointerMoved="ScaleHandle_OnPointerMoved"
+                            PointerReleased="ScaleHandle_OnPointerReleased" />
+                    <Border Name="ScaleHandleTr" Width="10" Height="10" Background="White" BorderBrush="Gray"
+                            BorderThickness="1" CornerRadius="5" HorizontalAlignment="Right"
+                            VerticalAlignment="Top" Cursor="TopRightCorner" Margin="0,-5,-5,0"
+                            PointerPressed="ScaleHandle_OnPointerPressed"
+                            PointerMoved="ScaleHandle_OnPointerMoved"
+                            PointerReleased="ScaleHandle_OnPointerReleased" />
+                    <Border Name="ScaleHandleBl" Width="10" Height="10" Background="White" BorderBrush="Gray"
+                            BorderThickness="1" CornerRadius="5" HorizontalAlignment="Left"
+                            VerticalAlignment="Bottom" Cursor="BottomLeftCorner" Margin="-5,0,0,-5"
+                            PointerPressed="ScaleHandle_OnPointerPressed"
+                            PointerMoved="ScaleHandle_OnPointerMoved"
+                            PointerReleased="ScaleHandle_OnPointerReleased" />
+                    <Border Name="ScaleHandleBr" Width="10" Height="10" Background="White" BorderBrush="Gray"
+                            BorderThickness="1" CornerRadius="5" HorizontalAlignment="Right"
+                            VerticalAlignment="Bottom" Cursor="BottomRightCorner" Margin="0,0,-5,-5"
+                            PointerPressed="ScaleHandle_OnPointerPressed"
+                            PointerMoved="ScaleHandle_OnPointerMoved"
+                            PointerReleased="ScaleHandle_OnPointerReleased" />
+                </Grid>
+            </StackPanel>
+
+            <!-- COVERS TEXT STROKES, TRIGGERS EDIT MODE -->
+            <Canvas Name="TextStrokeEditBorders"></Canvas>
+            <Canvas.Styles>
+                <Style Selector="TextBox:focus /template/ Border">
+                    <Setter Property="BorderBrush" Value="Gray" />
+                </Style>
+            </Canvas.Styles>
+        </Canvas>
 
         <!-- Overlay and Menu Container -->
         <Panel VerticalAlignment="Stretch" HorizontalAlignment="Stretch">

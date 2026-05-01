@@ -1,26 +1,36 @@
 using Avalonia;
-using Avalonia.Controls;
 using Avalonia.Input;
 using Scribble.Services;
+using Scribble.State;
+using System;
 
 namespace Scribble.Tools.PointerTools.PanningTool;
 
 public class PanningTool : PointerTool
 {
-    private readonly ScrollViewer _scrollViewer;
+    private readonly Action _requestCanvasRedraw;
 
-    public PanningTool(string name, CanvasStateService canvasState, ScrollViewer scrollViewer)
+    public PanningTool(string name, CanvasStateService canvasState, Action requestCanvasRedraw)
         : base(name, canvasState, LoadToolBitmap(typeof(PanningTool), "hand.png"))
     {
-        _scrollViewer = scrollViewer;
+        _requestCanvasRedraw = requestCanvasRedraw;
         Cursor = new Cursor(ToolIcon.CreateScaledBitmap(new PixelSize(30, 30)), new PixelPoint(15, 15));
         HotKey = new KeyGesture(Key.D3);
         ToolTip = "Panning Tool - 3";
     }
 
-    public override void HandlePointerMove(Point prevCoord, Point currentCoord)
+    /// <summary>
+    /// PanningTool receives screen-space coordinates.
+    /// The delta in screen pixels is divided by zoom
+    /// to produce the equivalent world-space pan offset.
+    /// </summary>
+    public override void HandlePointerMove(Point prevScreenPos, Point currentScreenPos)
     {
-        var distance = currentCoord - prevCoord;
-        _scrollViewer.Offset -= new Vector(distance.X, distance.Y);
+        var screenDelta = currentScreenPos - prevScreenPos;
+        // Convert screen-pixel delta to world-space delta
+        CameraState.WorldOffSetX -= (float)(screenDelta.X / CameraState.Zoom);
+        CameraState.WorldOffSetY -= (float)(screenDelta.Y / CameraState.Zoom);
+
+        _requestCanvasRedraw();
     }
 }

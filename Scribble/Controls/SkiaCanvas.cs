@@ -10,6 +10,7 @@ using Avalonia.Rendering.SceneGraph;
 using Avalonia.Skia;
 using Scribble.Shared.Lib.CanvasElements;
 using Scribble.Shared.Lib.CanvasElements.Strokes;
+using Scribble.State;
 using Scribble.Utils;
 using SkiaSharp;
 
@@ -53,7 +54,14 @@ public class SkiaCanvas : Control
 
     private void DrawCanvasElementsOnCanvas(SKCanvas canvas, IEnumerable<CanvasElement> elementsToDraw, Color bgColor)
     {
+        // Clear the entire viewport with the background color (before camera transform)
         canvas.Clear(Utilities.ToSkColor(bgColor));
+
+        // Save the existing canvas state (Avalonia's DPI/layout matrix) so we can restore it later
+        canvas.Save();
+
+        var viewMatrix = CameraState.GetViewMatrix();
+        canvas.Concat(ref viewMatrix);
 
         // Draw elements in layer-aware order: lower LayerIndex values are rendered first,
         // while preserving the existing relative order within each layer.
@@ -63,6 +71,9 @@ public class SkiaCanvas : Control
         {
             DrawSingleElement(canvas, canvasElement);
         }
+
+        // Restore to the pre-camera state
+        canvas.Restore();
     }
 
     private void DrawSingleElement(SKCanvas canvas, CanvasElement canvasElement)
@@ -200,8 +211,6 @@ internal class SkiaDrawOperation(Rect bounds, Action<SKCanvas> drawAction) : ICu
 
         using var lease = leaseFeature.Lease();
         var canvas = lease.SkCanvas;
-        // save canvas state
-        canvas.Save();
         drawAction(canvas);
     }
 }
