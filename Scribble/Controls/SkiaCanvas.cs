@@ -39,6 +39,25 @@ public class SkiaCanvas : Control
         set => SetValue(CanvasBackgroundProperty, value);
     }
 
+    private static bool IsElementVisible(CanvasElement element, SKRect visibleWorldRect)
+    {
+        SKRect elementBounds;
+        switch (element)
+        {
+            case PaintableStroke stroke:
+                elementBounds = stroke.Path.Bounds;
+                break;
+            case CanvasImage image:
+                elementBounds = image.Bounds;
+                break;
+            default:
+                // Unknown element type, draw it to be safe
+                return true;
+        }
+
+        return visibleWorldRect.IntersectsWith(elementBounds);
+    }
+
     public override void Render(DrawingContext context)
     {
         // Draw background for the control, this is needed to handle pointer events
@@ -63,12 +82,23 @@ public class SkiaCanvas : Control
         var viewMatrix = CameraState.GetViewMatrix();
         canvas.Concat(ref viewMatrix);
 
+        // Compute the visible world-space rectangle for culling unnecessary strokes
+        var viewportWidth = (float)Bounds.Width;
+        var viewportHeight = (float)Bounds.Height;
+        var visibleWorldRect = new SKRect(
+            CameraState.WorldOffSetX,
+            CameraState.WorldOffSetY,
+            CameraState.WorldOffSetX + viewportWidth / CameraState.Zoom,
+            CameraState.WorldOffSetY + viewportHeight / CameraState.Zoom
+        );
+
         // Draw elements in layer-aware order: lower LayerIndex values are rendered first,
         // while preserving the existing relative order within each layer.
         foreach (var canvasElement in elementsToDraw
                      .OrderBy(e => e.LayerIndex)
                      .ThenBy(e => e.CreatedAt))
         {
+            if (!IsElementVisible(canvasElement, visibleWorldRect)) continue;
             DrawSingleElement(canvas, canvasElement);
         }
 
