@@ -373,15 +373,33 @@ public partial class MainView : UserControl
 
     private void MainCanvas_OnPointerWheelChanged(object? sender, PointerWheelEventArgs e)
     {
-        bool ctrlKeyIsActive = (e.KeyModifiers & KeyModifiers.Control) != 0;
-        if (!ctrlKeyIsActive) return;
+        bool ctrlKeyIsPressed = (e.KeyModifiers & KeyModifiers.Control) != 0;
+        bool shiftKeyIsPressed = (e.KeyModifiers & KeyModifiers.Shift) != 0;
         if (_viewModel == null) throw new Exception("View Model not initialized");
 
         var screenPos = Utilities.ToSkPoint(e.GetPosition(MainCanvas));
 
-        // Multiplicative Zoom
-        double zoomFactor = e.Delta.Y > 0 ? 1.1f : 0.9f;
-        PerformZoom(zoomFactor, screenPos);
+        if (ctrlKeyIsPressed)
+        {
+            double zoomFactor = e.Delta.Y > 0 ? 1.1f : 0.9f;
+            PerformZoom(zoomFactor, screenPos);
+        }
+        else
+        {
+            // Pan: scroll wheel alone = y-axis, Shift+scroll = x-axis
+            const float panStep = 50f;
+            float scrollAmount = (float)e.Delta.Y * panStep;
+            if (shiftKeyIsPressed)
+            {
+                CameraState.WorldOffSetX -= scrollAmount / CameraState.Zoom;
+            }
+            else
+            {
+                CameraState.WorldOffSetY -= scrollAmount / CameraState.Zoom;
+            }
+
+            MainCanvas.InvalidateVisual();
+        }
 
         e.Handled = true;
     }
