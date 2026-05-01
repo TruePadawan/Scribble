@@ -44,10 +44,20 @@ public static class Utilities
     /// <summary>
     /// Converts a Point to a SkiaSharp Point
     /// </summary>
-    /// <returns>The equivalent <see cref="Point">Point</see> object</returns>
+    /// <returns>The equivalent <see cref="SKPoint">SKPoint</see> object</returns>
     public static SKPoint ToSkPoint(Point coord)
     {
         return new SKPoint((float)coord.X, (float)coord.Y);
+    }
+
+    /// <summary>
+    /// Converts a SkiaSharp Point to a Point
+    /// </summary>
+    /// <param name="point"></param>
+    /// <returns>The equivalent <see cref="Point">Point</see> object</returns>
+    public static Point FromSkPoint(SKPoint point)
+    {
+        return new Point(point.X, point.Y);
     }
 
     /// <summary>
