@@ -64,8 +64,10 @@ public class SkiaCanvas : Control
         context.DrawRectangle(new SolidColorBrush(Colors.Transparent), null, new Rect(Bounds.Size));
 
         var bounds = new Rect(0, 0, Bounds.Width, Bounds.Height);
-        // Have to capture the data outside the Render thread else it throws an exception
-        var elementsToDraw = CanvasElements;
+
+        // Snapshot the element list on the UI thread, the render thread must not enumerate
+        // the same mutable list that the UI thread modifies
+        var elementsToDraw = CanvasElements.ToList();
         var bgColor = CanvasBackground;
         context.Custom(
             new SkiaDrawOperation(bounds, canvas => { DrawCanvasElementsOnCanvas(canvas, elementsToDraw, bgColor); }));
