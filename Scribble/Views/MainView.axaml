@@ -32,9 +32,7 @@
                              CanvasElements="{Binding CanvasElements}" />
 
         <!-- Overlay canvas for selection UI and text edit borders (layered on top of SkiaCanvas) -->
-        <!-- IsHitTestVisible=False lets pointer events pass through to SkiaCanvas below -->
         <Canvas Name="CanvasContainer"
-                IsHitTestVisible="False"
                 HorizontalAlignment="Stretch"
                 VerticalAlignment="Stretch">
             <!-- COVERS SELECTED ELEMENTS -->

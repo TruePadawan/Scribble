@@ -144,19 +144,25 @@ public partial class MainView : UserControl
         foreach (var textStroke in textStrokes)
         {
             var strokeBounds = textStroke.Path.Bounds;
+
+            // Convert world-space bounds to screen-space for overlay positioning
+            var topLeftScreen = CameraState.WorldToScreen(new SKPoint(strokeBounds.Left, strokeBounds.Top));
+            var bottomRightScreen =
+                CameraState.WorldToScreen(new SKPoint(strokeBounds.Right, strokeBounds.Bottom));
+
             var border = new Border
             {
                 Background = Brushes.Transparent,
-                Width = strokeBounds.Width,
-                Height = strokeBounds.Height,
+                Width = bottomRightScreen.X - topLeftScreen.X,
+                Height = bottomRightScreen.Y - topLeftScreen.Y,
                 Cursor = new Cursor(StandardCursorType.Ibeam),
                 Tag = textStroke
             };
 
             border.PointerPressed += TextStrokeBorder_OnPointerPressed;
 
-            Canvas.SetLeft(border, strokeBounds.Left);
-            Canvas.SetTop(border, strokeBounds.Top);
+            Canvas.SetLeft(border, topLeftScreen.X);
+            Canvas.SetTop(border, topLeftScreen.Y);
             borders.Add(border);
         }
 
@@ -286,11 +292,17 @@ public partial class MainView : UserControl
             }
 
             // Align the selection overlay with what it has selected
-            Canvas.SetLeft(SelectionOverlay, combinedBounds.Left);
-            Canvas.SetTop(SelectionOverlay, combinedBounds.Top - 15 - 6);
+            // Convert the world-space bounding rect corners to screen-space
+            var topLeftScreen = CameraState.WorldToScreen(new SKPoint(combinedBounds.Left, combinedBounds.Top));
+            var bottomRightScreen = CameraState.WorldToScreen(new SKPoint(combinedBounds.Right, combinedBounds.Bottom));
+            var screenWidth = bottomRightScreen.X - topLeftScreen.X;
+            var screenHeight = bottomRightScreen.Y - topLeftScreen.Y;
 
-            SelectionBoxContainer.Width = combinedBounds.Width;
-            SelectionBoxContainer.Height = combinedBounds.Height;
+            Canvas.SetLeft(SelectionOverlay, topLeftScreen.X);
+            Canvas.SetTop(SelectionOverlay, topLeftScreen.Y - 15 - 6);  // rotation handle offset
+            SelectionBoxContainer.Width = screenWidth;
+            SelectionBoxContainer.Height = screenHeight;
+
             SelectionOverlay.IsVisible = true;
             _selection.SelectionBounds = combinedBounds;
             bool isRotating = !double.IsNaN(_selection.SelectionRotationAngle);

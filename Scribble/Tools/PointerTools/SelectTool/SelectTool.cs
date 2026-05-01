@@ -5,8 +5,8 @@ using Avalonia.Input;
 using Avalonia.Media;
 using Scribble.Services;
 using Scribble.Shared.Lib;
+using Scribble.State;
 using Scribble.Utils;
-using SkiaSharp;
 
 namespace Scribble.Tools.PointerTools.SelectTool;
 
@@ -29,6 +29,9 @@ class SelectTool : PointerTool
 
     public override void HandlePointerClick(Point coord)
     {
+        // coord is in world-space, convert to screen-space for positioning the visual border
+        var screenPos = CameraState.WorldToScreen(Utilities.ToSkPoint(coord));
+
         _selectionBorder = new Border
         {
             BorderThickness = new Thickness(2),
@@ -36,9 +39,9 @@ class SelectTool : PointerTool
             Width = 0,
             Height = 0
         };
-        Canvas.SetLeft(_selectionBorder, coord.X);
-        Canvas.SetTop(_selectionBorder, coord.Y);
-        _startPoint = coord;
+        Canvas.SetLeft(_selectionBorder, screenPos.X);
+        Canvas.SetTop(_selectionBorder, screenPos.Y);
+        _startPoint = new Point(screenPos.X, screenPos.Y);
         _canvasContainer.Children.Add(_selectionBorder);
         _boundId = Guid.NewGuid();
         _actionId = Guid.NewGuid();
@@ -47,18 +50,24 @@ class SelectTool : PointerTool
             CanvasState.ClearSelection();
         }
 
-        CanvasState.ApplyEvent(new CreateSelectionBoundEvent(_actionId, _boundId,
-            new SKPoint((float)coord.X, (float)coord.Y)));
+        // Events use world-space coordinates
+        CanvasState.ApplyEvent(new CreateSelectionBoundEvent(_actionId, _boundId, Utilities.ToSkPoint(coord)));
     }
 
     public override void HandlePointerMove(Point prevCoord, Point currentCoord)
     {
         if (_selectionBorder == null) return;
-        _selectionBorder.Width = Math.Abs(currentCoord.X - _startPoint.X);
-        _selectionBorder.Height = Math.Abs(currentCoord.Y - _startPoint.Y);
 
-        Canvas.SetLeft(_selectionBorder, Math.Min(_startPoint.X, currentCoord.X));
-        Canvas.SetTop(_selectionBorder, Math.Min(_startPoint.Y, currentCoord.Y));
+        // currentCoord is in world-space, convert to screen-space for visual border
+        var screenPos = CameraState.WorldToScreen(Utilities.ToSkPoint(currentCoord));
+
+        _selectionBorder.Width = Math.Abs(screenPos.X - _startPoint.X);
+        _selectionBorder.Height = Math.Abs(screenPos.Y - _startPoint.Y);
+
+        Canvas.SetLeft(_selectionBorder, Math.Min(_startPoint.X, screenPos.X));
+        Canvas.SetTop(_selectionBorder, Math.Min(_startPoint.Y, screenPos.Y));
+
+        // Events use world-space coordinates
         CanvasState.ApplyEvent(new IncreaseSelectionBoundEvent(_actionId, _boundId, Utilities.ToSkPoint(currentCoord)));
     }
 
