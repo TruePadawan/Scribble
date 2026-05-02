@@ -613,11 +613,7 @@
                             <TextBlock TextWrapping="Wrap" FontWeight="ExtraLight">
                                 Scribble is a cross-platform digital whiteboard program built with C#/.NET, AvaloniaUI, SignalR, SkiaSharp.
                             </TextBlock>
-                            <TextBlock TextWrapping="Wrap" FontWeight="ExtraLight">
-                                I got bored of doing another web-based project so I decided to pick up C#/.NET and Avalonia by building this
-                            </TextBlock>
                         </StackPanel>
-
                         <StackPanel Orientation="Vertical" Spacing="4">
                             <TextBlock TextWrapping="Wrap" Foreground="WhiteSmoke">
                                 <TextBlock VerticalAlignment="Center">
