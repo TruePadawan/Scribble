@@ -234,8 +234,12 @@ public partial class MainView : UserControl
         CameraState.WorldOffSetX -= worldPosAfterZoom.X - worldPosBeforeZoom.X;
         CameraState.WorldOffSetY -= worldPosAfterZoom.Y - worldPosBeforeZoom.Y;
 
-        _viewModel.UiStateViewModel.UpdateZoomLevel(newZoom);
         MainCanvas.InvalidateVisual();
+
+        _viewModel.UiStateViewModel.UpdateZoomLevel(newZoom);
+        // Re-visualize selection if there was any before zooming, this is needed to correct the size of the selection
+        // border post-zoom
+        VisualizeSelection();
     }
 
     private void VisualizeSelection()
@@ -299,7 +303,7 @@ public partial class MainView : UserControl
             var screenHeight = bottomRightScreen.Y - topLeftScreen.Y;
 
             Canvas.SetLeft(SelectionOverlay, topLeftScreen.X);
-            Canvas.SetTop(SelectionOverlay, topLeftScreen.Y - 15 - 6);  // rotation handle offset
+            Canvas.SetTop(SelectionOverlay, topLeftScreen.Y - 15 - 6); // rotation handle offset
             SelectionBoxContainer.Width = screenWidth;
             SelectionBoxContainer.Height = screenHeight;
 
