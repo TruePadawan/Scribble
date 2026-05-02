@@ -39,7 +39,7 @@ public class SkiaCanvas : Control
         set => SetValue(CanvasBackgroundProperty, value);
     }
 
-    private static bool IsElementVisible(CanvasElement element, SKRect visibleWorldRect)
+    private static bool IsCanvasElementVisible(CanvasElement element, SKRect visibleWorldRect)
     {
         SKRect elementBounds;
         switch (element)
@@ -100,7 +100,7 @@ public class SkiaCanvas : Control
                      .OrderBy(e => e.LayerIndex)
                      .ThenBy(e => e.CreatedAt))
         {
-            if (!IsElementVisible(canvasElement, visibleWorldRect)) continue;
+            if (!IsCanvasElementVisible(canvasElement, visibleWorldRect)) continue;
             DrawSingleElement(canvas, canvasElement);
         }
 
