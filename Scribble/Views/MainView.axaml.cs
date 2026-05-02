@@ -242,6 +242,58 @@ public partial class MainView : UserControl
         VisualizeSelection();
     }
 
+    private void ZoomToFitBtn_OnClick(object? sender, RoutedEventArgs e)
+    {
+        if (_viewModel == null || _viewModel.CanvasElements.Count == 0) return;
+
+        SKRect globalBounds = SKRect.Empty;
+
+        foreach (var element in _viewModel.CanvasElements)
+        {
+            SKRect elementBounds = element switch
+            {
+                PaintableStroke stroke => stroke.Path.Bounds,
+                CanvasImage image => image.Bounds,
+                _ => SKRect.Empty
+            };
+
+            if (globalBounds == SKRect.Empty)
+            {
+                globalBounds = elementBounds;
+            }
+            else if (!elementBounds.IsEmpty)
+            {
+                globalBounds.Union(elementBounds);
+            }
+        }
+
+        if (globalBounds.IsEmpty) return;
+
+        // Viewport dimensions (screen space)
+        float viewportWidth = (float)MainCanvas.Bounds.Width;
+        float viewportHeight = (float)MainCanvas.Bounds.Height;
+
+        // Calculate the scale required to fit width and height, then take the smaller one
+        float scaleX = viewportWidth / globalBounds.Width;
+        float scaleY = viewportHeight / globalBounds.Height;
+        float targetZoom = Math.Min(scaleX, scaleY);
+
+        // Add 10% padding so it looks nice
+        targetZoom *= 0.9f;
+
+        CameraState.SetZoom(targetZoom);
+        float finalZoom = CameraState.Zoom;
+
+        // Center the viewport
+        CameraState.WorldOffSetX = globalBounds.MidX - (viewportWidth / 2f) / finalZoom;
+        CameraState.WorldOffSetY = globalBounds.MidY - (viewportHeight / 2f) / finalZoom;
+
+        _viewModel.UiStateViewModel.UpdateZoomLevel(finalZoom);
+        MainCanvas.InvalidateVisual();
+
+        VisualizeSelection();
+    }
+
     private void VisualizeSelection()
     {
         if (_viewModel == null) return;

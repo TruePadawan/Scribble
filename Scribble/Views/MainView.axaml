@@ -672,12 +672,27 @@
         </Border>
 
         <!-- Zoom Buttons -->
-        <Border
+        <StackPanel
             HorizontalAlignment="Right"
             VerticalAlignment="Bottom"
-            CornerRadius="8"
-            Background="#2c2c2c"
+            Spacing="8"
             Margin="0,0,8,12">
+            <Button
+                Name="ZoomToFitBtn"
+                ToolTip.Tip="Zoom to fit content - Shift + 1"
+                Background="#2c2c2c"
+                CornerRadius="8"
+                Padding="12, 6"
+                HorizontalAlignment="Stretch"
+                HorizontalContentAlignment="Center"
+                HotKey="Shift+D1"
+                Click="ZoomToFitBtn_OnClick">
+                <TextBlock Text="Zoom to Fit" Foreground="White" FontSize="12" />
+            </Button>
+
+            <Border
+                CornerRadius="8"
+                Background="#2c2c2c">
             <StackPanel Orientation="Horizontal" Spacing="2">
                 <Button ToolTip.Tip="Zoom out - Ctrl + '-'"
                         Name="ZoomOutBtn"
@@ -717,6 +732,7 @@
                 </Style>
             </Border.Styles>
         </Border>
+        </StackPanel>
 
         <!-- Export to Image -->
         <Panel VerticalAlignment="Stretch" HorizontalAlignment="Stretch">
