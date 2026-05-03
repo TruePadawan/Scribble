@@ -183,8 +183,8 @@ public class SkiaCanvas : Control
 
         // Draw dot grid in screen space
         var zoom = CameraState.Zoom;
-        // Base spacing is 50 world units
-        var gridSpacing = 50f * zoom;
+        // Base spacing is 60 world units
+        var gridSpacing = 60f * zoom;
 
         // Hide grid when zoomed out too far to avoid clutter and performance issues
         if (gridSpacing >= 15f)
