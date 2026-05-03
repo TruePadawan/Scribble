@@ -75,8 +75,7 @@ public class SkiaCanvas : Control
 
     private void DrawCanvasElementsOnCanvas(SKCanvas canvas, IEnumerable<CanvasElement> elementsToDraw, Color bgColor)
     {
-        // Clear the entire viewport with the background color (before camera transform)
-        canvas.Clear(Utilities.ToSkColor(bgColor));
+        DrawBackground(canvas, bgColor);
 
         // Save the existing canvas state (Avalonia's DPI/layout matrix) so we can restore it later
         canvas.Save();
@@ -174,6 +173,43 @@ public class SkiaCanvas : Control
             }
 
             canvas.Restore();
+        }
+    }
+
+    private void DrawBackground(SKCanvas canvas, Color bgColor)
+    {
+        // Clear the entire viewport with the background color (before camera transform)
+        canvas.Clear(Utilities.ToSkColor(bgColor));
+
+        // Draw dot grid in screen space
+        var zoom = CameraState.Zoom;
+        var gridSpacing = 50f * zoom; // Base spacing is 50 world units
+
+        // Hide grid when zoomed out too far to avoid clutter and performance issues
+        if (gridSpacing >= 15f)
+        {
+            // Modulo function that correctly handles negative numbers
+            float Mod(float a, float n) => (a % n + n) % n;
+
+            var gridOffsetX = Mod(CameraState.WorldOffSetX * zoom, gridSpacing);
+            var gridOffsetY = Mod(CameraState.WorldOffSetY * zoom, gridSpacing);
+
+            // Determine if background is dark or light to pick dot color
+            bool isDarkBg = bgColor.R * 0.299 + bgColor.G * 0.587 + bgColor.B * 0.114 < 128;
+            var dotColor = isDarkBg ? SKColors.White.WithAlpha(60) : SKColors.Black.WithAlpha(60);
+
+            using var gridPaint = new SKPaint();
+            gridPaint.Color = dotColor;
+            gridPaint.IsAntialias = true;
+            gridPaint.Style = SKPaintStyle.Fill;
+
+            for (float x = -gridOffsetX; x < Bounds.Width; x += gridSpacing)
+            {
+                for (float y = -gridOffsetY; y < Bounds.Height; y += gridSpacing)
+                {
+                    canvas.DrawCircle(x, y, 1.5f, gridPaint);
+                }
+            }
         }
     }
 
