@@ -241,6 +241,8 @@ public partial class MainView : UserControl
         // Re-visualize selection if there was any before zooming, this is needed to correct the size of the selection
         // border post-zoom
         VisualizeSelection();
+        // Re-apply text edit overlay so it stays in sync with the zoom level
+        MarkTextStrokesForEditing();
     }
 
     private void ZoomToFitBtn_OnClick(object? sender, RoutedEventArgs e)
@@ -415,6 +417,12 @@ public partial class MainView : UserControl
         }
 
         _prevCoord = pointerCoordinates;
+
+        // Re-apply text edit overlay if canvas is being panned around
+        if (_activePointerTool is PanningTool)
+        {
+            MarkTextStrokesForEditing();
+        }
     }
 
     private void MainCanvas_OnPointerPressed(object? sender, PointerPressedEventArgs e)
