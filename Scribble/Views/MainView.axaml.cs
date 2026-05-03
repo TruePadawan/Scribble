@@ -8,6 +8,7 @@ using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
+using Avalonia.Skia;
 using Avalonia.Threading;
 using Microsoft.Extensions.DependencyInjection;
 using Scribble.Services;
@@ -37,7 +38,7 @@ namespace Scribble.Views;
 
 public partial class MainView : UserControl
 {
-    private Point _prevCoord;
+    private SKPoint _prevCoord;
     private PointerTool? _activePointerTool;
     private MainViewModel? _viewModel;
     private readonly CanvasStateService _canvasStateService;
@@ -49,7 +50,7 @@ public partial class MainView : UserControl
     public MainView()
     {
         InitializeComponent();
-        _prevCoord = new Point(-1, -1);
+        _prevCoord = SKPoint.Empty;
         _selection = new Selection();
 
         var moveIconBitmap = Bitmap.DecodeToWidth(AssetLoader.Open(new Uri("avares://Scribble/Assets/move.png")), 36);
@@ -384,19 +385,18 @@ public partial class MainView : UserControl
         }
     }
 
-    private Point GetPointerPosition(PointerEventArgs e)
+    private SKPoint GetPointerPosition(PointerEventArgs e)
     {
         // For panning, we need screen-space coordinates (raw viewport pixels)
         // so the panning delta can be correctly converted to world-space offset changes
         if (_activePointerTool is PanningTool)
         {
-            return e.GetPosition(MainCanvas);
+            return e.GetPosition(MainCanvas).ToSKPoint();
         }
 
         // For all other tools, convert screen pixels to world coordinates
         var screenPos = Utilities.ToSkPoint(e.GetPosition(MainCanvas));
-        var worldPos = CameraState.ScreenToWorld(screenPos);
-        return Utilities.FromSkPoint(worldPos);
+        return CameraState.ScreenToWorld(screenPos);
     }
 
     private void MainCanvas_OnPointerMoved(object? sender, PointerEventArgs e)
@@ -407,7 +407,7 @@ public partial class MainView : UserControl
         // due to pressure/tilt jitter even when stationary)
         if (Utilities.AreSamePosition(pointerCoordinates, _prevCoord)) return;
 
-        var hasLastCoordinates = !_prevCoord.Equals(new Point(-1, -1));
+        var hasLastCoordinates = !_prevCoord.IsEmpty;
 
         if (e.Properties.IsLeftButtonPressed && hasLastCoordinates)
         {
@@ -436,7 +436,7 @@ public partial class MainView : UserControl
         }
 
         // Reset the last coordinates when the mouse is released
-        _prevCoord = new Point(-1, -1);
+        _prevCoord = SKPoint.Empty;
     }
 
     private void MainCanvas_OnPointerWheelChanged(object? sender, PointerWheelEventArgs e)
@@ -488,15 +488,15 @@ public partial class MainView : UserControl
         // Skip if position hasn't changed (tablet pen jitter)
         if (Utilities.AreSamePosition(pointerCoordinates, _selection.SelectionMoveCoord)) return;
 
-        var hasLastCoordinates = !_selection.SelectionMoveCoord.Equals(new Point(-1, -1));
+        var hasLastCoordinates = !_selection.SelectionMoveCoord.IsEmpty;
         if (e.Properties.IsLeftButtonPressed && hasLastCoordinates && _viewModel != null)
         {
             // Move selected elements
-            Point delta = pointerCoordinates - _selection.SelectionMoveCoord;
+            var delta = pointerCoordinates - _selection.SelectionMoveCoord;
             if (_canvasStateService.ActiveSelectionBoundId is { } moveBoundId)
             {
                 _canvasStateService.ApplyEvent(new MoveCanvasElementsEvent(_selection.MoveActionId, moveBoundId,
-                    Utilities.ToSkPoint(delta)));
+                    delta));
             }
         }
 
@@ -513,7 +513,7 @@ public partial class MainView : UserControl
             }
         }
 
-        _selection.SelectionMoveCoord = new Point(-1, -1);
+        _selection.SelectionMoveCoord = SKPoint.Empty;
     }
 
     private void SelectionRotationBtn_OnPointerPressed(object? sender, PointerPressedEventArgs e)
@@ -561,8 +561,7 @@ public partial class MainView : UserControl
             if (_canvasStateService.ActiveSelectionBoundId is { } rotateBoundId)
             {
                 _canvasStateService.ApplyEvent(new RotateCanvasElementsEvent(_selection.RotateActionId, rotateBoundId,
-                    (float)deltaRad,
-                    Utilities.ToSkPoint(_selection.SelectionCenter)));
+                    (float)deltaRad, _selection.SelectionCenter));
             }
 
             _selection.SelectionRotationAngle = angleRad;
@@ -580,7 +579,7 @@ public partial class MainView : UserControl
         }
 
         _selection.SelectionRotationAngle = double.NaN;
-        _selection.SelectionCenter = new Point(-1, -1);
+        _selection.SelectionCenter = SKPoint.Empty;
         VisualizeSelection();
     }
 
@@ -623,8 +622,8 @@ public partial class MainView : UserControl
             {
                 _canvasStateService.ApplyEvent(new ScaleCanvasElementsEvent(_selection.ScaleActionId,
                     scaleBoundId,
-                    new SKPoint((float)scaleX, (float)scaleY),
-                    Utilities.ToSkPoint(_selection.ScalePivot)));
+                    new SKPoint(scaleX, scaleY),
+                    _selection.ScalePivot));
             }
 
             _selection.ScalePrevCoord = currentCoord;
@@ -642,8 +641,8 @@ public partial class MainView : UserControl
             }
 
             _selection.ActiveScaleHandle = null;
-            _selection.ScalePivot = new Point(-1, -1);
-            _selection.ScalePrevCoord = new Point(-1, -1);
+            _selection.ScalePivot = SKPoint.Empty;
+            _selection.ScalePrevCoord = SKPoint.Empty;
             VisualizeSelection();
             e.Handled = true;
         }

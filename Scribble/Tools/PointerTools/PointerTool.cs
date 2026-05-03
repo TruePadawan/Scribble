@@ -1,9 +1,9 @@
 using System;
-using Avalonia;
 using Avalonia.Input;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
 using Scribble.Services;
+using SkiaSharp;
 
 namespace Scribble.Tools.PointerTools;
 
@@ -34,15 +34,15 @@ public abstract class PointerTool(string name, CanvasStateService canvasState, B
         return new Bitmap(AssetLoader.Open(uri));
     }
 
-    public virtual void HandlePointerMove(Point prevCoord, Point currentCoord)
+    public virtual void HandlePointerMove(SKPoint prevCoord, SKPoint currentCoord)
     {
     }
 
-    public virtual void HandlePointerClick(Point coord)
+    public virtual void HandlePointerClick(SKPoint coord)
     {
     }
 
-    public virtual void HandlePointerRelease(Point prevCoord, Point currentCoord)
+    public virtual void HandlePointerRelease(SKPoint prevCoord, SKPoint currentCoord)
     {
     }
 

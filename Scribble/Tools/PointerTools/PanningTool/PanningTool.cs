@@ -3,6 +3,7 @@ using Avalonia.Input;
 using Scribble.Services;
 using Scribble.State;
 using System;
+using SkiaSharp;
 
 namespace Scribble.Tools.PointerTools.PanningTool;
 
@@ -24,13 +25,13 @@ public class PanningTool : PointerTool
     /// The delta in screen pixels is divided by zoom
     /// to produce the equivalent world-space pan offset.
     /// </summary>
-    public override void HandlePointerMove(Point prevScreenPos, Point currentScreenPos)
+    public override void HandlePointerMove(SKPoint prevScreenPos, SKPoint currentScreenPos)
     {
         var screenDelta = currentScreenPos - prevScreenPos;
         // Convert screen-pixel delta to world-space delta
         // The camera is 'looking' at the direction opposite to where we're panning so we subtract
-        CameraState.WorldOffSetX -= (float)(screenDelta.X / CameraState.Zoom);
-        CameraState.WorldOffSetY -= (float)(screenDelta.Y / CameraState.Zoom);
+        CameraState.WorldOffSetX -= screenDelta.X / CameraState.Zoom;
+        CameraState.WorldOffSetY -= screenDelta.Y / CameraState.Zoom;
 
         _requestCanvasRedraw();
     }

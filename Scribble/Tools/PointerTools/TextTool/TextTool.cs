@@ -39,7 +39,7 @@ public class TextTool : StrokeTool
         ToolTip = "Text Tool - 8";
     }
 
-    public override void HandlePointerClick(Point coord)
+    public override void HandlePointerClick(SKPoint coord)
     {
         if (_currentTextBox != null)
         {
@@ -62,7 +62,7 @@ public class TextTool : StrokeTool
         _currentTextBox.AddHandler(Control.RequestBringIntoViewEvent, (sender, args) => { args.Handled = true; });
 
         // coord is in world-space, convert to screen-space for overlay positioning
-        var screenPos = CameraState.WorldToScreen(Utilities.ToSkPoint(coord));
+        var screenPos = CameraState.WorldToScreen(coord);
         Canvas.SetLeft(_currentTextBox, screenPos.X);
         Canvas.SetTop(_currentTextBox, screenPos.Y);
 
