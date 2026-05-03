@@ -462,17 +462,22 @@ public partial class MainView : UserControl
         }
         else
         {
-            // Pan: scroll wheel alone = y-axis, Shift+scroll = x-axis
+            // Pan: trackpads natively provide both Delta.X and Delta.Y for omnidirectional panning.
+            // Mouse wheels only provide Delta.Y, so use Shift+Wheel for horizontal panning.
             const float panStep = 50f;
-            float scrollAmount = (float)e.Delta.Y * panStep;
-            if (shiftKeyIsPressed)
+
+            float deltaX = (float)e.Delta.X;
+            float deltaY = (float)e.Delta.Y;
+
+            // If Shift is pressed and the pointing device only sent vertical scroll, convert it to horizontal.
+            if (shiftKeyIsPressed && Math.Abs(deltaX) < 0.0001f)
             {
-                CameraState.WorldOffSetX -= scrollAmount / CameraState.Zoom;
+                deltaX = deltaY;
+                deltaY = 0;
             }
-            else
-            {
-                CameraState.WorldOffSetY -= scrollAmount / CameraState.Zoom;
-            }
+
+            CameraState.WorldOffSetX -= (deltaX * panStep) / CameraState.Zoom;
+            CameraState.WorldOffSetY -= (deltaY * panStep) / CameraState.Zoom;
 
             MainCanvas.InvalidateVisual();
         }
