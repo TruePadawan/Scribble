@@ -28,6 +28,7 @@ public class PanningTool : PointerTool
     {
         var screenDelta = currentScreenPos - prevScreenPos;
         // Convert screen-pixel delta to world-space delta
+        // The camera is 'looking' at the direction opposite to where we're panning so we subtract
         CameraState.WorldOffSetX -= (float)(screenDelta.X / CameraState.Zoom);
         CameraState.WorldOffSetY -= (float)(screenDelta.Y / CameraState.Zoom);
 

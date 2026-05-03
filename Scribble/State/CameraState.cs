@@ -1,3 +1,5 @@
+// Helpful video by javidx9 https://youtu.be/ZQ8qtAizis4?si=wrfBlnjDrZ-yroBC
+
 using System;
 using SkiaSharp;
 
@@ -35,6 +37,8 @@ public static class CameraState
     public static SKMatrix GetViewMatrix()
     {
         var matrix = SKMatrix.CreateScale(Zoom, Zoom);
+        // Negate the translation to give the illusion that the canvas elements are moving
+        // to the opposite direction of the camera
         matrix = matrix.PostConcat(SKMatrix.CreateTranslation(-WorldOffSetX * Zoom, -WorldOffSetY * Zoom));
         return matrix;
     }
