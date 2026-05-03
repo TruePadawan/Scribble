@@ -1,5 +1,5 @@
 ## Scribble
-A cross-platform (windows/linux) digital whiteboard application
+A cross-platform (windows/linux) infinite whiteboard
 
 ### Tech Stack
 - [C#/.NET](https://dotnet.microsoft.com/en-us/): Core
@@ -9,13 +9,9 @@ A cross-platform (windows/linux) digital whiteboard application
 - [SignalR](https://dotnet.microsoft.com/en-us/apps/aspnet/signalr): Collaborative drawing
 - [Render + Docker](https://render.com/): Hosting the SignalR server
 
-<img width="1916" height="1048" alt="image" src="https://github.com/user-attachments/assets/9ba0d5c9-af75-4aa1-b8c6-5b954c4b161b" />
+<img width="1895" height="1027" alt="Screenshot from 2026-05-03 13-10-20" src="https://github.com/user-attachments/assets/6e9d47bf-ddd0-4f55-bc52-2d676a30942d" />
 
-<img width="1920" height="1043" alt="Screenshot from 2026-02-10 07-11-14" src="https://github.com/user-attachments/assets/b8cf2baf-f565-4f2e-8f8c-0224a5eadef2" />
- 
-<img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/4a817026-a4a6-41fd-b684-1323a2f0f9d8" />
-
-<img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/b48e97ab-129e-4466-8df5-fdab73ac8b98" />
+<img width="1895" height="1027" alt="Screenshot from 2026-05-03 13-16-59" src="https://github.com/user-attachments/assets/7017ae99-cd33-41a3-80fe-ba67734b45d5" />
 
 ## Local Setup
 
