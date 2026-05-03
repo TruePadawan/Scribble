@@ -33,7 +33,7 @@ public partial class UiStateViewModel : ViewModelBase
     [ObservableProperty] private bool _toolOptionsVisible;
 
     [ObservableProperty] [NotifyPropertyChangedFor(nameof(ScaleFactorText))]
-    private float _zoomLevel = 1.0f;
+    private float _zoomLevel = CameraState.Zoom;
 
     public string ScaleFactorText => $"{Math.Floor(ZoomLevel * 100)}%";
     public ObservableCollection<PointerTool> AvailableTools { get; } = [];
