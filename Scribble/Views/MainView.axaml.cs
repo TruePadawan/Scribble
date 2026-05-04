@@ -8,6 +8,7 @@ using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
+using Avalonia.Skia;
 using Avalonia.Threading;
 using Microsoft.Extensions.DependencyInjection;
 using Scribble.Services;
@@ -37,7 +38,7 @@ namespace Scribble.Views;
 
 public partial class MainView : UserControl
 {
-    private Point _prevCoord;
+    private SKPoint _prevCoord;
     private PointerTool? _activePointerTool;
     private MainViewModel? _viewModel;
     private readonly CanvasStateService _canvasStateService;
@@ -49,7 +50,7 @@ public partial class MainView : UserControl
     public MainView()
     {
         InitializeComponent();
-        _prevCoord = new Point(-1, -1);
+        _prevCoord = SKPoint.Empty;
         _selection = new Selection();
 
         var moveIconBitmap = Bitmap.DecodeToWidth(AssetLoader.Open(new Uri("avares://Scribble/Assets/move.png")), 36);
@@ -87,17 +88,13 @@ public partial class MainView : UserControl
             _viewModel.UiStateViewModel.CenterZoomRequested += OnCenterZoomRequested;
             _viewModel.UiStateViewModel.ActiveToolChanged += OnActiveToolChanged;
 
-            // Center the whiteboard
-            (double canvasWidth, double canvasHeight) = viewModel.GetCanvasDimensions();
-            CanvasScrollViewer.Offset = new Vector(canvasWidth / 2, canvasHeight / 2);
-
             // Load in all the pointer tools
             viewModel.UiStateViewModel.AvailableTools.Clear();
             var tools = new List<PointerTool>
             {
                 new PencilTool("PencilTool", _canvasStateService),
                 new EraseTool("EraseTool", _canvasStateService),
-                new PanningTool("PanningTool", _canvasStateService, CanvasScrollViewer),
+                new PanningTool("PanningTool", _canvasStateService, MainCanvas.InvalidateVisual),
                 new LineTool("LineTool", _canvasStateService),
                 new ArrowTool("ArrowTool", _canvasStateService),
                 new EllipseTool("EllipseTool", _canvasStateService),
@@ -148,19 +145,25 @@ public partial class MainView : UserControl
         foreach (var textStroke in textStrokes)
         {
             var strokeBounds = textStroke.Path.Bounds;
+
+            // Convert world-space bounds to screen-space for overlay positioning
+            var topLeftScreen = CameraState.WorldToScreen(new SKPoint(strokeBounds.Left, strokeBounds.Top));
+            var bottomRightScreen =
+                CameraState.WorldToScreen(new SKPoint(strokeBounds.Right, strokeBounds.Bottom));
+
             var border = new Border
             {
                 Background = Brushes.Transparent,
-                Width = strokeBounds.Width,
-                Height = strokeBounds.Height,
+                Width = bottomRightScreen.X - topLeftScreen.X,
+                Height = bottomRightScreen.Y - topLeftScreen.Y,
                 Cursor = new Cursor(StandardCursorType.Ibeam),
                 Tag = textStroke
             };
 
             border.PointerPressed += TextStrokeBorder_OnPointerPressed;
 
-            Canvas.SetLeft(border, strokeBounds.Left);
-            Canvas.SetTop(border, strokeBounds.Top);
+            Canvas.SetLeft(border, topLeftScreen.X);
+            Canvas.SetTop(border, topLeftScreen.Y);
             borders.Add(border);
         }
 
@@ -202,38 +205,96 @@ public partial class MainView : UserControl
         if (_viewModel == null) return;
 
         // Zoom in as if the pointer was in the middle of the viewport
-        Point centerOnViewport = new Point(
-            CanvasScrollViewer.Viewport.Width / 2,
-            CanvasScrollViewer.Viewport.Height / 2
+        var viewportCenter = new SKPoint(
+            (float)(MainCanvas.Bounds.Width / 2),
+            (float)(MainCanvas.Bounds.Height / 2)
         );
 
-        double currentZoomLevel = _viewModel.UiStateViewModel.ZoomLevel;
-        Vector currentOffset = CanvasScrollViewer.Offset;
-
-        Point centerOnCanvas = new Point(
-            (currentOffset.X + centerOnViewport.X) / currentZoomLevel,
-            (currentOffset.Y + centerOnViewport.Y) / currentZoomLevel
-        );
-
-        PerformZoom(zoomFactor, centerOnViewport, centerOnCanvas);
+        PerformZoom(zoomFactor, viewportCenter);
     }
 
-    private void PerformZoom(double zoomFactor, Point pointerViewPortPos, Point pointerCanvasPos)
+    /// <summary>
+    /// Zoom-to-point: adjusts CameraState.Zoom while keeping the world point
+    /// under the pointer fixed on screen.
+    /// </summary>
+    private void PerformZoom(double zoomFactor, SKPoint screenPivot)
     {
         if (_viewModel == null) return;
 
-        double newScale = _viewModel.UiStateViewModel.ZoomLevel * zoomFactor;
-        // Clamp new scale between min and max zoom
-        newScale = Math.Max(UiStateViewModel.MinZoom, Math.Min(newScale, UiStateViewModel.MaxZoom));
-        if (Math.Abs(newScale - _viewModel.UiStateViewModel.ZoomLevel) < 0.0001f) return;
+        var worldPosBeforeZoom = CameraState.ScreenToWorld(screenPivot);
+        var oldZoom = CameraState.Zoom;
+        var newZoom = (float)(oldZoom * zoomFactor);
+        CameraState.SetZoom(newZoom);
+        newZoom = CameraState.Zoom; // re-read in case it was clamped
 
-        _viewModel.UiStateViewModel.ApplyZoom(newScale);
+        if (Math.Abs(newZoom - oldZoom) < 0.0001f) return;
 
-        // Needed to prevent weird zooming at the edge of the canvas
-        CanvasScrollViewer.UpdateLayout();
-        // Implement zoom to point
-        var newOffset = (pointerCanvasPos * newScale) - pointerViewPortPos;
-        CanvasScrollViewer.Offset = new Vector(newOffset.X, newOffset.Y);
+        var worldPosAfterZoom = CameraState.ScreenToWorld(screenPivot);
+
+        // Adjust the world offset so the world point under the pointer stays fixed.
+        CameraState.WorldOffSetX -= worldPosAfterZoom.X - worldPosBeforeZoom.X;
+        CameraState.WorldOffSetY -= worldPosAfterZoom.Y - worldPosBeforeZoom.Y;
+
+        MainCanvas.InvalidateVisual();
+
+        _viewModel.UiStateViewModel.UpdateZoomLevel(newZoom);
+        // Re-visualize selection if there was any before zooming, this is needed to correct the size of the selection
+        // border post-zoom
+        VisualizeSelection();
+        // Re-apply text edit overlay so it stays in sync with the zoom level
+        MarkTextStrokesForEditing();
+    }
+
+    private void ZoomToFitBtn_OnClick(object? sender, RoutedEventArgs e)
+    {
+        if (_viewModel == null || _viewModel.CanvasElements.Count == 0) return;
+
+        SKRect globalBounds = SKRect.Empty;
+
+        foreach (var element in _viewModel.CanvasElements)
+        {
+            SKRect elementBounds = element switch
+            {
+                PaintableStroke stroke => stroke.Path.Bounds,
+                CanvasImage image => image.Bounds,
+                _ => SKRect.Empty
+            };
+
+            if (globalBounds == SKRect.Empty)
+            {
+                globalBounds = elementBounds;
+            }
+            else if (!elementBounds.IsEmpty)
+            {
+                globalBounds.Union(elementBounds);
+            }
+        }
+
+        if (globalBounds.IsEmpty) return;
+
+        // Viewport dimensions (screen space)
+        float viewportWidth = (float)MainCanvas.Bounds.Width;
+        float viewportHeight = (float)MainCanvas.Bounds.Height;
+
+        // Calculate the scale required to fit width and height, then take the smaller one
+        float scaleX = viewportWidth / globalBounds.Width;
+        float scaleY = viewportHeight / globalBounds.Height;
+        float targetZoom = Math.Min(scaleX, scaleY);
+
+        // Add 10% padding so it looks nice
+        targetZoom *= 0.9f;
+
+        CameraState.SetZoom(targetZoom);
+        float finalZoom = CameraState.Zoom;
+
+        // Center the viewport
+        CameraState.WorldOffSetX = globalBounds.MidX - (viewportWidth / 2f) / finalZoom;
+        CameraState.WorldOffSetY = globalBounds.MidY - (viewportHeight / 2f) / finalZoom;
+
+        _viewModel.UiStateViewModel.UpdateZoomLevel(finalZoom);
+        MainCanvas.InvalidateVisual();
+
+        VisualizeSelection();
     }
 
     private void VisualizeSelection()
@@ -290,11 +351,17 @@ public partial class MainView : UserControl
             }
 
             // Align the selection overlay with what it has selected
-            Canvas.SetLeft(SelectionOverlay, combinedBounds.Left);
-            Canvas.SetTop(SelectionOverlay, combinedBounds.Top - 15 - 6);
+            // Convert the world-space bounding rect corners to screen-space
+            var topLeftScreen = CameraState.WorldToScreen(new SKPoint(combinedBounds.Left, combinedBounds.Top));
+            var bottomRightScreen = CameraState.WorldToScreen(new SKPoint(combinedBounds.Right, combinedBounds.Bottom));
+            var screenWidth = bottomRightScreen.X - topLeftScreen.X;
+            var screenHeight = bottomRightScreen.Y - topLeftScreen.Y;
 
-            SelectionBoxContainer.Width = combinedBounds.Width;
-            SelectionBoxContainer.Height = combinedBounds.Height;
+            Canvas.SetLeft(SelectionOverlay, topLeftScreen.X);
+            Canvas.SetTop(SelectionOverlay, topLeftScreen.Y - 15 - 6); // rotation handle offset
+            SelectionBoxContainer.Width = screenWidth;
+            SelectionBoxContainer.Height = screenHeight;
+
             SelectionOverlay.IsVisible = true;
             _selection.SelectionBounds = combinedBounds;
             bool isRotating = !double.IsNaN(_selection.SelectionRotationAngle);
@@ -320,17 +387,18 @@ public partial class MainView : UserControl
         }
     }
 
-    private Point GetPointerPosition(PointerEventArgs e)
+    private SKPoint GetPointerPosition(PointerEventArgs e)
     {
-        // For panning, we need coordinates relative to the viewport (ScrollViewer)
-        // because Canvas itself moves, creating a feedback loop if we use its coordinates
+        // For panning, we need screen-space coordinates (raw viewport pixels)
+        // so the panning delta can be correctly converted to world-space offset changes
         if (_activePointerTool is PanningTool)
         {
-            return e.GetPosition(CanvasScrollViewer);
+            return e.GetPosition(MainCanvas).ToSKPoint();
         }
 
-        // For drawing/erasing, we need coordinates relative to the Canvas content
-        return e.GetPosition(MainCanvas);
+        // For all other tools, convert screen pixels to world coordinates
+        var screenPos = Utilities.ToSkPoint(e.GetPosition(MainCanvas));
+        return CameraState.ScreenToWorld(screenPos);
     }
 
     private void MainCanvas_OnPointerMoved(object? sender, PointerEventArgs e)
@@ -341,7 +409,7 @@ public partial class MainView : UserControl
         // due to pressure/tilt jitter even when stationary)
         if (Utilities.AreSamePosition(pointerCoordinates, _prevCoord)) return;
 
-        var hasLastCoordinates = !_prevCoord.Equals(new Point(-1, -1));
+        var hasLastCoordinates = !_prevCoord.IsEmpty;
 
         if (e.Properties.IsLeftButtonPressed && hasLastCoordinates)
         {
@@ -349,6 +417,12 @@ public partial class MainView : UserControl
         }
 
         _prevCoord = pointerCoordinates;
+
+        // Re-apply text edit overlay if canvas is being panned around
+        if (_activePointerTool is PanningTool)
+        {
+            MarkTextStrokesForEditing();
+        }
     }
 
     private void MainCanvas_OnPointerPressed(object? sender, PointerPressedEventArgs e)
@@ -370,23 +444,44 @@ public partial class MainView : UserControl
         }
 
         // Reset the last coordinates when the mouse is released
-        _prevCoord = new Point(-1, -1);
+        _prevCoord = SKPoint.Empty;
     }
 
     private void MainCanvas_OnPointerWheelChanged(object? sender, PointerWheelEventArgs e)
     {
-        bool ctrlKeyIsActive = (e.KeyModifiers & KeyModifiers.Control) != 0;
-        if (!ctrlKeyIsActive) return;
+        bool ctrlKeyIsPressed = (e.KeyModifiers & KeyModifiers.Control) != 0;
+        bool shiftKeyIsPressed = (e.KeyModifiers & KeyModifiers.Shift) != 0;
         if (_viewModel == null) throw new Exception("View Model not initialized");
 
-        Point mousePosOnViewPort = e.GetPosition(CanvasScrollViewer);
-        Point mousePosOnCanvas = e.GetPosition(MainCanvas);
+        var screenPos = Utilities.ToSkPoint(e.GetPosition(MainCanvas));
 
-        // Multiplicative Zoom
-        double zoomFactor = e.Delta.Y > 0 ? 1.1f : 0.9f;
-        PerformZoom(zoomFactor, mousePosOnViewPort, mousePosOnCanvas);
+        if (ctrlKeyIsPressed)
+        {
+            double zoomFactor = e.Delta.Y > 0 ? 1.1f : 0.9f;
+            PerformZoom(zoomFactor, screenPos);
+        }
+        else
+        {
+            // Pan: trackpads natively provide both Delta.X and Delta.Y for omnidirectional panning.
+            // Mouse wheels only provide Delta.Y, so use Shift+Wheel for horizontal panning.
+            const float panStep = 50f;
 
-        // Stop the scroll viewer from applying its own scrolling logic
+            float deltaX = (float)e.Delta.X;
+            float deltaY = (float)e.Delta.Y;
+
+            // If Shift is pressed and the pointing device only sent vertical scroll, convert it to horizontal.
+            if (shiftKeyIsPressed && Math.Abs(deltaX) < 0.0001f)
+            {
+                deltaX = deltaY;
+                deltaY = 0;
+            }
+
+            CameraState.WorldOffSetX -= (deltaX * panStep) / CameraState.Zoom;
+            CameraState.WorldOffSetY -= (deltaY * panStep) / CameraState.Zoom;
+
+            MainCanvas.InvalidateVisual();
+        }
+
         e.Handled = true;
     }
 
@@ -406,15 +501,15 @@ public partial class MainView : UserControl
         // Skip if position hasn't changed (tablet pen jitter)
         if (Utilities.AreSamePosition(pointerCoordinates, _selection.SelectionMoveCoord)) return;
 
-        var hasLastCoordinates = !_selection.SelectionMoveCoord.Equals(new Point(-1, -1));
+        var hasLastCoordinates = !_selection.SelectionMoveCoord.IsEmpty;
         if (e.Properties.IsLeftButtonPressed && hasLastCoordinates && _viewModel != null)
         {
             // Move selected elements
-            Point delta = pointerCoordinates - _selection.SelectionMoveCoord;
+            var delta = pointerCoordinates - _selection.SelectionMoveCoord;
             if (_canvasStateService.ActiveSelectionBoundId is { } moveBoundId)
             {
                 _canvasStateService.ApplyEvent(new MoveCanvasElementsEvent(_selection.MoveActionId, moveBoundId,
-                    Utilities.ToSkPoint(delta)));
+                    delta));
             }
         }
 
@@ -431,7 +526,7 @@ public partial class MainView : UserControl
             }
         }
 
-        _selection.SelectionMoveCoord = new Point(-1, -1);
+        _selection.SelectionMoveCoord = SKPoint.Empty;
     }
 
     private void SelectionRotationBtn_OnPointerPressed(object? sender, PointerPressedEventArgs e)
@@ -479,8 +574,7 @@ public partial class MainView : UserControl
             if (_canvasStateService.ActiveSelectionBoundId is { } rotateBoundId)
             {
                 _canvasStateService.ApplyEvent(new RotateCanvasElementsEvent(_selection.RotateActionId, rotateBoundId,
-                    (float)deltaRad,
-                    Utilities.ToSkPoint(_selection.SelectionCenter)));
+                    (float)deltaRad, _selection.SelectionCenter));
             }
 
             _selection.SelectionRotationAngle = angleRad;
@@ -498,7 +592,7 @@ public partial class MainView : UserControl
         }
 
         _selection.SelectionRotationAngle = double.NaN;
-        _selection.SelectionCenter = new Point(-1, -1);
+        _selection.SelectionCenter = SKPoint.Empty;
         VisualizeSelection();
     }
 
@@ -541,8 +635,8 @@ public partial class MainView : UserControl
             {
                 _canvasStateService.ApplyEvent(new ScaleCanvasElementsEvent(_selection.ScaleActionId,
                     scaleBoundId,
-                    new SKPoint((float)scaleX, (float)scaleY),
-                    Utilities.ToSkPoint(_selection.ScalePivot)));
+                    new SKPoint(scaleX, scaleY),
+                    _selection.ScalePivot));
             }
 
             _selection.ScalePrevCoord = currentCoord;
@@ -560,8 +654,8 @@ public partial class MainView : UserControl
             }
 
             _selection.ActiveScaleHandle = null;
-            _selection.ScalePivot = new Point(-1, -1);
-            _selection.ScalePrevCoord = new Point(-1, -1);
+            _selection.ScalePivot = SKPoint.Empty;
+            _selection.ScalePrevCoord = SKPoint.Empty;
             VisualizeSelection();
             e.Handled = true;
         }

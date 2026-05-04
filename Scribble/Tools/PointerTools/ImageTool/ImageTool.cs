@@ -10,7 +10,6 @@ using Scribble.Services;
 using Scribble.Services.DialogService;
 using Scribble.Services.FileService;
 using Scribble.Shared.Lib;
-using Scribble.Utils;
 using SkiaSharp;
 
 namespace Scribble.Tools.PointerTools.ImageTool;
@@ -36,7 +35,7 @@ public class ImageTool : PointerTool
         ToolTip = "Select Tool - 0";
     }
 
-    public override void HandlePointerClick(Point coord)
+    public override void HandlePointerClick(SKPoint imageCoord)
     {
         Dispatcher.UIThread.InvokeAsync(async () =>
         {
@@ -71,8 +70,7 @@ public class ImageTool : PointerTool
             var actionId = Guid.NewGuid();
             var imageId = Guid.NewGuid();
             var imageSize = ScaleToFit(bitmap.Width, bitmap.Height, MaxImageDimension);
-            var imagePosition = Utilities.ToSkPoint(coord);
-            CanvasState.ApplyEvent(new AddImageEvent(actionId, imageId, base64String, imagePosition, imageSize));
+            CanvasState.ApplyEvent(new AddImageEvent(actionId, imageId, base64String, imageCoord, imageSize));
         });
     }
 

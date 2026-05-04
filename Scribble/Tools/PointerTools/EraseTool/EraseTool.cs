@@ -20,21 +20,19 @@ public class EraseTool : PointerTool
         ToolTip = "Erase Tool - 2";
     }
 
-    public override void HandlePointerClick(Point coord)
+    public override void HandlePointerClick(SKPoint startPoint)
     {
-        var startPoint = new SKPoint((float)coord.X, (float)coord.Y);
         _strokeId = Guid.NewGuid();
         _actionId = Guid.NewGuid();
         CanvasState.ApplyEvent(new StartEraseStrokeEvent(_actionId, _strokeId, startPoint));
     }
 
-    public override void HandlePointerMove(Point prevCoord, Point currentCoord)
+    public override void HandlePointerMove(SKPoint prevCoord, SKPoint currentCoord)
     {
-        var nextPoint = new SKPoint((float)currentCoord.X, (float)currentCoord.Y);
-        CanvasState.ApplyEvent(new EraseStrokeLineToEvent(_actionId, _strokeId, nextPoint));
+        CanvasState.ApplyEvent(new EraseStrokeLineToEvent(_actionId, _strokeId, currentCoord));
     }
 
-    public override void HandlePointerRelease(Point prevCoord, Point currentCoord)
+    public override void HandlePointerRelease(SKPoint prevCoord, SKPoint currentCoord)
     {
         CanvasState.ApplyEvent(new TriggerEraseEvent(_actionId, _strokeId));
     }

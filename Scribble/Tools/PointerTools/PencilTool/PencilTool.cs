@@ -23,9 +23,8 @@ public class PencilTool : StrokeTool
         ToolTip = "Pencil Tool - 1";
     }
 
-    public override void HandlePointerClick(Point coord)
+    public override void HandlePointerClick(SKPoint startPoint)
     {
-        var startPoint = new SKPoint((float)coord.X, (float)coord.Y);
         _strokeId = Guid.NewGuid();
         _actionId = Guid.NewGuid();
         _lastAcceptedPoint = startPoint;
@@ -33,22 +32,19 @@ public class PencilTool : StrokeTool
             new StartStrokeEvent(_actionId, _strokeId, startPoint, StrokePaint.Clone(), ToolType.Pencil, ToolOptions));
     }
 
-    public override void HandlePointerMove(Point prevCoord, Point currentCoord)
+    public override void HandlePointerMove(SKPoint prevCoord, SKPoint currentCoord)
     {
-        var nextPoint = new SKPoint((float)currentCoord.X, (float)currentCoord.Y);
-        
-        var distance = SKPoint.Distance(_lastAcceptedPoint, nextPoint);
+        var distance = SKPoint.Distance(_lastAcceptedPoint, currentCoord);
         if (distance < DistanceThreshold)
         {
             return;
         }
 
-        _lastAcceptedPoint = nextPoint;
-
-        CanvasState.ApplyEvent(new PencilStrokeLineToEvent(_actionId, _strokeId, nextPoint));
+        _lastAcceptedPoint = currentCoord;
+        CanvasState.ApplyEvent(new PencilStrokeLineToEvent(_actionId, _strokeId, currentCoord));
     }
 
-    public override void HandlePointerRelease(Point prevCoord, Point currentCoord)
+    public override void HandlePointerRelease(SKPoint prevCoord, SKPoint currentCoord)
     {
         CanvasState.ApplyEvent(new EndStrokeEvent(_actionId));
     }

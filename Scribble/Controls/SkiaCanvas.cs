@@ -10,6 +10,7 @@ using Avalonia.Rendering.SceneGraph;
 using Avalonia.Skia;
 using Scribble.Shared.Lib.CanvasElements;
 using Scribble.Shared.Lib.CanvasElements.Strokes;
+using Scribble.State;
 using Scribble.Utils;
 using SkiaSharp;
 
@@ -38,14 +39,35 @@ public class SkiaCanvas : Control
         set => SetValue(CanvasBackgroundProperty, value);
     }
 
+    private static bool IsCanvasElementVisible(CanvasElement element, SKRect visibleWorldRect)
+    {
+        SKRect elementBounds;
+        switch (element)
+        {
+            case PaintableStroke stroke:
+                elementBounds = stroke.Path.Bounds;
+                break;
+            case CanvasImage image:
+                elementBounds = image.Bounds;
+                break;
+            default:
+                // Unknown element type, draw it to be safe
+                return true;
+        }
+
+        return visibleWorldRect.IntersectsWith(elementBounds);
+    }
+
     public override void Render(DrawingContext context)
     {
         // Draw background for the control, this is needed to handle pointer events
         context.DrawRectangle(new SolidColorBrush(Colors.Transparent), null, new Rect(Bounds.Size));
 
         var bounds = new Rect(0, 0, Bounds.Width, Bounds.Height);
-        // Have to capture the data outside the Render thread else it throws an exception
-        var elementsToDraw = CanvasElements;
+
+        // Snapshot the element list on the UI thread, the render thread must not enumerate
+        // the same mutable list that the UI thread modifies
+        var elementsToDraw = CanvasElements.ToList();
         var bgColor = CanvasBackground;
         context.Custom(
             new SkiaDrawOperation(bounds, canvas => { DrawCanvasElementsOnCanvas(canvas, elementsToDraw, bgColor); }));
@@ -53,7 +75,23 @@ public class SkiaCanvas : Control
 
     private void DrawCanvasElementsOnCanvas(SKCanvas canvas, IEnumerable<CanvasElement> elementsToDraw, Color bgColor)
     {
-        canvas.Clear(Utilities.ToSkColor(bgColor));
+        DrawBackground(canvas, bgColor);
+
+        // Save the existing canvas state (Avalonia's DPI/layout matrix) so we can restore it later
+        canvas.Save();
+
+        var viewMatrix = CameraState.GetViewMatrix();
+        canvas.Concat(ref viewMatrix);
+
+        // Compute the visible world-space rectangle for culling unnecessary strokes
+        var viewportWidth = (float)Bounds.Width;
+        var viewportHeight = (float)Bounds.Height;
+        var visibleWorldRect = new SKRect(
+            CameraState.WorldOffSetX,
+            CameraState.WorldOffSetY,
+            CameraState.WorldOffSetX + viewportWidth / CameraState.Zoom,
+            CameraState.WorldOffSetY + viewportHeight / CameraState.Zoom
+        );
 
         // Draw elements in layer-aware order: lower LayerIndex values are rendered first,
         // while preserving the existing relative order within each layer.
@@ -61,8 +99,12 @@ public class SkiaCanvas : Control
                      .OrderBy(e => e.LayerIndex)
                      .ThenBy(e => e.CreatedAt))
         {
+            if (!IsCanvasElementVisible(canvasElement, visibleWorldRect)) continue;
             DrawSingleElement(canvas, canvasElement);
         }
+
+        // Restore to the pre-camera state
+        canvas.Restore();
     }
 
     private void DrawSingleElement(SKCanvas canvas, CanvasElement canvasElement)
@@ -134,6 +176,44 @@ public class SkiaCanvas : Control
         }
     }
 
+    private void DrawBackground(SKCanvas canvas, Color bgColor)
+    {
+        // Clear the entire viewport with the background color (before camera transform)
+        canvas.Clear(Utilities.ToSkColor(bgColor));
+
+        // Draw dot grid in screen space
+        var zoom = CameraState.Zoom;
+        // Base spacing is 60 world units
+        var gridSpacing = 60f * zoom;
+
+        // Hide grid when zoomed out too far to avoid clutter and performance issues
+        if (gridSpacing >= 15f)
+        {
+            // Modulo function that correctly handles negative numbers
+            float Mod(float a, float n) => (a % n + n) % n;
+
+            var gridOffsetX = Mod(CameraState.WorldOffSetX * zoom, gridSpacing);
+            var gridOffsetY = Mod(CameraState.WorldOffSetY * zoom, gridSpacing);
+
+            // Determine if background is dark or light to pick dot color
+            bool isDarkBg = bgColor.R * 0.299 + bgColor.G * 0.587 + bgColor.B * 0.114 < 128;
+            var dotColor = isDarkBg ? SKColors.White.WithAlpha(60) : SKColors.Black.WithAlpha(60);
+
+            using var gridPaint = new SKPaint();
+            gridPaint.Color = dotColor;
+            gridPaint.IsAntialias = true;
+            gridPaint.Style = SKPaintStyle.Fill;
+
+            for (float x = -gridOffsetX; x < Bounds.Width; x += gridSpacing)
+            {
+                for (float y = -gridOffsetY; y < Bounds.Height; y += gridSpacing)
+                {
+                    canvas.DrawCircle(x, y, 1.5f, gridPaint);
+                }
+            }
+        }
+    }
+
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
         base.OnPropertyChanged(change);
@@ -200,8 +280,6 @@ internal class SkiaDrawOperation(Rect bounds, Action<SKCanvas> drawAction) : ICu
 
         using var lease = leaseFeature.Lease();
         var canvas = lease.SkCanvas;
-        // save canvas state
-        canvas.Save();
         drawAction(canvas);
     }
 }

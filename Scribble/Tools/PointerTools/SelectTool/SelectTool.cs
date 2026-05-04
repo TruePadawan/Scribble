@@ -5,7 +5,7 @@ using Avalonia.Input;
 using Avalonia.Media;
 using Scribble.Services;
 using Scribble.Shared.Lib;
-using Scribble.Utils;
+using Scribble.State;
 using SkiaSharp;
 
 namespace Scribble.Tools.PointerTools.SelectTool;
@@ -14,7 +14,7 @@ class SelectTool : PointerTool
 {
     private Border? _selectionBorder;
     private readonly Canvas _canvasContainer;
-    private Point _startPoint;
+    private SKPoint _startPoint;
     private Guid _boundId = Guid.NewGuid();
     private Guid _actionId = Guid.NewGuid();
 
@@ -27,8 +27,11 @@ class SelectTool : PointerTool
         ToolTip = "Select Tool - 9";
     }
 
-    public override void HandlePointerClick(Point coord)
+    public override void HandlePointerClick(SKPoint coord)
     {
+        // coord is in world-space, convert to screen-space for positioning the visual border
+        _startPoint = CameraState.WorldToScreen(coord);
+
         _selectionBorder = new Border
         {
             BorderThickness = new Thickness(2),
@@ -36,9 +39,8 @@ class SelectTool : PointerTool
             Width = 0,
             Height = 0
         };
-        Canvas.SetLeft(_selectionBorder, coord.X);
-        Canvas.SetTop(_selectionBorder, coord.Y);
-        _startPoint = coord;
+        Canvas.SetLeft(_selectionBorder, _startPoint.X);
+        Canvas.SetTop(_selectionBorder, _startPoint.Y);
         _canvasContainer.Children.Add(_selectionBorder);
         _boundId = Guid.NewGuid();
         _actionId = Guid.NewGuid();
@@ -47,22 +49,28 @@ class SelectTool : PointerTool
             CanvasState.ClearSelection();
         }
 
-        CanvasState.ApplyEvent(new CreateSelectionBoundEvent(_actionId, _boundId,
-            new SKPoint((float)coord.X, (float)coord.Y)));
+        // Events use world-space coordinates
+        CanvasState.ApplyEvent(new CreateSelectionBoundEvent(_actionId, _boundId, coord));
     }
 
-    public override void HandlePointerMove(Point prevCoord, Point currentCoord)
+    public override void HandlePointerMove(SKPoint prevCoord, SKPoint currentCoord)
     {
         if (_selectionBorder == null) return;
-        _selectionBorder.Width = Math.Abs(currentCoord.X - _startPoint.X);
-        _selectionBorder.Height = Math.Abs(currentCoord.Y - _startPoint.Y);
 
-        Canvas.SetLeft(_selectionBorder, Math.Min(_startPoint.X, currentCoord.X));
-        Canvas.SetTop(_selectionBorder, Math.Min(_startPoint.Y, currentCoord.Y));
-        CanvasState.ApplyEvent(new IncreaseSelectionBoundEvent(_actionId, _boundId, Utilities.ToSkPoint(currentCoord)));
+        // currentCoord is in world-space, convert to screen-space for visual border
+        var screenPos = CameraState.WorldToScreen(currentCoord);
+
+        _selectionBorder.Width = Math.Abs(screenPos.X - _startPoint.X);
+        _selectionBorder.Height = Math.Abs(screenPos.Y - _startPoint.Y);
+
+        Canvas.SetLeft(_selectionBorder, Math.Min(_startPoint.X, screenPos.X));
+        Canvas.SetTop(_selectionBorder, Math.Min(_startPoint.Y, screenPos.Y));
+
+        // Events use world-space coordinates
+        CanvasState.ApplyEvent(new IncreaseSelectionBoundEvent(_actionId, _boundId, currentCoord));
     }
 
-    public override void HandlePointerRelease(Point prevCoord, Point currentCoord)
+    public override void HandlePointerRelease(SKPoint prevCoord, SKPoint currentCoord)
     {
         if (_selectionBorder == null) return;
 

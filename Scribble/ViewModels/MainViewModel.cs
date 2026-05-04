@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -16,9 +16,6 @@ namespace Scribble.ViewModels;
 
 public partial class MainViewModel : ViewModelBase
 {
-    public static int CanvasWidth => 10000;
-    public static int CanvasHeight => 10000;
-
     public event Action? RequestRefreshSelection;
     public event Action? RequestInvalidateSkiaCanvas;
 
@@ -68,8 +65,6 @@ public partial class MainViewModel : ViewModelBase
             RedoCommand.NotifyCanExecuteChanged();
         };
     }
-
-    public Vector GetCanvasDimensions() => new(CanvasWidth, CanvasHeight);
 
     [RelayCommand(CanExecute = nameof(CanUndo))]
     private void Undo()

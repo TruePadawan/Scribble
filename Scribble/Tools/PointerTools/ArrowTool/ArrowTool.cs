@@ -11,7 +11,6 @@ namespace Scribble.Tools.PointerTools.ArrowTool;
 
 public class ArrowTool : StrokeTool
 {
-    private SKPoint? _startPoint;
     private Guid _strokeId = Guid.NewGuid();
     private Guid _actionId = Guid.NewGuid();
 
@@ -21,27 +20,24 @@ public class ArrowTool : StrokeTool
         ToolOptions = [ToolOption.StrokeColor, ToolOption.StrokeThickness, ToolOption.StrokeStyle];
         var plusBitmap = new Bitmap(AssetLoader.Open(new Uri("avares://Scribble/Assets/plus.png")));
         Cursor = new Cursor(plusBitmap, new PixelPoint(12, 12));
-        _startPoint = null;
         HotKey = new KeyGesture(Key.D5);
         ToolTip = "Arrow Tool - 5";
     }
 
-    public override void HandlePointerClick(Point coord)
+    public override void HandlePointerClick(SKPoint startPoint)
     {
-        _startPoint = new SKPoint((float)coord.X, (float)coord.Y);
         _strokeId = Guid.NewGuid();
         _actionId = Guid.NewGuid();
-        CanvasState.ApplyEvent(new StartStrokeEvent(_actionId, _strokeId, _startPoint.Value, StrokePaint.Clone(),
+        CanvasState.ApplyEvent(new StartStrokeEvent(_actionId, _strokeId, startPoint, StrokePaint.Clone(),
             ToolType.Arrow, ToolOptions));
     }
 
-    public override void HandlePointerMove(Point prevCoord, Point currentCoord)
+    public override void HandlePointerMove(SKPoint prevCoord, SKPoint currentCoord)
     {
-        var endPoint = new SKPoint((float)currentCoord.X, (float)currentCoord.Y);
-        CanvasState.ApplyEvent(new LineStrokeLineToEvent(_actionId, _strokeId, endPoint));
+        CanvasState.ApplyEvent(new LineStrokeLineToEvent(_actionId, _strokeId, currentCoord));
     }
 
-    public override void HandlePointerRelease(Point prevCoord, Point currentCoord)
+    public override void HandlePointerRelease(SKPoint prevCoord, SKPoint currentCoord)
     {
         CanvasState.ApplyEvent(new EndStrokeEvent(_actionId));
     }

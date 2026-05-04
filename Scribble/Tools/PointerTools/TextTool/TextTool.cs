@@ -9,6 +9,7 @@ using Avalonia.Platform;
 using Scribble.Services;
 using Scribble.Shared.Lib;
 using Scribble.Shared.Lib.CanvasElements.Strokes;
+using Scribble.State;
 using Scribble.Utils;
 using SkiaSharp;
 
@@ -38,7 +39,7 @@ public class TextTool : StrokeTool
         ToolTip = "Text Tool - 8";
     }
 
-    public override void HandlePointerClick(Point coord)
+    public override void HandlePointerClick(SKPoint coord)
     {
         if (_currentTextBox != null)
         {
@@ -60,8 +61,10 @@ public class TextTool : StrokeTool
         // Prevent the Scroll Viewer from jumping when the textbox gets focus
         _currentTextBox.AddHandler(Control.RequestBringIntoViewEvent, (sender, args) => { args.Handled = true; });
 
-        Canvas.SetLeft(_currentTextBox, coord.X);
-        Canvas.SetTop(_currentTextBox, coord.Y);
+        // coord is in world-space, convert to screen-space for overlay positioning
+        var screenPos = CameraState.WorldToScreen(coord);
+        Canvas.SetLeft(_currentTextBox, screenPos.X);
+        Canvas.SetTop(_currentTextBox, screenPos.Y);
 
         // Intercept the key before the TextBox consumes it and adds a newline
         _currentTextBox.AddHandler(InputElement.KeyDownEvent, (sender, args) =>
@@ -105,8 +108,10 @@ public class TextTool : StrokeTool
         _currentTextBox.AddHandler(Control.RequestBringIntoViewEvent, (sender, args) => { args.Handled = true; });
 
         var actualPosition = textStroke.TransformMatrix.MapPoint(textStroke.Position);
-        Canvas.SetLeft(_currentTextBox, actualPosition.X);
-        Canvas.SetTop(_currentTextBox, actualPosition.Y - textStroke.Paint.TextSize);
+        // Convert world-space position to screen-space for overlay positioning
+        var screenPos = CameraState.WorldToScreen(actualPosition);
+        Canvas.SetLeft(_currentTextBox, screenPos.X);
+        Canvas.SetTop(_currentTextBox, screenPos.Y - textStroke.Paint.TextSize * CameraState.Zoom);
 
         // Intercept the key before the TextBox consumes it and adds a newline
         _currentTextBox.AddHandler(InputElement.KeyDownEvent, (sender, args) =>
@@ -145,8 +150,10 @@ public class TextTool : StrokeTool
             }
             else if (_editingStroke == null)
             {
-                var textboxPos = new SKPoint((float)Canvas.GetLeft(_currentTextBox),
+                // Convert screen-space TextBox position back to world-space for the event
+                var screenPos = new SKPoint((float)Canvas.GetLeft(_currentTextBox),
                     (float)Canvas.GetTop(_currentTextBox));
+                var textboxPos = CameraState.ScreenToWorld(screenPos);
                 textboxPos.Y += StrokePaint.TextSize;
                 var strokeId = Guid.NewGuid();
                 CanvasState.ApplyEvent(new AddTextEvent(_actionId, strokeId, textboxPos, text, StrokePaint.Clone(),
