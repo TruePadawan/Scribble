@@ -163,23 +163,20 @@ public class CanvasStateService
         UndoRedoStateChanged?.Invoke();
     }
 
-    private void ProcessEvent(Event @event, bool isLocalEvent = false)
+    private bool ApplyFastPathOptimization(Event @event)
     {
-        CanvasEvents.Enqueue(@event);
-
-        // Fast path: for pencil/line line-to events during active drawing,
-        // apply directly to the existing stroke — no replay needed
         if (@event is PencilStrokeLineToEvent pencilLineToEvent)
         {
             if (_strokeLookup.TryGetValue(pencilLineToEvent.StrokeId, out var stroke) && stroke is DrawStroke ds)
             {
-                ds.RawPoints.Add(new StrokePoint(pencilLineToEvent.Point, pencilLineToEvent.TimeStamp.Ticks / TimeSpan.TicksPerMillisecond));
+                ds.RawPoints.Add(new StrokePoint(pencilLineToEvent.Point,
+                    pencilLineToEvent.TimeStamp.Ticks / TimeSpan.TicksPerMillisecond));
                 var newPath = FreehandPathBuilder.Build(ds.RawPoints);
                 ds.Path.Reset();
                 ds.Path.AddPath(newPath);
 
                 CanvasInvalidated?.Invoke();
-                return;
+                return true;
             }
         }
 
@@ -189,7 +186,7 @@ public class CanvasStateService
             {
                 RebuildLinePath(drawStroke, lineStrokeEvent.EndPoint);
                 CanvasInvalidated?.Invoke();
-                return;
+                return true;
             }
         }
 
@@ -215,7 +212,7 @@ public class CanvasStateService
                 currentEraserStroke.Path.LineTo(eraseLineToEvent.Point);
                 _eraserHeadLookup[eraseLineToEvent.StrokeId] = eraseLineToEvent.Point;
                 CanvasInvalidated?.Invoke();
-                return;
+                return true;
             }
         }
 
@@ -239,7 +236,7 @@ public class CanvasStateService
                 ActiveSelectionBoundId = myBound.Value != null ? myBound.Key : null;
                 SelectedElementIds = myBound.Value?.Targets.ToList() ?? [];
                 SelectionInvalidated?.Invoke();
-                return;
+                return true;
             }
         }
 
@@ -268,7 +265,7 @@ public class CanvasStateService
 
                 CanvasInvalidated?.Invoke();
                 SelectionInvalidated?.Invoke();
-                return;
+                return true;
             }
         }
 
@@ -303,7 +300,7 @@ public class CanvasStateService
 
                 CanvasInvalidated?.Invoke();
                 SelectionInvalidated?.Invoke();
-                return;
+                return true;
             }
         }
 
@@ -349,9 +346,21 @@ public class CanvasStateService
 
                 CanvasInvalidated?.Invoke();
                 SelectionInvalidated?.Invoke();
-                return;
+                return true;
             }
         }
+
+        return false;
+    }
+
+    private void ProcessEvent(Event @event, bool isLocalEvent = false)
+    {
+        CanvasEvents.Enqueue(@event);
+
+        // Fast path: for pencil/line line-to events during active drawing,
+        // apply directly to the existing stroke, no replay needed
+        bool fastPathWasApplied = ApplyFastPathOptimization(@event);
+        if (fastPathWasApplied) return;
 
         var staleActionIds = ReplayEvents();
         bool changed = false;
@@ -500,7 +509,8 @@ public class CanvasStateService
                 case PencilStrokeLineToEvent ev:
                     if (paintableStrokes.TryGetValue(ev.StrokeId, out var pStroke) && pStroke is DrawStroke dsPencil)
                     {
-                        dsPencil.RawPoints.Add(new StrokePoint(ev.Point, ev.TimeStamp.Ticks / TimeSpan.TicksPerMillisecond));
+                        dsPencil.RawPoints.Add(new StrokePoint(ev.Point,
+                            ev.TimeStamp.Ticks / TimeSpan.TicksPerMillisecond));
                         var newPath = FreehandPathBuilder.Build(dsPencil.RawPoints);
                         dsPencil.Path.Reset();
                         dsPencil.Path.AddPath(newPath);
