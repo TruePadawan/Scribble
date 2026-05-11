@@ -407,7 +407,7 @@ public partial class MainView : UserControl
 
         // Skip if position hasn't changed (tablet pens fire PointerMoved
         // due to pressure/tilt jitter even when stationary)
-        if (Utilities.AreSamePosition(pointerCoordinates, _prevCoord)) return;
+        if (Utilities.AreSamePosition(pointerCoordinates, _prevCoord) || _prevCoord.IsEmpty) return;
 
         var hasLastCoordinates = !_prevCoord.IsEmpty;
 
