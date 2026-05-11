@@ -23,4 +23,5 @@ var app = builder.Build();
 app.UseCors();
 
 app.MapHub<MultiUserDrawingHub>("/drawingHub");
+app.MapGet("/health", () => Results.Ok("Server is awake"));
 app.Run();
