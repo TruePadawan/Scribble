@@ -137,7 +137,7 @@ public class TextTool : StrokeTool
         FinalizeText(false);
     }
 
-    private void FinalizeText(bool restoreFocus)
+    private void FinalizeText(bool restoreFocusToCanvas)
     {
         if (_currentTextBox == null) return;
 
@@ -164,9 +164,16 @@ public class TextTool : StrokeTool
         _canvasContainer.Children.Remove(_currentTextBox);
         _currentTextBox = null;
         _editingStroke = null;
-        if (restoreFocus)
+        if (restoreFocusToCanvas)
         {
             _canvasContainer.Focus();
         }
+    }
+
+    public override void HandleToolSwitchOut()
+    {
+        base.HandleToolSwitchOut();
+        // Save text when the text tool switches out
+        FinalizeText(true);
     }
 }
