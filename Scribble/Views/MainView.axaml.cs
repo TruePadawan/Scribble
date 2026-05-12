@@ -88,39 +88,43 @@ public partial class MainView : UserControl
             _viewModel.UiStateViewModel.CenterZoomRequested += OnCenterZoomRequested;
             _viewModel.UiStateViewModel.ActiveToolChanged += OnActiveToolChanged;
 
-            // Load in all the pointer tools
-            viewModel.UiStateViewModel.AvailableTools.Clear();
-            var tools = new List<PointerTool>
-            {
-                new PencilTool("PencilTool", _canvasStateService),
-                new EraseTool("EraseTool", _canvasStateService),
-                new PanningTool("PanningTool", _canvasStateService, MainCanvas.InvalidateVisual),
-                new LineTool("LineTool", _canvasStateService),
-                new ArrowTool("ArrowTool", _canvasStateService),
-                new EllipseTool("EllipseTool", _canvasStateService),
-                new RectangleTool("RectangleTool", _canvasStateService),
-                new TextTool("TextTool", _canvasStateService, CanvasContainer),
-                new SelectTool("SelectTool", _canvasStateService, CanvasContainer),
-                new ImageTool("ImageTool", _canvasStateService, _fileService, _dialogService),
-            };
-            foreach (var tool in tools)
-            {
-                viewModel.UiStateViewModel.AvailableTools.Add(tool);
-
-                // Map the tool's HotKey to trigger the SelectToolCommand
-                if (tool.HotKey != null)
-                {
-                    KeyBindings.Add(new KeyBinding
-                    {
-                        Gesture = tool.HotKey,
-                        Command = viewModel.UiStateViewModel.SwitchToolCommand,
-                        CommandParameter = tool
-                    });
-                }
-            }
-
-            viewModel.UiStateViewModel.ActivePointerTool = tools.FirstOrDefault();
+            LoadAllTools(viewModel);
         }
+    }
+
+    private void LoadAllTools(MainViewModel viewModel)
+    {
+        viewModel.UiStateViewModel.AvailableTools.Clear();
+        var tools = new List<PointerTool>
+        {
+            new PencilTool("PencilTool", _canvasStateService),
+            new EraseTool("EraseTool", _canvasStateService),
+            new PanningTool("PanningTool", _canvasStateService, MainCanvas.InvalidateVisual),
+            new LineTool("LineTool", _canvasStateService),
+            new ArrowTool("ArrowTool", _canvasStateService),
+            new EllipseTool("EllipseTool", _canvasStateService),
+            new RectangleTool("RectangleTool", _canvasStateService),
+            new TextTool("TextTool", _canvasStateService, CanvasContainer),
+            new SelectTool("SelectTool", _canvasStateService, CanvasContainer),
+            new ImageTool("ImageTool", _canvasStateService, _fileService, _dialogService),
+        };
+        foreach (var tool in tools)
+        {
+            viewModel.UiStateViewModel.AvailableTools.Add(tool);
+
+            // Map the tool's HotKey to trigger the SwitchToolCommand
+            if (tool.HotKey != null)
+            {
+                KeyBindings.Add(new KeyBinding
+                {
+                    Gesture = tool.HotKey,
+                    Command = viewModel.UiStateViewModel.SwitchToolCommand,
+                    CommandParameter = tool
+                });
+            }
+        }
+
+        viewModel.UiStateViewModel.ActivePointerTool = tools.FirstOrDefault();
     }
 
     /// <summary>
@@ -401,6 +405,36 @@ public partial class MainView : UserControl
         return CameraState.ScreenToWorld(screenPos);
     }
 
+    private void CloseExportImageWindow()
+        {
+            ExportImageWindow.IsVisible = false;
+            ExportImageWindowOverlay.IsVisible = false;
+
+            Dispatcher.UIThread.Post(() => CanvasContainer.Focus());
+        }
+
+    private void CloseMenu()
+    {
+        MenuOptions.IsVisible = false;
+        MenuOverlay.IsVisible = false;
+
+        Dispatcher.UIThread.Post(() => CanvasContainer.Focus());
+    }
+
+    private void CloseLiveDrawingWindow()
+    {
+        LiveDrawingWindow.IsVisible = false;
+        LiveDrawingWindowOverlay.IsVisible = false;
+        Dispatcher.UIThread.Post(() => CanvasContainer.Focus());
+    }
+
+    private void CloseAboutScribbleWindow()
+    {
+        AboutScribbleWindow.IsVisible = false;
+        AboutScribbleWindowOverlay.IsVisible = false;
+        Dispatcher.UIThread.Post(() => CanvasContainer.Focus());
+    }
+
     private void MainCanvas_OnPointerMoved(object? sender, PointerEventArgs e)
     {
         var pointerCoordinates = GetPointerPosition(e);
@@ -672,28 +706,6 @@ public partial class MainView : UserControl
         CloseMenu();
     }
 
-    private void CloseMenu()
-    {
-        MenuOptions.IsVisible = false;
-        MenuOverlay.IsVisible = false;
-
-        Dispatcher.UIThread.Post(() => CanvasContainer.Focus());
-    }
-
-    private void CloseLiveDrawingWindow()
-    {
-        LiveDrawingWindow.IsVisible = false;
-        LiveDrawingWindowOverlay.IsVisible = false;
-        Dispatcher.UIThread.Post(() => CanvasContainer.Focus());
-    }
-
-    private void CloseAboutScribbleWindow()
-    {
-        AboutScribbleWindow.IsVisible = false;
-        AboutScribbleWindowOverlay.IsVisible = false;
-        Dispatcher.UIThread.Post(() => CanvasContainer.Focus());
-    }
-
     private void TransparentCanvasButton_OnClick(object? sender, RoutedEventArgs e)
     {
         CanvasBackgroundColorPicker.SelectedColor = Color.Parse("#a2000000");
@@ -711,18 +723,10 @@ public partial class MainView : UserControl
         LiveDrawingWindowOverlay.IsVisible = true;
     }
 
-    private async void RoomIdClipboardButton_OnClick(object? sender, RoutedEventArgs e)
+    private void RoomIdClipboardButton_OnClick(object? sender, RoutedEventArgs e)
     {
-        try
-        {
-            var clipboard = Utilities.GetTopLevel()?.Clipboard;
-            if (clipboard == null) return;
-            await clipboard.SetTextAsync(RoomIdTextBox.Text);
-        }
-        catch (Exception exception)
-        {
-            Console.WriteLine($"Failed to copy to clipboard - {exception.Message}");
-        }
+        var clipboard = Utilities.GetTopLevel()?.Clipboard;
+        clipboard?.SetTextAsync(RoomIdTextBox.Text);
     }
 
     private void RoomIdTextBox_OnKeyDown(object? sender, KeyEventArgs e)
@@ -760,14 +764,6 @@ public partial class MainView : UserControl
         CloseMenu();
         AboutScribbleWindow.IsVisible = true;
         AboutScribbleWindowOverlay.IsVisible = true;
-    }
-
-    private void CloseExportImageWindow()
-    {
-        ExportImageWindow.IsVisible = false;
-        ExportImageWindowOverlay.IsVisible = false;
-
-        Dispatcher.UIThread.Post(() => CanvasContainer.Focus());
     }
 
     private void ExportImageWindowOverlay_OnPointerPressed(object? sender, PointerPressedEventArgs e)
