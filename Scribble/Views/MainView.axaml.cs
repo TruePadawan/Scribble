@@ -10,6 +10,7 @@ using Avalonia.Media.Imaging;
 using Avalonia.Platform;
 using Avalonia.Skia;
 using Avalonia.Threading;
+using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.DependencyInjection;
 using Scribble.Services;
 using Scribble.Services.DialogService;
@@ -88,10 +89,28 @@ public partial class MainView : UserControl
             _viewModel.UiStateViewModel.CenterZoomRequested += OnCenterZoomRequested;
             _viewModel.UiStateViewModel.ActiveToolChanged += OnActiveToolChanged;
 
-            LoadAllTools(viewModel);
-            // Ensure the canvas container gets focus so keybindings work immediately
-            Dispatcher.UIThread.Post(() => CanvasContainer.Focus());
+            OnAppStartUp(viewModel);
         }
+    }
+
+    private void OnAppStartUp(MainViewModel viewModel)
+    {
+        LoadAllTools(viewModel);
+        // Ensure the canvas container gets focus so keybindings work immediately
+        Dispatcher.UIThread.Post(() => CanvasContainer.Focus());
+
+        // Add keybindings for click event handlers
+        CanvasContainer.KeyBindings.Add(new KeyBinding
+        {
+            Gesture = new KeyGesture(Key.D1, KeyModifiers.Shift),
+            Command = new RelayCommand(() => ZoomToFitBtn_OnClick(null, null))
+        });
+
+        CanvasContainer.KeyBindings.Add(new KeyBinding
+        {
+            Gesture = new KeyGesture(Key.E, KeyModifiers.Control | KeyModifiers.Shift),
+            Command = new RelayCommand(() => ExportMenuOption_OnClick(null, null))
+        });
     }
 
     private void LoadAllTools(MainViewModel viewModel)
