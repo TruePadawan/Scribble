@@ -89,6 +89,8 @@ public partial class MainView : UserControl
             _viewModel.UiStateViewModel.ActiveToolChanged += OnActiveToolChanged;
 
             LoadAllTools(viewModel);
+            // Ensure the canvas container gets focus so keybindings work immediately
+            Dispatcher.UIThread.Post(() => CanvasContainer.Focus());
         }
     }
 
@@ -406,12 +408,12 @@ public partial class MainView : UserControl
     }
 
     private void CloseExportImageWindow()
-        {
-            ExportImageWindow.IsVisible = false;
-            ExportImageWindowOverlay.IsVisible = false;
+    {
+        ExportImageWindow.IsVisible = false;
+        ExportImageWindowOverlay.IsVisible = false;
 
-            Dispatcher.UIThread.Post(() => CanvasContainer.Focus());
-        }
+        Dispatcher.UIThread.Post(() => CanvasContainer.Focus());
+    }
 
     private void CloseMenu()
     {
