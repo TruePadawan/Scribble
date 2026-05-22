@@ -93,6 +93,12 @@ public partial class MainView : UserControl
         }
     }
 
+    private bool CanExecuteKeyBinding()
+    {
+        var focusedElement = Utilities.GetTopLevel()?.FocusManager?.GetFocusedElement();
+        return focusedElement is not TextBox;
+    }
+
     private void OnAppStartUp(MainViewModel viewModel)
     {
         LoadAllTools(viewModel);
@@ -103,13 +109,13 @@ public partial class MainView : UserControl
         CanvasContainer.KeyBindings.Add(new KeyBinding
         {
             Gesture = new KeyGesture(Key.D1, KeyModifiers.Shift),
-            Command = new RelayCommand(() => ZoomToFitBtn_OnClick(null, null))
+            Command = new RelayCommand(() => ZoomToFitBtn_OnClick(null, null), CanExecuteKeyBinding)
         });
 
         CanvasContainer.KeyBindings.Add(new KeyBinding
         {
             Gesture = new KeyGesture(Key.E, KeyModifiers.Control | KeyModifiers.Shift),
-            Command = new RelayCommand(() => ExportMenuOption_OnClick(null, null))
+            Command = new RelayCommand(() => ExportMenuOption_OnClick(null, null), CanExecuteKeyBinding)
         });
     }
 
@@ -139,8 +145,8 @@ public partial class MainView : UserControl
                 KeyBindings.Add(new KeyBinding
                 {
                     Gesture = tool.HotKey,
-                    Command = viewModel.UiStateViewModel.SwitchToolCommand,
-                    CommandParameter = tool
+                    Command = new RelayCommand(() => viewModel.UiStateViewModel.SwitchToolCommand.Execute(tool),
+                        CanExecuteKeyBinding)
                 });
             }
         }
