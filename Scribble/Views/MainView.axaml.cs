@@ -106,13 +106,13 @@ public partial class MainView : UserControl
         Dispatcher.UIThread.Post(() => CanvasContainer.Focus());
 
         // Add keybindings for click event handlers
-        CanvasContainer.KeyBindings.Add(new KeyBinding
+        RootPanel.KeyBindings.Add(new KeyBinding
         {
             Gesture = new KeyGesture(Key.D1, KeyModifiers.Shift),
             Command = new RelayCommand(() => ZoomToFitBtn_OnClick(null, null), CanExecuteKeyBinding)
         });
 
-        CanvasContainer.KeyBindings.Add(new KeyBinding
+        RootPanel.KeyBindings.Add(new KeyBinding
         {
             Gesture = new KeyGesture(Key.E, KeyModifiers.Control | KeyModifiers.Shift),
             Command = new RelayCommand(() => ExportMenuOption_OnClick(null, null), CanExecuteKeyBinding)

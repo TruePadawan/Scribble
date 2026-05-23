@@ -17,8 +17,24 @@
          to set the actual DataContext for runtime, set the DataContext property in code (look at App.axaml.cs) -->
         <vm:MainViewModel />
     </Design.DataContext>
-    <!-- Infinite canvas: SkiaCanvas fills the viewport, camera transform handles panning/zooming -->
-    <Panel>
+    <Panel Name="RootPanel">
+        <Panel.KeyBindings>
+            <!-- Menu Options -->
+            <KeyBinding Gesture="Ctrl+O" Command="{Binding DocumentViewModel.LoadCanvasFromFileActionCommand}" />
+            <KeyBinding Gesture="Ctrl+S" Command="{Binding DocumentViewModel.SaveCanvasToFileActionCommand}" />
+            <KeyBinding Gesture="Ctrl+R" Command="{Binding ResetCanvasCommand}" />
+            <KeyBinding Gesture="Ctrl+X" Command="{Binding ExitCommand}" />
+
+            <!-- Undo/Redo -->
+            <KeyBinding Gesture="Ctrl+Z" Command="{Binding UndoCommand}" />
+            <KeyBinding Gesture="Ctrl+Shift+Z" Command="{Binding RedoCommand}" />
+
+            <!-- Zoom -->
+            <KeyBinding Gesture="Ctrl+OemMinus" Command="{Binding UiStateViewModel.ZoomOutCommand}" />
+            <KeyBinding Gesture="Ctrl+OemPlus" Command="{Binding UiStateViewModel.ZoomInCommand}" />
+        </Panel.KeyBindings>
+
+        <!-- Infinite canvas: SkiaCanvas fills the viewport, camera transform handles panning/zooming -->
         <controls:SkiaCanvas Name="MainCanvas"
                              CanvasBackground="{Binding UiStateViewModel.BackgroundColor}"
                              PointerPressed="MainCanvas_OnPointerPressed"
@@ -32,21 +48,6 @@
                 HorizontalAlignment="Stretch"
                 VerticalAlignment="Stretch"
                 Focusable="True">
-            <Canvas.KeyBindings>
-                <!-- Menu Options -->
-                <KeyBinding Gesture="Ctrl+O" Command="{Binding DocumentViewModel.LoadCanvasFromFileActionCommand}" />
-                <KeyBinding Gesture="Ctrl+S" Command="{Binding DocumentViewModel.SaveCanvasToFileActionCommand}" />
-                <KeyBinding Gesture="Ctrl+R" Command="{Binding ResetCanvasCommand}" />
-                <KeyBinding Gesture="Ctrl+X" Command="{Binding ExitCommand}" />
-
-                <!-- Undo/Redo -->
-                <KeyBinding Gesture="Ctrl+Z" Command="{Binding UndoCommand}" />
-                <KeyBinding Gesture="Ctrl+Shift+Z" Command="{Binding RedoCommand}" />
-
-                <!-- Zoom -->
-                <KeyBinding Gesture="Ctrl+OemMinus" Command="{Binding UiStateViewModel.ZoomOutCommand}" />
-                <KeyBinding Gesture="Ctrl+OemPlus" Command="{Binding UiStateViewModel.ZoomInCommand}" />
-            </Canvas.KeyBindings>
 
             <!-- COVERS SELECTED ELEMENTS -->
             <StackPanel Name="SelectionOverlay" Spacing="6" IsVisible="False">
