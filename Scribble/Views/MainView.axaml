@@ -17,10 +17,6 @@
          to set the actual DataContext for runtime, set the DataContext property in code (look at App.axaml.cs) -->
         <vm:MainViewModel />
     </Design.DataContext>
-    <UserControl.KeyBindings>
-        <KeyBinding Gesture="Ctrl+Z" Command="{Binding UndoCommand}" />
-        <KeyBinding Gesture="Ctrl+Shift+Z" Command="{Binding RedoCommand}" />
-    </UserControl.KeyBindings>
     <!-- Infinite canvas: SkiaCanvas fills the viewport, camera transform handles panning/zooming -->
     <Panel>
         <controls:SkiaCanvas Name="MainCanvas"
@@ -34,7 +30,24 @@
         <!-- Overlay canvas for selection UI and text edit borders (layered on top of SkiaCanvas) -->
         <Canvas Name="CanvasContainer"
                 HorizontalAlignment="Stretch"
-                VerticalAlignment="Stretch">
+                VerticalAlignment="Stretch"
+                Focusable="True">
+            <Canvas.KeyBindings>
+                <!-- Menu Options -->
+                <KeyBinding Gesture="Ctrl+O" Command="{Binding DocumentViewModel.LoadCanvasFromFileActionCommand}" />
+                <KeyBinding Gesture="Ctrl+S" Command="{Binding DocumentViewModel.SaveCanvasToFileActionCommand}" />
+                <KeyBinding Gesture="Ctrl+R" Command="{Binding ResetCanvasCommand}" />
+                <KeyBinding Gesture="Ctrl+X" Command="{Binding ExitCommand}" />
+
+                <!-- Undo/Redo -->
+                <KeyBinding Gesture="Ctrl+Z" Command="{Binding UndoCommand}" />
+                <KeyBinding Gesture="Ctrl+Shift+Z" Command="{Binding RedoCommand}" />
+
+                <!-- Zoom -->
+                <KeyBinding Gesture="Ctrl+OemMinus" Command="{Binding UiStateViewModel.ZoomOutCommand}" />
+                <KeyBinding Gesture="Ctrl+OemPlus" Command="{Binding UiStateViewModel.ZoomInCommand}" />
+            </Canvas.KeyBindings>
+
             <!-- COVERS SELECTED ELEMENTS -->
             <StackPanel Name="SelectionOverlay" Spacing="6" IsVisible="False">
                 <Border Name="SelectionRotationBtn" CornerRadius="100" BorderThickness="2" BorderBrush="Gray"
@@ -124,7 +137,6 @@
                         <Button Name="OpenFileMenuOption" HorizontalAlignment="Stretch"
                                 Command="{Binding DocumentViewModel.LoadCanvasFromFileActionCommand}"
                                 IsVisible="{Binding MultiUserDrawingViewModel.CanResetCanvas}"
-                                HotKey="Ctrl+O"
                                 ToolTip.Tip="Ctrl+O">
                             <StackPanel Orientation="Horizontal" Spacing="4">
                                 <Image Source="avares://Scribble/Assets/open.png" Width="18" Height="18" />
@@ -133,7 +145,7 @@
                         </Button>
                         <Button Name="SaveToFileMenuOption" Margin="0"
                                 Command="{Binding DocumentViewModel.SaveCanvasToFileActionCommand}"
-                                HorizontalAlignment="Stretch" HotKey="Ctrl+S" ToolTip.Tip="Ctrl+S">
+                                HorizontalAlignment="Stretch" ToolTip.Tip="Ctrl+S">
                             <StackPanel Orientation="Horizontal" Spacing="4">
                                 <Image Source="avares://Scribble/Assets/save.png" Width="18" Height="18" />
                                 <Label FontSize="12">Save to file</Label>
@@ -141,7 +153,7 @@
                         </Button>
                         <Button Name="ExportMenuOption" Margin="0"
                                 Click="ExportMenuOption_OnClick"
-                                HorizontalAlignment="Stretch" HotKey="Ctrl+Shift+E" ToolTip.Tip="Ctrl+Shift+E">
+                                HorizontalAlignment="Stretch" ToolTip.Tip="Ctrl+Shift+E">
                             <StackPanel Orientation="Horizontal" Spacing="4">
                                 <Image Source="avares://Scribble/Assets/export.png" Width="18" Height="18" />
                                 <Label FontSize="12">Export to Image</Label>
@@ -150,7 +162,7 @@
                         <Button Name="ResetCanvasMenuOption" Margin="0"
                                 Command="{Binding ResetCanvasCommand}"
                                 IsVisible="{Binding MultiUserDrawingViewModel.CanResetCanvas}"
-                                HorizontalAlignment="Stretch" HotKey="Ctrl+R" ToolTip.Tip="Ctrl+R">
+                                HorizontalAlignment="Stretch" ToolTip.Tip="Ctrl+R">
                             <StackPanel Orientation="Horizontal" Spacing="4">
                                 <Image Source="avares://Scribble/Assets/bin.png" Width="18" Height="18" />
                                 <Label FontSize="12">Reset canvas</Label>
@@ -165,7 +177,7 @@
                         </Button>
                         <Button Name="ExitOption" Margin="0" Command="{Binding ExitCommand}"
                                 HorizontalAlignment="Stretch"
-                                HotKey="Ctrl+X" ToolTip.Tip="Ctrl+X">
+                                ToolTip.Tip="Ctrl+X">
                             <StackPanel Orientation="Horizontal" Spacing="4">
                                 <Image Source="avares://Scribble/Assets/exit.png" Width="18" Height="18" />
                                 <Label FontSize="12">Exit</Label>
@@ -645,10 +657,14 @@
                 Background="#2c2c2c"
                 Margin="8,0,0,12">
             <StackPanel Orientation="Horizontal">
-                <Button ToolTip.Tip="Undo - Ctrl+Z" Name="UndoButton" Command="{Binding UndoCommand}">
+                <Button ToolTip.Tip="Undo - Ctrl+Z"
+                        Name="UndoButton"
+                        Command="{Binding UndoCommand}">
                     <Image Source="avares://Scribble/Assets/undo.png" Margin="4" Width="15" Height="15" />
                 </Button>
-                <Button ToolTip.Tip="Redo - Ctrl+Shift+Z" Name="RedoButton" Command="{Binding RedoCommand}">
+                <Button ToolTip.Tip="Redo - Ctrl+Shift+Z"
+                        Name="RedoButton"
+                        Command="{Binding RedoCommand}">
                     <Image Source="avares://Scribble/Assets/redo.png" Margin="4" Width="15" Height="15" />
                 </Button>
             </StackPanel>
@@ -685,7 +701,6 @@
                 Padding="12, 6"
                 HorizontalAlignment="Stretch"
                 HorizontalContentAlignment="Center"
-                HotKey="Shift+D1"
                 Click="ZoomToFitBtn_OnClick">
                 <TextBlock Text="Zoom to Fit" Foreground="White" FontSize="12" />
             </Button>
@@ -693,45 +708,43 @@
             <Border
                 CornerRadius="8"
                 Background="#2c2c2c">
-            <StackPanel Orientation="Horizontal" Spacing="2">
-                <Button ToolTip.Tip="Zoom out - Ctrl + '-'"
-                        Name="ZoomOutBtn"
-                        Command="{Binding UiStateViewModel.ZoomOutCommand}"
-                        HotKey="Ctrl+OemMinus">
-                    <Image Source="avares://Scribble/Assets/minus.png" Margin="4" Width="15" Height="15" />
-                </Button>
-                <TextBlock Name="ScaleFactorText" Text="{Binding UiStateViewModel.ScaleFactorText}"
-                           VerticalAlignment="Center" />
-                <Button ToolTip.Tip="Zoom in - Ctrl + '+'"
-                        Name="ZoomInBtn"
-                        Command="{Binding UiStateViewModel.ZoomInCommand}"
-                        HotKey="Ctrl+OemPlus">
-                    <Image Source="avares://Scribble/Assets/plus.png" Margin="4" Width="15" Height="15" />
-                </Button>
-            </StackPanel>
-            <Border.Styles>
-                <Style Selector="Button">
-                    <Setter Property="Background" Value="#2c2c2c" />
-                </Style>
+                <StackPanel Orientation="Horizontal" Spacing="2">
+                    <Button ToolTip.Tip="Zoom out - Ctrl + '-'"
+                            Name="ZoomOutBtn"
+                            Command="{Binding UiStateViewModel.ZoomOutCommand}">
+                        <Image Source="avares://Scribble/Assets/minus.png" Margin="4" Width="15" Height="15" />
+                    </Button>
+                    <TextBlock Name="ScaleFactorText" Text="{Binding UiStateViewModel.ScaleFactorText}"
+                               VerticalAlignment="Center" />
+                    <Button ToolTip.Tip="Zoom in - Ctrl + '+'"
+                            Name="ZoomInBtn"
+                            Command="{Binding UiStateViewModel.ZoomInCommand}">
+                        <Image Source="avares://Scribble/Assets/plus.png" Margin="4" Width="15" Height="15" />
+                    </Button>
+                </StackPanel>
+                <Border.Styles>
+                    <Style Selector="Button">
+                        <Setter Property="Background" Value="#2c2c2c" />
+                    </Style>
 
-                <Style Selector="Button:pointerover /template/ ContentPresenter">
-                    <Setter Property="Background" Value="#3c3c3c" />
-                </Style>
+                    <Style Selector="Button:pointerover /template/ ContentPresenter">
+                        <Setter Property="Background" Value="#3c3c3c" />
+                    </Style>
 
-                <Style Selector="Button:pressed /template/ ContentPresenter">
-                    <Setter Property="Background" Value="#1c1c1c" />
-                </Style>
+                    <Style Selector="Button:pressed /template/ ContentPresenter">
+                        <Setter Property="Background" Value="#1c1c1c" />
+                    </Style>
 
-                <Style Selector="Button:disabled /template/ ContentPresenter">
-                    <Setter Property="Background" Value="#2c2c2c" />
-                </Style>
+                    <Style Selector="Button:disabled /template/ ContentPresenter">
+                        <Setter Property="Background" Value="#2c2c2c" />
+                    </Style>
 
-                <Style Selector="TextBlock">
-                    <Setter Property="Foreground" Value="White" />
-                    <Setter Property="Background" Value="#2c2c2c" />
-                </Style>
-            </Border.Styles>
-        </Border>
+                    <Style Selector="TextBlock">
+                        <Setter Property="Foreground" Value="White" />
+                        <Setter Property="Background" Value="#2c2c2c" />
+                    </Style>
+                </Border.Styles>
+            </Border>
         </StackPanel>
 
         <!-- Export to Image -->
