@@ -197,12 +197,12 @@
         </Panel>
 
         <!-- Toolbar -->
-        <StackPanel Orientation="Horizontal" Spacing="18" HorizontalAlignment="Center" VerticalAlignment="Bottom"
-                    Margin="0,0,0,24">
+        <StackPanel Orientation="Horizontal" Spacing="12" HorizontalAlignment="Center" VerticalAlignment="Top"
+                    Margin="0,12,0,0">
             <Border
                 Background="#EE2B2B2B"
                 CornerRadius="16"
-                Padding="8"
+                Padding="4"
                 BoxShadow="0 4 20 0 #60000000">
                 <ListBox
                     ItemsSource="{Binding UiStateViewModel.AvailableTools}"
@@ -221,7 +221,10 @@
 
                     <ListBox.ItemTemplate>
                         <DataTemplate>
-                            <Image Source="{Binding ToolIcon}" Margin="4" ToolTip.Tip="{Binding ToolTip}" />
+                            <Image Source="{Binding ToolIcon}"
+                                   Width="20"
+                                   Height="20"
+                                   ToolTip.Tip="{Binding ToolTip}" />
                         </DataTemplate>
                     </ListBox.ItemTemplate>
 
@@ -230,8 +233,7 @@
                             <Setter Property="CornerRadius" Value="10" />
                             <Setter Property="Background" Value="Transparent" />
                             <Setter Property="Padding" Value="6" />
-                            <Setter Property="Width" Value="44" />
-                            <Setter Property="Height" Value="44" />
+                            <Setter Property="Margin" Value="2" />
                             <Setter Property="Transitions">
                                 <Transitions>
                                     <BrushTransition Property="Background" Duration="0:0:0.15" />
@@ -241,7 +243,7 @@
                         </Style>
                         <Style Selector="ListBoxItem:pointerover">
                             <Setter Property="Background" Value="#1AFFFFFF" />
-                            <Setter Property="RenderTransform" Value="scale(1.1)" />
+                            <!-- <Setter Property="RenderTransform" Value="scale(1.1)" /> -->
                         </Style>
                         <Style Selector="ListBoxItem:selected">
                             <Setter Property="Background" Value="#33FFFFFF" />
@@ -256,14 +258,14 @@
             <Border
                 Background="#EE2B2B2B"
                 CornerRadius="16"
-                Padding="8"
+                Padding="4"
                 BoxShadow="0 4 20 0 #60000000">
                 <Panel>
                     <Button Name="LiveDrawingButton"
                             Click="LiveDrawingButton_OnClick"
                             Background="{Binding MultiUserDrawingViewModel.LiveDrawingButtonBackground}"
                             ToolTip.Tip="Multi-User Drawing">
-                        <Image Margin="4" Source="avares://Scribble/Assets/group.png" />
+                        <Image Width="20" Height="20" Source="avares://Scribble/Assets/group.png" />
                     </Button>
                     <Border
                         IsVisible="{Binding MultiUserDrawingViewModel.IsLive}"
@@ -285,9 +287,7 @@
                     <Setter Property="Background" Value="Transparent" />
                     <Setter Property="BorderThickness" Value="0" />
                     <Setter Property="Padding" Value="6" />
-                    <Setter Property="Margin" Value="4" />
-                    <Setter Property="Width" Value="44" />
-                    <Setter Property="Height" Value="44" />
+                    <Setter Property="Margin" Value="2" />
                     <Setter Property="Transitions">
                         <Transitions>
                             <BrushTransition Property="Background" Duration="0:0:0.15" />
@@ -297,7 +297,7 @@
                 </Style>
                 <Style Selector="Button:pointerover">
                     <Setter Property="Background" Value="#1AFFFFFF" />
-                    <Setter Property="RenderTransform" Value="scale(1.1)" />
+                    <!-- <Setter Property="RenderTransform" Value="scale(1.1)" /> -->
                 </Style>
             </StackPanel.Styles>
 
@@ -651,76 +651,85 @@
             </Border>
         </Panel>
 
-        <!-- Undo/Redo Buttons -->
-        <Border CornerRadius="8"
-                HorizontalAlignment="Left"
-                VerticalAlignment="Bottom"
-                Background="#2c2c2c"
-                Margin="8,0,0,12">
-            <StackPanel Orientation="Horizontal">
-                <Button ToolTip.Tip="Undo - Ctrl+Z"
-                        Name="UndoButton"
-                        Command="{Binding UndoCommand}">
-                    <Image Source="avares://Scribble/Assets/undo.png" Margin="4" Width="15" Height="15" />
-                </Button>
-                <Button ToolTip.Tip="Redo - Ctrl+Shift+Z"
-                        Name="RedoButton"
-                        Command="{Binding RedoCommand}">
-                    <Image Source="avares://Scribble/Assets/redo.png" Margin="4" Width="15" Height="15" />
-                </Button>
-            </StackPanel>
-            <Border.Styles>
-                <Style Selector="Button">
-                    <Setter Property="Background" Value="#2c2c2c" />
-                </Style>
-
-                <Style Selector="Button:pointerover /template/ ContentPresenter">
-                    <Setter Property="Background" Value="#3c3c3c" />
-                </Style>
-
-                <Style Selector="Button:pressed /template/ ContentPresenter">
-                    <Setter Property="Background" Value="#1c1c1c" />
-                </Style>
-
-                <Style Selector="Button:disabled /template/ ContentPresenter">
-                    <Setter Property="Background" Value="#2c2c2c" />
-                </Style>
-            </Border.Styles>
-        </Border>
-
-        <!-- Zoom Buttons -->
+        <!-- Zoom Buttons and Undo/Redo Buttons -->
         <StackPanel
-            HorizontalAlignment="Right"
+            HorizontalAlignment="Left"
             VerticalAlignment="Bottom"
-            Spacing="8"
-            Margin="0,0,8,12">
-            <Button
-                Name="ZoomToFitBtn"
-                ToolTip.Tip="Zoom to fit content - Shift + 1"
-                Background="#2c2c2c"
-                CornerRadius="8"
-                Padding="12, 6"
-                HorizontalAlignment="Stretch"
-                HorizontalContentAlignment="Center"
-                Click="ZoomToFitBtn_OnClick">
-                <TextBlock Text="Zoom to Fit" Foreground="White" FontSize="12" />
-            </Button>
+            Orientation="Horizontal"
+            Spacing="4"
+            Margin="8,0,0,12">
 
-            <Border
-                CornerRadius="8"
-                Background="#2c2c2c">
-                <StackPanel Orientation="Horizontal" Spacing="2">
-                    <Button ToolTip.Tip="Zoom out - Ctrl + '-'"
-                            Name="ZoomOutBtn"
-                            Command="{Binding UiStateViewModel.ZoomOutCommand}">
-                        <Image Source="avares://Scribble/Assets/minus.png" Margin="4" Width="15" Height="15" />
+            <!-- Zoom Buttons -->
+            <StackPanel
+                Spacing="8">
+                <Button
+                    Name="ZoomToFitBtn"
+                    ToolTip.Tip="Zoom to fit content - Shift + 1"
+                    Background="#2c2c2c"
+                    CornerRadius="8"
+                    Padding="12, 6"
+                    HorizontalAlignment="Stretch"
+                    HorizontalContentAlignment="Center"
+                    Click="ZoomToFitBtn_OnClick">
+                    <TextBlock Text="Zoom to Fit" Foreground="White" FontSize="12" />
+                </Button>
+
+                <Border
+                    CornerRadius="8"
+                    Background="#2c2c2c">
+                    <StackPanel Orientation="Horizontal" Spacing="2">
+                        <Button ToolTip.Tip="Zoom out - Ctrl + '-'"
+                                Name="ZoomOutBtn"
+                                Command="{Binding UiStateViewModel.ZoomOutCommand}">
+                            <Image Source="avares://Scribble/Assets/minus.png" Margin="4" Width="15" Height="15" />
+                        </Button>
+                        <TextBlock Name="ScaleFactorText" Text="{Binding UiStateViewModel.ScaleFactorText}"
+                                   VerticalAlignment="Center" />
+                        <Button ToolTip.Tip="Zoom in - Ctrl + '+'"
+                                Name="ZoomInBtn"
+                                Command="{Binding UiStateViewModel.ZoomInCommand}">
+                            <Image Source="avares://Scribble/Assets/plus.png" Margin="4" Width="15" Height="15" />
+                        </Button>
+                    </StackPanel>
+                    <Border.Styles>
+                        <Style Selector="Button">
+                            <Setter Property="Background" Value="#2c2c2c" />
+                        </Style>
+
+                        <Style Selector="Button:pointerover /template/ ContentPresenter">
+                            <Setter Property="Background" Value="#3c3c3c" />
+                        </Style>
+
+                        <Style Selector="Button:pressed /template/ ContentPresenter">
+                            <Setter Property="Background" Value="#1c1c1c" />
+                        </Style>
+
+                        <Style Selector="Button:disabled /template/ ContentPresenter">
+                            <Setter Property="Background" Value="#2c2c2c" />
+                        </Style>
+
+                        <Style Selector="TextBlock">
+                            <Setter Property="Foreground" Value="White" />
+                            <Setter Property="Background" Value="#2c2c2c" />
+                        </Style>
+                    </Border.Styles>
+                </Border>
+            </StackPanel>
+
+            <!-- Undo/Redo Buttons -->
+            <Border CornerRadius="8"
+                    Background="#2c2c2c"
+                    VerticalAlignment="Bottom">
+                <StackPanel Orientation="Horizontal">
+                    <Button ToolTip.Tip="Undo - Ctrl+Z"
+                            Name="UndoButton"
+                            Command="{Binding UndoCommand}">
+                        <Image Source="avares://Scribble/Assets/undo.png" Margin="4" Width="15" Height="15" />
                     </Button>
-                    <TextBlock Name="ScaleFactorText" Text="{Binding UiStateViewModel.ScaleFactorText}"
-                               VerticalAlignment="Center" />
-                    <Button ToolTip.Tip="Zoom in - Ctrl + '+'"
-                            Name="ZoomInBtn"
-                            Command="{Binding UiStateViewModel.ZoomInCommand}">
-                        <Image Source="avares://Scribble/Assets/plus.png" Margin="4" Width="15" Height="15" />
+                    <Button ToolTip.Tip="Redo - Ctrl+Shift+Z"
+                            Name="RedoButton"
+                            Command="{Binding RedoCommand}">
+                        <Image Source="avares://Scribble/Assets/redo.png" Margin="4" Width="15" Height="15" />
                     </Button>
                 </StackPanel>
                 <Border.Styles>
@@ -737,11 +746,6 @@
                     </Style>
 
                     <Style Selector="Button:disabled /template/ ContentPresenter">
-                        <Setter Property="Background" Value="#2c2c2c" />
-                    </Style>
-
-                    <Style Selector="TextBlock">
-                        <Setter Property="Foreground" Value="White" />
                         <Setter Property="Background" Value="#2c2c2c" />
                     </Style>
                 </Border.Styles>
