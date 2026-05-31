@@ -18,7 +18,7 @@ public class PencilTool : StrokeTool
         LoadToolBitmap(typeof(PencilTool), "pencil.png"))
     {
         ToolOptions = [ToolOption.StrokeColor, ToolOption.StrokeThickness];
-        Cursor = new Cursor(ToolIcon.CreateScaledBitmap(new PixelSize(36, 36)), new PixelPoint(0, 36));
+        Cursor = new Cursor(ToolIcon, new PixelPoint(0, 20));
         HotKey = new KeyGesture(Key.D1);
         ToolTip = "Pencil Tool - 1";
     }
