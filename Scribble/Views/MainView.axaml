@@ -566,10 +566,7 @@
                             If the room id doesn't belong to any active room, the room is automatically created
                         </TextBlock>
                         <TextBlock FontSize="12" TextWrapping="Wrap" Foreground="WhiteSmoke">
-                            I'm using Render's free tier to host the server so it might take a minute for the initial connection to be established
-                        </TextBlock>
-                        <TextBlock FontSize="12" TextWrapping="Wrap" Foreground="WhiteSmoke">
-                            Rooms are automatically closed after about 15mins of inactivity
+                            Note: It might take a minute for the initial connection to be established
                         </TextBlock>
                     </StackPanel>
 
