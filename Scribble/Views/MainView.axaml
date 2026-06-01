@@ -823,6 +823,40 @@
                 </StackPanel>
             </Border>
         </Panel>
+
+        <!-- Chatbox -->
+        <StackPanel Width="400" VerticalAlignment="Bottom" HorizontalAlignment="Right" Margin="0,0,8,12" Spacing="4">
+            <StackPanel MaxHeight="400" HorizontalAlignment="Stretch" Spacing="4">
+                <!-- Message Item -->
+                <StackPanel>
+                    <TextBlock Text="Hermes" FontWeight="Bold" Foreground="LawnGreen" />
+                    <TextBlock TextWrapping="Wrap"
+                               MaxWidth="400"
+                               Text="This is a dummy message" />
+                </StackPanel>
+                <StackPanel>
+                    <TextBlock Text="Hermes" FontWeight="Bold" Foreground="LawnGreen" />
+                    <TextBlock TextWrapping="Wrap"
+                               MaxWidth="400"
+                               Text="This is a dummy message" />
+                </StackPanel>
+                <StackPanel>
+                    <TextBlock Text="Hermes" FontWeight="Bold" Foreground="LawnGreen" />
+                    <TextBlock TextWrapping="Wrap"
+                               MaxWidth="400"
+                               Text="This is a dummy message" />
+                </StackPanel>
+            </StackPanel>
+            <Grid ColumnDefinitions="*, 40">
+                <TextBox Grid.Column="0" Watermark="Message..." HorizontalAlignment="Stretch"
+                         VerticalContentAlignment="Center" />
+                <Button Grid.Column="1" Height="40">
+                    <Image Source="avares://Scribble/Assets/arrow_up.png" />
+                </Button>
+            </Grid>
+
+        </StackPanel>
+
         <Panel.Styles>
             <Style Selector="Button:disabled Image">
                 <Setter Property="Opacity" Value="0.5" />
