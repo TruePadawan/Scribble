@@ -106,4 +106,9 @@ public class MultiUserDrawingHub : Hub
     {
         await Clients.Client(targetConnectionId).SendAsync("ReceiveCanvasState", serializedEvents);
     }
+
+    public async Task SendMessage(string roomId, string displayName, string content)
+    {
+        await Clients.Group(roomId).SendAsync("ReceiveMessage", displayName, content);
+    }
 }

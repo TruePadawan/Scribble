@@ -25,6 +25,7 @@ public class MultiUserDrawingService(string serverUrl)
     public event Action<Queue<Event>>? CanvasStateReceived;
     public event Action<MultiUserDrawingClient, List<MultiUserDrawingClient>>? ClientJoinedRoom;
     public event Action<MultiUserDrawingClient, List<MultiUserDrawingClient>>? ClientLeftRoom;
+    public event Action<string, string>? MessageReceived;
 
 
     // Set up the event handlers and starts a connection to the SignalR server
@@ -48,6 +49,7 @@ public class MultiUserDrawingService(string serverUrl)
             }
         });
 
+        // listens for broadcasts that a client joined the room
         _connection.On<MultiUserDrawingClient, List<MultiUserDrawingClient>>("ClientJoined",
             (client, usersInRoom) =>
             {
@@ -55,12 +57,17 @@ public class MultiUserDrawingService(string serverUrl)
                 RefreshRoomClients(client, usersInRoom);
             });
 
+        // listens for broadcasts that a client left the room
         _connection.On<MultiUserDrawingClient, List<MultiUserDrawingClient>>("ClientLeft",
             (client, usersInRoom) =>
             {
                 ClientLeftRoom?.Invoke(client, usersInRoom);
                 RefreshRoomClients(client, usersInRoom);
             });
+
+        // listens for broadcasts that a client sent a message
+        _connection.On<string, string>("ReceiveMessage",
+            (displayName, message) => MessageReceived?.Invoke(displayName, message));
 
         await _connection.StartAsync();
         ConnectionStarted?.Invoke();
@@ -164,5 +171,13 @@ public class MultiUserDrawingService(string serverUrl)
         };
         RoomChanged?.Invoke(Room);
         Console.WriteLine($"{client.Name} Joined");
+    }
+
+    public async Task BroadcastMessageAsync(Message message)
+    {
+        if (Room != null && IsConnected)
+        {
+            await _connection.InvokeAsync("SendMessage", Room.RoomId, message.DisplayName, message.Content);
+        }
     }
 }

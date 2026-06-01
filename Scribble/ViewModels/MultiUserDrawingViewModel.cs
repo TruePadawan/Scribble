@@ -1,4 +1,5 @@
 using System;
+using System.Collections.ObjectModel;
 using System.Threading.Tasks;
 using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -36,6 +37,11 @@ public partial class MultiUserDrawingViewModel : ViewModelBase
     [ObservableProperty] [NotifyCanExecuteChangedFor(nameof(ToggleRoomConnectionCommand))]
     private string _clientDisplayName = "Bootlicker";
 
+    [ObservableProperty] [NotifyCanExecuteChangedFor(nameof(SendMessageCommand))]
+    private string _message = string.Empty;
+
+    public ObservableCollection<Message> Messages { get; } = [];
+
     public int ClientCount => Room?.Clients.Count ?? 0;
     public bool CanResetCanvas => Room == null;
     public bool IsLive => Room != null;
@@ -43,6 +49,8 @@ public partial class MultiUserDrawingViewModel : ViewModelBase
 
     private bool CanToggleRoomConnection =>
         !string.IsNullOrWhiteSpace(RoomId) && !string.IsNullOrWhiteSpace(ClientDisplayName);
+
+    private bool CanSendMessage => !string.IsNullOrWhiteSpace(Message);
 
     public string RoomButtonText => IsLive ? "Leave Room" : "Enter Room";
 
@@ -58,6 +66,10 @@ public partial class MultiUserDrawingViewModel : ViewModelBase
         _canvasStateService = canvasStateService;
 
         _multiUserDrawingService.RoomChanged += room => { Room = room; };
+        _multiUserDrawingService.MessageReceived += (displayName, content) =>
+        {
+            Messages.Add(new Message(displayName, content));
+        };
     }
 
     [RelayCommand(CanExecute = nameof(CanToggleRoomConnection))]
@@ -87,5 +99,11 @@ public partial class MultiUserDrawingViewModel : ViewModelBase
         {
             RoomId = Guid.NewGuid().ToString("N");
         }
+    }
+
+    [RelayCommand(CanExecute = nameof(CanSendMessage))]
+    private async Task SendMessageAsync()
+    {
+        await _multiUserDrawingService.BroadcastMessageAsync(new Message(ClientDisplayName, Message));
     }
 }
