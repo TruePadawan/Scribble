@@ -1121,9 +1121,10 @@ public class CanvasStateService
             if (element is PaintableStroke stroke)
             {
                 var strokeId = stroke.Id;
-                if (stroke is DrawStroke ds && (ds.ToolType == ToolType.Line || ds.ToolType == ToolType.Arrow))
+                var endPoints = new[] { stroke.Path[0], stroke.Path.LastPoint };
+                var isLineLike = stroke is DrawStroke ds && ds.ToolType is ToolType.Line or ToolType.Arrow;
+                if (isLineLike)
                 {
-                    var endPoints = new[] { stroke.Path[0], stroke.Path[1] };
                     if (Utilities.IsPointNearLine(eraserPoint, endPoints, 10.0f))
                     {
                         stroke.IsToBeErased = true;
@@ -1132,7 +1133,9 @@ public class CanvasStateService
                 }
                 else
                 {
-                    if (stroke.Path.Contains(eraserPoint.X, eraserPoint.Y))
+                    if (stroke.Path.Contains(eraserPoint.X, eraserPoint.Y) ||
+                        // For handling very small/short pencil strokes
+                        Utilities.IsPointNearLine(eraserPoint, endPoints, 10.0f))
                     {
                         stroke.IsToBeErased = true;
                         eraserStroke.Targets.Add(strokeId);
