@@ -83,12 +83,14 @@ public class MultiUserDrawingService(string serverUrl)
         try
         {
             await StartAsync();
+            if (ConnectionId == null) return;
+
+            // Initialize Room early before invoking JoinRoom on the server
+            // so that the client can respond to ClientJoined/ClientLeft immediately
+            Room = new MultiUserDrawingRoom(roomId, ConnectionId, displayName);
+            RoomChanged?.Invoke(Room);
+
             await _connection.InvokeAsync("JoinRoom", roomId, displayName);
-            if (ConnectionId != null)
-            {
-                Room = new MultiUserDrawingRoom(roomId, ConnectionId, displayName);
-                RoomChanged?.Invoke(Room);
-            }
         }
         catch (Exception e)
         {
