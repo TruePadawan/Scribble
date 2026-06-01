@@ -805,4 +805,17 @@ public partial class MainView : UserControl
         ExportImageWindow.IsVisible = true;
         ExportImageWindowOverlay.IsVisible = true;
     }
+
+    private void MessageTextBox_OnKeyDown(object? sender, KeyEventArgs e)
+    {
+        var enterKeyIsPressed = e.Key == Key.Enter && (e.KeyModifiers & KeyModifiers.Shift) == 0;
+        if (!enterKeyIsPressed) return;
+
+        if (_viewModel != null && _viewModel.MultiUserDrawingViewModel.SendMessageCommand.CanExecute(null))
+        {
+            _viewModel.MultiUserDrawingViewModel.SendMessageCommand.Execute(null);
+        }
+
+        e.Handled = true;
+    }
 }

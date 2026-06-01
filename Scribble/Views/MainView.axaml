@@ -831,8 +831,8 @@
                     HorizontalAlignment="Right"
                     Margin="0,0,8,12">
             <Grid RowDefinitions="*" MaxHeight="400" RowSpacing="4">
-                <ItemsControl Background="Transparent" ItemsSource="{Binding MultiUserDrawingViewModel.Messages}">
-                    <ItemsControl.ItemTemplate>
+                <ListBox Background="Transparent" ItemsSource="{Binding MultiUserDrawingViewModel.Messages}">
+                    <ListBox.ItemTemplate>
                         <DataTemplate>
                             <!-- Message Item -->
                             <StackPanel VerticalAlignment="Bottom">
@@ -842,17 +842,20 @@
                                            Text="{Binding Content}" />
                             </StackPanel>
                         </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
+                    </ListBox.ItemTemplate>
+                </ListBox>
             </Grid>
             <Grid ColumnDefinitions="*, 40">
                 <TextBox Grid.Column="0"
+                         Name="MessageTextBox"
+                         KeyDown="MessageTextBox_OnKeyDown"
                          HorizontalAlignment="Stretch"
                          VerticalContentAlignment="Center"
                          Watermark="Message..."
                          Text="{Binding MultiUserDrawingViewModel.Message}" />
                 <Button Grid.Column="1"
                         Height="40"
+                        ToolTip.Tip="Send Message"
                         Command="{Binding MultiUserDrawingViewModel.SendMessageCommand}">
                     <Image Source="avares://Scribble/Assets/arrow_up.png" />
                 </Button>
