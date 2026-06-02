@@ -751,6 +751,7 @@
                          KeyDown="MessageTextBox_OnKeyDown"
                          HorizontalAlignment="Stretch"
                          VerticalContentAlignment="Center"
+                         MaxLength="500"
                          Watermark="Message..."
                          Text="{Binding MultiUserDrawingViewModel.Message}" />
                 <Button Grid.Column="1"

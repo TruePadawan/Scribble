@@ -2,11 +2,14 @@ using System;
 using System.Collections.ObjectModel;
 using System.Threading.Tasks;
 using Avalonia.Media;
+using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Scribble.Services;
 using Scribble.Services.DialogService;
 using Scribble.Services.MultiUserDrawing;
+using Scribble.Shared.Dtos;
+using Scribble.Shared.Lib;
 
 namespace Scribble.ViewModels;
 
@@ -71,12 +74,12 @@ public partial class MultiUserDrawingViewModel : ViewModelBase
             // Clear all messages after leaving a room
             if (room == null)
             {
-                Messages.Clear();
+                Dispatcher.UIThread.Post(() => Messages.Clear());
             }
         };
-        _multiUserDrawingService.MessageReceived += (displayName, content) =>
+        _multiUserDrawingService.MessageReceived += message =>
         {
-            Messages.Add(new Message(displayName, content));
+            Dispatcher.UIThread.Post(() => Messages.Add(message));
         };
     }
 
@@ -117,7 +120,7 @@ public partial class MultiUserDrawingViewModel : ViewModelBase
             ClientDisplayName = "Bootlicker";
         }
 
-        await _multiUserDrawingService.BroadcastMessageAsync(new Message(ClientDisplayName, Message.Trim()));
+        await _multiUserDrawingService.BroadcastMessageAsync(new MessageDto(ClientDisplayName, Message.Trim()));
         Message = string.Empty;
     }
 }

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.SignalR.Client;
+using Scribble.Shared.Dtos;
 using Scribble.Shared.Lib;
 
 namespace Scribble.Services.MultiUserDrawing;
@@ -23,7 +24,7 @@ public class MultiUserDrawingService
     public event Action<Queue<Event>>? CanvasStateReceived;
     public event Action<MultiUserDrawingClient, List<MultiUserDrawingClient>>? ClientJoinedRoom;
     public event Action<MultiUserDrawingClient, List<MultiUserDrawingClient>>? ClientLeftRoom;
-    public event Action<string, string>? MessageReceived;
+    public event Action<Message>? MessageReceived;
 
     public MultiUserDrawingService(string serverUrl)
     {
@@ -36,7 +37,7 @@ public class MultiUserDrawingService
         _connection.On<string>("RequestCanvasState", clientId => CanvasStateRequested?.Invoke(clientId));
 
         // We're a new client joining a room, listens for the response from the host carrying the canvas state
-        _connection.On<string>("ReceiveCanvasState", (serializedEvents) =>
+        _connection.On<string>("ReceiveCanvasState", serializedEvents =>
         {
             var events = JsonSerializer.Deserialize<Queue<Event>>(serializedEvents);
             if (events != null)
@@ -62,8 +63,7 @@ public class MultiUserDrawingService
             });
 
         // listens for broadcasts that a client sent a message
-        _connection.On<string, string>("ReceiveMessage",
-            (displayName, message) => MessageReceived?.Invoke(displayName, message));
+        _connection.On<Message>("ReceiveMessage", message => MessageReceived?.Invoke(message));
     }
 
     // Starts a connection to the SignalR server
@@ -174,11 +174,11 @@ public class MultiUserDrawingService
         Console.WriteLine($"{client.Name} Joined");
     }
 
-    public async Task BroadcastMessageAsync(Message message)
+    public async Task BroadcastMessageAsync(MessageDto message)
     {
         if (Room != null && IsConnected)
         {
-            await _connection.InvokeAsync("SendMessage", Room.RoomId, message.DisplayName, message.Content);
+            await _connection.InvokeAsync("SendMessage", Room.RoomId, message);
         }
     }
 }

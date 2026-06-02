@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Collections.Immutable;
 using Microsoft.AspNetCore.SignalR;
+using Scribble.Shared.Dtos;
 using Scribble.Shared.Lib;
 
 namespace Scribble.Server.Hubs;
@@ -107,8 +108,17 @@ public class MultiUserDrawingHub : Hub
         await Clients.Client(targetConnectionId).SendAsync("ReceiveCanvasState", serializedEvents);
     }
 
-    public async Task SendMessage(string roomId, string displayName, string content)
+    public async Task SendMessage(string roomId, MessageDto messageDto)
     {
-        await Clients.Group(roomId).SendAsync("ReceiveMessage", displayName, content);
+        if (string.IsNullOrWhiteSpace(messageDto.Content)) return;
+        if (messageDto.Content.Length > 500) return;
+
+        // Verify the sender actually belongs to this room
+        if (!UserToRoom.TryGetValue(Context.ConnectionId, out var actualRoomId) || actualRoomId != roomId)
+            return;
+
+        var messageId = Guid.NewGuid().ToString("N");
+        await Clients.Group(roomId).SendAsync("ReceiveMessage",
+            new Message(messageId, messageDto.DisplayName, messageDto.Content));
     }
 }
