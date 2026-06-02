@@ -62,9 +62,15 @@ public class MultiUserDrawingHub : Hub
         }
 
         await Clients.Group(roomId).SendAsync("ClientJoined", user, usersInRoom);
+
+        var messageId = Guid.NewGuid().ToString("N");
+        var scribbleBotId = Guid.NewGuid().ToString("N");
+        var scribbleBotMessage = $"{displayName} just joined the room";
+        await Clients.Group(roomId).SendAsync("ReceiveMessage",
+            new Message(messageId, scribbleBotId, "Scribble-Bot", scribbleBotMessage));
     }
 
-    public async Task LeaveRoom(string roomId)
+    public async Task LeaveRoom(string roomId, string displayName)
     {
         await Groups.RemoveFromGroupAsync(Context.ConnectionId, roomId);
 
@@ -86,6 +92,12 @@ public class MultiUserDrawingHub : Hub
             else
             {
                 await Clients.Group(roomId).SendAsync("ClientLeft", user, updatedList);
+
+                var messageId = Guid.NewGuid().ToString("N");
+                var scribbleBotId = Guid.NewGuid().ToString("N");
+                var scribbleBotMessage = $"{displayName} just left the room";
+                await Clients.OthersInGroup(roomId).SendAsync("ReceiveMessage",
+                    new Message(messageId, scribbleBotId, "Scribble-Bot", scribbleBotMessage));
             }
         }
     }

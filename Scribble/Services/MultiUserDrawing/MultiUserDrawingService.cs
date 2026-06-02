@@ -113,13 +113,13 @@ public class MultiUserDrawingService
     /// <summary>
     /// Leaves a room
     /// </summary>
-    public async Task LeaveRoomAsync()
+    public async Task LeaveRoomAsync(string displayName)
     {
         try
         {
             if (Room != null && IsConnected)
             {
-                await _connection.InvokeAsync("LeaveRoom", Room.RoomId);
+                await _connection.InvokeAsync("LeaveRoom", Room.RoomId, displayName);
                 await StopAsync();
                 Room = null;
                 RoomChanged?.Invoke(null);

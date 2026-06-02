@@ -104,7 +104,7 @@ public partial class MultiUserDrawingViewModel : ViewModelBase
         }
         else
         {
-            await _multiUserDrawingService.LeaveRoomAsync();
+            await _multiUserDrawingService.LeaveRoomAsync(ClientDisplayName.Trim());
         }
     }
 
