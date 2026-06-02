@@ -3,15 +3,14 @@ using System.Collections.Generic;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.SignalR.Client;
+using Scribble.Shared.Dtos;
 using Scribble.Shared.Lib;
 
 namespace Scribble.Services.MultiUserDrawing;
 
-public class MultiUserDrawingService(string serverUrl)
+public class MultiUserDrawingService
 {
-    private readonly HubConnection _connection =
-        new HubConnectionBuilder().WithUrl(serverUrl).Build();
-
+    private readonly HubConnection _connection;
     public MultiUserDrawingRoom? Room { get; private set; }
     public event Action<MultiUserDrawingRoom?>? RoomChanged;
     public bool IsConnected => _connection.State == HubConnectionState.Connected;
@@ -25,12 +24,11 @@ public class MultiUserDrawingService(string serverUrl)
     public event Action<Queue<Event>>? CanvasStateReceived;
     public event Action<MultiUserDrawingClient, List<MultiUserDrawingClient>>? ClientJoinedRoom;
     public event Action<MultiUserDrawingClient, List<MultiUserDrawingClient>>? ClientLeftRoom;
+    public event Action<Message>? MessageReceived;
 
-
-    // Set up the event handlers and starts a connection to the SignalR server
-    private async Task StartAsync()
+    public MultiUserDrawingService(string serverUrl)
     {
-        if (IsConnected) return;
+        _connection = new HubConnectionBuilder().WithUrl(serverUrl).Build();
 
         // Listen for draw events from others in the room
         _connection.On<Event>("ReceiveEvent", @event => { EventReceived?.Invoke(@event); });
@@ -39,7 +37,7 @@ public class MultiUserDrawingService(string serverUrl)
         _connection.On<string>("RequestCanvasState", clientId => CanvasStateRequested?.Invoke(clientId));
 
         // We're a new client joining a room, listens for the response from the host carrying the canvas state
-        _connection.On<string>("ReceiveCanvasState", (serializedEvents) =>
+        _connection.On<string>("ReceiveCanvasState", serializedEvents =>
         {
             var events = JsonSerializer.Deserialize<Queue<Event>>(serializedEvents);
             if (events != null)
@@ -48,6 +46,7 @@ public class MultiUserDrawingService(string serverUrl)
             }
         });
 
+        // listens for broadcasts that a client joined the room
         _connection.On<MultiUserDrawingClient, List<MultiUserDrawingClient>>("ClientJoined",
             (client, usersInRoom) =>
             {
@@ -55,6 +54,7 @@ public class MultiUserDrawingService(string serverUrl)
                 RefreshRoomClients(client, usersInRoom);
             });
 
+        // listens for broadcasts that a client left the room
         _connection.On<MultiUserDrawingClient, List<MultiUserDrawingClient>>("ClientLeft",
             (client, usersInRoom) =>
             {
@@ -62,6 +62,14 @@ public class MultiUserDrawingService(string serverUrl)
                 RefreshRoomClients(client, usersInRoom);
             });
 
+        // listens for broadcasts that a client sent a message
+        _connection.On<Message>("ReceiveMessage", message => MessageReceived?.Invoke(message));
+    }
+
+    // Starts a connection to the SignalR server
+    private async Task StartAsync()
+    {
+        if (IsConnected) return;
         await _connection.StartAsync();
         ConnectionStarted?.Invoke();
     }
@@ -83,12 +91,14 @@ public class MultiUserDrawingService(string serverUrl)
         try
         {
             await StartAsync();
+            if (ConnectionId == null) return;
+
+            // Initialize Room early before invoking JoinRoom on the server
+            // so that the client can respond to ClientJoined/ClientLeft immediately
+            Room = new MultiUserDrawingRoom(roomId, ConnectionId, displayName);
+            RoomChanged?.Invoke(Room);
+
             await _connection.InvokeAsync("JoinRoom", roomId, displayName);
-            if (ConnectionId != null)
-            {
-                Room = new MultiUserDrawingRoom(roomId, ConnectionId, displayName);
-                RoomChanged?.Invoke(Room);
-            }
         }
         catch (Exception e)
         {
@@ -162,5 +172,13 @@ public class MultiUserDrawingService(string serverUrl)
         };
         RoomChanged?.Invoke(Room);
         Console.WriteLine($"{client.Name} Joined");
+    }
+
+    public async Task BroadcastMessageAsync(MessageDto message)
+    {
+        if (Room != null && IsConnected)
+        {
+            await _connection.InvokeAsync("SendMessage", Room.RoomId, message);
+        }
     }
 }

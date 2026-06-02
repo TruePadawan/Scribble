@@ -15,7 +15,7 @@ public class EraseTool : PointerTool
     public EraseTool(string name, CanvasStateService canvasState)
         : base(name, canvasState, LoadToolBitmap(typeof(EraseTool), "eraser.png"))
     {
-        Cursor = new Cursor(ToolIcon.CreateScaledBitmap(new PixelSize(36, 36)), new PixelPoint(10, 30));
+        Cursor = new Cursor(ToolIcon, new PixelPoint(6, 16));
         HotKey = new KeyGesture(Key.D2);
         ToolTip = "Erase Tool - 2";
     }

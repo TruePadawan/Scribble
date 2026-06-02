@@ -12,10 +12,10 @@ public class PanningTool : PointerTool
     private readonly Action _requestCanvasRedraw;
 
     public PanningTool(string name, CanvasStateService canvasState, Action requestCanvasRedraw)
-        : base(name, canvasState, LoadToolBitmap(typeof(PanningTool), "hand.png"))
+        : base(name, canvasState, LoadToolBitmap(typeof(PanningTool), "pan.png"))
     {
         _requestCanvasRedraw = requestCanvasRedraw;
-        Cursor = new Cursor(ToolIcon.CreateScaledBitmap(new PixelSize(30, 30)), new PixelPoint(15, 15));
+        Cursor = new Cursor(ToolIcon, new PixelPoint(10, 10));
         HotKey = new KeyGesture(Key.D3);
         ToolTip = "Panning Tool - 3";
     }
