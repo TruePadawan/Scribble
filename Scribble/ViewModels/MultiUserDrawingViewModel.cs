@@ -43,8 +43,12 @@ public partial class MultiUserDrawingViewModel : ViewModelBase
     [ObservableProperty] [NotifyCanExecuteChangedFor(nameof(SendMessageCommand))]
     private string _message = string.Empty;
 
+    [ObservableProperty] [NotifyPropertyChangedFor(nameof(ChatToggleText))]
+    private bool _isChatVisible = true;
+
     public ObservableCollection<ChatMessage> Messages { get; } = [];
 
+    public string ChatToggleText => IsChatVisible ? "Collapse Chatbox" : "Expand Chatbox";
     public int ClientCount => Room?.Clients.Count ?? 0;
     public bool CanResetCanvas => Room == null;
     public bool IsLive => Room != null;
@@ -123,5 +127,11 @@ public partial class MultiUserDrawingViewModel : ViewModelBase
 
         await _multiUserDrawingService.BroadcastMessageAsync(new MessageDto(ClientDisplayName, Message.Trim()));
         Message = string.Empty;
+    }
+
+    [RelayCommand]
+    private void ToggleChatVisibility()
+    {
+        IsChatVisible = !IsChatVisible;
     }
 }
