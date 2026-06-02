@@ -43,7 +43,7 @@ public partial class MultiUserDrawingViewModel : ViewModelBase
     [ObservableProperty] [NotifyCanExecuteChangedFor(nameof(SendMessageCommand))]
     private string _message = string.Empty;
 
-    public ObservableCollection<Message> Messages { get; } = [];
+    public ObservableCollection<ChatMessage> Messages { get; } = [];
 
     public int ClientCount => Room?.Clients.Count ?? 0;
     public bool CanResetCanvas => Room == null;
@@ -79,7 +79,8 @@ public partial class MultiUserDrawingViewModel : ViewModelBase
         };
         _multiUserDrawingService.MessageReceived += message =>
         {
-            Dispatcher.UIThread.Post(() => Messages.Add(message));
+            var isOwnMessage = message.SenderConnectionId == Room?.Me.ConnectionId;
+            Dispatcher.UIThread.Post(() => Messages.Add(new ChatMessage(message, isOwnMessage)));
         };
     }
 

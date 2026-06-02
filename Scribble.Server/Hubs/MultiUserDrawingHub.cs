@@ -119,6 +119,6 @@ public class MultiUserDrawingHub : Hub
 
         var messageId = Guid.NewGuid().ToString("N");
         await Clients.Group(roomId).SendAsync("ReceiveMessage",
-            new Message(messageId, messageDto.DisplayName, messageDto.Content));
+            new Message(messageId, Context.ConnectionId, messageDto.DisplayName, messageDto.Content));
     }
 }

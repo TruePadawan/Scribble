@@ -1,3 +1,3 @@
 namespace Scribble.Shared.Lib;
 
-public record Message(string Id, string DisplayName, string Content);
+public record Message(string Id, string SenderConnectionId, string DisplayName, string Content);

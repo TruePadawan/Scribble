@@ -730,21 +730,26 @@
                     VerticalAlignment="Bottom"
                     HorizontalAlignment="Right"
                     Margin="0,0,8,12">
-            <Grid RowDefinitions="*" MaxHeight="400" RowSpacing="4">
-                <ListBox Background="Transparent" ItemsSource="{Binding MultiUserDrawingViewModel.Messages}">
-                    <ListBox.ItemTemplate>
-                        <DataTemplate>
-                            <!-- Message Item -->
-                            <StackPanel VerticalAlignment="Bottom">
-                                <TextBlock Text="{Binding DisplayName}" FontWeight="Bold" Foreground="LawnGreen" />
-                                <TextBlock TextWrapping="Wrap"
-                                           MaxWidth="400"
-                                           Text="{Binding Content}" />
-                            </StackPanel>
-                        </DataTemplate>
-                    </ListBox.ItemTemplate>
-                </ListBox>
-            </Grid>
+            <Border Background="#CC1E1E1E" CornerRadius="8" Padding="4">
+                <Grid RowDefinitions="*" MaxHeight="400">
+                    <ListBox Name="ChatListBox" Background="Transparent"
+                             ItemsSource="{Binding MultiUserDrawingViewModel.Messages}">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <!-- Message Item -->
+                                <StackPanel VerticalAlignment="Bottom">
+                                    <TextBlock Text="{Binding DisplayName}" FontWeight="Bold"
+                                               Foreground="{Binding IsOwnMessage,
+                                                   Converter={StaticResource BoolToBrushConverter}}" />
+                                    <TextBlock TextWrapping="Wrap"
+                                               MaxWidth="400"
+                                               Text="{Binding Content}" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </Grid>
+            </Border>
             <Grid ColumnDefinitions="*, 40">
                 <TextBox Grid.Column="0"
                          Name="MessageTextBox"
