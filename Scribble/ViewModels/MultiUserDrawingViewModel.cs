@@ -104,6 +104,11 @@ public partial class MultiUserDrawingViewModel : ViewModelBase
     [RelayCommand(CanExecute = nameof(CanSendMessage))]
     private async Task SendMessageAsync()
     {
+        if (string.IsNullOrWhiteSpace(ClientDisplayName))
+        {
+            ClientDisplayName = "Bootlicker";
+        }
+
         await _multiUserDrawingService.BroadcastMessageAsync(new Message(ClientDisplayName, Message.Trim()));
         Message = string.Empty;
     }
