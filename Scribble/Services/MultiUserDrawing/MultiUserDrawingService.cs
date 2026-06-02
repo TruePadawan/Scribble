@@ -7,11 +7,9 @@ using Scribble.Shared.Lib;
 
 namespace Scribble.Services.MultiUserDrawing;
 
-public class MultiUserDrawingService(string serverUrl)
+public class MultiUserDrawingService
 {
-    private readonly HubConnection _connection =
-        new HubConnectionBuilder().WithUrl(serverUrl).Build();
-
+    private readonly HubConnection _connection;
     public MultiUserDrawingRoom? Room { get; private set; }
     public event Action<MultiUserDrawingRoom?>? RoomChanged;
     public bool IsConnected => _connection.State == HubConnectionState.Connected;
@@ -27,11 +25,9 @@ public class MultiUserDrawingService(string serverUrl)
     public event Action<MultiUserDrawingClient, List<MultiUserDrawingClient>>? ClientLeftRoom;
     public event Action<string, string>? MessageReceived;
 
-
-    // Set up the event handlers and starts a connection to the SignalR server
-    private async Task StartAsync()
+    public MultiUserDrawingService(string serverUrl)
     {
-        if (IsConnected) return;
+        _connection = new HubConnectionBuilder().WithUrl(serverUrl).Build();
 
         // Listen for draw events from others in the room
         _connection.On<Event>("ReceiveEvent", @event => { EventReceived?.Invoke(@event); });
@@ -68,7 +64,12 @@ public class MultiUserDrawingService(string serverUrl)
         // listens for broadcasts that a client sent a message
         _connection.On<string, string>("ReceiveMessage",
             (displayName, message) => MessageReceived?.Invoke(displayName, message));
+    }
 
+    // Starts a connection to the SignalR server
+    private async Task StartAsync()
+    {
+        if (IsConnected) return;
         await _connection.StartAsync();
         ConnectionStarted?.Invoke();
     }
