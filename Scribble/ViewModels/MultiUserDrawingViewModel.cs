@@ -65,7 +65,15 @@ public partial class MultiUserDrawingViewModel : ViewModelBase
         _dialogService = dialogService;
         _canvasStateService = canvasStateService;
 
-        _multiUserDrawingService.RoomChanged += room => { Room = room; };
+        _multiUserDrawingService.RoomChanged += room =>
+        {
+            Room = room;
+            // Clear all messages after leaving a room
+            if (room == null)
+            {
+                Messages.Clear();
+            }
+        };
         _multiUserDrawingService.MessageReceived += (displayName, content) =>
         {
             Messages.Add(new Message(displayName, content));
