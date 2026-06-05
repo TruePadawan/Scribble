@@ -1,5 +1,6 @@
 using System;
 using System.Collections.ObjectModel;
+using System.Linq;
 using System.Threading.Tasks;
 using Avalonia.Media;
 using Avalonia.Threading;
@@ -83,8 +84,12 @@ public partial class MultiUserDrawingViewModel : ViewModelBase
         };
         _multiUserDrawingService.MessageReceived += message =>
         {
-            var isOwnMessage = message.SenderConnectionId == Room?.Me.ConnectionId;
-            Dispatcher.UIThread.Post(() => Messages.Add(new ChatMessage(message, isOwnMessage)));
+            Dispatcher.UIThread.Post(() => Messages.Add(new ChatMessage(message)));
+        };
+        _multiUserDrawingService.MessageSent += messageId =>
+        {
+            // Update the sent status of the chat message
+            Dispatcher.UIThread.Post(() => { Messages.First(message => message.Id == messageId).IsSent = true; });
         };
     }
 
@@ -120,13 +125,29 @@ public partial class MultiUserDrawingViewModel : ViewModelBase
     [RelayCommand(CanExecute = nameof(CanSendMessage))]
     private async Task SendMessageAsync()
     {
+        if (Room == null) return;
+
         if (string.IsNullOrWhiteSpace(ClientDisplayName))
         {
             ClientDisplayName = "Bootlicker";
         }
 
-        await _multiUserDrawingService.BroadcastMessageAsync(new MessageDto(ClientDisplayName, Message.Trim()));
+        var cleanedMessage = Message.Trim();
+        if (string.IsNullOrWhiteSpace(cleanedMessage) || cleanedMessage.Length > 500) return;
+
+        // Optimistic sending
+        var messageId = Guid.NewGuid().ToString("N");
+        var senderConnectionId = Room.Me.ConnectionId;
+        var message = new Message(messageId, senderConnectionId, ClientDisplayName, cleanedMessage);
+        var chatMessage = new ChatMessage(message, true)
+        {
+            IsSent = false
+        };
+        Dispatcher.UIThread.Post(() => Messages.Add(chatMessage));
         Message = string.Empty;
+
+        await _multiUserDrawingService.BroadcastMessageAsync(new MessageDto(messageId, ClientDisplayName,
+            cleanedMessage));
     }
 
     [RelayCommand]

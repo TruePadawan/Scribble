@@ -749,10 +749,14 @@
                                 <StackPanel VerticalAlignment="Bottom">
                                     <TextBlock Text="{Binding DisplayName}" FontWeight="Bold"
                                                Foreground="{Binding IsOwnMessage,
-                                                   Converter={StaticResource BoolToBrushConverter}}" />
+                                                   Converter={StaticResource BoolToBrushConverter},
+                                                   ConverterParameter=ownershipStatus}" />
                                     <TextBlock TextWrapping="Wrap"
                                                MaxWidth="400"
-                                               Text="{Binding Content}" />
+                                               Text="{Binding Content}"
+                                               Foreground="{Binding IsSent,
+                                               Converter={StaticResource BoolToBrushConverter},
+                                               ConverterParameter=sentStatus}" />
                                 </StackPanel>
                             </DataTemplate>
                         </ListBox.ItemTemplate>

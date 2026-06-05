@@ -129,8 +129,10 @@ public class MultiUserDrawingHub : Hub
         if (!UserToRoom.TryGetValue(Context.ConnectionId, out var actualRoomId) || actualRoomId != roomId)
             return;
 
-        var messageId = Guid.NewGuid().ToString("N");
-        await Clients.Group(roomId).SendAsync("ReceiveMessage",
-            new Message(messageId, Context.ConnectionId, messageDto.DisplayName, messageDto.Content));
+        await Clients.OthersInGroup(roomId).SendAsync("ReceiveMessage",
+            new Message(messageDto.Id, Context.ConnectionId, messageDto.DisplayName, messageDto.Content));
+
+        // Let the sender know that their message has been sent to the other clients
+        await Clients.Client(Context.ConnectionId).SendAsync("MessageSent", messageDto.Id);
     }
 }

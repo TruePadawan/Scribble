@@ -25,6 +25,7 @@ public class MultiUserDrawingService
     public event Action<MultiUserDrawingClient, List<MultiUserDrawingClient>>? ClientJoinedRoom;
     public event Action<MultiUserDrawingClient, List<MultiUserDrawingClient>>? ClientLeftRoom;
     public event Action<Message>? MessageReceived;
+    public event Action<string>? MessageSent;
 
     public MultiUserDrawingService(string serverUrl)
     {
@@ -64,6 +65,8 @@ public class MultiUserDrawingService
 
         // listens for broadcasts that a client sent a message
         _connection.On<Message>("ReceiveMessage", message => MessageReceived?.Invoke(message));
+
+        _connection.On<string>("MessageSent", messageId => MessageSent?.Invoke(messageId));
     }
 
     // Starts a connection to the SignalR server
