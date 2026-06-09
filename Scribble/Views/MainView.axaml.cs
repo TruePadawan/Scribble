@@ -543,6 +543,7 @@ public partial class MainView : UserControl
             MainCanvas.InvalidateVisual();
         }
 
+        VisualizeSelection();
         e.Handled = true;
     }
 
