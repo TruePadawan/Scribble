@@ -41,6 +41,6 @@
     <content_rating type="oars-1.1"/>
 
     <releases>
-        <release version="0.3.1-beta" date="2026-06-02"/>
+        <release version="0.3.2-beta" date="2026-06-09"/>
     </releases>
 </component>
