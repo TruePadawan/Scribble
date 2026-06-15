@@ -798,7 +798,7 @@
                         <TextBlock FontSize="12" TextWrapping="Wrap" Foreground="WhiteSmoke">
                             If the room id doesn't belong to any active room, the room is automatically created
                         </TextBlock>
-                        <TextBlock FontSize="12" TextWrapping="Wrap" Foreground="WhiteSmoke">
+                        <TextBlock FontSize="12" TextWrapping="Wrap" Foreground="WhiteSmoke" FontStyle="Italic">
                             Note: It might take a minute for the initial connection to be established
                         </TextBlock>
                     </StackPanel>
