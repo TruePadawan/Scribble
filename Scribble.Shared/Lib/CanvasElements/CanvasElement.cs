@@ -1,8 +1,11 @@
 using System.Text.Json.Serialization;
+using Scribble.Shared.Lib.CanvasElements.Strokes;
 
 namespace Scribble.Shared.Lib.CanvasElements;
 
 [JsonDerivedType(typeof(CanvasImage), typeDiscriminator: "CanvasImage")]
+[JsonDerivedType(typeof(DrawStroke), typeDiscriminator: "DrawStroke")]
+[JsonDerivedType(typeof(TextStroke), typeDiscriminator: "TextStroke")]
 public abstract class CanvasElement
 {
     public Guid Id { get; init; } = Guid.NewGuid();

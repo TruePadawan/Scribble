@@ -38,7 +38,7 @@ public static class ServiceCollectionExtensions
         collection.AddTransient<MainViewModel>();
 
         collection.AddSingleton<IFileService, AvaloniaFileService>();
-
         collection.AddSingleton<IDialogService, AvaloniaDialogService>();
+        collection.AddSingleton<AutoSaveService>();
     }
 }

@@ -19,16 +19,18 @@ public partial class DocumentViewModel : ViewModelBase
     private readonly CanvasStateService _canvasStateService;
     private readonly DocumentService _documentService;
     private readonly MultiUserDrawingService _multiUserDrawingService;
+    private readonly AutoSaveService _autoSaveService;
 
     public DocumentViewModel(IFileService fileService, IDialogService dialogService,
         CanvasStateService canvasStateService, DocumentService documentService,
-        MultiUserDrawingService multiUserDrawingService)
+        MultiUserDrawingService multiUserDrawingService, AutoSaveService autoSaveService)
     {
         _fileService = fileService;
         _dialogService = dialogService;
         _canvasStateService = canvasStateService;
         _documentService = documentService;
         _multiUserDrawingService = multiUserDrawingService;
+        _autoSaveService = autoSaveService;
     }
 
     [RelayCommand]
@@ -45,6 +47,7 @@ public partial class DocumentViewModel : ViewModelBase
         {
             await using var stream = await file.OpenWriteAsync();
             await _documentService.SaveAsync(stream);
+            _autoSaveService.DeleteAutoSavedState();
         }
     }
 
