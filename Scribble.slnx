@@ -10,5 +10,6 @@
 <!--  <Project Path="Scribble.iOS/Scribble.iOS.csproj" />-->
   <Project Path="Scribble.Server/Scribble.Server.csproj" />
   <Project Path="Scribble.Shared/Scribble.Shared.csproj" />
+  <Project Path="Scribble.Tests/Scribble.Tests.csproj" />
   <Project Path="Scribble/Scribble.csproj" />
 </Solution>
