@@ -38,7 +38,9 @@ public class StrokePaint
 
     public StrokePaint Clone()
     {
-        return (StrokePaint)MemberwiseClone();
+        var clone = (StrokePaint)MemberwiseClone();
+        clone.DashIntervals = DashIntervals?.ToArray();
+        return clone;
     }
 
     public SKPaint GetCachedSkPaint()
