@@ -8,7 +8,7 @@ using Scribble.Shared.Lib;
 
 namespace Scribble.Services.MultiUserDrawing;
 
-public class MultiUserDrawingService
+public class MultiUserDrawingService : IMultiUserDrawingService
 {
     private readonly HubConnection _connection;
     public MultiUserDrawingRoom? Room { get; private set; }

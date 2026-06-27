@@ -2,18 +2,20 @@ using System;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using Scribble.Services.CanvasStateService;
+using Scribble.Services.DocumentService;
 using Scribble.Services.MultiUserDrawing;
 
-namespace Scribble.Services;
+namespace Scribble.Services.AutoSaveService;
 
 /// <summary>
 /// Handles autosaving the canvas state and loading it on app startup
 /// </summary>
 public class AutoSaveService : IDisposable
 {
-    private readonly CanvasStateService _canvasStateService;
-    private readonly DocumentService _documentService;
-    private readonly MultiUserDrawingService _multiUserDrawingService;
+    private readonly ICanvasStateService _canvasStateService;
+    private readonly IDocumentService _documentService;
+    private readonly IMultiUserDrawingService _multiUserDrawingService;
 
     private readonly string _appDataPath;
     private readonly SemaphoreSlim _saveLock = new(1, 1);
@@ -21,8 +23,8 @@ public class AutoSaveService : IDisposable
     private CancellationTokenSource? _maxDelayCts;
     private bool _hasUnsavedChanges;
 
-    public AutoSaveService(CanvasStateService canvasStateService, DocumentService documentService,
-        MultiUserDrawingService multiUserDrawingService)
+    public AutoSaveService(ICanvasStateService canvasStateService, IDocumentService documentService,
+        IMultiUserDrawingService multiUserDrawingService)
     {
         _canvasStateService = canvasStateService;
         _documentService = documentService;

@@ -6,7 +6,7 @@ using Avalonia.Media;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using Scribble.Services;
+using Scribble.Services.CanvasStateService;
 using Scribble.Services.DialogService;
 using Scribble.Services.MultiUserDrawing;
 using Scribble.Shared.Dtos;

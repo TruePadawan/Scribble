@@ -2,7 +2,7 @@ using System;
 using Avalonia.Input;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
-using Scribble.Services;
+using Scribble.Services.CanvasStateService;
 using SkiaSharp;
 
 namespace Scribble.Tools.PointerTools;

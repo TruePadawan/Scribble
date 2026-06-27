@@ -11,9 +11,9 @@ using Scribble.Tools.PointerTools.ArrowTool;
 using Scribble.Utils;
 using SkiaSharp;
 
-namespace Scribble.Services;
+namespace Scribble.Services.CanvasStateService;
 
-public class CanvasStateService
+public class CanvasStateService : ICanvasStateService
 {
     // State
     public IReadOnlyList<CanvasElement> CanvasElements { get; private set; } = [];
@@ -39,7 +39,7 @@ public class CanvasStateService
     public bool CanUndo => _undoStack.Count > 0;
     public bool CanRedo => _redoStack.Count > 0;
 
-    private readonly MultiUserDrawingService _multiUserDrawingService;
+    private readonly IMultiUserDrawingService _multiUserDrawingService;
 
     public event Action? CanvasInvalidated;
     public event Action? SelectionInvalidated;
@@ -53,7 +53,7 @@ public class CanvasStateService
         BackgroundColorChanged?.Invoke();
     }
 
-    public CanvasStateService(MultiUserDrawingService multiUserDrawingService)
+    public CanvasStateService(IMultiUserDrawingService multiUserDrawingService)
     {
         _multiUserDrawingService = multiUserDrawingService;
 

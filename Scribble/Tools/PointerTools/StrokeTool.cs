@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 using Avalonia.Media.Imaging;
-using Scribble.Services;
+using Scribble.Services.CanvasStateService;
 using Scribble.Shared.Lib;
 
 namespace Scribble.Tools.PointerTools;

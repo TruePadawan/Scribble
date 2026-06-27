@@ -1,8 +1,10 @@
 using System;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Scribble.Services;
+using Scribble.Services.AutoSaveService;
+using Scribble.Services.CanvasStateService;
 using Scribble.Services.DialogService;
+using Scribble.Services.DocumentService;
 using Scribble.Services.FileService;
 using Scribble.Services.MultiUserDrawing;
 using Scribble.ViewModels;
@@ -27,9 +29,10 @@ public static class ServiceCollectionExtensions
         collection.AddSingleton<IConfiguration>(config);
 
         var serverUrl = config["ServerUrl"] ?? throw new Exception("ServerUrl is missing");
-        collection.AddSingleton(new MultiUserDrawingService(serverUrl));
-        collection.AddSingleton<CanvasStateService>();
-        collection.AddSingleton<DocumentService>();
+        collection.AddSingleton<IMultiUserDrawingService, MultiUserDrawingService>(_ =>
+            new MultiUserDrawingService(serverUrl));
+        collection.AddSingleton<ICanvasStateService, CanvasStateService>();
+        collection.AddSingleton<IDocumentService, DocumentService>();
 
         collection.AddTransient<CanvasExportViewModel>();
         collection.AddTransient<UiStateViewModel>();

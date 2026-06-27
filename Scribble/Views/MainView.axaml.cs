@@ -12,7 +12,7 @@ using Avalonia.Skia;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.DependencyInjection;
-using Scribble.Services;
+using Scribble.Services.CanvasStateService;
 using Scribble.Services.DialogService;
 using Scribble.Services.FileService;
 using Scribble.Services.MultiUserDrawing;

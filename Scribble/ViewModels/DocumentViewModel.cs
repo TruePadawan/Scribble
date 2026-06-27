@@ -1,8 +1,10 @@
 using System.Threading.Tasks;
 using Avalonia.Platform.Storage;
 using CommunityToolkit.Mvvm.Input;
-using Scribble.Services;
+using Scribble.Services.AutoSaveService;
+using Scribble.Services.CanvasStateService;
 using Scribble.Services.DialogService;
+using Scribble.Services.DocumentService;
 using Scribble.Services.FileService;
 using Scribble.Services.MultiUserDrawing;
 

@@ -8,17 +8,18 @@ using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using Avalonia.Threading;
 using Scribble.Dtos;
+using Scribble.Services.CanvasStateService;
 using Scribble.Shared.Lib.CanvasElements;
 using Scribble.Shared.Lib.CanvasElements.Strokes;
 using SkiaSharp;
 
-namespace Scribble.Services;
+namespace Scribble.Services.DocumentService;
 
-public class DocumentService
+public class DocumentService : IDocumentService
 {
-    private readonly CanvasStateService _canvasStateService;
+    private readonly ICanvasStateService _canvasStateService;
 
-    public DocumentService(CanvasStateService canvasStateService)
+    public DocumentService(ICanvasStateService canvasStateService)
     {
         _canvasStateService = canvasStateService;
     }

@@ -4,7 +4,7 @@ using System.Collections.ObjectModel;
 using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using Scribble.Services;
+using Scribble.Services.CanvasStateService;
 using Scribble.Shared.Lib;
 using Scribble.Shared.Lib.CanvasElements;
 using Scribble.Shared.Lib.CanvasElements.Strokes;
