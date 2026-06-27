@@ -3,7 +3,7 @@ using Scribble.Shared.Lib.CanvasElements.Strokes;
 using Scribble.Utils;
 using SkiaSharp;
 
-namespace Scribble.Tests.Utils;
+namespace Scribble.Tests.UtilsTests;
 
 public class FreehandPathBuilderTests
 {
