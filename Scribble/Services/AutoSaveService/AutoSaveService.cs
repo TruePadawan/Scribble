@@ -18,6 +18,8 @@ public class AutoSaveService : IDisposable
     private readonly IMultiUserDrawingService _multiUserDrawingService;
 
     private readonly string _appDataPath;
+    private readonly TimeSpan _debounceDelay;
+    private readonly TimeSpan _maxDelay;
     private readonly SemaphoreSlim _saveLock = new(1, 1);
     private CancellationTokenSource? _cts;
     private CancellationTokenSource? _maxDelayCts;
@@ -25,10 +27,23 @@ public class AutoSaveService : IDisposable
 
     public AutoSaveService(ICanvasStateService canvasStateService, IDocumentService documentService,
         IMultiUserDrawingService multiUserDrawingService)
+        : this(canvasStateService, documentService, multiUserDrawingService,
+            customBaseDirectory: Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData))
+    {
+    }
+
+    /// <summary>
+    /// Constructor for testing purposes
+    /// </summary>
+    internal AutoSaveService(ICanvasStateService canvasStateService, IDocumentService documentService,
+        IMultiUserDrawingService multiUserDrawingService, string customBaseDirectory,
+        TimeSpan? debounceDelay = null, TimeSpan? maxDelay = null)
     {
         _canvasStateService = canvasStateService;
         _documentService = documentService;
         _multiUserDrawingService = multiUserDrawingService;
+        _debounceDelay = debounceDelay ?? TimeSpan.FromSeconds(2);
+        _maxDelay = maxDelay ?? TimeSpan.FromSeconds(10);
 
         _canvasStateService.CanvasInvalidated += OnCanvasInvalidated;
         _multiUserDrawingService.RoomChanged += room =>
@@ -39,9 +54,7 @@ public class AutoSaveService : IDisposable
             }
         };
 
-        var baseDirectory = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-        _appDataPath = Path.Combine(baseDirectory, "Scribble");
-        // Create the app data folder if it doesn't exist
+        _appDataPath = Path.Combine(customBaseDirectory, "Scribble");
         Directory.CreateDirectory(_appDataPath);
 
         LoadAutoSavedState();
@@ -77,7 +90,7 @@ public class AutoSaveService : IDisposable
             _maxDelayCts?.Dispose();
             _maxDelayCts = new CancellationTokenSource();
             var token = _maxDelayCts.Token;
-            await Task.Delay(TimeSpan.FromSeconds(10), token);
+            await Task.Delay(_maxDelay, token);
             await WriteToDiskAsync();
         }
         catch (TaskCanceledException)
@@ -111,7 +124,7 @@ public class AutoSaveService : IDisposable
         try
         {
             // wait for the debounce period
-            await Task.Delay(TimeSpan.FromSeconds(2), token);
+            await Task.Delay(_debounceDelay, token);
 
             await WriteToDiskAsync();
             _maxDelayCts?.Cancel();
