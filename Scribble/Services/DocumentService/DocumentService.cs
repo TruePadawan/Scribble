@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
@@ -36,7 +37,7 @@ public class DocumentService : IDocumentService
 
         await Task.Run(async () =>
         {
-            await using var streamWriter = new StreamWriter(stream);
+            await using var streamWriter = new StreamWriter(stream, Encoding.UTF8, leaveOpen: true);
 
             var serializerOptions = new JsonSerializerOptions
             {
@@ -101,7 +102,8 @@ public class DocumentService : IDocumentService
 
     public async Task LoadAsync(Stream stream)
     {
-        using var streamReader = new StreamReader(stream);
+        using var streamReader =
+            new StreamReader(stream, Encoding.UTF8, detectEncodingFromByteOrderMarks: true, leaveOpen: true);
         var json = await streamReader.ReadToEndAsync();
         var canvasState = JsonNode.Parse(json);
         var jsonCanvasElements = canvasState?["elements"]?.AsObject() ??
