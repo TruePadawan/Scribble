@@ -306,7 +306,7 @@
         <StackPanel
             HorizontalAlignment="Right"
             VerticalAlignment="Top"
-            Margin="0, 80, 24, 0"
+            Margin="0, 12, 12, 0"
             Spacing="4">
             <Border
                 Background="#EE2B2B2B"
@@ -755,8 +755,8 @@
                                                MaxWidth="400"
                                                Text="{Binding Content}"
                                                Foreground="{Binding IsSent,
-                                               Converter={StaticResource BoolToBrushConverter},
-                                               ConverterParameter=sentStatus}" />
+                                                   Converter={StaticResource BoolToBrushConverter},
+                                                   ConverterParameter=sentStatus}" />
                                 </StackPanel>
                             </DataTemplate>
                         </ListBox.ItemTemplate>
@@ -798,7 +798,7 @@
                         <TextBlock FontSize="12" TextWrapping="Wrap" Foreground="WhiteSmoke">
                             If the room id doesn't belong to any active room, the room is automatically created
                         </TextBlock>
-                        <TextBlock FontSize="12" TextWrapping="Wrap" Foreground="WhiteSmoke">
+                        <TextBlock FontSize="12" TextWrapping="Wrap" Foreground="WhiteSmoke" FontStyle="Italic">
                             Note: It might take a minute for the initial connection to be established
                         </TextBlock>
                     </StackPanel>

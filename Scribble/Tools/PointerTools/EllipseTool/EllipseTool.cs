@@ -3,7 +3,7 @@ using Avalonia;
 using Avalonia.Input;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
-using Scribble.Services;
+using Scribble.Services.CanvasStateService;
 using Scribble.Shared.Lib;
 using SkiaSharp;
 

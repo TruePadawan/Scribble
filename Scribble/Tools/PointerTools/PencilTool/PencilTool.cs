@@ -1,7 +1,7 @@
 using System;
 using Avalonia;
 using Avalonia.Input;
-using Scribble.Services;
+using Scribble.Services.CanvasStateService;
 using Scribble.Shared.Lib;
 using SkiaSharp;
 

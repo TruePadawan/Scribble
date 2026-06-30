@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace Scribble.Shared.Lib.CanvasElements.Strokes;
 
 /// <summary>
@@ -13,6 +15,6 @@ public class DrawStroke : PaintableStroke
     /// <summary>
     /// The raw input points that build up the stroke
     /// </summary>
-    [System.Text.Json.Serialization.JsonIgnore]
+    [JsonIgnore]
     public List<StrokePoint> RawPoints { get; init; } = [];
 }

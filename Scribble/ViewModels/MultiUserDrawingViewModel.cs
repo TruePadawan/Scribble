@@ -6,7 +6,7 @@ using Avalonia.Media;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using Scribble.Services;
+using Scribble.Services.CanvasStateService;
 using Scribble.Services.DialogService;
 using Scribble.Services.MultiUserDrawing;
 using Scribble.Shared.Dtos;
@@ -39,7 +39,7 @@ public partial class MultiUserDrawingViewModel : ViewModelBase
     private string _roomId = string.Empty;
 
     [ObservableProperty] [NotifyCanExecuteChangedFor(nameof(ToggleRoomConnectionCommand))]
-    private string _clientDisplayName = "Bootlicker";
+    private string _clientDisplayName = "Archer";
 
     [ObservableProperty] [NotifyCanExecuteChangedFor(nameof(SendMessageCommand))]
     private string _message = string.Empty;
@@ -129,7 +129,7 @@ public partial class MultiUserDrawingViewModel : ViewModelBase
 
         if (string.IsNullOrWhiteSpace(ClientDisplayName))
         {
-            ClientDisplayName = "Bootlicker";
+            ClientDisplayName = "Archer";
         }
 
         var cleanedMessage = Message.Trim();

@@ -1,8 +1,8 @@
+using System;
 using Avalonia;
 using Avalonia.Input;
-using Scribble.Services;
+using Scribble.Services.CanvasStateService;
 using Scribble.State;
-using System;
 using SkiaSharp;
 
 namespace Scribble.Tools.PointerTools.PanningTool;

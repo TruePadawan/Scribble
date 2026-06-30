@@ -42,4 +42,11 @@ public static class CameraState
         matrix = matrix.PostConcat(SKMatrix.CreateTranslation(-WorldOffSetX * Zoom, -WorldOffSetY * Zoom));
         return matrix;
     }
+
+    public static void Reset()
+    {
+        WorldOffSetX = 0;
+        WorldOffSetY = 0;
+        Zoom = 1.0f;
+    }
 }

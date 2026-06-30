@@ -11,20 +11,20 @@ namespace Scribble.Converters;
 /// </summary>
 public class BoolToBrushConverter : IValueConverter
 {
-    private static readonly IBrush OwnMessageBrush = new SolidColorBrush(Color.Parse("#00BFFF"));
-    private static readonly IBrush OtherMessageBrush = new SolidColorBrush(Color.Parse("#7CFC00"));
-    private static readonly IBrush SentMessageBrush = new SolidColorBrush(Color.Parse("#FFFFFF"));
-    private static readonly IBrush PendingMessageBrush = new SolidColorBrush(Color.Parse("#808080"));
+    public static readonly SolidColorBrush OwnMessageBrush = new(Color.Parse("#00BFFF"));
+    public static readonly SolidColorBrush OtherMessageBrush = new(Color.Parse("#7CFC00"));
+    public static readonly SolidColorBrush SentMessageBrush = new(Color.Parse("#FFFFFF"));
+    public static readonly SolidColorBrush PendingMessageBrush = new(Color.Parse("#808080"));
 
     public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
         if (parameter is string status && value is bool statusValue)
         {
-            switch (status)
+            switch (status.ToLowerInvariant())
             {
-                case "ownershipStatus":
+                case "ownershipstatus":
                     return statusValue ? OwnMessageBrush : OtherMessageBrush;
-                case "sentStatus":
+                case "sentstatus":
                     return statusValue ? SentMessageBrush : PendingMessageBrush;
             }
         }

@@ -62,7 +62,6 @@ public static class Utilities
 
     /// <summary>
     /// Returns true if two points are within a small epsilon of each other.
-    /// Filters subpixel jitter from tablet pens without affecting intentional movement.
     /// </summary>
     public static bool AreSamePosition(SKPoint a, SKPoint b, double epsilon = 0.5)
     {
