@@ -12,7 +12,7 @@ public class EraseTool : PointerTool
     private Guid _strokeId = Guid.NewGuid();
     private Guid _actionId = Guid.NewGuid();
 
-    public EraseTool(string name, CanvasStateService canvasState)
+    public EraseTool(string name, ICanvasStateService canvasState)
         : base(name, canvasState, LoadToolBitmap(typeof(EraseTool), "eraser.png"))
     {
         Cursor = new Cursor(ToolIcon, new PixelPoint(6, 16));

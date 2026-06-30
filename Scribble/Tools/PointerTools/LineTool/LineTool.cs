@@ -14,7 +14,7 @@ public class LineTool : StrokeTool
     private Guid _strokeId = Guid.NewGuid();
     private Guid _actionId = Guid.NewGuid();
 
-    public LineTool(string name, CanvasStateService canvasState) : base(name, canvasState,
+    public LineTool(string name, ICanvasStateService canvasState) : base(name, canvasState,
         LoadToolBitmap(typeof(LineTool), "line.png"))
     {
         ToolOptions = [ToolOption.StrokeColor, ToolOption.StrokeThickness, ToolOption.StrokeStyle];

@@ -11,7 +11,7 @@ public class PanningTool : PointerTool
 {
     private readonly Action _requestCanvasRedraw;
 
-    public PanningTool(string name, CanvasStateService canvasState, Action requestCanvasRedraw)
+    public PanningTool(string name, ICanvasStateService canvasState, Action requestCanvasRedraw)
         : base(name, canvasState, LoadToolBitmap(typeof(PanningTool), "pan.png"))
     {
         _requestCanvasRedraw = requestCanvasRedraw;

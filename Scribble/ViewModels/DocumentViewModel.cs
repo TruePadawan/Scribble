@@ -18,14 +18,14 @@ public partial class DocumentViewModel : ViewModelBase
 {
     private readonly IFileService _fileService;
     private readonly IDialogService _dialogService;
-    private readonly CanvasStateService _canvasStateService;
-    private readonly DocumentService _documentService;
-    private readonly MultiUserDrawingService _multiUserDrawingService;
+    private readonly ICanvasStateService _canvasStateService;
+    private readonly IDocumentService _documentService;
+    private readonly IMultiUserDrawingService _multiUserDrawingService;
     private readonly AutoSaveService _autoSaveService;
 
     public DocumentViewModel(IFileService fileService, IDialogService dialogService,
-        CanvasStateService canvasStateService, DocumentService documentService,
-        MultiUserDrawingService multiUserDrawingService, AutoSaveService autoSaveService)
+        ICanvasStateService canvasStateService, IDocumentService documentService,
+        IMultiUserDrawingService multiUserDrawingService, AutoSaveService autoSaveService)
     {
         _fileService = fileService;
         _dialogService = dialogService;

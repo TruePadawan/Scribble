@@ -14,7 +14,7 @@ public class RectangleTool : StrokeTool
     private Guid _strokeId = Guid.NewGuid();
     private Guid _actionId = Guid.NewGuid();
 
-    public RectangleTool(string name, CanvasStateService canvasState) : base(name, canvasState,
+    public RectangleTool(string name, ICanvasStateService canvasState) : base(name, canvasState,
         LoadToolBitmap(typeof(RectangleTool), "rectangle.png"))
     {
         ToolOptions =

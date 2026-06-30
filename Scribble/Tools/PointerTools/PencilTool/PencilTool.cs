@@ -14,7 +14,7 @@ public class PencilTool : StrokeTool
     private SKPoint _lastAcceptedPoint;
     private const float DistanceThreshold = 2.0f;
 
-    public PencilTool(string name, CanvasStateService canvasState) : base(name, canvasState,
+    public PencilTool(string name, ICanvasStateService canvasState) : base(name, canvasState,
         LoadToolBitmap(typeof(PencilTool), "pencil.png"))
     {
         ToolOptions = [ToolOption.StrokeColor, ToolOption.StrokeThickness];

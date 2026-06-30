@@ -14,7 +14,7 @@ public class ArrowTool : StrokeTool
     private Guid _strokeId = Guid.NewGuid();
     private Guid _actionId = Guid.NewGuid();
 
-    public ArrowTool(string name, CanvasStateService canvasState) : base(name, canvasState,
+    public ArrowTool(string name, ICanvasStateService canvasState) : base(name, canvasState,
         LoadToolBitmap(typeof(ArrowTool), "arrow.png"))
     {
         ToolOptions = [ToolOption.StrokeColor, ToolOption.StrokeThickness, ToolOption.StrokeStyle];

@@ -25,14 +25,14 @@ public partial class CanvasExportViewModel : ViewModelBase
     [ObservableProperty] private bool _includeBackground;
 
     private readonly IFileService _fileService;
-    private readonly CanvasStateService _canvasStateService;
+    private readonly ICanvasStateService _canvasStateService;
 
     partial void OnIncludeBackgroundChanged(bool value)
     {
         UpdateCanvasPreview();
     }
 
-    public CanvasExportViewModel(IFileService fileService, CanvasStateService canvasStateService)
+    public CanvasExportViewModel(IFileService fileService, ICanvasStateService canvasStateService)
     {
         _imageScale = 1;
         _includeBackground = true;

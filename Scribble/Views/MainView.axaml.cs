@@ -42,8 +42,8 @@ public partial class MainView : UserControl
     private SKPoint _prevCoord;
     private PointerTool? _activePointerTool;
     private MainViewModel? _viewModel;
-    private readonly CanvasStateService _canvasStateService;
-    private readonly MultiUserDrawingService _multiUserDrawingService;
+    private readonly ICanvasStateService _canvasStateService;
+    private readonly IMultiUserDrawingService _multiUserDrawingService;
     private readonly IDialogService _dialogService;
     private readonly IFileService _fileService;
     private readonly Selection _selection;
@@ -61,10 +61,10 @@ public partial class MainView : UserControl
         SelectionRotationBtn.Cursor = new Cursor(rotateIconBitmap, new PixelPoint(12, 12));
 
         var services = ((App)Application.Current!).Services;
-        _canvasStateService = services.GetRequiredService<CanvasStateService>();
+        _canvasStateService = services.GetRequiredService<ICanvasStateService>();
         _dialogService = services.GetRequiredService<IDialogService>();
         _fileService = services.GetRequiredService<IFileService>();
-        _multiUserDrawingService = services.GetRequiredService<MultiUserDrawingService>();
+        _multiUserDrawingService = services.GetRequiredService<IMultiUserDrawingService>();
     }
 
     protected override void OnDataContextChanged(EventArgs e)

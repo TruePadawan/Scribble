@@ -18,7 +18,7 @@ class SelectTool : PointerTool
     private Guid _boundId = Guid.NewGuid();
     private Guid _actionId = Guid.NewGuid();
 
-    public SelectTool(string name, CanvasStateService canvasState, Canvas canvasContainer) : base(name, canvasState,
+    public SelectTool(string name, ICanvasStateService canvasState, Canvas canvasContainer) : base(name, canvasState,
         LoadToolBitmap(typeof(SelectTool), "cursor.png"))
     {
         Cursor = Cursor.Default;

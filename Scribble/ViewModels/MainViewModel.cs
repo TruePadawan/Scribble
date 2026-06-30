@@ -26,8 +26,8 @@ public partial class MainViewModel : ViewModelBase
 
     // Services
     private readonly IDialogService _dialogService;
-    private readonly MultiUserDrawingService _multiUserDrawingService;
-    private CanvasStateService CanvasStateService { get; }
+    private readonly IMultiUserDrawingService _multiUserDrawingService;
+    private ICanvasStateService CanvasStateService { get; }
 
     public MultiUserDrawingViewModel MultiUserDrawingViewModel { get; }
     public DocumentViewModel DocumentViewModel { get; }
@@ -38,8 +38,8 @@ public partial class MainViewModel : ViewModelBase
         UiStateViewModel uiStateViewModel,
         IDialogService dialogService,
         CanvasExportViewModel canvasExportViewModel,
-        CanvasStateService canvasStateService,
-        MultiUserDrawingService multiUserDrawingService)
+        ICanvasStateService canvasStateService,
+        IMultiUserDrawingService multiUserDrawingService)
     {
         _dialogService = dialogService;
         _multiUserDrawingService = multiUserDrawingService;

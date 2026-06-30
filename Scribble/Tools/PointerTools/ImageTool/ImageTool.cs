@@ -22,7 +22,7 @@ public class ImageTool : PointerTool
     private readonly IFileService _fileService;
     private readonly IDialogService _dialogService;
 
-    public ImageTool(string name, CanvasStateService canvasState, IFileService fileService,
+    public ImageTool(string name, ICanvasStateService canvasState, IFileService fileService,
         IDialogService dialogService) :
         base(name, canvasState,
             LoadToolBitmap(typeof(ImageTool), "image.png"))

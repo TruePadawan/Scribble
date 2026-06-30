@@ -20,9 +20,9 @@ namespace Scribble.ViewModels;
 public partial class MultiUserDrawingViewModel : ViewModelBase
 {
     // Services
-    private readonly MultiUserDrawingService _multiUserDrawingService;
+    private readonly IMultiUserDrawingService _multiUserDrawingService;
     private readonly IDialogService _dialogService;
-    private readonly CanvasStateService _canvasStateService;
+    private readonly ICanvasStateService _canvasStateService;
 
     // Observable properties
     [ObservableProperty]
@@ -66,8 +66,8 @@ public partial class MultiUserDrawingViewModel : ViewModelBase
         IsLive ? new SolidColorBrush(Colors.Green) : new SolidColorBrush(Colors.Transparent);
 
 
-    public MultiUserDrawingViewModel(MultiUserDrawingService drawingService, IDialogService dialogService,
-        CanvasStateService canvasStateService)
+    public MultiUserDrawingViewModel(IMultiUserDrawingService drawingService, IDialogService dialogService,
+        ICanvasStateService canvasStateService)
     {
         _multiUserDrawingService = drawingService;
         _dialogService = dialogService;

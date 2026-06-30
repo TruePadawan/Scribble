@@ -39,10 +39,10 @@ public partial class UiStateViewModel : ViewModelBase
     public ObservableCollection<PointerTool> AvailableTools { get; } = [];
     public ObservableCollection<ToolOptionViewModelBase> ActiveToolOptions { get; } = [];
 
-    private readonly CanvasStateService _canvasStateService;
+    private readonly ICanvasStateService _canvasStateService;
     private readonly ToolOptionsValues _toolOptionsValues = new();
 
-    public UiStateViewModel(CanvasStateService canvasStateService)
+    public UiStateViewModel(ICanvasStateService canvasStateService)
     {
         _canvasStateService = canvasStateService;
         _backgroundColor = Utilities.FromSkColor(canvasStateService.BackgroundColor);

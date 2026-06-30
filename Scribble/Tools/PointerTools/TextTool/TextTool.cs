@@ -22,7 +22,7 @@ public class TextTool : StrokeTool
     private TextStroke? _editingStroke;
     private Guid _actionId = Guid.NewGuid();
 
-    public TextTool(string name, CanvasStateService canvasState, Canvas canvasContainer) : base(name, canvasState,
+    public TextTool(string name, ICanvasStateService canvasState, Canvas canvasContainer) : base(name, canvasState,
         LoadToolBitmap(typeof(TextTool), "text.png"))
     {
         ToolOptions = [ToolOption.StrokeColor, ToolOption.FontSize, ToolOption.FontCasing, ToolOption.FontStyle];
