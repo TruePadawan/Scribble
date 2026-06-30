@@ -6,7 +6,32 @@ on:
       - 'v*' # Triggers ONLY when a tag starting with 'v' (e.g., v1.1.4) is pushed
 
 jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0'
+
+      # Share the cache with the build job to speed things up
+      - name: Cache NuGet Packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+
+      - name: Run Unit Tests
+        # This will fail the job if any test in the solution fails
+        run: dotnet test --verbosity normal
+
   build-and-release:
+    needs: test
     runs-on: ubuntu-latest
     permissions:
       contents: write # Required for creating the GitHub Release
