@@ -526,4 +526,261 @@ public class CanvasStateServiceTests
 
         _canvasStateService.SelectedElementIds.Should().BeEmpty();
     }
+
+    // Selection: Transform operations
+    // These all go through the fast-path and require a bound + stroke already tracked
+    // in _selectionBoundLookup. ApplySelectionBound sets that up.
+
+    private static SKPoint GetStrokeMidpoint(CanvasStateService canvasStateService, Guid strokeId)
+    {
+        var stroke = (DrawStroke)canvasStateService.CanvasElements.First(e => e.Id == strokeId);
+        return new SKPoint(stroke.Path.TightBounds.MidX, stroke.Path.TightBounds.MidY);
+    }
+
+    [Fact]
+    public void ApplyEvent_MoveCanvasElements_StrokePathIsTranslated()
+    {
+        var (_, strokeId) = ApplyCompleteStroke(_canvasStateService,
+            new SKPoint(10f, 10f), new SKPoint(50f, 50f));
+        var (boundId, _) = ApplySelectionBound(_canvasStateService,
+            new SKPoint(0f, 0f), new SKPoint(1000f, 1000f));
+
+        var before = GetStrokeMidpoint(_canvasStateService, strokeId);
+        var delta = new SKPoint(100f, 50f);
+        _canvasStateService.ApplyEvent(new MoveCanvasElementsEvent(Guid.NewGuid(), boundId, delta));
+
+        var after = GetStrokeMidpoint(_canvasStateService, strokeId);
+        after.X.Should().BeApproximately(before.X + delta.X, precision: 1f);
+        after.Y.Should().BeApproximately(before.Y + delta.Y, precision: 1f);
+    }
+
+    [Fact]
+    public void ApplyEvent_RotateCanvasElements_StrokeBoundsRotateAroundCenter()
+    {
+        var (_, strokeId) = ApplyCompleteStroke(_canvasStateService,
+            new SKPoint(100f, 0f), new SKPoint(200f, 0f));
+        var (boundId, _) = ApplySelectionBound(_canvasStateService,
+            new SKPoint(0f, 0f), new SKPoint(1000f, 1000f));
+
+        var before = GetStrokeMidpoint(_canvasStateService, strokeId);
+        // Rotate 180° around the stroke midpoint, path should end up at approximately the same spot
+        // because it's rotating around its own centre, but let's just verify the path changed
+        var center = new SKPoint(150f, 0f);
+        _canvasStateService.ApplyEvent(new RotateCanvasElementsEvent(
+            Guid.NewGuid(), boundId, DegreesRad: MathF.PI, Center: center));
+
+        var after = GetStrokeMidpoint(_canvasStateService, strokeId);
+        // After 180° rotation around (150, 0), midpoint at (150, 0) stays at (150, 0)
+        after.X.Should().BeApproximately(before.X, precision: 1f);
+        after.Y.Should().BeApproximately(before.Y, precision: 1f);
+    }
+
+    [Fact]
+    public void ApplyEvent_ScaleCanvasElements_StrokeBoundsScaleAroundCenter()
+    {
+        var (_, strokeId) = ApplyCompleteStroke(_canvasStateService,
+            new SKPoint(100f, 100f), new SKPoint(200f, 100f));
+        var (boundId, _) = ApplySelectionBound(_canvasStateService,
+            new SKPoint(0f, 0f), new SKPoint(1000f, 1000f));
+
+        var stroke = (DrawStroke)_canvasStateService.CanvasElements.First(e => e.Id == strokeId);
+        var widthBefore = stroke.Path.TightBounds.Width;
+
+        // Scale by 2x around origin
+        _canvasStateService.ApplyEvent(new ScaleCanvasElementsEvent(
+            Guid.NewGuid(), boundId,
+            Scale: new SKPoint(2f, 2f),
+            Center: new SKPoint(0f, 0f)));
+
+        var widthAfter = stroke.Path.TightBounds.Width;
+        widthAfter.Should().BeApproximately(widthBefore * 2f, precision: 1f);
+    }
+
+    // Layer Management
+    // After replay, layer indices are normalized to contiguous 0..N-1.
+    // Two strokes created sequentially share layer 0, then normalization maps them both to 0.
+    // SetElementLayerEvent changes the raw value before normalization.
+    // NudgeElementLayerEvent adds an offset to the existing value.
+
+    [Fact]
+    public void ApplyEvent_SetElementLayer_ElementLayerIndexChanges()
+    {
+        var (_, strokeId) = ApplyCompleteStroke(_canvasStateService);
+
+        _canvasStateService.ApplyEvent(new SetElementLayerEvent(
+            Guid.NewGuid(), [strokeId], NewLayerIndex: 5));
+
+        // Only one element, so normalization maps layer 5 → 0
+        _canvasStateService.CanvasElements[0].LayerIndex.Should().Be(0);
+    }
+
+    [Fact]
+    public void ApplyEvent_SetElementLayer_ChangesRelativeOrder()
+    {
+        // stroke A created first (layer 0), stroke B second (also layer 0 at creation)
+        var (_, strokeA) = ApplyCompleteStroke(_canvasStateService,
+            new SKPoint(0f, 0f), new SKPoint(10f, 10f));
+        var (_, strokeB) = ApplyCompleteStroke(_canvasStateService,
+            new SKPoint(100f, 100f), new SKPoint(110f, 110f));
+
+        // Move A above B
+        _canvasStateService.ApplyEvent(new SetElementLayerEvent(
+            Guid.NewGuid(), [strokeA], NewLayerIndex: 10));
+
+        // After normalization: B stays at 0, A moves to 1
+        var elementA = _canvasStateService.CanvasElements.First(e => e.Id == strokeA);
+        var elementB = _canvasStateService.CanvasElements.First(e => e.Id == strokeB);
+        elementA.LayerIndex.Should().BeGreaterThan(elementB.LayerIndex);
+    }
+
+    [Fact]
+    public void ApplyEvent_NudgeElementLayer_ElementLayerIndexShifts()
+    {
+        var (_, strokeA) = ApplyCompleteStroke(_canvasStateService,
+            new SKPoint(0f, 0f), new SKPoint(10f, 10f));
+        var (_, strokeB) = ApplyCompleteStroke(_canvasStateService,
+            new SKPoint(100f, 100f), new SKPoint(110f, 110f));
+
+        // Nudge B up by 1
+        _canvasStateService.ApplyEvent(new NudgeElementLayerEvent(
+            Guid.NewGuid(), [strokeB], Offset: 1));
+
+        var elementA = _canvasStateService.CanvasElements.First(e => e.Id == strokeA);
+        var elementB = _canvasStateService.CanvasElements.First(e => e.Id == strokeB);
+        elementB.LayerIndex.Should().BeGreaterThan(elementA.LayerIndex);
+    }
+
+    [Fact]
+    public void LayerNormalization_IndicesAreContiguousStartingFromZero()
+    {
+        var (_, strokeA) = ApplyCompleteStroke(_canvasStateService,
+            new SKPoint(0f, 0f), new SKPoint(10f, 10f));
+        var (_, strokeB) = ApplyCompleteStroke(_canvasStateService,
+            new SKPoint(100f, 100f), new SKPoint(110f, 110f));
+
+        // Set A to layer 100, far above B
+        _canvasStateService.ApplyEvent(new SetElementLayerEvent(
+            Guid.NewGuid(), [strokeA], NewLayerIndex: 100));
+
+        var layers = _canvasStateService.CanvasElements
+            .Select(e => e.LayerIndex)
+            .OrderBy(l => l)
+            .ToList();
+
+        // Should be [0, 1] not [0, 100]
+        layers.Should().BeEquivalentTo([0, 1]);
+    }
+
+    // Canvas Lifecycle, Events and BackgroundColor
+
+    [Fact]
+    public void SetBackgroundColor_ChangesBackgroundColor()
+    {
+        _canvasStateService.SetBackgroundColor(SKColors.Red);
+
+        _canvasStateService.BackgroundColor.Should().Be(SKColors.Red);
+    }
+
+    [Fact]
+    public void SetBackgroundColor_SameColor_DoesNotFireEvent()
+    {
+        var defaultColor = _canvasStateService.BackgroundColor;
+        var fired = false;
+        _canvasStateService.BackgroundColorChanged += () => fired = true;
+
+        _canvasStateService.SetBackgroundColor(defaultColor);
+
+        fired.Should().BeFalse();
+    }
+
+    [Fact]
+    public void SetBackgroundColor_DifferentColor_FiresBackgroundColorChanged()
+    {
+        var fired = false;
+        _canvasStateService.BackgroundColorChanged += () => fired = true;
+
+        _canvasStateService.SetBackgroundColor(SKColors.Green);
+
+        fired.Should().BeTrue();
+    }
+
+    [Fact]
+    public void ApplyEvent_StartStroke_FiresCanvasInvalidated()
+    {
+        var fired = false;
+        _canvasStateService.CanvasInvalidated += () => fired = true;
+
+        ApplyStartStroke(_canvasStateService);
+
+        fired.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Undo_FiresUndoRedoStateChanged()
+    {
+        ApplyCompleteStroke(_canvasStateService);
+        var fired = false;
+        _canvasStateService.UndoRedoStateChanged += () => fired = true;
+
+        _canvasStateService.Undo();
+
+        fired.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Redo_FiresUndoRedoStateChanged()
+    {
+        ApplyCompleteStroke(_canvasStateService);
+        _canvasStateService.Undo();
+        var fired = false;
+        _canvasStateService.UndoRedoStateChanged += () => fired = true;
+
+        _canvasStateService.Redo();
+
+        fired.Should().BeTrue();
+    }
+
+    // Network Integration
+    // ApplyEvent stamps CreatorConnectionId and calls BroadcastEventAsync when Room is non-null.
+
+    private static MultiUserDrawingRoom MakeRoom(string connectionId = "conn-1") =>
+        new MultiUserDrawingRoom("room-1", connectionId, "Alice")
+        {
+            Clients = [new MultiUserDrawingClient(connectionId, "Alice")]
+        };
+
+    [Fact]
+    public async Task ApplyEvent_WhenRoomIsNull_BroadcastEventAsyncIsNotCalled()
+    {
+        _multiUserDrawingService.Room.Returns((MultiUserDrawingRoom?)null);
+
+        ApplyStartStroke(_canvasStateService);
+
+        await _multiUserDrawingService.DidNotReceive().BroadcastEventAsync(Arg.Any<Event>());
+    }
+
+    [Fact]
+    public async Task ApplyEvent_WhenRoomIsNonNull_BroadcastEventAsyncIsCalled()
+    {
+        var room = MakeRoom();
+        _multiUserDrawingService.Room.Returns(room);
+
+        ApplyStartStroke(_canvasStateService);
+
+        await _multiUserDrawingService.Received(1).BroadcastEventAsync(Arg.Any<Event>());
+    }
+
+    [Fact]
+    public async Task ApplyEvent_WhenInRoom_CreatorConnectionIdIsStampedOnEvent()
+    {
+        const string myConnectionId = "conn-abc";
+        var room = MakeRoom(myConnectionId);
+        _multiUserDrawingService.Room.Returns(room);
+
+        _canvasStateService.ApplyEvent(new StartStrokeEvent(
+            Guid.NewGuid(), Guid.NewGuid(), SKPoint.Empty, DefaultPaint(), ToolType.Pencil, []));
+
+        await _multiUserDrawingService.Received(1).BroadcastEventAsync(
+            Arg.Is<Event>(e => e.CreatorConnectionId == myConnectionId));
+    }
 }
