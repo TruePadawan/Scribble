@@ -755,8 +755,8 @@
                                                MaxWidth="400"
                                                Text="{Binding Content}"
                                                Foreground="{Binding IsSent,
-                                               Converter={StaticResource BoolToBrushConverter},
-                                               ConverterParameter=sentStatus}" />
+                                                   Converter={StaticResource BoolToBrushConverter},
+                                                   ConverterParameter=sentStatus}" />
                                 </StackPanel>
                             </DataTemplate>
                         </ListBox.ItemTemplate>

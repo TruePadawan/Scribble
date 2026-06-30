@@ -158,8 +158,7 @@ public class SKColorJsonConverterTests
         result.Should().Be(expected);
     }
 
-    // ── Round-trip ─────────────────────────────────────────────────────────────
-
+    // Round-trip
     [Theory]
     [InlineData(255, 0, 0, 255)]
     [InlineData(0, 255, 0, 255)]
