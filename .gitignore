@@ -490,3 +490,7 @@ Directory.Build.props
 
 docs
 .vscode
+
+Scribble.Android/
+Scribble.iOS/
+Scribble.Browser/
