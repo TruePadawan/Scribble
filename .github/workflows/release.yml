@@ -26,7 +26,7 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-nuget-
 
-      - name: Run Unit Tests
+      - name: Run All Tests
         # This will fail the job if any test in the solution fails
         run: dotnet test --verbosity normal
 
