@@ -1,7 +1,7 @@
 using Avalonia;
 using Avalonia.Markup.Xaml;
 
-namespace Scribble.Tests;
+namespace Scribble.UnitTests;
 
 public class HeadlessApp : Application
 {

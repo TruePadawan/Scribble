@@ -45,6 +45,6 @@
     </ItemGroup>
 
     <ItemGroup>
-        <InternalsVisibleTo Include="Scribble.Tests" />
+        <InternalsVisibleTo Include="Scribble.UnitTests" />
     </ItemGroup>
 </Project>

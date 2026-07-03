@@ -2,7 +2,7 @@ using FluentAssertions;
 using Scribble.Services.MultiUserDrawing;
 using Scribble.Shared.Lib;
 
-namespace Scribble.Tests.LibTests;
+namespace Scribble.UnitTests.LibTests;
 
 public class MultiUserDrawingRoomTests
 {

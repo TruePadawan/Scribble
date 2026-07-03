@@ -2,7 +2,7 @@ using FluentAssertions;
 using Scribble.State;
 using SkiaSharp;
 
-namespace Scribble.Tests.StateTests;
+namespace Scribble.UnitTests.StateTests;
 
 public class SelectionTests
 {

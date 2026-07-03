@@ -4,7 +4,7 @@ using FluentAssertions;
 using Scribble.Utils;
 using SkiaSharp;
 
-namespace Scribble.Tests.UtilsTests;
+namespace Scribble.UnitTests.UtilsTests;
 
 public class UtilitiesTests
 {

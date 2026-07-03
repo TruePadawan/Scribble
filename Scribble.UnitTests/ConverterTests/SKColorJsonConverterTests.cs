@@ -4,7 +4,7 @@ using FluentAssertions;
 using Scribble.Shared.Converters;
 using SkiaSharp;
 
-namespace Scribble.Tests.ConverterTests;
+namespace Scribble.UnitTests.ConverterTests;
 
 public class SKColorJsonConverterTests
 {

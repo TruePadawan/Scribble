@@ -6,7 +6,7 @@ using Scribble.Services.DocumentService;
 using Scribble.Services.MultiUserDrawing;
 using Scribble.Shared.Lib;
 
-namespace Scribble.Tests.ServiceTests;
+namespace Scribble.UnitTests.ServiceTests;
 
 public class AutoSaveServiceTests : IDisposable
 {

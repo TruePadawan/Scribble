@@ -4,7 +4,7 @@ using Scribble.Converters;
 using Scribble.Shared.Lib;
 using System.Globalization;
 
-namespace Scribble.Tests.ConverterTests;
+namespace Scribble.UnitTests.ConverterTests;
 
 public class EnumToBoolConverterTests
 {

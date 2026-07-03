@@ -2,7 +2,7 @@ using FluentAssertions;
 using Scribble.Shared.Lib;
 using SkiaSharp;
 
-namespace Scribble.Tests.LibTests;
+namespace Scribble.UnitTests.LibTests;
 
 public class StrokePaintTests
 {

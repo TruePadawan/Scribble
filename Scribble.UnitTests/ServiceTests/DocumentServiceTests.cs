@@ -10,7 +10,7 @@ using Scribble.Shared.Lib.CanvasElements;
 using Scribble.Shared.Lib.CanvasElements.Strokes;
 using SkiaSharp;
 
-namespace Scribble.Tests.ServiceTests;
+namespace Scribble.UnitTests.ServiceTests;
 
 public class DocumentServiceTests
 {

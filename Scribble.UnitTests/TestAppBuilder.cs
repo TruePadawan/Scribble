@@ -1,9 +1,9 @@
 using Avalonia;
 using Avalonia.Headless;
 
-[assembly: AvaloniaTestApplication(typeof(Scribble.Tests.TestAppBuilder))]
+[assembly: AvaloniaTestApplication(typeof(Scribble.UnitTests.TestAppBuilder))]
 
-namespace Scribble.Tests;
+namespace Scribble.UnitTests;
 
 public class TestAppBuilder
 {

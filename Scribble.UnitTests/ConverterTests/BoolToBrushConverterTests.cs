@@ -5,7 +5,7 @@ using Avalonia.Media;
 using FluentAssertions;
 using Scribble.Converters;
 
-namespace Scribble.Tests.ConverterTests;
+namespace Scribble.UnitTests.ConverterTests;
 
 public class BoolToBrushConverterTests
 {
