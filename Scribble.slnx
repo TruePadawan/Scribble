@@ -4,10 +4,8 @@
     <File Path="deploy_windows.sh" />
     <File Path="Directory.Packages.props" />
   </Folder>
-<!--  <Project Path="Scribble.Android/Scribble.Android.csproj" />-->
-<!--  <Project Path="Scribble.Browser/Scribble.Browser.csproj" />-->
   <Project Path="Scribble.Desktop/Scribble.Desktop.csproj" />
-<!--  <Project Path="Scribble.iOS/Scribble.iOS.csproj" />-->
+  <Project Path="Scribble.IntegrationTests/Scribble.IntegrationTests.csproj" />
   <Project Path="Scribble.Server/Scribble.Server.csproj" />
   <Project Path="Scribble.Shared/Scribble.Shared.csproj" />
   <Project Path="Scribble.UnitTests/Scribble.UnitTests.csproj" />

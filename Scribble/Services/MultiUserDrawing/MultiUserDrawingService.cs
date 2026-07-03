@@ -30,7 +30,17 @@ public class MultiUserDrawingService : IMultiUserDrawingService
     public MultiUserDrawingService(string serverUrl)
     {
         _connection = new HubConnectionBuilder().WithUrl(serverUrl).Build();
+        RegisterEventHandlers();
+    }
 
+    internal MultiUserDrawingService(HubConnection connection)
+    {
+        _connection = connection;
+        RegisterEventHandlers();
+    }
+
+    private void RegisterEventHandlers()
+    {
         // Listen for draw events from others in the room
         _connection.On<Event>("ReceiveEvent", @event => { EventReceived?.Invoke(@event); });
 
