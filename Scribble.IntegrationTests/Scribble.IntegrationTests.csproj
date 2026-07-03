@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
         <TargetFramework>net9.0</TargetFramework>
@@ -6,6 +6,12 @@
         <Nullable>enable</Nullable>
         <IsPackable>false</IsPackable>
     </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\Scribble.Shared\Scribble.Shared.csproj"/>
+        <ProjectReference Include="..\Scribble\Scribble.csproj"/>
+        <ProjectReference Include="..\Scribble.Server\Scribble.Server.csproj"/>
+    </ItemGroup>
 
     <ItemGroup>
         <PackageReference Include="Avalonia.Headless.XUnit" />
