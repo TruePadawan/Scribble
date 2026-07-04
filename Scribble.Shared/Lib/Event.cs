@@ -39,6 +39,7 @@ namespace Scribble.Shared.Lib;
 [JsonDerivedType(typeof(UpdateTextEvent), typeDiscriminator: "UpdateTextEvent")]
 [JsonDerivedType(typeof(UpdateFontCasingEvent), typeDiscriminator: "UpdateFontCasingEvent")]
 [JsonDerivedType(typeof(UpdateFontStyleEvent), typeDiscriminator: "UpdateFontStyleEvent")]
+[JsonDerivedType(typeof(PasteCanvasElementsEvent), typeDiscriminator: "PasteCanvasElementsEvent")]
 public abstract record Event(Guid ActionId)
 {
     public DateTime TimeStamp { get; init; } = DateTime.UtcNow;
@@ -157,4 +158,7 @@ public record UpdateFontCasingEvent(Guid ActionId, List<Guid> TextStrokeIds, Fon
     : Event(ActionId), ITerminalEvent;
 
 public record UpdateFontStyleEvent(Guid ActionId, List<Guid> TextStrokeIds, FontStyle NewStyle)
+    : Event(ActionId), ITerminalEvent;
+
+public record PasteCanvasElementsEvent(Guid ActionId, SKPoint Position, List<CanvasElement> CopiedElements)
     : Event(ActionId), ITerminalEvent;
