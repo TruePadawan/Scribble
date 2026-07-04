@@ -4,9 +4,10 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 using Scribble.Services.CanvasStateService.Context;
+using Scribble.Services.CanvasStateService.Handlers;
 using Scribble.Shared.Lib;
 
-namespace Scribble.Services.CanvasStateService.Handlers;
+namespace Scribble.Services.CanvasStateService;
 
 /// <summary>
 /// Builds a Type-to-handler lookup from event handler instances using reflections
