@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using Avalonia.Skia;
 using Scribble.Shared.Converters;
 using SkiaSharp;
 
@@ -8,7 +9,7 @@ namespace Scribble.Shared.Lib.CanvasElements.Strokes;
 /// Represents a text element on the canvas. Stores the raw text and its original
 /// baseline position, in addition to the rendered SKPath inherited from Stroke.
 /// </summary>
-public class TextStroke : PaintableStroke
+public class TextStroke : PaintableStroke, ICopyable
 {
     /// <summary>
     /// The text content of this stroke.
@@ -50,6 +51,23 @@ public class TextStroke : PaintableStroke
             if (IsItalic) return SKFontStyle.Italic;
             return SKFontStyle.Normal;
         }
+    }
+
+    public CanvasElement Copy()
+    {
+        return new TextStroke
+        {
+            Text = Text,
+            Position = Position,
+            Path = Path.Clone(),
+            ToolOptions = ToolOptions,
+            Paint = Paint.Clone(),
+            CreatorConnectionId = CreatorConnectionId,
+            LayerIndex = LayerIndex,
+            TransformMatrix = TransformMatrix,
+            IsBold = IsBold,
+            IsItalic = IsItalic,
+        };
     }
 }
 

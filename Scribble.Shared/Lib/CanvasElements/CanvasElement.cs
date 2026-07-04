@@ -26,3 +26,11 @@ public abstract class CanvasElement
     /// </summary>
     public DateTime CreatedAt { get; init; } = DateTime.UtcNow;
 }
+
+public interface ICopyable
+{
+    /// <summary>
+    /// Returns a deep copy of this element.
+    /// </summary>
+    CanvasElement Copy();
+}
