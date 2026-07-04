@@ -161,41 +161,6 @@ public partial class CanvasExportViewModel : ViewModelBase
         await clipboard.SetDataObjectAsync(dataObject);
     }
 
-    private SKRect GetElementsBounds(IEnumerable<CanvasElement> elements)
-    {
-        SKRect totalBounds = SKRect.Empty;
-        foreach (var element in elements)
-        {
-            if (element is PaintableStroke stroke)
-            {
-                SKRect pathBounds = stroke.Path.Bounds;
-                float halfStrokeWidth = stroke.Paint.StrokeWidth / 2;
-                pathBounds.Inflate(halfStrokeWidth, halfStrokeWidth);
-                if (totalBounds.IsEmpty)
-                {
-                    totalBounds = pathBounds;
-                }
-                else
-                {
-                    totalBounds.Union(pathBounds);
-                }
-            }
-            else if (element is CanvasImage canvasImage)
-            {
-                if (totalBounds.IsEmpty)
-                {
-                    totalBounds = canvasImage.Bounds;
-                }
-                else
-                {
-                    totalBounds.Union(canvasImage.Bounds);
-                }
-            }
-        }
-
-        return totalBounds;
-    }
-
     private byte[]? GetImageData(
         List<CanvasElement> elements,
         bool includeBackground,
@@ -209,7 +174,7 @@ public partial class CanvasExportViewModel : ViewModelBase
         }
 
         // Calculate the bounding box of all elements
-        SKRect bounds = GetElementsBounds(elements);
+        SKRect bounds = Utilities.GetElementsBounds(elements);
         // Add padding
         bounds.Inflate(20, 20);
 

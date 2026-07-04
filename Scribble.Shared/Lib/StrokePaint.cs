@@ -40,6 +40,7 @@ public class StrokePaint
     {
         var clone = (StrokePaint)MemberwiseClone();
         clone.DashIntervals = DashIntervals?.ToArray();
+        clone._cachedSkPaint = null;
         return clone;
     }
 

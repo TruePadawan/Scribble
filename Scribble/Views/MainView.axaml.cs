@@ -40,6 +40,7 @@ namespace Scribble.Views;
 public partial class MainView : UserControl
 {
     private SKPoint _prevCoord;
+    private SKPoint _lastWorldPointerPos;
     private PointerTool? _activePointerTool;
     private MainViewModel? _viewModel;
     private readonly ICanvasStateService _canvasStateService;
@@ -52,6 +53,7 @@ public partial class MainView : UserControl
     {
         InitializeComponent();
         _prevCoord = SKPoint.Empty;
+        _lastWorldPointerPos = SKPoint.Empty;
         _selection = new Selection();
 
         var moveIconBitmap = Bitmap.DecodeToWidth(AssetLoader.Open(new Uri("avares://Scribble/Assets/move.png")), 36);
@@ -116,6 +118,30 @@ public partial class MainView : UserControl
         {
             Gesture = new KeyGesture(Key.E, KeyModifiers.Control | KeyModifiers.Shift),
             Command = new RelayCommand(() => ExportMenuOption_OnClick(null, null), CanExecuteKeyBinding)
+        });
+
+        RootPanel.KeyBindings.Add(new KeyBinding
+        {
+            Gesture = new KeyGesture(Key.C, KeyModifiers.Control),
+            Command = new RelayCommand(() => viewModel.CopyCommand.Execute(null), CanExecuteKeyBinding)
+        });
+
+        RootPanel.KeyBindings.Add(new KeyBinding
+        {
+            Gesture = new KeyGesture(Key.V, KeyModifiers.Control),
+            Command = new RelayCommand(() =>
+            {
+                var pastePos = _lastWorldPointerPos;
+                if (pastePos.IsEmpty)
+                {
+                    var viewportCenter = new SKPoint(
+                        (float)(MainCanvas.Bounds.Width / 2),
+                        (float)(MainCanvas.Bounds.Height / 2)
+                    );
+                    pastePos = CameraState.ScreenToWorld(viewportCenter);
+                }
+                viewModel.PasteCommand.Execute(pastePos);
+            }, CanExecuteKeyBinding)
         });
     }
 
@@ -464,6 +490,9 @@ public partial class MainView : UserControl
 
     private void MainCanvas_OnPointerMoved(object? sender, PointerEventArgs e)
     {
+        var screenPos = Utilities.ToSkPoint(e.GetPosition(MainCanvas));
+        _lastWorldPointerPos = CameraState.ScreenToWorld(screenPos);
+
         var pointerCoordinates = GetPointerPosition(e);
 
         // Skip if position hasn't changed (tablet pens fire PointerMoved
@@ -488,6 +517,9 @@ public partial class MainView : UserControl
 
     private void MainCanvas_OnPointerPressed(object? sender, PointerPressedEventArgs e)
     {
+        var screenPos = Utilities.ToSkPoint(e.GetPosition(MainCanvas));
+        _lastWorldPointerPos = CameraState.ScreenToWorld(screenPos);
+
         var pointerCoordinates = GetPointerPosition(e);
         if (e.Properties.IsLeftButtonPressed)
         {

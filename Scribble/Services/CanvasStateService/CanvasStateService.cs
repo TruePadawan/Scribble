@@ -125,6 +125,10 @@ public class CanvasStateService : ICanvasStateService
         {
             _localSelectionBoundIds.Add(ev.BoundId);
         }
+        else if (@event is PasteCanvasElementsEvent pasteEv && isLocalEvent)
+        {
+            _localSelectionBoundIds.Add(pasteEv.SelectionBoundId);
+        }
 
         ProcessEvent(@event, isLocalEvent);
 
@@ -612,27 +616,20 @@ public class CanvasStateService : ICanvasStateService
                     if (selectionBounds.ContainsKey(ev.BoundId))
                     {
                         var bound = selectionBounds[ev.BoundId];
+                        List<CanvasElement> elements = [];
                         foreach (var boundTargetId in bound.Targets)
                         {
-                            if (paintableStrokes.ContainsKey(boundTargetId))
+                            if (paintableStrokes.TryGetValue(boundTargetId, out var stroke))
                             {
-                                var stroke = paintableStrokes[boundTargetId];
-                                var matrix = SKMatrix.CreateTranslation(ev.Delta.X, ev.Delta.Y);
-                                stroke.Path.Transform(matrix);
-                                if (stroke is TextStroke movedText)
-                                {
-                                    movedText.TransformMatrix = movedText.TransformMatrix.PostConcat(matrix);
-                                }
+                                elements.Add(stroke);
                             }
-                            else if (canvasImages.ContainsKey(boundTargetId))
+                            else if (canvasImages.TryGetValue(boundTargetId, out var image))
                             {
-                                var image = canvasImages[boundTargetId];
-                                // SKRect is a struct (value-type), so we need to create a new one to modify
-                                var bounds = image.Bounds;
-                                bounds.Offset(ev.Delta);
-                                image.Bounds = bounds;
+                                elements.Add(image);
                             }
                         }
+
+                        MoveElements(elements, ev.Delta);
                     }
 
                     break;
@@ -1004,6 +1001,92 @@ public class CanvasStateService : ICanvasStateService
                     }
 
                     break;
+                case PasteCanvasElementsEvent ev:
+                {
+                    List<CanvasElement> pastedElements = [];
+                    foreach (var element in ev.CopiedElements)
+                    {
+                        if (element is DrawStroke pastedDrawStroke)
+                        {
+                            pastedElements.Add(new DrawStroke
+                            {
+                                Id = pastedDrawStroke.Id,
+                                Paint = pastedDrawStroke.Paint.Clone(),
+                                ToolOptions = pastedDrawStroke.ToolOptions,
+                                ToolType = pastedDrawStroke.ToolType,
+                                Path = pastedDrawStroke.Path.Clone(),
+                                RawPoints = [..pastedDrawStroke.RawPoints],
+                                LayerIndex = pastedDrawStroke.LayerIndex,
+                                CreatorConnectionId = pastedDrawStroke.CreatorConnectionId
+                            });
+                        }
+                        else if (element is TextStroke pastedTextStroke)
+                        {
+                            pastedElements.Add(new TextStroke
+                            {
+                                Id = pastedTextStroke.Id,
+                                Text = pastedTextStroke.Text,
+                                Position = pastedTextStroke.Position,
+                                Paint = pastedTextStroke.Paint.Clone(),
+                                ToolOptions = pastedTextStroke.ToolOptions,
+                                Path = pastedTextStroke.Path.Clone(),
+                                LayerIndex = pastedTextStroke.LayerIndex,
+                                TransformMatrix = pastedTextStroke.TransformMatrix,
+                                IsBold = pastedTextStroke.IsBold,
+                                IsItalic = pastedTextStroke.IsItalic,
+                                CreatorConnectionId = pastedTextStroke.CreatorConnectionId
+                            });
+                        }
+                        else if (element is CanvasImage pastedCanvasImage)
+                        {
+                            pastedElements.Add(new CanvasImage
+                            {
+                                Id = pastedCanvasImage.Id,
+                                ImageBase64String = pastedCanvasImage.ImageBase64String,
+                                Bounds = pastedCanvasImage.Bounds,
+                                Rotation = pastedCanvasImage.Rotation,
+                                FlipX = pastedCanvasImage.FlipX,
+                                FlipY = pastedCanvasImage.FlipY,
+                                LayerIndex = pastedCanvasImage.LayerIndex,
+                                CreatorConnectionId = pastedCanvasImage.CreatorConnectionId
+                            });
+                        }
+                    }
+
+                    var copiedElementsBounds = Utilities.GetElementsBounds(pastedElements);
+                    var boundsMiddlePos = new SKPoint(copiedElementsBounds.MidX, copiedElementsBounds.MidY);
+                    var delta = ev.Position - boundsMiddlePos;
+                    // Translate all elements such that the middle of the total bound is at the pointer position
+                    MoveElements(pastedElements, delta);
+                    foreach (var copiedElement in pastedElements)
+                    {
+                        if (copiedElement is PaintableStroke stroke)
+                        {
+                            paintableStrokes[stroke.Id] = stroke;
+                        }
+                        else if (copiedElement is CanvasImage image)
+                        {
+                            canvasImages[image.Id] = image;
+                        }
+                    }
+
+                    // Automatically select the pasted elements
+                    selectionBounds.Clear();
+                    var pasteSelectionPath = new SKPath();
+                    var selectionRect = Utilities.GetElementsBounds(pastedElements);
+                    pasteSelectionPath.AddRect(selectionRect);
+
+                    var pasteSelectionBound = new SelectionBound
+                    {
+                        Id = ev.SelectionBoundId,
+                        Path = pasteSelectionPath,
+                        CreatorConnectionId = ev.CreatorConnectionId,
+                        Targets = [..pastedElements.Select(e => e.Id)]
+                    };
+                    selectionBounds[ev.SelectionBoundId] = pasteSelectionBound;
+
+                    break;
+                }
             }
         }
 
@@ -1184,6 +1267,29 @@ public class CanvasStateService : ICanvasStateService
                 {
                     bound.Targets.Add(image.Id);
                 }
+            }
+        }
+    }
+
+    private static void MoveElements(IEnumerable<CanvasElement> elements, SKPoint delta)
+    {
+        foreach (var canvasElement in elements)
+        {
+            if (canvasElement is PaintableStroke stroke)
+            {
+                var matrix = SKMatrix.CreateTranslation(delta.X, delta.Y);
+                stroke.Path.Transform(matrix);
+                if (stroke is TextStroke movedText)
+                {
+                    movedText.TransformMatrix = movedText.TransformMatrix.PostConcat(matrix);
+                }
+            }
+            else if (canvasElement is CanvasImage image)
+            {
+                // SKRect is a struct (value-type), so we need to create a new one to modify
+                var bounds = image.Bounds;
+                bounds.Offset(delta);
+                image.Bounds = bounds;
             }
         }
     }
