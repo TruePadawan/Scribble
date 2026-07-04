@@ -997,6 +997,77 @@ public class CanvasStateService : ICanvasStateService
                     }
 
                     break;
+                case PasteCanvasElementsEvent ev:
+                {
+                    List<CanvasElement> pastedElements = [];
+                    foreach (var element in ev.CopiedElements)
+                    {
+                        if (element is DrawStroke pastedDrawStroke)
+                        {
+                            pastedElements.Add(new DrawStroke
+                            {
+                                Id = pastedDrawStroke.Id,
+                                Paint = pastedDrawStroke.Paint.Clone(),
+                                ToolOptions = pastedDrawStroke.ToolOptions,
+                                ToolType = pastedDrawStroke.ToolType,
+                                Path = pastedDrawStroke.Path.Clone(),
+                                RawPoints = [..pastedDrawStroke.RawPoints],
+                                LayerIndex = pastedDrawStroke.LayerIndex,
+                                CreatorConnectionId = pastedDrawStroke.CreatorConnectionId
+                            });
+                        }
+                        else if (element is TextStroke pastedTextStroke)
+                        {
+                            pastedElements.Add(new TextStroke
+                            {
+                                Id = pastedTextStroke.Id,
+                                Text = pastedTextStroke.Text,
+                                Position = pastedTextStroke.Position,
+                                Paint = pastedTextStroke.Paint.Clone(),
+                                ToolOptions = pastedTextStroke.ToolOptions,
+                                Path = pastedTextStroke.Path.Clone(),
+                                LayerIndex = pastedTextStroke.LayerIndex,
+                                TransformMatrix = pastedTextStroke.TransformMatrix,
+                                IsBold = pastedTextStroke.IsBold,
+                                IsItalic = pastedTextStroke.IsItalic,
+                                CreatorConnectionId = pastedTextStroke.CreatorConnectionId
+                            });
+                        }
+                        else if (element is CanvasImage pastedCanvasImage)
+                        {
+                            pastedElements.Add(new CanvasImage
+                            {
+                                Id = pastedCanvasImage.Id,
+                                ImageBase64String = pastedCanvasImage.ImageBase64String,
+                                Bounds = pastedCanvasImage.Bounds,
+                                Rotation = pastedCanvasImage.Rotation,
+                                FlipX = pastedCanvasImage.FlipX,
+                                FlipY = pastedCanvasImage.FlipY,
+                                LayerIndex = pastedCanvasImage.LayerIndex,
+                                CreatorConnectionId = pastedCanvasImage.CreatorConnectionId
+                            });
+                        }
+                    }
+
+                    var copiedElementsBounds = Utilities.GetElementsBounds(pastedElements);
+                    var boundsMiddlePos = new SKPoint(copiedElementsBounds.MidX, copiedElementsBounds.MidY);
+                    var delta = ev.Position - boundsMiddlePos;
+                    // Translate all elements such that the middle of the total bound is at the pointer position
+                    MoveElements(pastedElements, delta);
+                    foreach (var copiedElement in pastedElements)
+                    {
+                        if (copiedElement is PaintableStroke stroke)
+                        {
+                            paintableStrokes[stroke.Id] = stroke;
+                        }
+                        else if (copiedElement is CanvasImage image)
+                        {
+                            canvasImages[image.Id] = image;
+                        }
+                    }
+
+                    break;
+                }
             }
         }
 
