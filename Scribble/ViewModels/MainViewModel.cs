@@ -10,7 +10,9 @@ using CommunityToolkit.Mvvm.Input;
 using Scribble.Services.CanvasStateService;
 using Scribble.Services.DialogService;
 using Scribble.Services.MultiUserDrawing;
+using Scribble.Shared.Lib;
 using Scribble.Shared.Lib.CanvasElements;
+using SkiaSharp;
 
 namespace Scribble.ViewModels;
 
@@ -20,11 +22,11 @@ public partial class MainViewModel : ViewModelBase
     public event Action? RequestInvalidateSkiaCanvas;
 
     [ObservableProperty] private List<CanvasElement> _canvasElements = [];
+    private List<CanvasElement> _copiedCanvasElements = [];
 
     private bool CanUndo => CanvasStateService.CanUndo;
     private bool CanRedo => CanvasStateService.CanRedo;
 
-    // Services
     private readonly IDialogService _dialogService;
     private readonly IMultiUserDrawingService _multiUserDrawingService;
     private ICanvasStateService CanvasStateService { get; }
@@ -124,5 +126,20 @@ public partial class MainViewModel : ViewModelBase
         }
 
         CanvasStateService.LoadCanvas([]);
+    }
+
+    [RelayCommand]
+    private void Copy()
+    {
+        _copiedCanvasElements = CanvasStateService.GetSelectedElements()
+            .OfType<ICopyable>()
+            .Select(e => e.Copy())
+            .ToList();
+    }
+
+    [RelayCommand]
+    private void Paste(SKPoint pointerPos)
+    {
+        CanvasStateService.ApplyEvent(new PasteCanvasElementsEvent(Guid.NewGuid(), pointerPos, _copiedCanvasElements));
     }
 }
