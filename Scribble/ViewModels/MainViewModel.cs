@@ -141,5 +141,11 @@ public partial class MainViewModel : ViewModelBase
     private void Paste(SKPoint pointerPos)
     {
         CanvasStateService.ApplyEvent(new PasteCanvasElementsEvent(Guid.NewGuid(), pointerPos, _copiedCanvasElements));
+
+        // Recreate the copied elements
+        _copiedCanvasElements = _copiedCanvasElements
+            .OfType<ICopyable>()
+            .Select(e => e.Copy())
+            .ToList();
     }
 }
