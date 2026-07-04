@@ -125,6 +125,10 @@ public class CanvasStateService : ICanvasStateService
         {
             _localSelectionBoundIds.Add(ev.BoundId);
         }
+        else if (@event is PasteCanvasElementsEvent pasteEv && isLocalEvent)
+        {
+            _localSelectionBoundIds.Add(pasteEv.SelectionBoundId);
+        }
 
         ProcessEvent(@event, isLocalEvent);
 
@@ -1065,6 +1069,21 @@ public class CanvasStateService : ICanvasStateService
                             canvasImages[image.Id] = image;
                         }
                     }
+
+                    // Automatically select the pasted elements
+                    selectionBounds.Clear();
+                    var pasteSelectionPath = new SKPath();
+                    var selectionRect = Utilities.GetElementsBounds(pastedElements);
+                    pasteSelectionPath.AddRect(selectionRect);
+
+                    var pasteSelectionBound = new SelectionBound
+                    {
+                        Id = ev.SelectionBoundId,
+                        Path = pasteSelectionPath,
+                        CreatorConnectionId = ev.CreatorConnectionId,
+                        Targets = [..pastedElements.Select(e => e.Id)]
+                    };
+                    selectionBounds[ev.SelectionBoundId] = pasteSelectionBound;
 
                     break;
                 }

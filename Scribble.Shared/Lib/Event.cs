@@ -160,5 +160,5 @@ public record UpdateFontCasingEvent(Guid ActionId, List<Guid> TextStrokeIds, Fon
 public record UpdateFontStyleEvent(Guid ActionId, List<Guid> TextStrokeIds, FontStyle NewStyle)
     : Event(ActionId), ITerminalEvent;
 
-public record PasteCanvasElementsEvent(Guid ActionId, SKPoint Position, List<CanvasElement> CopiedElements)
+public record PasteCanvasElementsEvent(Guid ActionId, SKPoint Position, List<CanvasElement> CopiedElements, Guid SelectionBoundId)
     : Event(ActionId), ITerminalEvent;
