@@ -612,27 +612,20 @@ public class CanvasStateService : ICanvasStateService
                     if (selectionBounds.ContainsKey(ev.BoundId))
                     {
                         var bound = selectionBounds[ev.BoundId];
+                        List<CanvasElement> elements = [];
                         foreach (var boundTargetId in bound.Targets)
                         {
-                            if (paintableStrokes.ContainsKey(boundTargetId))
+                            if (paintableStrokes.TryGetValue(boundTargetId, out var stroke))
                             {
-                                var stroke = paintableStrokes[boundTargetId];
-                                var matrix = SKMatrix.CreateTranslation(ev.Delta.X, ev.Delta.Y);
-                                stroke.Path.Transform(matrix);
-                                if (stroke is TextStroke movedText)
-                                {
-                                    movedText.TransformMatrix = movedText.TransformMatrix.PostConcat(matrix);
-                                }
+                                elements.Add(stroke);
                             }
-                            else if (canvasImages.ContainsKey(boundTargetId))
+                            else if (canvasImages.TryGetValue(boundTargetId, out var image))
                             {
-                                var image = canvasImages[boundTargetId];
-                                // SKRect is a struct (value-type), so we need to create a new one to modify
-                                var bounds = image.Bounds;
-                                bounds.Offset(ev.Delta);
-                                image.Bounds = bounds;
+                                elements.Add(image);
                             }
                         }
+
+                        MoveElements(elements, ev.Delta);
                     }
 
                     break;
@@ -1184,6 +1177,29 @@ public class CanvasStateService : ICanvasStateService
                 {
                     bound.Targets.Add(image.Id);
                 }
+            }
+        }
+    }
+
+    private static void MoveElements(IEnumerable<CanvasElement> elements, SKPoint delta)
+    {
+        foreach (var canvasElement in elements)
+        {
+            if (canvasElement is PaintableStroke stroke)
+            {
+                var matrix = SKMatrix.CreateTranslation(delta.X, delta.Y);
+                stroke.Path.Transform(matrix);
+                if (stroke is TextStroke movedText)
+                {
+                    movedText.TransformMatrix = movedText.TransformMatrix.PostConcat(matrix);
+                }
+            }
+            else if (canvasElement is CanvasImage image)
+            {
+                // SKRect is a struct (value-type), so we need to create a new one to modify
+                var bounds = image.Bounds;
+                bounds.Offset(delta);
+                image.Bounds = bounds;
             }
         }
     }
