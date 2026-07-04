@@ -1,8 +1,11 @@
 using System;
+using System.Collections.Generic;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Media;
+using Scribble.Shared.Lib.CanvasElements;
+using Scribble.Shared.Lib.CanvasElements.Strokes;
 using SkiaSharp;
 
 namespace Scribble.Utils;
@@ -116,5 +119,40 @@ public static class Utilities
         );
 
         return SKPoint.Distance(point, closest) < tolerance;
+    }
+
+    public static SKRect GetElementsBounds(IEnumerable<CanvasElement> elements)
+    {
+        SKRect totalBounds = SKRect.Empty;
+        foreach (var element in elements)
+        {
+            if (element is PaintableStroke stroke)
+            {
+                SKRect pathBounds = stroke.Path.Bounds;
+                float halfStrokeWidth = stroke.Paint.StrokeWidth / 2;
+                pathBounds.Inflate(halfStrokeWidth, halfStrokeWidth);
+                if (totalBounds.IsEmpty)
+                {
+                    totalBounds = pathBounds;
+                }
+                else
+                {
+                    totalBounds.Union(pathBounds);
+                }
+            }
+            else if (element is CanvasImage canvasImage)
+            {
+                if (totalBounds.IsEmpty)
+                {
+                    totalBounds = canvasImage.Bounds;
+                }
+                else
+                {
+                    totalBounds.Union(canvasImage.Bounds);
+                }
+            }
+        }
+
+        return totalBounds;
     }
 }
