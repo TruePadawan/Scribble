@@ -121,6 +121,9 @@ public static class Utilities
         return SKPoint.Distance(point, closest) < tolerance;
     }
 
+    /// <summary>
+    /// Returns the bounds of the elements
+    /// </summary>
     public static SKRect GetElementsBounds(IEnumerable<CanvasElement> elements)
     {
         SKRect totalBounds = SKRect.Empty;

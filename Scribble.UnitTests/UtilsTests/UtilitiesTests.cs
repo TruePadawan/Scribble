@@ -1,6 +1,9 @@
 using Avalonia;
 using Avalonia.Media;
 using FluentAssertions;
+using Scribble.Shared.Lib;
+using Scribble.Shared.Lib.CanvasElements;
+using Scribble.Shared.Lib.CanvasElements.Strokes;
 using Scribble.Utils;
 using SkiaSharp;
 
@@ -275,5 +278,84 @@ public class UtilitiesTests
         var actual = Utilities.IsPointNearLine(point, [start, start], tolerance: 1f);
 
         actual.Should().BeFalse();
+    }
+
+    // GetElementsBounds
+    [Fact]
+    public void GetElementsBounds_EmptyList_ReturnsEmptyRect()
+    {
+        var elements = new List<CanvasElement>();
+
+        var actual = Utilities.GetElementsBounds(elements);
+
+        actual.Should().Be(SKRect.Empty);
+    }
+
+    [Fact]
+    public void GetElementsBounds_SingleStroke_ReturnsStrokeBoundsInflatedByHalfStrokeWidth()
+    {
+        var path = new SKPath();
+        path.MoveTo(10f, 10f);
+        path.LineTo(50f, 50f);
+
+        var stroke = new DrawStroke
+        {
+            Id = Guid.NewGuid(),
+            Path = path,
+            Paint = new StrokePaint { StrokeWidth = 4f },
+            ToolType = ToolType.Pencil,
+            ToolOptions = []
+        };
+
+        var actual = Utilities.GetElementsBounds([stroke]);
+        var expected = SKRect.Inflate(path.Bounds, 2f, 2f);
+
+        actual.Should().Be(expected);
+    }
+
+    [Fact]
+    public void GetElementsBounds_SingleImage_ReturnsImageBounds()
+    {
+        var image = new CanvasImage
+        {
+            Id = Guid.NewGuid(),
+            Bounds = new SKRect(15f, 20f, 65f, 90f),
+            ImageBase64String = "BASE64"
+        };
+
+        var actual = Utilities.GetElementsBounds([image]);
+
+        actual.Should().Be(image.Bounds);
+    }
+
+    [Fact]
+    public void GetElementsBounds_MultipleElements_ReturnsUnionOfBounds()
+    {
+        var path = new SKPath();
+        path.MoveTo(10f, 10f);
+        path.LineTo(50f, 50f);
+
+        var stroke = new DrawStroke
+        {
+            Id = Guid.NewGuid(),
+            Path = path,
+            Paint = new StrokePaint { StrokeWidth = 4f },
+            ToolType = ToolType.Pencil,
+            ToolOptions = []
+        };
+
+        var image = new CanvasImage
+        {
+            Id = Guid.NewGuid(),
+            Bounds = new SKRect(20f, 20f, 100f, 100f),
+            ImageBase64String = "BASE64"
+        };
+
+        var actual = Utilities.GetElementsBounds([stroke, image]);
+
+        // stroke bounds inflated: (8, 8, 52, 52)
+        // image bounds: (20, 20, 100, 100)
+        // union of both: (8, 8, 100, 100)
+        actual.Should().Be(new SKRect(8f, 8f, 100f, 100f));
     }
 }
