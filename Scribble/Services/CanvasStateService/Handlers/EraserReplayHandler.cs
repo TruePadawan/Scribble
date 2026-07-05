@@ -75,8 +75,14 @@ public class EraserReplayHandler :
             // Erase all targets
             foreach (var targetId in currentEraserStroke.Targets)
             {
-                ctx.PaintableStrokes.Remove(targetId);
-                ctx.CanvasImages.Remove(targetId);
+                if (ctx.PaintableStrokes.Remove(targetId, out var stroke))
+                {
+                    stroke.Dispose();
+                }
+                if (ctx.CanvasImages.Remove(targetId, out var image))
+                {
+                    image.Dispose();
+                }
             }
 
             if (currentEraserStroke.Targets.Count == 0)

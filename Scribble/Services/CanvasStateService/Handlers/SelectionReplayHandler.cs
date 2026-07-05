@@ -28,6 +28,10 @@ public class SelectionReplayHandler :
         var selectionPath = new SKPath();
         selectionPath.MoveTo(ev.StartPoint);
 
+        foreach (var bound in ctx.SelectionBounds.Values)
+        {
+            bound.Dispose();
+        }
         ctx.SelectionBounds.Clear();
 
         var selectionBound = new SelectionBound
@@ -70,6 +74,10 @@ public class SelectionReplayHandler :
 
     public void Replay(ClearSelectionEvent ev, ReplayContext ctx)
     {
+        foreach (var bound in ctx.SelectionBounds.Values)
+        {
+            bound.Dispose();
+        }
         ctx.SelectionBounds.Clear();
     }
 

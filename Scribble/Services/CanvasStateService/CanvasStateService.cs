@@ -290,8 +290,8 @@ public class CanvasStateService : ICanvasStateService
     /// </summary>
     private void NormalizeLayersAndUpdateState(ReplayContext ctx)
     {
-        // Normalize layer indices to be contiguous (0..N-1) while preserving relative ordering.
-        List<CanvasElement> elementsWithLayers = [..ctx.PaintableStrokes.Values.ToList(), ..ctx.CanvasImages.Values.ToList()];
+        List<CanvasElement> elementsWithLayers =
+            [..ctx.PaintableStrokes.Values.ToList(), ..ctx.CanvasImages.Values.ToList()];
 
         if (elementsWithLayers.Count > 0)
         {
@@ -313,6 +313,8 @@ public class CanvasStateService : ICanvasStateService
             }
         }
 
+        DisposeOldState();
+
         CanvasElements = elementsWithLayers;
         _strokeLookup = ctx.PaintableStrokes;
         _eraserStrokeLookup = ctx.EraserStrokes;
@@ -327,5 +329,28 @@ public class CanvasStateService : ICanvasStateService
 
         CanvasInvalidated?.Invoke();
         SelectionInvalidated?.Invoke();
+    }
+
+    private void DisposeOldState()
+    {
+        foreach (var stroke in _strokeLookup.Values)
+        {
+            stroke.Dispose();
+        }
+
+        foreach (var bound in _selectionBoundLookup.Values)
+        {
+            bound.Dispose();
+        }
+
+        foreach (var image in _canvasImageLookup.Values)
+        {
+            image.Dispose();
+        }
+
+        foreach (var eraser in _eraserStrokeLookup.Values)
+        {
+            eraser.Dispose();
+        }
     }
 }
