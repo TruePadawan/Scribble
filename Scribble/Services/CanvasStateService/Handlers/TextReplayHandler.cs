@@ -22,9 +22,9 @@ public class TextReplayHandler :
     {
         var textPath = new SKPath();
         textPath.MoveTo(ev.Position);
-        textPath.AddPath(
-            TextPathBuilder.Build(ev.Text, ev.Position.X, ev.Position.Y, ev.Paint.TextSize,
-                StrokePaint.DefaultTypeFace));
+        using var builtPath = TextPathBuilder.Build(ev.Text, ev.Position.X, ev.Position.Y, ev.Paint.TextSize,
+                StrokePaint.DefaultTypeFace);
+        textPath.AddPath(builtPath);
         ctx.PaintableStrokes[ev.StrokeId] = new TextStroke
         {
             Id = ev.StrokeId,
@@ -44,13 +44,13 @@ public class TextReplayHandler :
             existingStroke is TextStroke textStroke)
         {
             textStroke.Text = ev.NewText;
-            var updateTextTypeface = SKTypeface.FromFamilyName(
+            using var updateTextTypeface = SKTypeface.FromFamilyName(
                 StrokePaint.DefaultTypeFace.FamilyName, textStroke.SkFontStyle);
-            var newTextPath = new SKPath();
+            using var newTextPath = new SKPath();
             newTextPath.MoveTo(textStroke.Position);
-            newTextPath.AddPath(
-                TextPathBuilder.Build(ev.NewText, textStroke.Position.X, textStroke.Position.Y,
-                    textStroke.Paint.TextSize, updateTextTypeface));
+            using var builtPath = TextPathBuilder.Build(ev.NewText, textStroke.Position.X, textStroke.Position.Y,
+                    textStroke.Paint.TextSize, updateTextTypeface);
+            newTextPath.AddPath(builtPath);
 
             newTextPath.Transform(textStroke.TransformMatrix);
 
@@ -65,13 +65,13 @@ public class TextReplayHandler :
         {
             if (ctx.PaintableStrokes.TryGetValue(strokeId, out var stroke) && stroke is TextStroke ts)
             {
-                var fontSizeTypeface = SKTypeface.FromFamilyName(
+                using var fontSizeTypeface = SKTypeface.FromFamilyName(
                     StrokePaint.DefaultTypeFace.FamilyName, ts.SkFontStyle);
-                var noTransformTextPath = new SKPath();
+                using var noTransformTextPath = new SKPath();
                 noTransformTextPath.MoveTo(ts.Position);
-                noTransformTextPath.AddPath(
-                    TextPathBuilder.Build(ts.Text, ts.Position.X, ts.Position.Y, ev.FontSize,
-                        fontSizeTypeface));
+                using var builtPath = TextPathBuilder.Build(ts.Text, ts.Position.X, ts.Position.Y, ev.FontSize,
+                        fontSizeTypeface);
+                noTransformTextPath.AddPath(builtPath);
                 noTransformTextPath.Transform(ts.TransformMatrix);
                 ts.Path.Reset();
                 ts.Path.AddPath(noTransformTextPath);
@@ -88,13 +88,13 @@ public class TextReplayHandler :
                 ts.Text = ev.NewCasing == FontCasing.UpperCase ? ts.Text.ToUpper() : ts.Text.ToLower();
 
                 // Recreate stroke paths
-                var casingTypeface = SKTypeface.FromFamilyName(
+                using var casingTypeface = SKTypeface.FromFamilyName(
                     StrokePaint.DefaultTypeFace.FamilyName, ts.SkFontStyle);
-                var newTextPath = new SKPath();
+                using var newTextPath = new SKPath();
                 newTextPath.MoveTo(ts.Position);
-                newTextPath.AddPath(
-                    TextPathBuilder.Build(ts.Text, ts.Position.X, ts.Position.Y,
-                        ts.Paint.TextSize, casingTypeface));
+                using var builtPath = TextPathBuilder.Build(ts.Text, ts.Position.X, ts.Position.Y,
+                        ts.Paint.TextSize, casingTypeface);
+                newTextPath.AddPath(builtPath);
 
                 newTextPath.Transform(ts.TransformMatrix);
 
@@ -128,15 +128,15 @@ public class TextReplayHandler :
                 }
 
                 // Derive typeface from the updated bold/italic state
-                var newTypeFace = SKTypeface.FromFamilyName(
+                using var newTypeFace = SKTypeface.FromFamilyName(
                     StrokePaint.DefaultTypeFace.FamilyName, ts.SkFontStyle);
 
                 // Recreate stroke paths
-                var newTextPath = new SKPath();
+                using var newTextPath = new SKPath();
                 newTextPath.MoveTo(ts.Position);
-                newTextPath.AddPath(
-                    TextPathBuilder.Build(ts.Text, ts.Position.X, ts.Position.Y,
-                        ts.Paint.TextSize, newTypeFace));
+                using var builtPath = TextPathBuilder.Build(ts.Text, ts.Position.X, ts.Position.Y,
+                        ts.Paint.TextSize, newTypeFace);
+                newTextPath.AddPath(builtPath);
 
                 newTextPath.Transform(ts.TransformMatrix);
 

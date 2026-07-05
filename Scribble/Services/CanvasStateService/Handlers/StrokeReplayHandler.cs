@@ -45,7 +45,7 @@ public class StrokeReplayHandler :
         {
             dsPencil.RawPoints.Add(new StrokePoint(ev.Point,
                 ev.TimeStamp.Ticks / TimeSpan.TicksPerMillisecond));
-            var newPath = FreehandPathBuilder.Build(dsPencil.RawPoints);
+            using var newPath = FreehandPathBuilder.Build(dsPencil.RawPoints);
             dsPencil.Path.Reset();
             dsPencil.Path.AddPath(newPath);
         }
@@ -74,7 +74,7 @@ public class StrokeReplayHandler :
         {
             ds.RawPoints.Add(new StrokePoint(ev.Point,
                 ev.TimeStamp.Ticks / TimeSpan.TicksPerMillisecond));
-            var newPath = FreehandPathBuilder.Build(ds.RawPoints);
+            using var newPath = FreehandPathBuilder.Build(ds.RawPoints);
             ds.Path.Reset();
             ds.Path.AddPath(newPath);
 
