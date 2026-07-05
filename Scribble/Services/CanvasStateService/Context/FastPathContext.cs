@@ -17,7 +17,7 @@ public class FastPathContext
     public required Dictionary<Guid, SKPoint> EraserHeadLookup { get; init; }
     public required Dictionary<Guid, SelectionBound> SelectionBoundLookup { get; init; }
     public required Dictionary<Guid, CanvasImage> CanvasImageLookup { get; init; }
-    public required IReadOnlyList<CanvasElement> CanvasElements { get; init; }
+    public required List<CanvasElement> CanvasElements { get; init; }
     public required HashSet<Guid> LocalSelectionBoundIds { get; init; }
 
     // Callbacks the handler can invoke to signal the UI

@@ -17,6 +17,8 @@ public class StrokeReplayHandler :
     IEventReplayHandler<PencilStrokeLineToEvent>,
     IEventReplayHandler<LineStrokeLineToEvent>,
     IEventReplayHandler<EndStrokeEvent>,
+    IFastPathHandler<StartStrokeEvent>,
+    IFastPathHandler<EndStrokeEvent>,
     IFastPathHandler<PencilStrokeLineToEvent>,
     IFastPathHandler<LineStrokeLineToEvent>
 {
@@ -95,6 +97,34 @@ public class StrokeReplayHandler :
         }
 
         return false;
+    }
+
+    public bool TryApplyFastPath(StartStrokeEvent ev, FastPathContext ctx)
+    {
+        var newLinePath = new SKPath();
+        newLinePath.MoveTo(ev.StartPoint);
+        var ds = new DrawStroke
+        {
+            Id = ev.StrokeId,
+            Paint = ev.StrokePaint.Clone(),
+            Path = newLinePath,
+            RawPoints = [new StrokePoint(ev.StartPoint, ev.TimeStamp.Ticks / TimeSpan.TicksPerMillisecond)],
+            ToolType = ev.ToolType,
+            ToolOptions = ev.ToolOptions,
+            CreatorConnectionId = ev.CreatorConnectionId,
+            LayerIndex = ctx.CanvasElements.Count
+        };
+
+        ctx.StrokeLookup[ev.StrokeId] = ds;
+        ctx.CanvasElements.Add(ds);
+
+        ctx.OnCanvasInvalidated?.Invoke();
+        return true;
+    }
+
+    public bool TryApplyFastPath(EndStrokeEvent ev, FastPathContext ctx)
+    {
+        return true;
     }
 
     /// <summary>

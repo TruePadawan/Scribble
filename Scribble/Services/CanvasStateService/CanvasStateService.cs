@@ -15,7 +15,8 @@ namespace Scribble.Services.CanvasStateService;
 public class CanvasStateService : ICanvasStateService
 {
     // State
-    public IReadOnlyList<CanvasElement> CanvasElements { get; private set; } = [];
+    private List<CanvasElement> _canvasElements = [];
+    public IReadOnlyList<CanvasElement> CanvasElements => _canvasElements;
     public Queue<Event> CanvasEvents { get; private set; } = [];
     public Guid? ActiveSelectionBoundId { get; private set; }
     public List<Guid> SelectedElementIds { get; private set; } = [];
@@ -190,7 +191,7 @@ public class CanvasStateService : ICanvasStateService
             EraserHeadLookup = _eraserHeadLookup,
             SelectionBoundLookup = _selectionBoundLookup,
             CanvasImageLookup = _canvasImageLookup,
-            CanvasElements = CanvasElements,
+            CanvasElements = _canvasElements,
             LocalSelectionBoundIds = _localSelectionBoundIds,
             OnCanvasInvalidated = CanvasInvalidated,
             OnSelectionInvalidated = SelectionInvalidated
@@ -215,7 +216,14 @@ public class CanvasStateService : ICanvasStateService
         // Fast path: for pencil/line line-to events during active drawing,
         // apply directly to the existing stroke, no replay needed
         bool fastPathWasApplied = ApplyFastPathOptimization(@event);
-        if (fastPathWasApplied) return;
+        if (fastPathWasApplied)
+        {
+            if (@event is ITerminalEvent && isLocalEvent)
+            {
+                TrackAction(@event.ActionId);
+            }
+            return;
+        }
 
         var staleActionIds = ReplayEvents();
         bool changed = false;
@@ -315,7 +323,7 @@ public class CanvasStateService : ICanvasStateService
 
         DisposeOldState();
 
-        CanvasElements = elementsWithLayers;
+        _canvasElements = elementsWithLayers;
         _strokeLookup = ctx.PaintableStrokes;
         _eraserStrokeLookup = ctx.EraserStrokes;
         _eraserHeadLookup = ctx.EraserHeads;
