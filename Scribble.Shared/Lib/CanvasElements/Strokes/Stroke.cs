@@ -12,6 +12,11 @@ public abstract class Stroke : CanvasElement
 {
     [JsonConverter(typeof(SKPathJsonConverter))]
     public required SKPath Path { get; init; } = new();
+
+    public override void Dispose()
+    {
+        Path.Dispose();
+    }
 }
 
 public enum StrokeStyle

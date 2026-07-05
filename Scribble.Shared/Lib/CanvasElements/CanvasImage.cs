@@ -15,6 +15,7 @@ public class CanvasImage : CanvasElement, ICopyable
         set
         {
             _bounds = value;
+            _cachedBitmap?.Dispose();
             _cachedBitmap = null;
         }
     }
@@ -52,10 +53,15 @@ public class CanvasImage : CanvasElement, ICopyable
         return _cachedBitmap;
     }
 
-    public void DisposeBitmap()
+    private void DisposeBitmap()
     {
         _cachedBitmap?.Dispose();
         _cachedBitmap = null;
+    }
+
+    public override void Dispose()
+    {
+        DisposeBitmap();
     }
 
     public CanvasElement Copy()

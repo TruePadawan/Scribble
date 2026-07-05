@@ -9,4 +9,10 @@ public abstract class PaintableStroke : Stroke
     public bool IsToBeErased = false;
     public required HashSet<ToolOption> ToolOptions { get; init; } = [];
     public required StrokePaint Paint { get; init; } = new();
+
+    public override void Dispose()
+    {
+        base.Dispose();
+        Paint.DisposeSkPaint();
+    }
 }

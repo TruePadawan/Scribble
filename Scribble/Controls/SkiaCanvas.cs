@@ -246,13 +246,9 @@ public class SkiaCanvas : Control
         {
             foreach (var item in e.OldItems)
             {
-                if (item is CanvasImage canvasImage)
+                if (item is IDisposable disposable)
                 {
-                    canvasImage.DisposeBitmap();
-                }
-                else if (item is PaintableStroke paintableStroke)
-                {
-                    paintableStroke.Paint.DisposeSkPaint();
+                    disposable.Dispose();
                 }
             }
         }
