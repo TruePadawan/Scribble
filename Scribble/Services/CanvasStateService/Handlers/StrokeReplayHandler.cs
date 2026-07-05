@@ -45,9 +45,9 @@ public class StrokeReplayHandler :
         {
             dsPencil.RawPoints.Add(new StrokePoint(ev.Point,
                 ev.TimeStamp.Ticks / TimeSpan.TicksPerMillisecond));
-            using var newPath = FreehandPathBuilder.Build(dsPencil.RawPoints);
-            dsPencil.Path.Reset();
-            dsPencil.Path.AddPath(newPath);
+            var stable = dsPencil.StablePath;
+            FreehandPathBuilder.AppendPoint(dsPencil.Path, ref stable, dsPencil.RawPoints);
+            dsPencil.StablePath = stable;
         }
     }
 
@@ -74,9 +74,9 @@ public class StrokeReplayHandler :
         {
             ds.RawPoints.Add(new StrokePoint(ev.Point,
                 ev.TimeStamp.Ticks / TimeSpan.TicksPerMillisecond));
-            using var newPath = FreehandPathBuilder.Build(ds.RawPoints);
-            ds.Path.Reset();
-            ds.Path.AddPath(newPath);
+            var stable = ds.StablePath;
+            FreehandPathBuilder.AppendPoint(ds.Path, ref stable, ds.RawPoints);
+            ds.StablePath = stable;
 
             ctx.OnCanvasInvalidated?.Invoke();
             return true;

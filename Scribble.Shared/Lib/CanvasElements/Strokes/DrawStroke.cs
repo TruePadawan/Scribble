@@ -1,5 +1,6 @@
 using System.Text.Json.Serialization;
 using Avalonia.Skia;
+using SkiaSharp;
 
 namespace Scribble.Shared.Lib.CanvasElements.Strokes;
 
@@ -18,6 +19,15 @@ public class DrawStroke : PaintableStroke, ICopyable
     /// </summary>
     [JsonIgnore]
     public List<StrokePoint> RawPoints { get; init; } = [];
+
+    [JsonIgnore] public SKPath? StablePath { get; set; }
+
+    public override void Dispose()
+    {
+        base.Dispose();
+        StablePath?.Dispose();
+        StablePath = null;
+    }
 
     public CanvasElement Copy()
     {
