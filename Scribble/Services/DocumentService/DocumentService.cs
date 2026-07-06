@@ -49,7 +49,7 @@ public class DocumentService : IDocumentService
             Dictionary<string, Guid> imageBase64EncodedStrings = [];
             foreach (var element in canvasElements)
             {
-                if (element is Stroke stroke)
+                if (element is PaintableStroke stroke)
                 {
                     jsonCanvasStrokes.Add(JsonSerializer.SerializeToNode(stroke, serializerOptions));
                 }

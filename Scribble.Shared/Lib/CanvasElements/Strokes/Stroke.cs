@@ -18,6 +18,7 @@ public abstract class Stroke : CanvasElement
 
     public override void Dispose()
     {
+        base.Dispose();
         Path.Dispose();
     }
 }
