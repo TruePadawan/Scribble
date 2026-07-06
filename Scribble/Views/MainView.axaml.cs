@@ -383,7 +383,7 @@ public partial class MainView : UserControl
 
             SKRect combinedBounds = SKRect.Empty;
 
-            foreach (var strokeBounds in selectedStrokes.Select(stroke => stroke.Path.TightBounds))
+            foreach (var strokeBounds in selectedStrokes.Select(stroke => stroke.Path.Bounds))
             {
                 if (combinedBounds == SKRect.Empty)
                 {
