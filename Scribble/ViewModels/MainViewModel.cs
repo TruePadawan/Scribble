@@ -132,8 +132,8 @@ public partial class MainViewModel : ViewModelBase
     private void Copy()
     {
         _copiedCanvasElements = CanvasStateService.GetSelectedElements()
-            .OfType<ICopyable>()
-            .Select(e => e.Copy())
+            .OfType<IClonable>()
+            .Select(e => e.Clone(preserveId: false))
             .ToList();
     }
 
@@ -144,8 +144,8 @@ public partial class MainViewModel : ViewModelBase
 
         // Recreate the copied elements
         _copiedCanvasElements = _copiedCanvasElements
-            .OfType<ICopyable>()
-            .Select(e => e.Copy())
+            .OfType<IClonable>()
+            .Select(e => e.Clone(preserveId: false))
             .ToList();
     }
 }

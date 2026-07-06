@@ -140,9 +140,8 @@ public class DocumentService : IDocumentService
                 var fileId = deserializedImageDto.FileId.ToString();
                 var base64String = jsonEncodedFiles[fileId]?.ToString() ??
                                    throw new Exception("Invalid canvas file, could not find encoded image");
-                var canvasImage = new CanvasImage
+                var canvasImage = new CanvasImage(deserializedImageDto.Id)
                 {
-                    Id = deserializedImageDto.Id,
                     LayerIndex = deserializedImageDto.LayerIndex,
                     Bounds = SKRect.Create(
                         deserializedImageDto.X,

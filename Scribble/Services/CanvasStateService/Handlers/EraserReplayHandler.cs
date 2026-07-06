@@ -25,7 +25,7 @@ public class EraserReplayHandler :
     {
         var eraserPath = new SKPath();
         eraserPath.MoveTo(ev.StartPoint);
-        var newEraserStroke = new EraserStroke
+        var newEraserStroke = new EraserStroke(ev.StrokeId)
         {
             Path = eraserPath,
             CreatorConnectionId = ev.CreatorConnectionId

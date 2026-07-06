@@ -25,9 +25,8 @@ public class TextReplayHandler :
         using var builtPath = TextPathBuilder.Build(ev.Text, ev.Position.X, ev.Position.Y, ev.Paint.TextSize,
                 StrokePaint.DefaultTypeFace);
         textPath.AddPath(builtPath);
-        ctx.PaintableStrokes[ev.StrokeId] = new TextStroke
+        ctx.PaintableStrokes[ev.StrokeId] = new TextStroke(ev.StrokeId)
         {
-            Id = ev.StrokeId,
             Paint = ev.Paint.Clone(),
             Path = textPath,
             ToolOptions = ev.ToolOptions,

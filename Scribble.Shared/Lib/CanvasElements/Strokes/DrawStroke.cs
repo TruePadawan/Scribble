@@ -7,7 +7,7 @@ namespace Scribble.Shared.Lib.CanvasElements.Strokes;
 /// <summary>
 /// Represents a non-text stroke on the canvas (lines, arrows, rectangles, ellipses)
 /// </summary>
-public class DrawStroke : PaintableStroke, ICopyable
+public class DrawStroke(Guid id) : PaintableStroke(id), IClonable
 {
     /// <summary>
     /// The Tool that produced the stroke
@@ -29,17 +29,19 @@ public class DrawStroke : PaintableStroke, ICopyable
         StablePath = null;
     }
 
-    public CanvasElement Copy()
+    public override CanvasElement Clone(bool preserveId = false)
     {
-        return new DrawStroke
+        var clone = new DrawStroke(preserveId ? Id : Guid.NewGuid())
         {
             ToolType = ToolType,
-            Path = Path.Clone(),
-            ToolOptions = ToolOptions,
+            Path = new SKPath(Path),
+            ToolOptions = [..ToolOptions],
             Paint = Paint.Clone(),
             RawPoints = [..RawPoints],
+            StablePath = StablePath != null ? new SKPath(StablePath) : null,
             LayerIndex = LayerIndex,
             CreatorConnectionId = CreatorConnectionId
         };
+        return clone;
     }
 }

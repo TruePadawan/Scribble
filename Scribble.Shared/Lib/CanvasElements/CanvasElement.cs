@@ -1,4 +1,3 @@
-using System;
 using System.Text.Json.Serialization;
 using Scribble.Shared.Lib.CanvasElements.Strokes;
 
@@ -9,7 +8,14 @@ namespace Scribble.Shared.Lib.CanvasElements;
 [JsonDerivedType(typeof(TextStroke), typeDiscriminator: "TextStroke")]
 public abstract class CanvasElement : IDisposable
 {
-    public Guid Id { get; init; } = Guid.NewGuid();
+    public Guid Id { get; } = Guid.NewGuid();
+
+    // For JSON serialization/deserialization compatibility
+    protected CanvasElement()
+    {
+    }
+
+    protected CanvasElement(Guid id) => Id = id;
 
     /// <summary>
     /// Logical z-order layer index for this element. 0 is the base layer.
@@ -25,17 +31,17 @@ public abstract class CanvasElement : IDisposable
     /// <summary>
     /// The time this element was created.
     /// </summary>
-    public DateTime CreatedAt { get; init; } = DateTime.UtcNow;
+    public DateTime CreatedAt { get; } = DateTime.UtcNow;
 
     public virtual void Dispose()
     {
     }
 }
 
-public interface ICopyable
+public interface IClonable
 {
     /// <summary>
     /// Returns a deep copy of this element.
     /// </summary>
-    CanvasElement Copy();
+    CanvasElement Clone(bool preserveId = false);
 }

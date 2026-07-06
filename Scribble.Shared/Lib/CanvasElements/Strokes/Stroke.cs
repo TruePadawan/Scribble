@@ -10,6 +10,9 @@ namespace Scribble.Shared.Lib.CanvasElements.Strokes;
 [JsonDerivedType(typeof(SelectionBound), typeDiscriminator: "SelectionBound")]
 public abstract class Stroke : CanvasElement
 {
+    protected Stroke() { }
+    protected Stroke(Guid id) : base(id) { }
+
     [JsonConverter(typeof(SKPathJsonConverter))]
     public required SKPath Path { get; init; } = new();
 

@@ -298,9 +298,8 @@ public class UtilitiesTests
         path.MoveTo(10f, 10f);
         path.LineTo(50f, 50f);
 
-        var stroke = new DrawStroke
+        var stroke = new DrawStroke(Guid.NewGuid())
         {
-            Id = Guid.NewGuid(),
             Path = path,
             Paint = new StrokePaint { StrokeWidth = 4f },
             ToolType = ToolType.Pencil,
@@ -316,9 +315,8 @@ public class UtilitiesTests
     [Fact]
     public void GetElementsBounds_SingleImage_ReturnsImageBounds()
     {
-        var image = new CanvasImage
+        var image = new CanvasImage(Guid.NewGuid())
         {
-            Id = Guid.NewGuid(),
             Bounds = new SKRect(15f, 20f, 65f, 90f),
             ImageBase64String = "BASE64"
         };
@@ -335,18 +333,16 @@ public class UtilitiesTests
         path.MoveTo(10f, 10f);
         path.LineTo(50f, 50f);
 
-        var stroke = new DrawStroke
+        var stroke = new DrawStroke(Guid.NewGuid())
         {
-            Id = Guid.NewGuid(),
             Path = path,
             Paint = new StrokePaint { StrokeWidth = 4f },
             ToolType = ToolType.Pencil,
             ToolOptions = []
         };
 
-        var image = new CanvasImage
+        var image = new CanvasImage(Guid.NewGuid())
         {
-            Id = Guid.NewGuid(),
             Bounds = new SKRect(20f, 20f, 100f, 100f),
             ImageBase64String = "BASE64"
         };
