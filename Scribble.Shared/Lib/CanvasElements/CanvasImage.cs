@@ -15,7 +15,6 @@ public class CanvasImage : CanvasElement, IClonable
         set
         {
             _bounds = value;
-            _cachedBitmap?.Dispose();
             _cachedBitmap = null;
         }
     }
