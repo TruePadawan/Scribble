@@ -1,3 +1,6 @@
+using System.Text.Json.Serialization;
+using SkiaSharp;
+
 namespace Scribble.Shared.Lib.CanvasElements.Strokes;
 
 /// <summary>
@@ -9,4 +12,17 @@ public class EraserStroke : Stroke
     /// The collection of canvas element IDs that are targets for erasure
     /// </summary>
     public HashSet<Guid> Targets = [];
+
+    public EraserStroke Clone(bool preserveId = false)
+    {
+        var clone = new EraserStroke
+        {
+            Id = preserveId ? Id : Guid.NewGuid(),
+            Path = new SKPath(Path),
+            Targets = [..Targets],
+            LayerIndex = LayerIndex,
+            CreatorConnectionId = CreatorConnectionId
+        };
+        return clone;
+    }
 }

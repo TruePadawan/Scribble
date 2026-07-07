@@ -140,6 +140,7 @@ public partial class MainView : UserControl
                     );
                     pastePos = CameraState.ScreenToWorld(viewportCenter);
                 }
+
                 viewModel.PasteCommand.Execute(pastePos);
             }, CanExecuteKeyBinding)
         });
@@ -383,7 +384,7 @@ public partial class MainView : UserControl
 
             SKRect combinedBounds = SKRect.Empty;
 
-            foreach (var strokeBounds in selectedStrokes.Select(stroke => stroke.Path.TightBounds))
+            foreach (var strokeBounds in selectedStrokes.Select(stroke => stroke.Path.Bounds))
             {
                 if (combinedBounds == SKRect.Empty)
                 {

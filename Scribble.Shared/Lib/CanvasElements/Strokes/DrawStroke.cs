@@ -1,12 +1,13 @@
 using System.Text.Json.Serialization;
 using Avalonia.Skia;
+using SkiaSharp;
 
 namespace Scribble.Shared.Lib.CanvasElements.Strokes;
 
 /// <summary>
 /// Represents a non-text stroke on the canvas (lines, arrows, rectangles, ellipses)
 /// </summary>
-public class DrawStroke : PaintableStroke, ICopyable
+public class DrawStroke : PaintableStroke, IClonable
 {
     /// <summary>
     /// The Tool that produced the stroke
@@ -19,17 +20,22 @@ public class DrawStroke : PaintableStroke, ICopyable
     [JsonIgnore]
     public List<StrokePoint> RawPoints { get; init; } = [];
 
-    public CanvasElement Copy()
+    [JsonIgnore] public SKPath? StablePath { get; set; }
+
+    public override CanvasElement Clone(bool preserveId = false)
     {
-        return new DrawStroke
+        var clone = new DrawStroke
         {
+            Id = preserveId ? Id : Guid.NewGuid(),
             ToolType = ToolType,
-            Path = Path.Clone(),
-            ToolOptions = ToolOptions,
+            Path = new SKPath(Path),
+            ToolOptions = [..ToolOptions],
             Paint = Paint.Clone(),
             RawPoints = [..RawPoints],
+            StablePath = StablePath != null ? new SKPath(StablePath) : null,
             LayerIndex = LayerIndex,
             CreatorConnectionId = CreatorConnectionId
         };
+        return clone;
     }
 }

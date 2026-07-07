@@ -26,11 +26,21 @@ public class FreehandPathBuilderTests
         return result;
     }
 
+    /// <summary>Helper to build a complete path from a point list using AppendPoint</summary>
+    private static SKPath BuildUsingAppendPoint(IReadOnlyList<StrokePoint> points)
+    {
+        var path = new SKPath();
+        SKPath? stablePath = null;
+        FreehandPathBuilder.AppendPoint(path, ref stablePath, points);
+        stablePath?.Dispose();
+        return path;
+    }
+
     // 0 points
     [Fact]
     public void Build_EmptyPoints_ReturnsEmptyPath()
     {
-        var path = FreehandPathBuilder.Build([]);
+        using var path = BuildUsingAppendPoint([]);
 
         path.IsEmpty.Should().BeTrue();
     }
@@ -39,7 +49,7 @@ public class FreehandPathBuilderTests
     [Fact]
     public void Build_SinglePoint_ReturnsPathWithSingleRecordedPoint()
     {
-        var path = FreehandPathBuilder.Build([Pt(2f, 2f)]);
+        using var path = BuildUsingAppendPoint([Pt(2f, 2f)]);
 
         path.PointCount.Should().Be(1);
     }
@@ -48,7 +58,7 @@ public class FreehandPathBuilderTests
     public void Build_SinglePoint_MoveToIsAtCorrectPosition()
     {
         var point = new SKPoint(2f, 2f);
-        var path = FreehandPathBuilder.Build([new StrokePoint { Point = point }]);
+        using var path = BuildUsingAppendPoint([new StrokePoint { Point = point }]);
 
         path.GetPoint(0).Should().Be(point);
     }
@@ -57,7 +67,7 @@ public class FreehandPathBuilderTests
     [Fact]
     public void Build_TwoPoints_ProducesMoveThenLine()
     {
-        var path = FreehandPathBuilder.Build([Pt(0f, 0f), Pt(10f, 10f)]);
+        using var path = BuildUsingAppendPoint([Pt(0f, 0f), Pt(10f, 10f)]);
 
         var verbs = GetVerbs(path);
         verbs.Should().HaveCount(2);
@@ -68,7 +78,7 @@ public class FreehandPathBuilderTests
     [Fact]
     public void Build_TwoPoints_LineStartsAtFirstPoint()
     {
-        var path = FreehandPathBuilder.Build([Pt(0f, 0f), Pt(10f, 10f)]);
+        using var path = BuildUsingAppendPoint([Pt(0f, 0f), Pt(10f, 10f)]);
 
         path.GetPoint(0).Should().Be(new SKPoint(0f, 0f));
     }
@@ -76,7 +86,7 @@ public class FreehandPathBuilderTests
     [Fact]
     public void Build_TwoPoints_LineEndsAtSecondPoint()
     {
-        var path = FreehandPathBuilder.Build([Pt(0f, 0f), Pt(10f, 10f)]);
+        using var path = BuildUsingAppendPoint([Pt(0f, 0f), Pt(10f, 10f)]);
 
         var verbs = GetVerbs(path);
         var lineVerb = verbs.Single(v => v.Verb == SKPathVerb.Line);
@@ -87,7 +97,7 @@ public class FreehandPathBuilderTests
     [Fact]
     public void Build_ThreePoints_ProducesMoveThenQuadThenLine()
     {
-        var path = FreehandPathBuilder.Build([Pt(0f, 0f), Pt(10f, 0f), Pt(20f, 0f)]);
+        using var path = BuildUsingAppendPoint([Pt(0f, 0f), Pt(10f, 0f), Pt(20f, 0f)]);
 
         var verbs = GetVerbs(path);
         verbs.Select(v => v.Verb).Should().Equal(
@@ -100,7 +110,7 @@ public class FreehandPathBuilderTests
     public void Build_ThreePoints_QuadControlPointIsSecondInputPoint()
     {
         // For 3 points p0, p1, p2: QuadTo(p1, midpoint(p1,p2))
-        var path = FreehandPathBuilder.Build([Pt(0f, 0f), Pt(10f, 0f), Pt(20f, 0f)]);
+        using var path = BuildUsingAppendPoint([Pt(0f, 0f), Pt(10f, 0f), Pt(20f, 0f)]);
 
         var verbs = GetVerbs(path);
         var quad = verbs.Single(v => v.Verb == SKPathVerb.Quad);
@@ -112,7 +122,7 @@ public class FreehandPathBuilderTests
     public void Build_ThreePoints_QuadEndPointIsMidpointOfSecondAndThirdInputPoints()
     {
         // midpoint of (10,0) and (20,0) = (15,0)
-        var path = FreehandPathBuilder.Build([Pt(0f, 0f), Pt(10f, 0f), Pt(20f, 0f)]);
+        using var path = BuildUsingAppendPoint([Pt(0f, 0f), Pt(10f, 0f), Pt(20f, 0f)]);
 
         var verbs = GetVerbs(path);
         var quad = verbs.Single(v => v.Verb == SKPathVerb.Quad);
@@ -122,7 +132,7 @@ public class FreehandPathBuilderTests
     [Fact]
     public void Build_ThreePoints_LineEndsAtLastInputPoint()
     {
-        var path = FreehandPathBuilder.Build([Pt(0f, 0f), Pt(10f, 0f), Pt(20f, 0f)]);
+        using var path = BuildUsingAppendPoint([Pt(0f, 0f), Pt(10f, 0f), Pt(20f, 0f)]);
 
         var verbs = GetVerbs(path);
         var line = verbs.Single(v => v.Verb == SKPathVerb.Line);
@@ -132,7 +142,7 @@ public class FreehandPathBuilderTests
     [Fact]
     public void Build_FourPoints_ProducesMoveTwoQuadsThenLine()
     {
-        var path = FreehandPathBuilder.Build(
+        using var path = BuildUsingAppendPoint(
             [Pt(0f, 0f), Pt(10f, 0f), Pt(20f, 0f), Pt(30f, 0f)]);
 
         var verbs = GetVerbs(path);

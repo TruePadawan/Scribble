@@ -1,3 +1,6 @@
+using System.Text.Json.Serialization;
+using SkiaSharp;
+
 namespace Scribble.Shared.Lib.CanvasElements.Strokes;
 
 /// <summary>
@@ -9,4 +12,17 @@ public class SelectionBound : Stroke
     /// The collection of canvas element IDs that are selected
     /// </summary>
     public HashSet<Guid> Targets = [];
+
+    public SelectionBound Clone(bool preserveId = false)
+    {
+        var clone = new SelectionBound
+        {
+            Id = preserveId ? Id : Guid.NewGuid(),
+            Path = new SKPath(Path),
+            Targets = [..Targets],
+            LayerIndex = LayerIndex,
+            CreatorConnectionId = CreatorConnectionId
+        };
+        return clone;
+    }
 }

@@ -24,13 +24,13 @@ public abstract class CanvasElement
     /// <summary>
     /// The time this element was created.
     /// </summary>
-    public DateTime CreatedAt { get; init; } = DateTime.UtcNow;
+    public DateTime CreatedAt { get; } = DateTime.UtcNow;
 }
 
-public interface ICopyable
+public interface IClonable
 {
     /// <summary>
     /// Returns a deep copy of this element.
     /// </summary>
-    CanvasElement Copy();
+    CanvasElement Clone(bool preserveId = false);
 }

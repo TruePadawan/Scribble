@@ -783,4 +783,62 @@ public class CanvasStateServiceTests
         await _multiUserDrawingService.Received(1).BroadcastEventAsync(
             Arg.Is<Event>(e => e.CreatorConnectionId == myConnectionId));
     }
+
+    [Fact]
+    public void ApplyEvent_StartStrokeAndPencilLineTo_UsesFastPathAndPreservesReference()
+    {
+        var actionId = Guid.NewGuid();
+        var strokeId = Guid.NewGuid();
+        var startEvent = new StartStrokeEvent(actionId, strokeId, new SKPoint(10f, 10f), DefaultPaint(),
+            ToolType.Pencil, []);
+        _canvasStateService.ApplyEvent(startEvent);
+
+        var firstInstance = _canvasStateService.CanvasElements[0];
+
+        var lineToEvent = new PencilStrokeLineToEvent(actionId, strokeId, new SKPoint(20f, 20f));
+        _canvasStateService.ApplyEvent(lineToEvent);
+
+        var secondInstance = _canvasStateService.CanvasElements[0];
+
+        secondInstance.Should().BeSameAs(firstInstance);
+    }
+
+    [Fact]
+    public void ApplyEvent_EndStroke_UsesFastPathAndPreservesReference()
+    {
+        var actionId = Guid.NewGuid();
+        var strokeId = Guid.NewGuid();
+
+        _canvasStateService.ApplyEvent(new StartStrokeEvent(actionId, strokeId, new SKPoint(10f, 10f), DefaultPaint(),
+            ToolType.Pencil, []));
+        var startInstance = _canvasStateService.CanvasElements[0];
+
+        _canvasStateService.ApplyEvent(new PencilStrokeLineToEvent(actionId, strokeId, new SKPoint(20f, 20f)));
+        var lineInstance = _canvasStateService.CanvasElements[0];
+
+        _canvasStateService.ApplyEvent(new EndStrokeEvent(actionId));
+        var endInstance = _canvasStateService.CanvasElements[0];
+
+        lineInstance.Should().BeSameAs(startInstance);
+        endInstance.Should().BeSameAs(startInstance);
+    }
+
+    [Fact]
+    public void ApplyEvent_EndStroke_LocalEventTracksActionForUndo()
+    {
+        var actionId = Guid.NewGuid();
+        var strokeId = Guid.NewGuid();
+
+        _canvasStateService.ApplyEvent(
+            new StartStrokeEvent(actionId, strokeId, new SKPoint(10f, 10f), DefaultPaint(), ToolType.Pencil, []),
+            isLocalEvent: true);
+        _canvasStateService.ApplyEvent(new PencilStrokeLineToEvent(actionId, strokeId, new SKPoint(20f, 20f)),
+            isLocalEvent: true);
+
+        _canvasStateService.CanUndo.Should().BeFalse();
+
+        _canvasStateService.ApplyEvent(new EndStrokeEvent(actionId), isLocalEvent: true);
+
+        _canvasStateService.CanUndo.Should().BeTrue();
+    }
 }

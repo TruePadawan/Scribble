@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using Scribble.Services.CanvasStateService.Context;
+using Scribble.Services.CanvasStateService.State;
 using Scribble.Shared.Lib;
 using Scribble.Shared.Lib.CanvasElements;
 using Scribble.Shared.Lib.CanvasElements.Strokes;
@@ -23,7 +22,7 @@ public class SelectionReplayHandler :
 {
     // Replay handlers
 
-    public void Replay(CreateSelectionBoundEvent ev, ReplayContext ctx)
+    public void Replay(CreateSelectionBoundEvent ev, CanvasState ctx)
     {
         var selectionPath = new SKPath();
         selectionPath.MoveTo(ev.StartPoint);
@@ -39,7 +38,7 @@ public class SelectionReplayHandler :
         ctx.SelectionBounds[ev.BoundId] = selectionBound;
     }
 
-    public void Replay(IncreaseSelectionBoundEvent ev, ReplayContext ctx)
+    public void Replay(IncreaseSelectionBoundEvent ev, CanvasState ctx)
     {
         if (ctx.SelectionBounds.TryGetValue(ev.BoundId, out var bound))
         {
@@ -57,7 +56,7 @@ public class SelectionReplayHandler :
         }
     }
 
-    public void Replay(EndSelectionEvent ev, ReplayContext ctx)
+    public void Replay(EndSelectionEvent ev, CanvasState ctx)
     {
         if (ctx.SelectionBounds.TryGetValue(ev.BoundId, out var bound))
         {
@@ -68,16 +67,22 @@ public class SelectionReplayHandler :
         }
     }
 
-    public void Replay(ClearSelectionEvent ev, ReplayContext ctx)
+    public void Replay(ClearSelectionEvent ev, CanvasState ctx)
     {
-        ctx.SelectionBounds.Clear();
+        foreach (var bound in ctx.SelectionBounds.Values)
+        {
+            if (bound.CreatorConnectionId == ev.CreatorConnectionId)
+            {
+                ctx.SelectionBounds.Remove(bound.Id);
+            }
+        }
     }
 
     // Fast-path handler
 
-    public bool TryApplyFastPath(IncreaseSelectionBoundEvent ev, FastPathContext ctx)
+    public bool TryApplyFastPath(IncreaseSelectionBoundEvent ev, CanvasState ctx)
     {
-        if (ctx.SelectionBoundLookup.TryGetValue(ev.BoundId, out var bound))
+        if (ctx.SelectionBounds.TryGetValue(ev.BoundId, out var bound))
         {
             var boundOrigin = bound.Path.Points[0];
             bound.Path.Reset();
@@ -88,14 +93,12 @@ public class SelectionReplayHandler :
             var left = Math.Min(boundOrigin.X, ev.Point.X);
             var boundRect = SKRect.Create(new SKPoint(left, top),
                 Utilities.GetSize(boundOrigin, ev.Point));
-            CheckAndSelect(boundRect, bound, ctx.CanvasElements,
+            CheckAndSelect(boundRect, bound, ctx.ElementsWithLayers,
                 ownerFilter: bound.CreatorConnectionId);
 
-            var myBound =
-                ctx.SelectionBoundLookup.FirstOrDefault(pair => ctx.LocalSelectionBoundIds.Contains(pair.Key));
-            ctx.ActiveSelectionBoundId = myBound.Value != null ? myBound.Key : null;
-            ctx.SelectedElementIds = myBound.Value?.Targets.ToList() ?? [];
-            ctx.OnSelectionInvalidated?.Invoke();
+            ctx.ActiveSelectionBoundId = ev.BoundId;
+            ctx.SelectedElementIds.Clear();
+            ctx.SelectedElementIds.AddRange(bound.Targets);
             return true;
         }
 
@@ -123,7 +126,7 @@ public class SelectionReplayHandler :
             {
                 case PaintableStroke stroke:
                 {
-                    var strokeBounds = stroke.Path.TightBounds;
+                    var strokeBounds = stroke.Path.Bounds;
                     if (boundRect.Contains(strokeBounds))
                     {
                         bound.Targets.Add(stroke.Id);

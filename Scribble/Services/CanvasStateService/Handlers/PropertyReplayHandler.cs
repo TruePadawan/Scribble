@@ -1,5 +1,5 @@
 using System;
-using Scribble.Services.CanvasStateService.Context;
+using Scribble.Services.CanvasStateService.State;
 using Scribble.Shared.Lib;
 using Scribble.Utils;
 using SkiaSharp;
@@ -18,7 +18,7 @@ public class PropertyReplayHandler :
     IEventReplayHandler<UpdateStrokeFillColorEvent>,
     IEventReplayHandler<UpdateStrokeEdgeTypeEvent>
 {
-    public void Replay(UpdateStrokeColorEvent ev, ReplayContext ctx)
+    public void Replay(UpdateStrokeColorEvent ev, CanvasState ctx)
     {
         foreach (var strokeId in ev.StrokeIds)
         {
@@ -26,7 +26,7 @@ public class PropertyReplayHandler :
         }
     }
 
-    public void Replay(UpdateStrokeThicknessEvent ev, ReplayContext ctx)
+    public void Replay(UpdateStrokeThicknessEvent ev, CanvasState ctx)
     {
         foreach (var strokeId in ev.StrokeIds)
         {
@@ -34,7 +34,7 @@ public class PropertyReplayHandler :
         }
     }
 
-    public void Replay(UpdateStrokeStyleEvent ev, ReplayContext ctx)
+    public void Replay(UpdateStrokeStyleEvent ev, CanvasState ctx)
     {
         foreach (var strokeId in ev.StrokeIds)
         {
@@ -42,7 +42,7 @@ public class PropertyReplayHandler :
         }
     }
 
-    public void Replay(UpdateStrokeFillColorEvent ev, ReplayContext ctx)
+    public void Replay(UpdateStrokeFillColorEvent ev, CanvasState ctx)
     {
         foreach (var strokeId in ev.StrokeIds)
         {
@@ -50,7 +50,7 @@ public class PropertyReplayHandler :
         }
     }
 
-    public void Replay(UpdateStrokeEdgeTypeEvent ev, ReplayContext ctx)
+    public void Replay(UpdateStrokeEdgeTypeEvent ev, CanvasState ctx)
     {
         foreach (var strokeId in ev.StrokeIds)
         {

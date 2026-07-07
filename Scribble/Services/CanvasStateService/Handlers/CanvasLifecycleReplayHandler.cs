@@ -1,8 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Avalonia.Skia;
-using Scribble.Services.CanvasStateService.Context;
+using Scribble.Services.CanvasStateService.State;
 using Scribble.Shared.Lib;
 using Scribble.Shared.Lib.CanvasElements;
 using Scribble.Shared.Lib.CanvasElements.Strokes;
@@ -22,71 +21,34 @@ public class CanvasLifecycleReplayHandler :
     IEventReplayHandler<NudgeElementLayerEvent>,
     IEventReplayHandler<PasteCanvasElementsEvent>
 {
-    public void Replay(LoadCanvasEvent ev, ReplayContext ctx)
+    public void Replay(LoadCanvasEvent ev, CanvasState ctx)
     {
         ctx.PaintableStrokes.Clear();
         ctx.CanvasImages.Clear();
         ctx.EraserStrokes.Clear();
-        ctx.EraserHeads.Clear();
+
         ctx.SelectionBounds.Clear();
 
         foreach (var element in ev.CanvasElements)
         {
-            switch (element)
+            if (element is IClonable copyable)
             {
-                case DrawStroke drawStroke:
-                    ctx.PaintableStrokes[drawStroke.Id] = new DrawStroke
-                    {
-                        Id = drawStroke.Id,
-                        Paint = drawStroke.Paint.Clone(),
-                        ToolOptions = drawStroke.ToolOptions,
-                        ToolType = drawStroke.ToolType,
-                        Path = drawStroke.Path.Clone(),
-                        RawPoints = [..drawStroke.RawPoints],
-                        LayerIndex = drawStroke.LayerIndex,
-                        CreatorConnectionId = drawStroke.CreatorConnectionId
-                    };
-                    ctx.MaxLayerIndex =
-                        Math.Max(ctx.MaxLayerIndex, ctx.PaintableStrokes[drawStroke.Id].LayerIndex);
-                    break;
-                case TextStroke loadedText:
-                    ctx.PaintableStrokes[loadedText.Id] = new TextStroke
-                    {
-                        Id = loadedText.Id,
-                        Text = loadedText.Text,
-                        Position = loadedText.Position,
-                        Paint = loadedText.Paint.Clone(),
-                        ToolOptions = loadedText.ToolOptions,
-                        Path = loadedText.Path.Clone(),
-                        LayerIndex = loadedText.LayerIndex,
-                        TransformMatrix = loadedText.TransformMatrix,
-                        IsBold = loadedText.IsBold,
-                        IsItalic = loadedText.IsItalic,
-                        CreatorConnectionId = loadedText.CreatorConnectionId
-                    };
-                    ctx.MaxLayerIndex =
-                        Math.Max(ctx.MaxLayerIndex, ctx.PaintableStrokes[loadedText.Id].LayerIndex);
-                    break;
-                case CanvasImage canvasImage:
-                    ctx.CanvasImages[canvasImage.Id] = new CanvasImage
-                    {
-                        Id = canvasImage.Id,
-                        ImageBase64String = canvasImage.ImageBase64String,
-                        Bounds = canvasImage.Bounds,
-                        Rotation = canvasImage.Rotation,
-                        FlipX = canvasImage.FlipX,
-                        FlipY = canvasImage.FlipY,
-                        LayerIndex = canvasImage.LayerIndex,
-                        CreatorConnectionId = canvasImage.CreatorConnectionId
-                    };
-                    ctx.MaxLayerIndex =
-                        Math.Max(ctx.MaxLayerIndex, ctx.CanvasImages[canvasImage.Id].LayerIndex);
-                    break;
+                var cloned = copyable.Clone(preserveId: true);
+                if (cloned is PaintableStroke paintable)
+                {
+                    ctx.PaintableStrokes[paintable.Id] = paintable;
+                    ctx.MaxLayerIndex = Math.Max(ctx.MaxLayerIndex, paintable.LayerIndex);
+                }
+                else if (cloned is CanvasImage image)
+                {
+                    ctx.CanvasImages[image.Id] = image;
+                    ctx.MaxLayerIndex = Math.Max(ctx.MaxLayerIndex, image.LayerIndex);
+                }
             }
         }
     }
 
-    public void Replay(AddImageEvent ev, ReplayContext ctx)
+    public void Replay(AddImageEvent ev, CanvasState ctx)
     {
         var imageBounds = SKRect.Create(ev.Position, ev.Size);
         ctx.CanvasImages[ev.ImageId] = new CanvasImage
@@ -99,7 +61,7 @@ public class CanvasLifecycleReplayHandler :
         };
     }
 
-    public void Replay(SetElementLayerEvent ev, ReplayContext ctx)
+    public void Replay(SetElementLayerEvent ev, CanvasState ctx)
     {
         foreach (var elementId in ev.TargetElementIds)
         {
@@ -119,7 +81,7 @@ public class CanvasLifecycleReplayHandler :
         ctx.MinLayerIndex = Math.Min(ctx.MinLayerIndex, ev.NewLayerIndex);
     }
 
-    public void Replay(NudgeElementLayerEvent ev, ReplayContext ctx)
+    public void Replay(NudgeElementLayerEvent ev, CanvasState ctx)
     {
         var newMinLayerIndex = 0;
         var newMaxLayerIndex = 0;
@@ -147,55 +109,14 @@ public class CanvasLifecycleReplayHandler :
         ctx.MaxLayerIndex = Math.Max(ctx.MaxLayerIndex, newMaxLayerIndex);
     }
 
-    public void Replay(PasteCanvasElementsEvent ev, ReplayContext ctx)
+    public void Replay(PasteCanvasElementsEvent ev, CanvasState ctx)
     {
         List<CanvasElement> pastedElements = [];
         foreach (var element in ev.CopiedElements)
         {
-            switch (element)
+            if (element is IClonable copyable)
             {
-                case DrawStroke pastedDrawStroke:
-                    pastedElements.Add(new DrawStroke
-                    {
-                        Id = pastedDrawStroke.Id,
-                        Paint = pastedDrawStroke.Paint.Clone(),
-                        ToolOptions = pastedDrawStroke.ToolOptions,
-                        ToolType = pastedDrawStroke.ToolType,
-                        Path = pastedDrawStroke.Path.Clone(),
-                        RawPoints = [..pastedDrawStroke.RawPoints],
-                        LayerIndex = pastedDrawStroke.LayerIndex,
-                        CreatorConnectionId = pastedDrawStroke.CreatorConnectionId
-                    });
-                    break;
-                case TextStroke pastedTextStroke:
-                    pastedElements.Add(new TextStroke
-                    {
-                        Id = pastedTextStroke.Id,
-                        Text = pastedTextStroke.Text,
-                        Position = pastedTextStroke.Position,
-                        Paint = pastedTextStroke.Paint.Clone(),
-                        ToolOptions = pastedTextStroke.ToolOptions,
-                        Path = pastedTextStroke.Path.Clone(),
-                        LayerIndex = pastedTextStroke.LayerIndex,
-                        TransformMatrix = pastedTextStroke.TransformMatrix,
-                        IsBold = pastedTextStroke.IsBold,
-                        IsItalic = pastedTextStroke.IsItalic,
-                        CreatorConnectionId = pastedTextStroke.CreatorConnectionId
-                    });
-                    break;
-                case CanvasImage pastedCanvasImage:
-                    pastedElements.Add(new CanvasImage
-                    {
-                        Id = pastedCanvasImage.Id,
-                        ImageBase64String = pastedCanvasImage.ImageBase64String,
-                        Bounds = pastedCanvasImage.Bounds,
-                        Rotation = pastedCanvasImage.Rotation,
-                        FlipX = pastedCanvasImage.FlipX,
-                        FlipY = pastedCanvasImage.FlipY,
-                        LayerIndex = pastedCanvasImage.LayerIndex,
-                        CreatorConnectionId = pastedCanvasImage.CreatorConnectionId
-                    });
-                    break;
+                pastedElements.Add(copyable.Clone(preserveId: true));
             }
         }
 

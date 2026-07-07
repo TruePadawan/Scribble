@@ -65,7 +65,7 @@ public class ImageTool : PointerTool
 
             var imageBytes = memoryStream.ToArray();
             var base64String = Convert.ToBase64String(imageBytes);
-            var bitmap = SKBitmap.Decode(imageBytes);
+            using var bitmap = SKBitmap.Decode(imageBytes);
 
             var actionId = Guid.NewGuid();
             var imageId = Guid.NewGuid();

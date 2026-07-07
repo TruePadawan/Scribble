@@ -1,6 +1,6 @@
 using System;
 using System.Collections.Generic;
-using Scribble.Services.CanvasStateService.Context;
+using Scribble.Services.CanvasStateService.State;
 using Scribble.Shared.Lib;
 using Scribble.Shared.Lib.CanvasElements;
 using Scribble.Shared.Lib.CanvasElements.Strokes;
@@ -21,18 +21,17 @@ public class EraserReplayHandler :
 {
     // Replay handlers
 
-    public void Replay(StartEraseStrokeEvent ev, ReplayContext ctx)
+    public void Replay(StartEraseStrokeEvent ev, CanvasState ctx)
     {
         var eraserPath = new SKPath();
         eraserPath.MoveTo(ev.StartPoint);
         var newEraserStroke = new EraserStroke
         {
+            Id = ev.StrokeId,
             Path = eraserPath,
             CreatorConnectionId = ev.CreatorConnectionId
         };
 
-        // Keep track of the eraser heads for linear interpolation
-        ctx.EraserHeads[ev.StrokeId] = ev.StartPoint;
 
         // Find all targets for erasing
         CheckAndErase(ev.StartPoint, [..ctx.PaintableStrokes.Values, ..ctx.CanvasImages.Values], newEraserStroke,
@@ -41,12 +40,12 @@ public class EraserReplayHandler :
         ctx.EraserStrokes[ev.StrokeId] = newEraserStroke;
     }
 
-    public void Replay(EraseStrokeLineToEvent ev, ReplayContext ctx)
+    public void Replay(EraseStrokeLineToEvent ev, CanvasState ctx)
     {
         if (ctx.EraserStrokes.TryGetValue(ev.StrokeId, out var currentEraserStroke))
         {
             // Use interpolation to find all targets for erasing
-            var start = ctx.EraserHeads[ev.StrokeId];
+            var start = currentEraserStroke.Path.LastPoint;
             var end = ev.Point;
             var distance = Math.Sqrt(Math.Pow(end.X - start.X, 2) + Math.Pow(end.Y - start.Y, 2));
 
@@ -64,11 +63,10 @@ public class EraserReplayHandler :
             }
 
             currentEraserStroke.Path.LineTo(ev.Point);
-            ctx.EraserHeads[ev.StrokeId] = ev.Point;
         }
     }
 
-    public void Replay(TriggerEraseEvent ev, ReplayContext ctx)
+    public void Replay(TriggerEraseEvent ev, CanvasState ctx)
     {
         if (ctx.EraserStrokes.TryGetValue(ev.StrokeId, out var currentEraserStroke))
         {
@@ -88,11 +86,11 @@ public class EraserReplayHandler :
 
     // Fast-path handler
 
-    public bool TryApplyFastPath(EraseStrokeLineToEvent ev, FastPathContext ctx)
+    public bool TryApplyFastPath(EraseStrokeLineToEvent ev, CanvasState ctx)
     {
-        if (ctx.EraserStrokeLookup.TryGetValue(ev.StrokeId, out var currentEraserStroke))
+        if (ctx.EraserStrokes.TryGetValue(ev.StrokeId, out var currentEraserStroke))
         {
-            var start = ctx.EraserHeadLookup[ev.StrokeId];
+            var start = currentEraserStroke.Path.LastPoint;
             var end = ev.Point;
             var distance = Math.Sqrt(Math.Pow(end.X - start.X, 2) + Math.Pow(end.Y - start.Y, 2));
 
@@ -103,13 +101,11 @@ public class EraserReplayHandler :
                 var completionPercentage = s / stepSize;
                 var checkX = start.X + (end.X - start.X) * completionPercentage;
                 var checkY = start.Y + (end.Y - start.Y) * completionPercentage;
-                CheckAndErase(new SKPoint((float)checkX, (float)checkY), ctx.CanvasElements, currentEraserStroke,
+                CheckAndErase(new SKPoint((float)checkX, (float)checkY), ctx.ElementsWithLayers, currentEraserStroke,
                     ownerFilter: currentEraserStroke.CreatorConnectionId);
             }
 
             currentEraserStroke.Path.LineTo(ev.Point);
-            ctx.EraserHeadLookup[ev.StrokeId] = ev.Point;
-            ctx.OnCanvasInvalidated?.Invoke();
             return true;
         }
 

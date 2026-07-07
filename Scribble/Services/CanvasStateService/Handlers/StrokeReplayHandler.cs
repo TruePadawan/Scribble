@@ -1,5 +1,5 @@
 using System;
-using Scribble.Services.CanvasStateService.Context;
+using Scribble.Services.CanvasStateService.State;
 using Scribble.Shared.Lib;
 using Scribble.Shared.Lib.CanvasElements.Strokes;
 using Scribble.Tools.PointerTools.ArrowTool;
@@ -17,12 +17,14 @@ public class StrokeReplayHandler :
     IEventReplayHandler<PencilStrokeLineToEvent>,
     IEventReplayHandler<LineStrokeLineToEvent>,
     IEventReplayHandler<EndStrokeEvent>,
+    IFastPathHandler<StartStrokeEvent>,
+    IFastPathHandler<EndStrokeEvent>,
     IFastPathHandler<PencilStrokeLineToEvent>,
     IFastPathHandler<LineStrokeLineToEvent>
 {
     // Replay handlers
 
-    public void Replay(StartStrokeEvent ev, ReplayContext ctx)
+    public void Replay(StartStrokeEvent ev, CanvasState ctx)
     {
         var newLinePath = new SKPath();
         newLinePath.MoveTo(ev.StartPoint);
@@ -39,19 +41,21 @@ public class StrokeReplayHandler :
         };
     }
 
-    public void Replay(PencilStrokeLineToEvent ev, ReplayContext ctx)
+    public void Replay(PencilStrokeLineToEvent ev, CanvasState ctx)
     {
         if (ctx.PaintableStrokes.TryGetValue(ev.StrokeId, out var pStroke) && pStroke is DrawStroke dsPencil)
         {
             dsPencil.RawPoints.Add(new StrokePoint(ev.Point,
                 ev.TimeStamp.Ticks / TimeSpan.TicksPerMillisecond));
-            var newPath = FreehandPathBuilder.Build(dsPencil.RawPoints);
-            dsPencil.Path.Reset();
-            dsPencil.Path.AddPath(newPath);
+            var stable = dsPencil.StablePath;
+            var newPath = new SKPath();
+            FreehandPathBuilder.AppendPoint(newPath, ref stable, dsPencil.RawPoints);
+            dsPencil.StablePath = stable;
+            dsPencil.Path = newPath;
         }
     }
 
-    public void Replay(LineStrokeLineToEvent ev, ReplayContext ctx)
+    public void Replay(LineStrokeLineToEvent ev, CanvasState ctx)
     {
         if (ctx.PaintableStrokes.TryGetValue(ev.StrokeId, out var paintableStroke) &&
             paintableStroke is DrawStroke ds)
@@ -60,7 +64,7 @@ public class StrokeReplayHandler :
         }
     }
 
-    public void Replay(EndStrokeEvent ev, ReplayContext ctx)
+    public void Replay(EndStrokeEvent ev, CanvasState ctx)
     {
         // EndStrokeEvent has no replay effect on canvas state.
         // It exists only as a terminal event marker for undo/redo tracking.
@@ -68,33 +72,60 @@ public class StrokeReplayHandler :
 
     // Fast-path handlers
 
-    public bool TryApplyFastPath(PencilStrokeLineToEvent ev, FastPathContext ctx)
+    public bool TryApplyFastPath(PencilStrokeLineToEvent ev, CanvasState ctx)
     {
-        if (ctx.StrokeLookup.TryGetValue(ev.StrokeId, out var stroke) && stroke is DrawStroke ds)
+        if (ctx.PaintableStrokes.TryGetValue(ev.StrokeId, out var stroke) && stroke is DrawStroke ds)
         {
             ds.RawPoints.Add(new StrokePoint(ev.Point,
                 ev.TimeStamp.Ticks / TimeSpan.TicksPerMillisecond));
-            var newPath = FreehandPathBuilder.Build(ds.RawPoints);
-            ds.Path.Reset();
-            ds.Path.AddPath(newPath);
+            var stable = ds.StablePath;
+            var newPath = new SKPath();
+            FreehandPathBuilder.AppendPoint(newPath, ref stable, ds.RawPoints);
+            ds.StablePath = stable;
+            ds.Path = newPath;
 
-            ctx.OnCanvasInvalidated?.Invoke();
             return true;
         }
 
         return false;
     }
 
-    public bool TryApplyFastPath(LineStrokeLineToEvent ev, FastPathContext ctx)
+    public bool TryApplyFastPath(LineStrokeLineToEvent ev, CanvasState ctx)
     {
-        if (ctx.StrokeLookup.TryGetValue(ev.StrokeId, out var stroke) && stroke is DrawStroke drawStroke)
+        if (ctx.PaintableStrokes.TryGetValue(ev.StrokeId, out var stroke) && stroke is DrawStroke drawStroke)
         {
             RebuildLinePath(drawStroke, ev.EndPoint);
-            ctx.OnCanvasInvalidated?.Invoke();
             return true;
         }
 
         return false;
+    }
+
+    public bool TryApplyFastPath(StartStrokeEvent ev, CanvasState ctx)
+    {
+        var newLinePath = new SKPath();
+        newLinePath.MoveTo(ev.StartPoint);
+        var ds = new DrawStroke
+        {
+            Id = ev.StrokeId,
+            Paint = ev.StrokePaint.Clone(),
+            Path = newLinePath,
+            RawPoints = [new StrokePoint(ev.StartPoint, ev.TimeStamp.Ticks / TimeSpan.TicksPerMillisecond)],
+            ToolType = ev.ToolType,
+            ToolOptions = ev.ToolOptions,
+            CreatorConnectionId = ev.CreatorConnectionId,
+            LayerIndex = ctx.ElementsWithLayers.Count
+        };
+
+        ctx.PaintableStrokes[ev.StrokeId] = ds;
+        ctx.ElementsWithLayers.Add(ds);
+
+        return true;
+    }
+
+    public bool TryApplyFastPath(EndStrokeEvent ev, CanvasState ctx)
+    {
+        return true;
     }
 
     /// <summary>
@@ -104,38 +135,38 @@ public class StrokeReplayHandler :
     /// <param name="endPoint">The line endpoint</param>
     private static void RebuildLinePath(DrawStroke stroke, SKPoint endPoint)
     {
-        var lineStartPoint = stroke.Path.Points[0];
-        stroke.Path.Reset();
+        var lineStartPoint = stroke.RawPoints[0].Point;
+        var newPath = new SKPath();
 
         if (stroke.ToolType == ToolType.Rectangle)
         {
-            stroke.Path.MoveTo(lineStartPoint);
+            newPath.MoveTo(lineStartPoint);
             var left = Math.Min(lineStartPoint.X, endPoint.X);
             var top = Math.Min(lineStartPoint.Y, endPoint.Y);
             var rect = SKRect.Create(new SKPoint(left, top),
                 Utilities.GetSize(lineStartPoint, endPoint));
             if (stroke.Paint.StrokeJoin == SKStrokeJoin.Miter)
             {
-                stroke.Path.AddRect(rect);
+                newPath.AddRect(rect);
             }
             else
             {
-                stroke.Path.AddRoundRect(rect, 24f, 24f);
+                newPath.AddRoundRect(rect, 24f, 24f);
             }
         }
         else if (stroke.ToolType == ToolType.Ellipse)
         {
-            stroke.Path.MoveTo(lineStartPoint);
+            newPath.MoveTo(lineStartPoint);
             var left = Math.Min(lineStartPoint.X, endPoint.X);
             var top = Math.Min(lineStartPoint.Y, endPoint.Y);
             var rect = SKRect.Create(new SKPoint(left, top),
                 Utilities.GetSize(lineStartPoint, endPoint));
-            stroke.Path.AddOval(rect);
+            newPath.AddOval(rect);
         }
         else
         {
-            stroke.Path.MoveTo(lineStartPoint);
-            stroke.Path.LineTo(endPoint);
+            newPath.MoveTo(lineStartPoint);
+            newPath.LineTo(endPoint);
 
             if (stroke.ToolType == ToolType.Arrow)
             {
@@ -143,12 +174,14 @@ public class StrokeReplayHandler :
                     ArrowTool.GetArrowHeadPoints(lineStartPoint, endPoint,
                         stroke.Paint.StrokeWidth);
 
-                stroke.Path.MoveTo(endPoint);
-                stroke.Path.LineTo(p1);
+                newPath.MoveTo(endPoint);
+                newPath.LineTo(p1);
 
-                stroke.Path.MoveTo(endPoint);
-                stroke.Path.LineTo(p2);
+                newPath.MoveTo(endPoint);
+                newPath.LineTo(p2);
             }
         }
+
+        stroke.Path = newPath;
     }
 }

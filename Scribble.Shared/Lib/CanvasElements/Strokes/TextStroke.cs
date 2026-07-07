@@ -9,7 +9,7 @@ namespace Scribble.Shared.Lib.CanvasElements.Strokes;
 /// Represents a text element on the canvas. Stores the raw text and its original
 /// baseline position, in addition to the rendered SKPath inherited from Stroke.
 /// </summary>
-public class TextStroke : PaintableStroke, ICopyable
+public class TextStroke : PaintableStroke, IClonable
 {
     /// <summary>
     /// The text content of this stroke.
@@ -53,21 +53,23 @@ public class TextStroke : PaintableStroke, ICopyable
         }
     }
 
-    public CanvasElement Copy()
+    public override CanvasElement Clone(bool preserveId = false)
     {
-        return new TextStroke
+        var clone = new TextStroke
         {
+            Id = preserveId ? Id : Guid.NewGuid(),
             Text = Text,
             Position = Position,
-            Path = Path.Clone(),
-            ToolOptions = ToolOptions,
+            Path = new SKPath(Path),
+            ToolOptions = [..ToolOptions],
             Paint = Paint.Clone(),
-            CreatorConnectionId = CreatorConnectionId,
-            LayerIndex = LayerIndex,
             TransformMatrix = TransformMatrix,
             IsBold = IsBold,
             IsItalic = IsItalic,
+            LayerIndex = LayerIndex,
+            CreatorConnectionId = CreatorConnectionId
         };
+        return clone;
     }
 }
 

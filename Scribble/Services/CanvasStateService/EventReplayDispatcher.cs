@@ -3,8 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
-using Scribble.Services.CanvasStateService.Context;
 using Scribble.Services.CanvasStateService.Handlers;
+using Scribble.Services.CanvasStateService.State;
 using Scribble.Shared.Lib;
 
 namespace Scribble.Services.CanvasStateService;
@@ -15,8 +15,8 @@ namespace Scribble.Services.CanvasStateService;
 /// </summary>
 public class EventReplayDispatcher
 {
-    private readonly Dictionary<Type, Action<Event, ReplayContext>> _replayHandlers = new();
-    private readonly Dictionary<Type, Func<Event, FastPathContext, bool>> _fastPathHandlers = new();
+    private readonly Dictionary<Type, Action<Event, CanvasState>> _replayHandlers = new();
+    private readonly Dictionary<Type, Func<Event, CanvasState, bool>> _fastPathHandlers = new();
 
     public EventReplayDispatcher(params object[] handlerInstances)
     {
@@ -30,7 +30,7 @@ public class EventReplayDispatcher
     /// Dispatch a replay event to its registered handler.
     /// Silently skips events with no registered handler (e.g. UndoEvent, RedoEvent).
     /// </summary>
-    public void Dispatch(Event @event, ReplayContext ctx)
+    public void Dispatch(Event @event, CanvasState ctx)
     {
         if (_replayHandlers.TryGetValue(@event.GetType(), out var handler))
         {
@@ -42,7 +42,7 @@ public class EventReplayDispatcher
     /// Attempt to apply a fast-path optimization for the event.
     /// Returns true if the fast-path was applied (skipping full replay).
     /// </summary>
-    public bool TryFastPath(Event @event, FastPathContext ctx)
+    public bool TryFastPath(Event @event, CanvasState ctx)
     {
         if (_fastPathHandlers.TryGetValue(@event.GetType(), out var handler))
         {
@@ -107,28 +107,28 @@ public class EventReplayDispatcher
     /// Builds a compiled delegate that casts the Event to the concrete type
     /// and calls the handler's Replay method, avoiding reflection on every dispatch.
     /// </summary>
-    private static Action<Event, ReplayContext> BuildReplayDelegate(
+    private static Action<Event, CanvasState> BuildReplayDelegate(
         object instance, MethodInfo method, Type eventType)
     {
         var eventParam = Expression.Parameter(typeof(Event), "e");
-        var ctxParam = Expression.Parameter(typeof(ReplayContext), "ctx");
+        var ctxParam = Expression.Parameter(typeof(CanvasState), "ctx");
         var castEvent = Expression.Convert(eventParam, eventType);
         var instanceConst = Expression.Constant(instance);
         var call = Expression.Call(instanceConst, method, castEvent, ctxParam);
-        return Expression.Lambda<Action<Event, ReplayContext>>(call, eventParam, ctxParam).Compile();
+        return Expression.Lambda<Action<Event, CanvasState>>(call, eventParam, ctxParam).Compile();
     }
 
     /// <summary>
     /// Builds a compiled delegate for fast-path handlers.
     /// </summary>
-    private static Func<Event, FastPathContext, bool> BuildFastPathDelegate(
+    private static Func<Event, CanvasState, bool> BuildFastPathDelegate(
         object instance, MethodInfo method, Type eventType)
     {
         var eventParam = Expression.Parameter(typeof(Event), "e");
-        var ctxParam = Expression.Parameter(typeof(FastPathContext), "ctx");
+        var ctxParam = Expression.Parameter(typeof(CanvasState), "ctx");
         var castEvent = Expression.Convert(eventParam, eventType);
         var instanceConst = Expression.Constant(instance);
         var call = Expression.Call(instanceConst, method, castEvent, ctxParam);
-        return Expression.Lambda<Func<Event, FastPathContext, bool>>(call, eventParam, ctxParam).Compile();
+        return Expression.Lambda<Func<Event, CanvasState, bool>>(call, eventParam, ctxParam).Compile();
     }
 }

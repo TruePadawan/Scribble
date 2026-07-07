@@ -3,7 +3,7 @@ using SkiaSharp;
 
 namespace Scribble.Shared.Lib.CanvasElements;
 
-public class CanvasImage : CanvasElement, ICopyable
+public class CanvasImage : CanvasElement, IClonable
 {
     public required string ImageBase64String { get; init; }
 
@@ -52,23 +52,19 @@ public class CanvasImage : CanvasElement, ICopyable
         return _cachedBitmap;
     }
 
-    public void DisposeBitmap()
+    public CanvasElement Clone(bool preserveId = false)
     {
-        _cachedBitmap?.Dispose();
-        _cachedBitmap = null;
-    }
-
-    public CanvasElement Copy()
-    {
-        return new CanvasImage
+        var clone = new CanvasImage
         {
+            Id = preserveId ? Id : Guid.NewGuid(),
             ImageBase64String = ImageBase64String,
             Bounds = _bounds,
             Rotation = Rotation,
             FlipX = FlipX,
             FlipY = FlipY,
-            CreatorConnectionId = CreatorConnectionId,
-            LayerIndex = LayerIndex
+            LayerIndex = LayerIndex,
+            CreatorConnectionId = CreatorConnectionId
         };
+        return clone;
     }
 }
