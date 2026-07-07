@@ -198,6 +198,7 @@ public class CanvasStateService : ICanvasStateService
             }
 
             CanvasInvalidated?.Invoke();
+            SelectionInvalidated?.Invoke();
             return;
         }
 
