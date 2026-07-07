@@ -140,7 +140,8 @@ public partial class MainViewModel : ViewModelBase
     [RelayCommand]
     private void Paste(SKPoint pointerPos)
     {
-        CanvasStateService.ApplyEvent(new PasteCanvasElementsEvent(Guid.NewGuid(), pointerPos, _copiedCanvasElements, Guid.NewGuid()));
+        CanvasStateService.ApplyEvent(new PasteCanvasElementsEvent(Guid.NewGuid(), pointerPos, _copiedCanvasElements,
+            Guid.NewGuid()));
 
         // Recreate the copied elements
         _copiedCanvasElements = _copiedCanvasElements

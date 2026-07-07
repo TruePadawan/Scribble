@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using Scribble.Services.CanvasStateService.State;
 using Scribble.Shared.Lib;
 using Scribble.Shared.Lib.CanvasElements;
@@ -32,6 +31,7 @@ public class SelectionReplayHandler :
         {
             bound.Dispose();
         }
+
         ctx.SelectionBounds.Clear();
 
         var selectionBound = new SelectionBound
@@ -78,6 +78,7 @@ public class SelectionReplayHandler :
         {
             bound.Dispose();
         }
+
         ctx.SelectionBounds.Clear();
     }
 

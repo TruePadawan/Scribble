@@ -1,4 +1,3 @@
-using System;
 using Scribble.Services.CanvasStateService.State;
 using Scribble.Shared.Lib;
 using Scribble.Shared.Lib.CanvasElements.Strokes;
@@ -23,7 +22,7 @@ public class TextReplayHandler :
         var textPath = new SKPath();
         textPath.MoveTo(ev.Position);
         using var builtPath = TextPathBuilder.Build(ev.Text, ev.Position.X, ev.Position.Y, ev.Paint.TextSize,
-                StrokePaint.DefaultTypeFace);
+            StrokePaint.DefaultTypeFace);
         textPath.AddPath(builtPath);
         ctx.PaintableStrokes[ev.StrokeId] = new TextStroke
         {
@@ -49,7 +48,7 @@ public class TextReplayHandler :
             using var newTextPath = new SKPath();
             newTextPath.MoveTo(textStroke.Position);
             using var builtPath = TextPathBuilder.Build(ev.NewText, textStroke.Position.X, textStroke.Position.Y,
-                    textStroke.Paint.TextSize, updateTextTypeface);
+                textStroke.Paint.TextSize, updateTextTypeface);
             newTextPath.AddPath(builtPath);
 
             newTextPath.Transform(textStroke.TransformMatrix);
@@ -70,7 +69,7 @@ public class TextReplayHandler :
                 using var noTransformTextPath = new SKPath();
                 noTransformTextPath.MoveTo(ts.Position);
                 using var builtPath = TextPathBuilder.Build(ts.Text, ts.Position.X, ts.Position.Y, ev.FontSize,
-                        fontSizeTypeface);
+                    fontSizeTypeface);
                 noTransformTextPath.AddPath(builtPath);
                 noTransformTextPath.Transform(ts.TransformMatrix);
                 ts.Path.Reset();
@@ -93,7 +92,7 @@ public class TextReplayHandler :
                 using var newTextPath = new SKPath();
                 newTextPath.MoveTo(ts.Position);
                 using var builtPath = TextPathBuilder.Build(ts.Text, ts.Position.X, ts.Position.Y,
-                        ts.Paint.TextSize, casingTypeface);
+                    ts.Paint.TextSize, casingTypeface);
                 newTextPath.AddPath(builtPath);
 
                 newTextPath.Transform(ts.TransformMatrix);
@@ -135,7 +134,7 @@ public class TextReplayHandler :
                 using var newTextPath = new SKPath();
                 newTextPath.MoveTo(ts.Position);
                 using var builtPath = TextPathBuilder.Build(ts.Text, ts.Position.X, ts.Position.Y,
-                        ts.Paint.TextSize, newTypeFace);
+                    ts.Paint.TextSize, newTypeFace);
                 newTextPath.AddPath(builtPath);
 
                 newTextPath.Transform(ts.TransformMatrix);

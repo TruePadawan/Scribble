@@ -18,7 +18,7 @@ public class CanvasState : IDisposable
     public List<Guid> SelectedElementIds { get; } = [];
     public Guid? ActiveSelectionBoundId { get; set; }
     public List<Guid> StaleActionIds { get; } = [];
-    
+
     public int MaxLayerIndex { get; set; }
     public int MinLayerIndex { get; set; }
 
@@ -58,8 +58,6 @@ public class CanvasState : IDisposable
             clone.EraserStrokes[key] = value.Clone(preserveId: true);
         }
 
-
-
         clone.NormalizeLayers();
         return clone;
     }
@@ -97,26 +95,30 @@ public class CanvasState : IDisposable
         {
             stroke.Dispose();
         }
+
         PaintableStrokes.Clear();
 
         foreach (var image in CanvasImages.Values)
         {
             image.Dispose();
         }
+
         CanvasImages.Clear();
 
         foreach (var bound in SelectionBounds.Values)
         {
             bound.Dispose();
         }
+
         SelectionBounds.Clear();
 
         foreach (var stroke in EraserStrokes.Values)
         {
             stroke.Dispose();
         }
+
         EraserStrokes.Clear();
-        
+
         ElementsWithLayers.Clear();
         SelectedElementIds.Clear();
     }

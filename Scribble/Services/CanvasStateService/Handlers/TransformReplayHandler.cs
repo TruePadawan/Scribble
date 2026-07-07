@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using Scribble.Services.CanvasStateService.State;
 using Scribble.Shared.Lib;

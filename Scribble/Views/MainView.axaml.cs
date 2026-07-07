@@ -140,6 +140,7 @@ public partial class MainView : UserControl
                     );
                     pastePos = CameraState.ScreenToWorld(viewportCenter);
                 }
+
                 viewModel.PasteCommand.Execute(pastePos);
             }, CanExecuteKeyBinding)
         });

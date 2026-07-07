@@ -77,6 +77,7 @@ public class EraserReplayHandler :
                 {
                     stroke.Dispose();
                 }
+
                 if (ctx.CanvasImages.Remove(targetId, out var image))
                 {
                     image.Dispose();

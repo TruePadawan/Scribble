@@ -56,11 +56,11 @@ public class EventLog
         for (var i = startIndex; i < _events.Count; i++)
         {
             var ev = _events[i];
-            
+
             // Skip undo/redo events themselves since their side effects 
             // are already evaluated in the hidden/stale logic
             if (ev is UndoEvent or RedoEvent) continue;
-            
+
             if (!_hiddenActionIds.Contains(ev.ActionId) && !_staleActionIds.Contains(ev.ActionId))
             {
                 activeEvents.Add(ev);
