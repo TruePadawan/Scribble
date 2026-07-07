@@ -51,7 +51,7 @@ public class DocumentService : IDocumentService
             {
                 if (element is PaintableStroke stroke)
                 {
-                    jsonCanvasStrokes.Add(JsonSerializer.SerializeToNode(stroke, serializerOptions));
+                    jsonCanvasStrokes.Add(JsonSerializer.SerializeToNode<Stroke>(stroke, serializerOptions));
                 }
                 else if (element is CanvasImage canvasImage)
                 {
@@ -140,8 +140,9 @@ public class DocumentService : IDocumentService
                 var fileId = deserializedImageDto.FileId.ToString();
                 var base64String = jsonEncodedFiles[fileId]?.ToString() ??
                                    throw new Exception("Invalid canvas file, could not find encoded image");
-                var canvasImage = new CanvasImage(deserializedImageDto.Id)
+                var canvasImage = new CanvasImage
                 {
+                    Id = deserializedImageDto.Id,
                     LayerIndex = deserializedImageDto.LayerIndex,
                     Bounds = SKRect.Create(
                         deserializedImageDto.X,

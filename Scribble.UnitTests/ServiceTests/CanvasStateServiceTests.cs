@@ -189,14 +189,14 @@ public class CanvasStateServiceTests
 
         var elements = new List<CanvasElement>
         {
-            new DrawStroke(stroke1Id)
+            new DrawStroke
             {
-                ToolType = ToolType.Pencil, LayerIndex = 0,
+                Id = stroke1Id, ToolType = ToolType.Pencil, LayerIndex = 0,
                 Path = path.Clone(), Paint = DefaultPaint(), ToolOptions = []
             },
-            new DrawStroke(stroke2Id)
+            new DrawStroke
             {
-                ToolType = ToolType.Pencil, LayerIndex = 0,
+                Id = stroke2Id, ToolType = ToolType.Pencil, LayerIndex = 0,
                 Path = path.Clone(), Paint = DefaultPaint(), ToolOptions = []
             }
         };

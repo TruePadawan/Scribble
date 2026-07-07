@@ -29,8 +29,9 @@ public class DocumentServiceTests
         path.MoveTo(0f, 0f);
         path.LineTo(100f, 50f);
 
-        return new DrawStroke(Guid.NewGuid())
+        return new DrawStroke
         {
+            Id = Guid.NewGuid(),
             ToolType = ToolType.Pencil,
             LayerIndex = 0,
             Path = path,

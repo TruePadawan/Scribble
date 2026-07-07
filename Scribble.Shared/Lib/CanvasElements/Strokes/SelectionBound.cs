@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using SkiaSharp;
 
 namespace Scribble.Shared.Lib.CanvasElements.Strokes;
@@ -5,7 +6,7 @@ namespace Scribble.Shared.Lib.CanvasElements.Strokes;
 /// <summary>
 /// Represents a transient selection bound created by the Select Tool
 /// </summary>
-public class SelectionBound(Guid id) : Stroke(id)
+public class SelectionBound : Stroke
 {
     /// <summary>
     /// The collection of canvas element IDs that are selected
@@ -14,8 +15,9 @@ public class SelectionBound(Guid id) : Stroke(id)
 
     public SelectionBound Clone(bool preserveId = false)
     {
-        var clone = new SelectionBound(preserveId ? Id : Guid.NewGuid())
+        var clone = new SelectionBound
         {
+            Id = preserveId ? Id : Guid.NewGuid(),
             Path = new SKPath(Path),
             Targets = [..Targets],
             LayerIndex = LayerIndex,

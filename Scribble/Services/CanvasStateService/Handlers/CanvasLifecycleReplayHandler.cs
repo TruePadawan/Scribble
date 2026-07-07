@@ -51,8 +51,9 @@ public class CanvasLifecycleReplayHandler :
     public void Replay(AddImageEvent ev, ReplayContext ctx)
     {
         var imageBounds = SKRect.Create(ev.Position, ev.Size);
-        ctx.CanvasImages[ev.ImageId] = new CanvasImage(ev.ImageId)
+        ctx.CanvasImages[ev.ImageId] = new CanvasImage
         {
+            Id = ev.ImageId,
             ImageBase64String = ev.ImageBase64String,
             Bounds = imageBounds,
             CreatorConnectionId = ev.CreatorConnectionId,
@@ -143,8 +144,9 @@ public class CanvasLifecycleReplayHandler :
         var selectionRect = Utilities.GetElementsBounds(pastedElements);
         pasteSelectionPath.AddRect(selectionRect);
 
-        var pasteSelectionBound = new SelectionBound(ev.SelectionBoundId)
+        var pasteSelectionBound = new SelectionBound
         {
+            Id = ev.SelectionBoundId,
             Path = pasteSelectionPath,
             CreatorConnectionId = ev.CreatorConnectionId,
             Targets = [..pastedElements.Select(e => e.Id)]

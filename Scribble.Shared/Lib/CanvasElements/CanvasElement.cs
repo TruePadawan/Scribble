@@ -8,14 +8,7 @@ namespace Scribble.Shared.Lib.CanvasElements;
 [JsonDerivedType(typeof(TextStroke), typeDiscriminator: "TextStroke")]
 public abstract class CanvasElement : IDisposable
 {
-    public Guid Id { get; } = Guid.NewGuid();
-
-    // For JSON serialization/deserialization compatibility
-    protected CanvasElement()
-    {
-    }
-
-    protected CanvasElement(Guid id) => Id = id;
+    public Guid Id { get; init; } = Guid.NewGuid();
 
     /// <summary>
     /// Logical z-order layer index for this element. 0 is the base layer.

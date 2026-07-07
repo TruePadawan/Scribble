@@ -6,10 +6,6 @@ namespace Scribble.Shared.Lib.CanvasElements.Strokes;
 /// </summary>
 public abstract class PaintableStroke : Stroke, IClonable
 {
-    protected PaintableStroke(Guid id) : base(id)
-    {
-    }
-
     public bool IsToBeErased = false;
     public required HashSet<ToolOption> ToolOptions { get; init; } = [];
     public required StrokePaint Paint { get; init; } = new();

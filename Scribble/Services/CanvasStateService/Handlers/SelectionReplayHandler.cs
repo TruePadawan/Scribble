@@ -34,8 +34,9 @@ public class SelectionReplayHandler :
         }
         ctx.SelectionBounds.Clear();
 
-        var selectionBound = new SelectionBound(ev.BoundId)
+        var selectionBound = new SelectionBound
         {
+            Id = ev.BoundId,
             Path = selectionPath,
             CreatorConnectionId = ev.CreatorConnectionId
         };

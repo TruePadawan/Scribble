@@ -5,14 +5,6 @@ namespace Scribble.Shared.Lib.CanvasElements;
 
 public class CanvasImage : CanvasElement, IClonable
 {
-    public CanvasImage()
-    {
-    }
-
-    public CanvasImage(Guid id) : base(id)
-    {
-    }
-
     public required string ImageBase64String { get; init; }
 
     [JsonIgnore] private SKRect _bounds;
@@ -74,8 +66,9 @@ public class CanvasImage : CanvasElement, IClonable
 
     public CanvasElement Clone(bool preserveId = false)
     {
-        var clone = new CanvasImage(preserveId ? Id : Guid.NewGuid())
+        var clone = new CanvasImage
         {
+            Id = preserveId ? Id : Guid.NewGuid(),
             ImageBase64String = ImageBase64String,
             Bounds = _bounds,
             Rotation = Rotation,

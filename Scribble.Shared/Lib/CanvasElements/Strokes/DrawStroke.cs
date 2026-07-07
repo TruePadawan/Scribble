@@ -7,7 +7,7 @@ namespace Scribble.Shared.Lib.CanvasElements.Strokes;
 /// <summary>
 /// Represents a non-text stroke on the canvas (lines, arrows, rectangles, ellipses)
 /// </summary>
-public class DrawStroke(Guid id) : PaintableStroke(id), IClonable
+public class DrawStroke : PaintableStroke, IClonable
 {
     /// <summary>
     /// The Tool that produced the stroke
@@ -31,8 +31,9 @@ public class DrawStroke(Guid id) : PaintableStroke(id), IClonable
 
     public override CanvasElement Clone(bool preserveId = false)
     {
-        var clone = new DrawStroke(preserveId ? Id : Guid.NewGuid())
+        var clone = new DrawStroke
         {
+            Id = preserveId ? Id : Guid.NewGuid(),
             ToolType = ToolType,
             Path = new SKPath(Path),
             ToolOptions = [..ToolOptions],

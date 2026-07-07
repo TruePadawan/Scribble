@@ -28,8 +28,9 @@ public class StrokeReplayHandler :
     {
         var newLinePath = new SKPath();
         newLinePath.MoveTo(ev.StartPoint);
-        ctx.PaintableStrokes[ev.StrokeId] = new DrawStroke(ev.StrokeId)
+        ctx.PaintableStrokes[ev.StrokeId] = new DrawStroke
         {
+            Id = ev.StrokeId,
             Paint = ev.StrokePaint.Clone(),
             Path = newLinePath,
             RawPoints = [new StrokePoint(ev.StartPoint, ev.TimeStamp.Ticks / TimeSpan.TicksPerMillisecond)],
@@ -102,8 +103,9 @@ public class StrokeReplayHandler :
     {
         var newLinePath = new SKPath();
         newLinePath.MoveTo(ev.StartPoint);
-        var ds = new DrawStroke(ev.StrokeId)
+        var ds = new DrawStroke
         {
+            Id = ev.StrokeId,
             Paint = ev.StrokePaint.Clone(),
             Path = newLinePath,
             RawPoints = [new StrokePoint(ev.StartPoint, ev.TimeStamp.Ticks / TimeSpan.TicksPerMillisecond)],
