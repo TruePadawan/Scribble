@@ -1,4 +1,4 @@
-using Scribble.Services.CanvasStateService.Context;
+using Scribble.Services.CanvasStateService.State;
 using Scribble.Shared.Lib;
 
 namespace Scribble.Services.CanvasStateService.Handlers;
@@ -10,5 +10,5 @@ namespace Scribble.Services.CanvasStateService.Handlers;
 /// </summary>
 public interface IFastPathHandler<in TEvent> where TEvent : Event
 {
-    bool TryApplyFastPath(TEvent @event, FastPathContext ctx);
+    bool TryApplyFastPath(TEvent @event, CanvasState state);
 }

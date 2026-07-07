@@ -1,6 +1,6 @@
 using System;
 using System.Collections.Generic;
-using Scribble.Services.CanvasStateService.Context;
+using Scribble.Services.CanvasStateService.State;
 using Scribble.Shared.Lib;
 using Scribble.Shared.Lib.CanvasElements;
 using Scribble.Shared.Lib.CanvasElements.Strokes;
@@ -22,7 +22,7 @@ public class TransformReplayHandler :
 {
     // Replay handlers
 
-    public void Replay(MoveCanvasElementsEvent ev, ReplayContext ctx)
+    public void Replay(MoveCanvasElementsEvent ev, CanvasState ctx)
     {
         if (ctx.SelectionBounds.TryGetValue(ev.BoundId, out var bound))
         {
@@ -43,7 +43,7 @@ public class TransformReplayHandler :
         }
     }
 
-    public void Replay(RotateCanvasElementsEvent ev, ReplayContext ctx)
+    public void Replay(RotateCanvasElementsEvent ev, CanvasState ctx)
     {
         if (ctx.SelectionBounds.TryGetValue(ev.BoundId, out var bound))
         {
@@ -74,7 +74,7 @@ public class TransformReplayHandler :
         }
     }
 
-    public void Replay(ScaleCanvasElementsEvent ev, ReplayContext ctx)
+    public void Replay(ScaleCanvasElementsEvent ev, CanvasState ctx)
     {
         if (ctx.SelectionBounds.TryGetValue(ev.BoundId, out var bound))
         {
@@ -121,13 +121,13 @@ public class TransformReplayHandler :
 
     // Fast-path handlers
 
-    public bool TryApplyFastPath(MoveCanvasElementsEvent ev, FastPathContext ctx)
+    public bool TryApplyFastPath(MoveCanvasElementsEvent ev, CanvasState ctx)
     {
-        if (ctx.SelectionBoundLookup.TryGetValue(ev.BoundId, out var bound))
+        if (ctx.SelectionBounds.TryGetValue(ev.BoundId, out var bound))
         {
             foreach (var boundTargetId in bound.Targets)
             {
-                if (ctx.StrokeLookup.TryGetValue(boundTargetId, out var stroke))
+                if (ctx.PaintableStrokes.TryGetValue(boundTargetId, out var stroke))
                 {
                     var matrix = SKMatrix.CreateTranslation(ev.Delta.X, ev.Delta.Y);
                     stroke.Path.Transform(matrix);
@@ -136,7 +136,7 @@ public class TransformReplayHandler :
                         textStroke.TransformMatrix = textStroke.TransformMatrix.PostConcat(matrix);
                     }
                 }
-                else if (ctx.CanvasImageLookup.TryGetValue(boundTargetId, out var image))
+                else if (ctx.CanvasImages.TryGetValue(boundTargetId, out var image))
                 {
                     var bounds = image.Bounds;
                     bounds.Offset(ev.Delta);
@@ -144,21 +144,19 @@ public class TransformReplayHandler :
                 }
             }
 
-            ctx.OnCanvasInvalidated?.Invoke();
-            ctx.OnSelectionInvalidated?.Invoke();
             return true;
         }
 
         return false;
     }
 
-    public bool TryApplyFastPath(RotateCanvasElementsEvent ev, FastPathContext ctx)
+    public bool TryApplyFastPath(RotateCanvasElementsEvent ev, CanvasState ctx)
     {
-        if (ctx.SelectionBoundLookup.TryGetValue(ev.BoundId, out var bound))
+        if (ctx.SelectionBounds.TryGetValue(ev.BoundId, out var bound))
         {
             foreach (var boundTargetId in bound.Targets)
             {
-                if (ctx.StrokeLookup.TryGetValue(boundTargetId, out var stroke))
+                if (ctx.PaintableStrokes.TryGetValue(boundTargetId, out var stroke))
                 {
                     var matrix = SKMatrix.CreateRotation(ev.DegreesRad, ev.Center.X,
                         ev.Center.Y);
@@ -168,7 +166,7 @@ public class TransformReplayHandler :
                         textStroke.TransformMatrix = textStroke.TransformMatrix.PostConcat(matrix);
                     }
                 }
-                else if (ctx.CanvasImageLookup.TryGetValue(boundTargetId, out var image))
+                else if (ctx.CanvasImages.TryGetValue(boundTargetId, out var image))
                 {
                     image.Rotation += ev.DegreesRad;
                     var imgCenter = new SKPoint(image.Bounds.MidX, image.Bounds.MidY);
@@ -181,21 +179,19 @@ public class TransformReplayHandler :
                 }
             }
 
-            ctx.OnCanvasInvalidated?.Invoke();
-            ctx.OnSelectionInvalidated?.Invoke();
             return true;
         }
 
         return false;
     }
 
-    public bool TryApplyFastPath(ScaleCanvasElementsEvent ev, FastPathContext ctx)
+    public bool TryApplyFastPath(ScaleCanvasElementsEvent ev, CanvasState ctx)
     {
-        if (ctx.SelectionBoundLookup.TryGetValue(ev.BoundId, out var bound))
+        if (ctx.SelectionBounds.TryGetValue(ev.BoundId, out var bound))
         {
             foreach (var boundTargetId in bound.Targets)
             {
-                if (ctx.StrokeLookup.TryGetValue(boundTargetId, out var stroke))
+                if (ctx.PaintableStrokes.TryGetValue(boundTargetId, out var stroke))
                 {
                     var matrix = SKMatrix.CreateScale(ev.Scale.X, ev.Scale.Y, ev.Center.X,
                         ev.Center.Y);
@@ -205,7 +201,7 @@ public class TransformReplayHandler :
                         textStroke.TransformMatrix = textStroke.TransformMatrix.PostConcat(matrix);
                     }
                 }
-                else if (ctx.CanvasImageLookup.TryGetValue(boundTargetId, out var image))
+                else if (ctx.CanvasImages.TryGetValue(boundTargetId, out var image))
                 {
                     var scaleMatrix = SKMatrix.CreateScale(ev.Scale.X, ev.Scale.Y,
                         ev.Center.X, ev.Center.Y);
@@ -229,8 +225,6 @@ public class TransformReplayHandler :
                 }
             }
 
-            ctx.OnCanvasInvalidated?.Invoke();
-            ctx.OnSelectionInvalidated?.Invoke();
             return true;
         }
 

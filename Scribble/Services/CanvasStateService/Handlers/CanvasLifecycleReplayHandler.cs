@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Scribble.Services.CanvasStateService.Context;
+using Scribble.Services.CanvasStateService.State;
 using Scribble.Shared.Lib;
 using Scribble.Shared.Lib.CanvasElements;
 using Scribble.Shared.Lib.CanvasElements.Strokes;
@@ -21,12 +21,12 @@ public class CanvasLifecycleReplayHandler :
     IEventReplayHandler<NudgeElementLayerEvent>,
     IEventReplayHandler<PasteCanvasElementsEvent>
 {
-    public void Replay(LoadCanvasEvent ev, ReplayContext ctx)
+    public void Replay(LoadCanvasEvent ev, CanvasState ctx)
     {
         ctx.PaintableStrokes.Clear();
         ctx.CanvasImages.Clear();
         ctx.EraserStrokes.Clear();
-        ctx.EraserHeads.Clear();
+
         ctx.SelectionBounds.Clear();
 
         foreach (var element in ev.CanvasElements)
@@ -48,7 +48,7 @@ public class CanvasLifecycleReplayHandler :
         }
     }
 
-    public void Replay(AddImageEvent ev, ReplayContext ctx)
+    public void Replay(AddImageEvent ev, CanvasState ctx)
     {
         var imageBounds = SKRect.Create(ev.Position, ev.Size);
         ctx.CanvasImages[ev.ImageId] = new CanvasImage
@@ -61,7 +61,7 @@ public class CanvasLifecycleReplayHandler :
         };
     }
 
-    public void Replay(SetElementLayerEvent ev, ReplayContext ctx)
+    public void Replay(SetElementLayerEvent ev, CanvasState ctx)
     {
         foreach (var elementId in ev.TargetElementIds)
         {
@@ -81,7 +81,7 @@ public class CanvasLifecycleReplayHandler :
         ctx.MinLayerIndex = Math.Min(ctx.MinLayerIndex, ev.NewLayerIndex);
     }
 
-    public void Replay(NudgeElementLayerEvent ev, ReplayContext ctx)
+    public void Replay(NudgeElementLayerEvent ev, CanvasState ctx)
     {
         var newMinLayerIndex = 0;
         var newMaxLayerIndex = 0;
@@ -109,7 +109,7 @@ public class CanvasLifecycleReplayHandler :
         ctx.MaxLayerIndex = Math.Max(ctx.MaxLayerIndex, newMaxLayerIndex);
     }
 
-    public void Replay(PasteCanvasElementsEvent ev, ReplayContext ctx)
+    public void Replay(PasteCanvasElementsEvent ev, CanvasState ctx)
     {
         List<CanvasElement> pastedElements = [];
         foreach (var element in ev.CopiedElements)

@@ -1,5 +1,5 @@
 using System;
-using Scribble.Services.CanvasStateService.Context;
+using Scribble.Services.CanvasStateService.State;
 using Scribble.Shared.Lib;
 using Scribble.Shared.Lib.CanvasElements.Strokes;
 using Scribble.Utils;
@@ -18,7 +18,7 @@ public class TextReplayHandler :
     IEventReplayHandler<UpdateFontCasingEvent>,
     IEventReplayHandler<UpdateFontStyleEvent>
 {
-    public void Replay(AddTextEvent ev, ReplayContext ctx)
+    public void Replay(AddTextEvent ev, CanvasState ctx)
     {
         var textPath = new SKPath();
         textPath.MoveTo(ev.Position);
@@ -38,7 +38,7 @@ public class TextReplayHandler :
         };
     }
 
-    public void Replay(UpdateTextEvent ev, ReplayContext ctx)
+    public void Replay(UpdateTextEvent ev, CanvasState ctx)
     {
         if (ctx.PaintableStrokes.TryGetValue(ev.TextStrokeId, out var existingStroke) &&
             existingStroke is TextStroke textStroke)
@@ -59,7 +59,7 @@ public class TextReplayHandler :
         }
     }
 
-    public void Replay(UpdateFontSizeEvent ev, ReplayContext ctx)
+    public void Replay(UpdateFontSizeEvent ev, CanvasState ctx)
     {
         foreach (var strokeId in ev.StrokeIds)
         {
@@ -79,7 +79,7 @@ public class TextReplayHandler :
         }
     }
 
-    public void Replay(UpdateFontCasingEvent ev, ReplayContext ctx)
+    public void Replay(UpdateFontCasingEvent ev, CanvasState ctx)
     {
         foreach (var strokeId in ev.TextStrokeIds)
         {
@@ -104,7 +104,7 @@ public class TextReplayHandler :
         }
     }
 
-    public void Replay(UpdateFontStyleEvent ev, ReplayContext ctx)
+    public void Replay(UpdateFontStyleEvent ev, CanvasState ctx)
     {
         foreach (var strokeId in ev.TextStrokeIds)
         {

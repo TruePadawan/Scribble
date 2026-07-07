@@ -2,12 +2,11 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Avalonia.Threading;
-using Scribble.Services.CanvasStateService.Context;
 using Scribble.Services.CanvasStateService.Handlers;
+using Scribble.Services.CanvasStateService.State;
 using Scribble.Services.MultiUserDrawing;
 using Scribble.Shared.Lib;
 using Scribble.Shared.Lib.CanvasElements;
-using Scribble.Shared.Lib.CanvasElements.Strokes;
 using SkiaSharp;
 
 namespace Scribble.Services.CanvasStateService;
@@ -15,24 +14,21 @@ namespace Scribble.Services.CanvasStateService;
 public class CanvasStateService : ICanvasStateService
 {
     // State
-    private List<CanvasElement> _canvasElements = [];
-    public IReadOnlyList<CanvasElement> CanvasElements => _canvasElements;
-    public Queue<Event> CanvasEvents { get; private set; } = [];
-    public Guid? ActiveSelectionBoundId { get; private set; }
-    public List<Guid> SelectedElementIds { get; private set; } = [];
+    private CanvasState CurrentState { get; set; } = new();
+    private EventLog _eventLog = new();
+    private CheckpointManager _checkpointManager = new();
+
+    public IReadOnlyList<CanvasElement> CanvasElements => CurrentState.ElementsWithLayers;
+    public Queue<Event> CanvasEvents => new(_eventLog.Events);
+    public Guid? ActiveSelectionBoundId => CurrentState.ActiveSelectionBoundId;
+    public List<Guid> SelectedElementIds => CurrentState.SelectedElementIds;
     public SKColor BackgroundColor { get; private set; } = new(0, 0, 0, 162);
 
-    public bool HasEvents => CanvasEvents.Count > 0;
+    public bool HasEvents => _eventLog.Events.Count > 0;
     public bool IsLocalSelection(Guid boundId) => _localSelectionBoundIds.Contains(boundId);
 
     private readonly HashSet<Guid> _localSelectionBoundIds = [];
-
-    // For fast-path optimizations
-    private Dictionary<Guid, PaintableStroke> _strokeLookup = new();
-    private Dictionary<Guid, EraserStroke> _eraserStrokeLookup = new();
-    private Dictionary<Guid, SKPoint> _eraserHeadLookup = new();
-    private Dictionary<Guid, SelectionBound> _selectionBoundLookup = new();
-    private Dictionary<Guid, CanvasImage> _canvasImageLookup = new();
+    private const int CheckpointInterval = 100;
 
     private readonly Stack<Guid> _undoStack = [];
     private readonly Stack<Guid> _redoStack = [];
@@ -121,7 +117,11 @@ public class CanvasStateService : ICanvasStateService
         _redoStack.Clear();
         _localSelectionBoundIds.Clear();
 
-        CanvasEvents.Clear();
+        // Prevent cross-room state pollution by resetting completely
+        _eventLog = new EventLog();
+        _checkpointManager.Dispose();
+        _checkpointManager = new CheckpointManager();
+
         ApplyEvent(new LoadCanvasEvent(Guid.NewGuid(), elements), isLocalEvent: false);
 
         UndoRedoStateChanged?.Invoke();
@@ -165,7 +165,14 @@ public class CanvasStateService : ICanvasStateService
     {
         Dispatcher.UIThread.Post(() =>
         {
-            CanvasEvents = events;
+            _eventLog = new EventLog();
+            _checkpointManager.Dispose();
+            _checkpointManager = new CheckpointManager();
+            foreach (var ev in events)
+            {
+                _eventLog.Append(ev);
+            }
+
             ReplayEvents();
         });
     }
@@ -182,183 +189,73 @@ public class CanvasStateService : ICanvasStateService
         UndoRedoStateChanged?.Invoke();
     }
 
-    private bool ApplyFastPathOptimization(Event @event)
-    {
-        var fastPathCtx = new FastPathContext
-        {
-            StrokeLookup = _strokeLookup,
-            EraserStrokeLookup = _eraserStrokeLookup,
-            EraserHeadLookup = _eraserHeadLookup,
-            SelectionBoundLookup = _selectionBoundLookup,
-            CanvasImageLookup = _canvasImageLookup,
-            CanvasElements = _canvasElements,
-            LocalSelectionBoundIds = _localSelectionBoundIds,
-            OnCanvasInvalidated = CanvasInvalidated,
-            OnSelectionInvalidated = SelectionInvalidated
-        };
-
-        bool applied = _dispatcher.TryFastPath(@event, fastPathCtx);
-
-        // Sync back any selection state changes from the fast-path handler
-        if (applied && fastPathCtx.SelectedElementIds != null)
-        {
-            ActiveSelectionBoundId = fastPathCtx.ActiveSelectionBoundId;
-            SelectedElementIds = fastPathCtx.SelectedElementIds;
-        }
-
-        return applied;
-    }
-
     private void ProcessEvent(Event @event, bool isLocalEvent = false)
     {
-        CanvasEvents.Enqueue(@event);
+        _eventLog.Append(@event);
 
-        // Fast path: for pencil/line line-to events during active drawing,
-        // apply directly to the existing stroke, no replay needed
-        bool fastPathWasApplied = ApplyFastPathOptimization(@event);
-        if (fastPathWasApplied)
+        // Fast path: for events during active drawing, apply directly to the existing state
+        if (_dispatcher.TryFastPath(@event, CurrentState))
         {
-            if (@event is ITerminalEvent && isLocalEvent)
+            switch (@event)
             {
-                TrackAction(@event.ActionId);
+                case ITerminalEvent when isLocalEvent:
+                    TrackAction(@event.ActionId);
+                    break;
+                case IncreaseSelectionBoundEvent:
+                    SelectionInvalidated?.Invoke();
+                    break;
             }
+
+            CanvasInvalidated?.Invoke();
             return;
         }
 
-        var staleActionIds = ReplayEvents();
-        bool changed = false;
-        bool currentActionIsStale = false;
-
-        Queue<Event> nonStaleEvents = [];
-        foreach (var canvasEvent in CanvasEvents)
-        {
-            if (!staleActionIds.Contains(canvasEvent.ActionId))
-            {
-                nonStaleEvents.Enqueue(canvasEvent);
-            }
-            else
-            {
-                changed = true;
-                if (canvasEvent.ActionId == @event.ActionId)
-                {
-                    currentActionIsStale = true;
-                }
-            }
-        }
-
-        CanvasEvents = nonStaleEvents;
-
-        if (changed)
-        {
-            ReplayEvents();
-        }
+        ReplayEvents();
 
         // Keep track of local non-stale actions for undo/redo functionality
-        if (@event is ITerminalEvent && isLocalEvent && !currentActionIsStale)
+        if (@event is ITerminalEvent && isLocalEvent)
         {
             TrackAction(@event.ActionId);
         }
     }
 
-    /// <summary>
-    /// Builds the latest state of the canvas from the events in the queue
-    /// </summary>
-    /// <returns></returns>
-    private List<Guid> ReplayEvents()
+    private void ReplayEvents()
     {
-        // Determine which action IDs are hidden by Undo/Redo events
-        var hiddenActionIds = new HashSet<Guid>();
-        foreach (var canvasEvent in CanvasEvents)
+        _checkpointManager.TryGetValidCheckpoint(_eventLog.HiddenActionIds, out var bestState, out var lastEventId);
+        var activeEvents = _eventLog.GetActiveEventsSince(lastEventId);
+
+        foreach (var ev in activeEvents)
         {
-            if (canvasEvent is UndoEvent ev)
-            {
-                hiddenActionIds.Add(ev.TargetActionId);
-            }
-            else if (canvasEvent is RedoEvent redoEv)
-            {
-                hiddenActionIds.Remove(redoEv.TargetActionId);
-            }
+            _dispatcher.Dispatch(ev, bestState);
         }
 
-        // Replay all visible events through registered handlers
-        var ctx = new ReplayContext();
-        foreach (var canvasEvent in CanvasEvents.Where(canvasEvent => !hiddenActionIds.Contains(canvasEvent.ActionId)))
+        // Forward any newly discovered stale actions to the event log
+        foreach (var staleActionId in bestState.StaleActionIds)
         {
-            _dispatcher.Dispatch(canvasEvent, ctx);
+            _eventLog.MarkActionStale(staleActionId);
         }
-
-        // Normalize layer indices and update service state
-        NormalizeLayersAndUpdateState(ctx);
-        return ctx.StaleActionIds;
-    }
-
-    /// <summary>
-    /// Normalizes layer indices to be contiguous (0..N-1) while preserving relative ordering,
-    /// then updates all service-level state from the replay context.
-    /// </summary>
-    private void NormalizeLayersAndUpdateState(ReplayContext ctx)
-    {
-        List<CanvasElement> elementsWithLayers =
-            [..ctx.PaintableStrokes.Values.ToList(), ..ctx.CanvasImages.Values.ToList()];
-
-        if (elementsWithLayers.Count > 0)
-        {
-            var distinctLayerIndices = elementsWithLayers
-                .Select(e => e.LayerIndex)
-                .Distinct()
-                .OrderBy(index => index)
-                .ToList();
-
-            var layerRemap = new Dictionary<int, int>(distinctLayerIndices.Count);
-            for (var i = 0; i < distinctLayerIndices.Count; i++)
-            {
-                layerRemap[distinctLayerIndices[i]] = i;
-            }
-
-            foreach (var element in elementsWithLayers)
-            {
-                element.LayerIndex = layerRemap[element.LayerIndex];
-            }
-        }
-
-        DisposeOldState();
-
-        _canvasElements = elementsWithLayers;
-        _strokeLookup = ctx.PaintableStrokes;
-        _eraserStrokeLookup = ctx.EraserStrokes;
-        _eraserHeadLookup = ctx.EraserHeads;
-        _selectionBoundLookup = ctx.SelectionBounds;
-        _canvasImageLookup = ctx.CanvasImages;
 
         // Show the selection only on the client that is doing the selection
-        var mySelectionBound = ctx.SelectionBounds.FirstOrDefault(pair => _localSelectionBoundIds.Contains(pair.Key));
-        ActiveSelectionBoundId = mySelectionBound.Value != null ? mySelectionBound.Key : null;
-        SelectedElementIds = mySelectionBound.Value?.Targets.ToList() ?? [];
+        var mySelectionBound =
+            bestState.SelectionBounds.FirstOrDefault(pair => _localSelectionBoundIds.Contains(pair.Key));
+        bestState.ActiveSelectionBoundId = mySelectionBound.Value != null ? mySelectionBound.Key : null;
+        bestState.SelectedElementIds.Clear();
+        if (mySelectionBound.Value != null)
+        {
+            bestState.SelectedElementIds.AddRange(mySelectionBound.Value.Targets);
+        }
+
+        bestState.NormalizeLayers();
+
+        if (activeEvents.Count > CheckpointInterval && _eventLog.Events.Count > 0)
+        {
+            _checkpointManager.CaptureCheckpoint(bestState, _eventLog.Events[^1].ActionId, _eventLog.HiddenActionIds);
+        }
+
+        CurrentState.Dispose();
+        CurrentState = bestState;
 
         CanvasInvalidated?.Invoke();
         SelectionInvalidated?.Invoke();
-    }
-
-    private void DisposeOldState()
-    {
-        foreach (var stroke in _strokeLookup.Values)
-        {
-            stroke.Dispose();
-        }
-
-        foreach (var bound in _selectionBoundLookup.Values)
-        {
-            bound.Dispose();
-        }
-
-        foreach (var image in _canvasImageLookup.Values)
-        {
-            image.Dispose();
-        }
-
-        foreach (var eraser in _eraserStrokeLookup.Values)
-        {
-            eraser.Dispose();
-        }
     }
 }
