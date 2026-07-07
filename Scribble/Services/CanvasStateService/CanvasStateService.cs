@@ -13,10 +13,10 @@ namespace Scribble.Services.CanvasStateService;
 
 public class CanvasStateService : ICanvasStateService
 {
-    // State
     private CanvasState CurrentState { get; set; } = new();
     private EventLog _eventLog = new();
     private CheckpointManager _checkpointManager = new();
+    private const int CheckpointInterval = 100;
 
     public IReadOnlyList<CanvasElement> CanvasElements => CurrentState.ElementsWithLayers;
     public Queue<Event> CanvasEvents => new(_eventLog.Events);
@@ -25,10 +25,6 @@ public class CanvasStateService : ICanvasStateService
     public SKColor BackgroundColor { get; private set; } = new(0, 0, 0, 162);
 
     public bool HasEvents => _eventLog.Events.Count > 0;
-    public bool IsLocalSelection(Guid boundId) => _localSelectionBoundIds.Contains(boundId);
-
-    private readonly HashSet<Guid> _localSelectionBoundIds = [];
-    private const int CheckpointInterval = 100;
 
     private readonly Stack<Guid> _undoStack = [];
     private readonly Stack<Guid> _redoStack = [];
@@ -98,6 +94,13 @@ public class CanvasStateService : ICanvasStateService
         UndoRedoStateChanged?.Invoke();
     }
 
+    public bool IsLocalSelection(Guid boundId)
+    {
+        if (!CurrentState.SelectionBounds.TryGetValue(boundId, out var bound)) return false;
+        var myConnectionId = _multiUserDrawingService.Room?.Me.ConnectionId;
+        return bound.CreatorConnectionId == myConnectionId;
+    }
+
     public void ClearSelection()
     {
         ApplyEvent(new ClearSelectionEvent(Guid.NewGuid()));
@@ -115,7 +118,6 @@ public class CanvasStateService : ICanvasStateService
     {
         _undoStack.Clear();
         _redoStack.Clear();
-        _localSelectionBoundIds.Clear();
 
         // Prevent cross-room state pollution by resetting completely
         _eventLog = new EventLog();
@@ -134,15 +136,6 @@ public class CanvasStateService : ICanvasStateService
         if (isLocalEvent && _multiUserDrawingService.Room != null)
         {
             @event = @event with { CreatorConnectionId = _multiUserDrawingService.Room.Me.ConnectionId };
-        }
-
-        if (@event is CreateSelectionBoundEvent ev && isLocalEvent)
-        {
-            _localSelectionBoundIds.Add(ev.BoundId);
-        }
-        else if (@event is PasteCanvasElementsEvent pasteEv && isLocalEvent)
-        {
-            _localSelectionBoundIds.Add(pasteEv.SelectionBoundId);
         }
 
         ProcessEvent(@event, isLocalEvent);
@@ -236,13 +229,14 @@ public class CanvasStateService : ICanvasStateService
         }
 
         // Show the selection only on the client that is doing the selection
-        var mySelectionBound =
-            bestState.SelectionBounds.FirstOrDefault(pair => _localSelectionBoundIds.Contains(pair.Key));
-        bestState.ActiveSelectionBoundId = mySelectionBound.Value != null ? mySelectionBound.Key : null;
+        var myConnectionId = _multiUserDrawingService.Room?.Me.ConnectionId;
+        var mySelectionBound = bestState.SelectionBounds.Values
+            .FirstOrDefault(b => b.CreatorConnectionId == myConnectionId);
+        bestState.ActiveSelectionBoundId = mySelectionBound?.Id;
         bestState.SelectedElementIds.Clear();
-        if (mySelectionBound.Value != null)
+        if (mySelectionBound != null)
         {
-            bestState.SelectedElementIds.AddRange(mySelectionBound.Value.Targets);
+            bestState.SelectedElementIds.AddRange(mySelectionBound.Targets);
         }
 
         bestState.NormalizeLayers();
