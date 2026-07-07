@@ -22,13 +22,6 @@ public class DrawStroke : PaintableStroke, IClonable
 
     [JsonIgnore] public SKPath? StablePath { get; set; }
 
-    public override void Dispose()
-    {
-        base.Dispose();
-        StablePath?.Dispose();
-        StablePath = null;
-    }
-
     public override CanvasElement Clone(bool preserveId = false)
     {
         var clone = new DrawStroke

@@ -27,11 +27,6 @@ public class SelectionReplayHandler :
         var selectionPath = new SKPath();
         selectionPath.MoveTo(ev.StartPoint);
 
-        foreach (var bound in ctx.SelectionBounds.Values)
-        {
-            bound.Dispose();
-        }
-
         ctx.SelectionBounds.Clear();
 
         var selectionBound = new SelectionBound
@@ -76,10 +71,11 @@ public class SelectionReplayHandler :
     {
         foreach (var bound in ctx.SelectionBounds.Values)
         {
-            bound.Dispose();
+            if (bound.CreatorConnectionId == ev.CreatorConnectionId)
+            {
+                ctx.SelectionBounds.Remove(bound.Id);
+            }
         }
-
-        ctx.SelectionBounds.Clear();
     }
 
     // Fast-path handler

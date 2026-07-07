@@ -6,7 +6,7 @@ using Scribble.Shared.Lib.CanvasElements.Strokes;
 
 namespace Scribble.Services.CanvasStateService.State;
 
-public class CanvasState : IDisposable
+public class CanvasState
 {
     public Dictionary<Guid, PaintableStroke> PaintableStrokes { get; } = new();
     public Dictionary<Guid, EraserStroke> EraserStrokes { get; } = new();
@@ -87,39 +87,5 @@ public class CanvasState : IDisposable
         }
 
         ElementsWithLayers = elements;
-    }
-
-    public void Dispose()
-    {
-        foreach (var stroke in PaintableStrokes.Values)
-        {
-            stroke.Dispose();
-        }
-
-        PaintableStrokes.Clear();
-
-        foreach (var image in CanvasImages.Values)
-        {
-            image.Dispose();
-        }
-
-        CanvasImages.Clear();
-
-        foreach (var bound in SelectionBounds.Values)
-        {
-            bound.Dispose();
-        }
-
-        SelectionBounds.Clear();
-
-        foreach (var stroke in EraserStrokes.Values)
-        {
-            stroke.Dispose();
-        }
-
-        EraserStrokes.Clear();
-
-        ElementsWithLayers.Clear();
-        SelectedElementIds.Clear();
     }
 }

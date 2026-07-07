@@ -11,27 +11,19 @@ public static class FreehandPathBuilder
 {
     public static void AppendPoint(SKPath path, ref SKPath? stablePath, IReadOnlyList<StrokePoint> points)
     {
-        if (points.Count == 0)
+        switch (points.Count)
         {
-            path.Reset();
-            stablePath?.Dispose();
-            stablePath = null;
-            return;
-        }
-
-        if (points.Count == 1)
-        {
-            path.Reset();
-            path.MoveTo(points[0].Point);
-            return;
-        }
-
-        if (points.Count == 2)
-        {
-            path.Reset();
-            path.MoveTo(points[0].Point);
-            path.LineTo(points[1].Point);
-            return;
+            case 0:
+                stablePath?.Dispose();
+                stablePath = null;
+                return;
+            case 1:
+                path.MoveTo(points[0].Point);
+                return;
+            case 2:
+                path.MoveTo(points[0].Point);
+                path.LineTo(points[1].Point);
+                return;
         }
 
         // points.Count >= 3
@@ -56,7 +48,6 @@ public static class FreehandPathBuilder
             stablePath.QuadTo(controlPoint.X, controlPoint.Y, midPoint.X, midPoint.Y);
         }
 
-        path.Reset();
         path.AddPath(stablePath);
         path.LineTo(points[^1].Point);
     }

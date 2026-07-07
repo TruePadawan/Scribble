@@ -11,13 +11,7 @@ namespace Scribble.Shared.Lib.CanvasElements.Strokes;
 public abstract class Stroke : CanvasElement
 {
     [JsonConverter(typeof(SKPathJsonConverter))]
-    public required SKPath Path { get; init; } = new();
-
-    public override void Dispose()
-    {
-        base.Dispose();
-        Path.Dispose();
-    }
+    public required SKPath Path { get; set; } = new();
 }
 
 public enum StrokeStyle

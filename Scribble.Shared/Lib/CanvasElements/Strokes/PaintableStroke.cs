@@ -9,12 +9,5 @@ public abstract class PaintableStroke : Stroke, IClonable
     public bool IsToBeErased = false;
     public required HashSet<ToolOption> ToolOptions { get; init; } = [];
     public required StrokePaint Paint { get; init; } = new();
-
-    public override void Dispose()
-    {
-        base.Dispose();
-        Paint.DisposeSkPaint();
-    }
-
     public abstract CanvasElement Clone(bool preserveId = false);
 }

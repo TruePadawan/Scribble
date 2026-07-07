@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace Scribble.Services.CanvasStateService.State;
 
-public class CheckpointManager : IDisposable
+public class CheckpointManager
 {
     private readonly List<CanvasCheckpoint> _checkpoints = [];
     private readonly int _maxCheckpoints;
@@ -20,9 +20,7 @@ public class CheckpointManager : IDisposable
 
         while (_checkpoints.Count > _maxCheckpoints)
         {
-            var oldest = _checkpoints[0];
             _checkpoints.RemoveAt(0);
-            oldest.Dispose();
         }
     }
 
@@ -41,22 +39,11 @@ public class CheckpointManager : IDisposable
 
             // If the checkpoint is no longer valid because hidden actions changed, 
             // we should conceptually drop it and any before it, because undo history was rewritten.
-            checkpoint.Dispose();
             _checkpoints.RemoveAt(i);
         }
 
         state = new CanvasState();
         lastEventId = null;
         return false;
-    }
-
-    public void Dispose()
-    {
-        foreach (var checkpoint in _checkpoints)
-        {
-            checkpoint.Dispose();
-        }
-
-        _checkpoints.Clear();
     }
 }

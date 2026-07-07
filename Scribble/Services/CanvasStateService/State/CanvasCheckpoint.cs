@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace Scribble.Services.CanvasStateService.State;
 
-public class CanvasCheckpoint : IDisposable
+public class CanvasCheckpoint
 {
     public CanvasState State { get; }
     public Guid? LastAppliedEventId { get; }
@@ -14,10 +14,5 @@ public class CanvasCheckpoint : IDisposable
         State = state;
         LastAppliedEventId = lastAppliedEventId;
         HiddenActionIdsAtCreation = new HashSet<Guid>(hiddenActionIdsAtCreation);
-    }
-
-    public void Dispose()
-    {
-        State.Dispose();
     }
 }

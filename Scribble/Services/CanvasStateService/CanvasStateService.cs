@@ -121,7 +121,6 @@ public class CanvasStateService : ICanvasStateService
 
         // Prevent cross-room state pollution by resetting completely
         _eventLog = new EventLog();
-        _checkpointManager.Dispose();
         _checkpointManager = new CheckpointManager();
 
         ApplyEvent(new LoadCanvasEvent(Guid.NewGuid(), elements), isLocalEvent: false);
@@ -159,7 +158,6 @@ public class CanvasStateService : ICanvasStateService
         Dispatcher.UIThread.Post(() =>
         {
             _eventLog = new EventLog();
-            _checkpointManager.Dispose();
             _checkpointManager = new CheckpointManager();
             foreach (var ev in events)
             {
@@ -246,7 +244,6 @@ public class CanvasStateService : ICanvasStateService
             _checkpointManager.CaptureCheckpoint(bestState, _eventLog.Events[^1].ActionId, _eventLog.HiddenActionIds);
         }
 
-        CurrentState.Dispose();
         CurrentState = bestState;
 
         CanvasInvalidated?.Invoke();

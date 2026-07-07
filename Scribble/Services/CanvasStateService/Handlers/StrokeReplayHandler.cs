@@ -48,8 +48,10 @@ public class StrokeReplayHandler :
             dsPencil.RawPoints.Add(new StrokePoint(ev.Point,
                 ev.TimeStamp.Ticks / TimeSpan.TicksPerMillisecond));
             var stable = dsPencil.StablePath;
-            FreehandPathBuilder.AppendPoint(dsPencil.Path, ref stable, dsPencil.RawPoints);
+            var newPath = new SKPath();
+            FreehandPathBuilder.AppendPoint(newPath, ref stable, dsPencil.RawPoints);
             dsPencil.StablePath = stable;
+            dsPencil.Path = newPath;
         }
     }
 
@@ -77,8 +79,10 @@ public class StrokeReplayHandler :
             ds.RawPoints.Add(new StrokePoint(ev.Point,
                 ev.TimeStamp.Ticks / TimeSpan.TicksPerMillisecond));
             var stable = ds.StablePath;
-            FreehandPathBuilder.AppendPoint(ds.Path, ref stable, ds.RawPoints);
+            var newPath = new SKPath();
+            FreehandPathBuilder.AppendPoint(newPath, ref stable, ds.RawPoints);
             ds.StablePath = stable;
+            ds.Path = newPath;
 
             return true;
         }
@@ -131,38 +135,38 @@ public class StrokeReplayHandler :
     /// <param name="endPoint">The line endpoint</param>
     private static void RebuildLinePath(DrawStroke stroke, SKPoint endPoint)
     {
-        var lineStartPoint = stroke.Path.Points[0];
-        stroke.Path.Reset();
+        var lineStartPoint = stroke.RawPoints[0].Point;
+        var newPath = new SKPath();
 
         if (stroke.ToolType == ToolType.Rectangle)
         {
-            stroke.Path.MoveTo(lineStartPoint);
+            newPath.MoveTo(lineStartPoint);
             var left = Math.Min(lineStartPoint.X, endPoint.X);
             var top = Math.Min(lineStartPoint.Y, endPoint.Y);
             var rect = SKRect.Create(new SKPoint(left, top),
                 Utilities.GetSize(lineStartPoint, endPoint));
             if (stroke.Paint.StrokeJoin == SKStrokeJoin.Miter)
             {
-                stroke.Path.AddRect(rect);
+                newPath.AddRect(rect);
             }
             else
             {
-                stroke.Path.AddRoundRect(rect, 24f, 24f);
+                newPath.AddRoundRect(rect, 24f, 24f);
             }
         }
         else if (stroke.ToolType == ToolType.Ellipse)
         {
-            stroke.Path.MoveTo(lineStartPoint);
+            newPath.MoveTo(lineStartPoint);
             var left = Math.Min(lineStartPoint.X, endPoint.X);
             var top = Math.Min(lineStartPoint.Y, endPoint.Y);
             var rect = SKRect.Create(new SKPoint(left, top),
                 Utilities.GetSize(lineStartPoint, endPoint));
-            stroke.Path.AddOval(rect);
+            newPath.AddOval(rect);
         }
         else
         {
-            stroke.Path.MoveTo(lineStartPoint);
-            stroke.Path.LineTo(endPoint);
+            newPath.MoveTo(lineStartPoint);
+            newPath.LineTo(endPoint);
 
             if (stroke.ToolType == ToolType.Arrow)
             {
@@ -170,12 +174,14 @@ public class StrokeReplayHandler :
                     ArrowTool.GetArrowHeadPoints(lineStartPoint, endPoint,
                         stroke.Paint.StrokeWidth);
 
-                stroke.Path.MoveTo(endPoint);
-                stroke.Path.LineTo(p1);
+                newPath.MoveTo(endPoint);
+                newPath.LineTo(p1);
 
-                stroke.Path.MoveTo(endPoint);
-                stroke.Path.LineTo(p2);
+                newPath.MoveTo(endPoint);
+                newPath.LineTo(p2);
             }
         }
+
+        stroke.Path = newPath;
     }
 }

@@ -59,11 +59,6 @@ public class CanvasImage : CanvasElement, IClonable
         _cachedBitmap = null;
     }
 
-    public override void Dispose()
-    {
-        DisposeBitmap();
-    }
-
     public CanvasElement Clone(bool preserveId = false)
     {
         var clone = new CanvasImage
