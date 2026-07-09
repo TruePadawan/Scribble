@@ -5,6 +5,7 @@ using Scribble.Services.CanvasStateService.State;
 using Scribble.Shared.Lib;
 using Scribble.Shared.Lib.CanvasElements;
 using Scribble.Shared.Lib.CanvasElements.Strokes;
+using Scribble.Shared.Lib.Events;
 using Scribble.Utils;
 using SkiaSharp;
 

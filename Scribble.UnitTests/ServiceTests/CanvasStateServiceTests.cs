@@ -6,6 +6,7 @@ using Scribble.Services.MultiUserDrawing;
 using Scribble.Shared.Lib;
 using Scribble.Shared.Lib.CanvasElements;
 using Scribble.Shared.Lib.CanvasElements.Strokes;
+using Scribble.Shared.Lib.Events;
 using SkiaSharp;
 
 namespace Scribble.UnitTests.ServiceTests;

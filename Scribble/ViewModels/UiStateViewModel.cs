@@ -8,11 +8,13 @@ using Scribble.Services.CanvasStateService;
 using Scribble.Shared.Lib;
 using Scribble.Shared.Lib.CanvasElements;
 using Scribble.Shared.Lib.CanvasElements.Strokes;
+using Scribble.Shared.Lib.Events;
 using Scribble.State;
 using Scribble.Tools.PointerTools;
 using Scribble.Utils;
 using Scribble.ViewModels.ToolOptions;
 using SkiaSharp;
+
 
 namespace Scribble.ViewModels;
 
