@@ -57,6 +57,10 @@ public class CanvasStateService : ICanvasStateService
         {
             await _multiUserDrawingService.SendCanvasStateToClientAsync(clientId, CanvasEvents);
         };
+        _multiUserDrawingService.ConnectionStarted += () =>
+        {
+            CurrentState.MyConnectionId = _multiUserDrawingService.Room?.Me.ConnectionId;
+        };
 
         _dispatcher = new EventReplayDispatcher(
             new StrokeReplayHandler(),
@@ -243,7 +247,7 @@ public class CanvasStateService : ICanvasStateService
 
         if (activeEvents.Count > CheckpointInterval && _eventLog.Events.Count > 0)
         {
-            _checkpointManager.CaptureCheckpoint(bestState, _eventLog.Events[^1].ActionId, _eventLog.HiddenActionIds);
+            _checkpointManager.CaptureCheckpoint(bestState, _eventLog.Events[^1].Id, _eventLog.HiddenActionIds);
         }
 
         CurrentState = bestState;

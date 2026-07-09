@@ -22,13 +22,16 @@ public class CanvasState
     public int MaxLayerIndex { get; set; }
     public int MinLayerIndex { get; set; }
 
+    public string? MyConnectionId { get; set; }
+
     public CanvasState Clone()
     {
         var clone = new CanvasState
         {
             MaxLayerIndex = MaxLayerIndex,
             MinLayerIndex = MinLayerIndex,
-            ActiveSelectionBoundId = ActiveSelectionBoundId
+            ActiveSelectionBoundId = ActiveSelectionBoundId,
+            MyConnectionId = MyConnectionId
         };
 
         foreach (var (key, value) in PaintableStrokes)
@@ -43,7 +46,7 @@ public class CanvasState
 
         foreach (var (key, value) in SelectionBounds)
         {
-            clone.SelectionBounds[key] = (SelectionBound)value.Clone(preserveId: true);
+            clone.SelectionBounds[key] = value.Clone(preserveId: true);
         }
 
         foreach (var id in SelectedElementIds)
