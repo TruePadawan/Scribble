@@ -47,6 +47,7 @@ public class SKMatrixJsonConverter : JsonConverter<SKMatrix>
         {
             writer.WriteNumberValue(values[i]);
         }
+
         writer.WriteEndArray();
     }
 }

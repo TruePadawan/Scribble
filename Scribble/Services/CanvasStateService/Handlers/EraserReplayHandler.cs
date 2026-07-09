@@ -4,6 +4,7 @@ using Scribble.Services.CanvasStateService.State;
 using Scribble.Shared.Lib;
 using Scribble.Shared.Lib.CanvasElements;
 using Scribble.Shared.Lib.CanvasElements.Strokes;
+using Scribble.Shared.Lib.Events;
 using Scribble.Utils;
 using SkiaSharp;
 
@@ -80,6 +81,7 @@ public class EraserReplayHandler :
             if (currentEraserStroke.Targets.Count == 0)
             {
                 ctx.StaleActionIds.Add(ev.ActionId);
+                ctx.EraserStrokes.Remove(ev.StrokeId);
             }
         }
     }

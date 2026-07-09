@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Scribble.Shared.Lib;
+using Scribble.Shared.Lib.Events;
 
 namespace Scribble.Services.CanvasStateService.State;
 
@@ -45,7 +46,7 @@ public class EventLog
         {
             for (var i = _events.Count - 1; i >= 0; i--)
             {
-                if (_events[i].ActionId == lastEventId.Value)
+                if (_events[i].Id == lastEventId.Value)
                 {
                     startIndex = i + 1;
                     break;

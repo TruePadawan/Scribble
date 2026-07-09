@@ -3,6 +3,7 @@ using Avalonia;
 using Avalonia.Input;
 using Scribble.Services.CanvasStateService;
 using Scribble.Shared.Lib;
+using Scribble.Shared.Lib.Events;
 using SkiaSharp;
 
 namespace Scribble.Tools.PointerTools.PencilTool;

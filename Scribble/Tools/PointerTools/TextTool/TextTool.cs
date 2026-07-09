@@ -9,6 +9,7 @@ using Avalonia.Platform;
 using Scribble.Services.CanvasStateService;
 using Scribble.Shared.Lib;
 using Scribble.Shared.Lib.CanvasElements.Strokes;
+using Scribble.Shared.Lib.Events;
 using Scribble.State;
 using Scribble.Utils;
 using SkiaSharp;

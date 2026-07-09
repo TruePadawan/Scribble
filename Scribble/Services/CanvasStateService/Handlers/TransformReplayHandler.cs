@@ -1,8 +1,8 @@
 using System.Collections.Generic;
 using Scribble.Services.CanvasStateService.State;
-using Scribble.Shared.Lib;
 using Scribble.Shared.Lib.CanvasElements;
 using Scribble.Shared.Lib.CanvasElements.Strokes;
+using Scribble.Shared.Lib.Events;
 using SkiaSharp;
 
 namespace Scribble.Services.CanvasStateService.Handlers;

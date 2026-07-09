@@ -7,6 +7,7 @@ using Scribble.Services.CanvasStateService.State;
 using Scribble.Services.MultiUserDrawing;
 using Scribble.Shared.Lib;
 using Scribble.Shared.Lib.CanvasElements;
+using Scribble.Shared.Lib.Events;
 using SkiaSharp;
 
 namespace Scribble.Services.CanvasStateService;
@@ -55,6 +56,10 @@ public class CanvasStateService : ICanvasStateService
         _multiUserDrawingService.CanvasStateRequested += async (clientId) =>
         {
             await _multiUserDrawingService.SendCanvasStateToClientAsync(clientId, CanvasEvents);
+        };
+        _multiUserDrawingService.ConnectionStarted += () =>
+        {
+            CurrentState.MyConnectionId = _multiUserDrawingService.Room?.Me.ConnectionId;
         };
 
         _dispatcher = new EventReplayDispatcher(
@@ -205,7 +210,7 @@ public class CanvasStateService : ICanvasStateService
         ReplayEvents();
 
         // Keep track of local non-stale actions for undo/redo functionality
-        if (@event is ITerminalEvent && isLocalEvent)
+        if (@event is ITerminalEvent && isLocalEvent && !CurrentState.StaleActionIds.Contains(@event.ActionId))
         {
             TrackAction(@event.ActionId);
         }
@@ -242,7 +247,7 @@ public class CanvasStateService : ICanvasStateService
 
         if (activeEvents.Count > CheckpointInterval && _eventLog.Events.Count > 0)
         {
-            _checkpointManager.CaptureCheckpoint(bestState, _eventLog.Events[^1].ActionId, _eventLog.HiddenActionIds);
+            _checkpointManager.CaptureCheckpoint(bestState, _eventLog.Events[^1].Id, _eventLog.HiddenActionIds);
         }
 
         CurrentState = bestState;

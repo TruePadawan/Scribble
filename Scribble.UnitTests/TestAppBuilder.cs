@@ -1,7 +1,8 @@
 using Avalonia;
 using Avalonia.Headless;
+using Scribble.UnitTests;
 
-[assembly: AvaloniaTestApplication(typeof(Scribble.UnitTests.TestAppBuilder))]
+[assembly: AvaloniaTestApplication(typeof(TestAppBuilder))]
 
 namespace Scribble.UnitTests;
 

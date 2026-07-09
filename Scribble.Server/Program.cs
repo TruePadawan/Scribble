@@ -26,4 +26,6 @@ app.MapHub<MultiUserDrawingHub>("/drawingHub");
 app.MapGet("/health", () => Results.Ok("Server is awake"));
 app.Run();
 
-public partial class Program { }
+public partial class Program
+{
+}

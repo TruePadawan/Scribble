@@ -1,5 +1,4 @@
 using System.Text.Json.Serialization;
-using Avalonia.Skia;
 using SkiaSharp;
 
 namespace Scribble.Shared.Lib.CanvasElements.Strokes;
