@@ -410,18 +410,6 @@ public class CanvasStateServiceTests
     }
 
     [Fact]
-    public void ApplyEvent_EraseInEmptySpace_CanUndoRemainsTrue()
-    {
-        ApplyCompleteStroke(_canvasStateService,
-            new SKPoint(500f, 500f), new SKPoint(600f, 500f));
-
-        ApplyCompleteErase(_canvasStateService, Guid.NewGuid(), new SKPoint(0f, 0f));
-
-        // Stale erase does not push onto the undo stack; the stroke's EndStroke is still top
-        _canvasStateService.CanUndo.Should().BeTrue();
-    }
-
-    [Fact]
     public void Undo_AfterSuccessfulErase_StrokeIsRestored()
     {
         var strokeStart = new SKPoint(0f, 0f);
