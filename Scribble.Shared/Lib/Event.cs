@@ -39,6 +39,7 @@ namespace Scribble.Shared.Lib;
 [JsonDerivedType(typeof(PasteCanvasElementsEvent), typeDiscriminator: "PasteCanvasElementsEvent")]
 public abstract record Event(Guid ActionId)
 {
+    public Guid Id { get; } = Guid.NewGuid();
     public DateTime TimeStamp { get; init; } = DateTime.UtcNow;
 
     /// <summary>
