@@ -1,8 +1,8 @@
+using System.Globalization;
 using Avalonia.Data;
 using FluentAssertions;
 using Scribble.Converters;
 using Scribble.Shared.Lib;
-using System.Globalization;
 
 namespace Scribble.UnitTests.ConverterTests;
 

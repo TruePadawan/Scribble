@@ -16,7 +16,6 @@ using Scribble.Services.CanvasStateService;
 using Scribble.Services.DialogService;
 using Scribble.Services.FileService;
 using Scribble.Services.MultiUserDrawing;
-using Scribble.Shared.Lib;
 using Scribble.Shared.Lib.CanvasElements;
 using Scribble.Shared.Lib.CanvasElements.Strokes;
 using Scribble.Shared.Lib.Events;

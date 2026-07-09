@@ -10,7 +10,6 @@ using CommunityToolkit.Mvvm.Input;
 using Scribble.Services.CanvasStateService;
 using Scribble.Services.DialogService;
 using Scribble.Services.MultiUserDrawing;
-using Scribble.Shared.Lib;
 using Scribble.Shared.Lib.CanvasElements;
 using Scribble.Shared.Lib.Events;
 using SkiaSharp;

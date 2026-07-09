@@ -15,7 +15,6 @@ using Scribble.Utils;
 using Scribble.ViewModels.ToolOptions;
 using SkiaSharp;
 
-
 namespace Scribble.ViewModels;
 
 /// <summary>
