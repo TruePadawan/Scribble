@@ -423,6 +423,42 @@ public class CanvasStateServiceTests
         _canvasStateService.CanvasElements.Should().HaveCount(1);
     }
 
+    [Fact]
+    public void ApplyEvent_ClickErase_DoesNotPolluteUndoStack()
+    {
+        var actionId = Guid.NewGuid();
+        var strokeId = Guid.NewGuid();
+
+        _canvasStateService.ApplyEvent(new StartEraseStrokeEvent(actionId, strokeId, new SKPoint(0, 0)));
+        _canvasStateService.ApplyEvent(new TriggerEraseEvent(actionId, strokeId));
+
+        _canvasStateService.CanUndo.Should().BeFalse();
+    }
+
+    [Fact]
+    public void ApplyEvent_EmptyErasureAcrossCheckpoint_DoesNotPolluteUndoStack()
+    {
+        var actionId = Guid.NewGuid();
+        var strokeId = Guid.NewGuid();
+
+        // Start Erase
+        _canvasStateService.ApplyEvent(new StartEraseStrokeEvent(actionId, strokeId, new SKPoint(0, 0)));
+
+        // Add enough dummy events to force a checkpoint (CheckpointInterval = 50)
+        // We will just add EraseStrokeLineToEvent 60 times.
+        for (int i = 0; i < 60; i++)
+        {
+            _canvasStateService.ApplyEvent(new EraseStrokeLineToEvent(actionId, strokeId, new SKPoint(i, i)));
+        }
+
+        // Fire terminal event (empty erasure, as there are no strokes to hit)
+        _canvasStateService.ApplyEvent(new TriggerEraseEvent(actionId, strokeId));
+
+        // Assert: Since it hit nothing, it should be marked stale and NOT added to the Undo stack.
+        _canvasStateService.CanUndo.Should().BeFalse();
+    }
+
+
     // Selection
     // CheckAndSelect requires the selection rect to completely contain the stroke's TightBounds.
     // A rect from (0,0) -> (1000,1000) reliably encloses any stroke placed at modest coordinates.
@@ -515,6 +551,53 @@ public class CanvasStateServiceTests
 
         _canvasStateService.SelectedElementIds.Should().BeEmpty();
     }
+
+    [Fact]
+    public void ApplyEvent_ClearEmptySelection_DoesNotPolluteUndoStack()
+    {
+        var actionId = Guid.NewGuid();
+
+        // Clear Selection (when there is no selection)
+        _canvasStateService.ApplyEvent(new ClearSelectionEvent(actionId));
+
+        // Assert: It should not be added to the Undo stack
+        _canvasStateService.CanUndo.Should().BeFalse();
+    }
+
+    [Fact]
+    public void ApplyEvent_EmptySelectionAcrossCheckpoint_DoesNotPolluteUndoStack()
+    {
+        var actionId = Guid.NewGuid();
+        var boundId = Guid.NewGuid();
+
+        // Create Selection Bound
+        _canvasStateService.ApplyEvent(new CreateSelectionBoundEvent(actionId, boundId, new SKPoint(0, 0)));
+
+        // Add enough dummy events to force a checkpoint
+        for (int i = 0; i < 60; i++)
+        {
+            _canvasStateService.ApplyEvent(new IncreaseSelectionBoundEvent(actionId, boundId, new SKPoint(i, i)));
+        }
+
+        // Fire terminal event (empty selection, as there are no elements)
+        _canvasStateService.ApplyEvent(new EndSelectionEvent(actionId, boundId));
+
+        // Assert: Since it selected nothing, it should be marked stale and NOT added to the Undo stack.
+        _canvasStateService.CanUndo.Should().BeFalse();
+    }
+
+    [Fact]
+    public void ApplyEvent_ClickSelect_DoesNotPolluteUndoStack()
+    {
+        var actionId = Guid.NewGuid();
+        var boundId = Guid.NewGuid();
+
+        _canvasStateService.ApplyEvent(new CreateSelectionBoundEvent(actionId, boundId, new SKPoint(0, 0)));
+        _canvasStateService.ApplyEvent(new EndSelectionEvent(actionId, boundId));
+
+        _canvasStateService.CanUndo.Should().BeFalse();
+    }
+
 
     // Selection: Transform operations
     // These all go through the fast-path and require a bound + stroke already tracked
