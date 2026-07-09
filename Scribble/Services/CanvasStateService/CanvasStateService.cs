@@ -205,7 +205,7 @@ public class CanvasStateService : ICanvasStateService
         ReplayEvents();
 
         // Keep track of local non-stale actions for undo/redo functionality
-        if (@event is ITerminalEvent && isLocalEvent)
+        if (@event is ITerminalEvent && isLocalEvent && !CurrentState.StaleActionIds.Contains(@event.ActionId))
         {
             TrackAction(@event.ActionId);
         }
