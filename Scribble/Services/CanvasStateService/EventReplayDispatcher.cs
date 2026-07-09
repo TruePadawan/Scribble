@@ -6,6 +6,7 @@ using System.Reflection;
 using Scribble.Services.CanvasStateService.Handlers;
 using Scribble.Services.CanvasStateService.State;
 using Scribble.Shared.Lib;
+using Scribble.Shared.Lib.Events;
 
 namespace Scribble.Services.CanvasStateService;
 

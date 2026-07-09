@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Scribble.Shared.Lib;
+using Scribble.Shared.Lib.Events;
 
 namespace Scribble.Services.CanvasStateService.State;
 
