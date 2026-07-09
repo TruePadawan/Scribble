@@ -4,6 +4,7 @@ using Scribble.Services.CanvasStateService;
 using Scribble.Services.MultiUserDrawing;
 using Scribble.Shared.Lib;
 using Scribble.Shared.Lib.CanvasElements.Strokes;
+using Scribble.Shared.Lib.Events;
 using SkiaSharp;
 
 namespace Scribble.IntegrationTests.Service;
@@ -19,7 +20,10 @@ public class CanvasStateServiceFlowTests
         _sut = new CanvasStateService(mockHubService);
     }
 
-    private static StrokePaint DefaultPaint() => new() { Color = SKColors.Black, StrokeWidth = 2f };
+    private static StrokePaint DefaultPaint()
+    {
+        return new StrokePaint { Color = SKColors.Black, StrokeWidth = 2f };
+    }
 
     [Fact]
     public void DrawUndoRedo_MultiStroke_StateRestored()
@@ -126,7 +130,7 @@ public class CanvasStateServiceFlowTests
         // Assert Step 1: Stroke moved
         stroke = (DrawStroke)_sut.CanvasElements.First(e => e.Id == stroke1);
         var movedMidpoint = new SKPoint(stroke.Path.TightBounds.MidX, stroke.Path.TightBounds.MidY);
-        movedMidpoint.X.Should().BeApproximately(initialMidpoint.X + translation.X, precision: 1f);
+        movedMidpoint.X.Should().BeApproximately(initialMidpoint.X + translation.X, 1f);
 
         // Act 3: Undo the move (action3)
         _sut.Undo();
@@ -134,7 +138,7 @@ public class CanvasStateServiceFlowTests
         // Assert Step 2: Stroke returned to initial position
         stroke = (DrawStroke)_sut.CanvasElements.First(e => e.Id == stroke1);
         var restoredMidpoint = new SKPoint(stroke.Path.TightBounds.MidX, stroke.Path.TightBounds.MidY);
-        restoredMidpoint.X.Should().BeApproximately(initialMidpoint.X, precision: 1f);
+        restoredMidpoint.X.Should().BeApproximately(initialMidpoint.X, 1f);
 
         // Act 4: Undo the selection (action2)
         _sut.Undo();
@@ -156,9 +160,9 @@ public class CanvasStateServiceFlowTests
         var endEvent = new EndStrokeEvent(action1);
 
         // Act 1: Apply remote stroke
-        _sut.ApplyEvent(startEvent, isLocalEvent: false);
-        _sut.ApplyEvent(lineEvent, isLocalEvent: false);
-        _sut.ApplyEvent(endEvent, isLocalEvent: false);
+        _sut.ApplyEvent(startEvent, false);
+        _sut.ApplyEvent(lineEvent, false);
+        _sut.ApplyEvent(endEvent, false);
 
         // Assert Step 1: Canvas has the element
         _sut.CanvasElements.Should().HaveCount(1);

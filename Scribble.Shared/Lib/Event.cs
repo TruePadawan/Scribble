@@ -68,13 +68,6 @@ public record EndStrokeEvent(Guid ActionId) : Event(ActionId), ITerminalEvent;
 // PENCIL TOOL
 public record PencilStrokeLineToEvent(Guid ActionId, Guid StrokeId, SKPoint Point) : Event(ActionId);
 
-// ERASE TOOL
-public record StartEraseStrokeEvent(Guid ActionId, Guid StrokeId, SKPoint StartPoint) : Event(ActionId);
-
-public record EraseStrokeLineToEvent(Guid ActionId, Guid StrokeId, SKPoint Point) : Event(ActionId);
-
-public record TriggerEraseEvent(Guid ActionId, Guid StrokeId) : Event(ActionId), ITerminalEvent;
-
 // LINE + ARROW + RECTANGLE TOOL
 public record LineStrokeLineToEvent(Guid ActionId, Guid StrokeId, SKPoint EndPoint) : Event(ActionId);
 

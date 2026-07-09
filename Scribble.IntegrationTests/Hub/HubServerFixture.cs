@@ -9,10 +9,7 @@ public class HubServerFixture : WebApplicationFactory<Program>
     {
         var handler = Server.CreateHandler();
         return new HubConnectionBuilder()
-            .WithUrl("http://localhost/drawingHub", opts =>
-            {
-                opts.HttpMessageHandlerFactory = _ => handler;
-            })
+            .WithUrl("http://localhost/drawingHub", opts => { opts.HttpMessageHandlerFactory = _ => handler; })
             .Build();
     }
 }
