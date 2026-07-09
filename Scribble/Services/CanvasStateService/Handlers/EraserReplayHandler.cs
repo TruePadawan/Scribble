@@ -81,6 +81,7 @@ public class EraserReplayHandler :
             if (currentEraserStroke.Targets.Count == 0)
             {
                 ctx.StaleActionIds.Add(ev.ActionId);
+                ctx.EraserStrokes.Remove(ev.StrokeId);
             }
         }
     }

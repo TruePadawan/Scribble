@@ -60,20 +60,31 @@ public class SelectionReplayHandler :
     {
         if (ctx.SelectionBounds.TryGetValue(ev.BoundId, out var bound))
         {
+            // Remove and mark selection as stale if it has no targets
             if (bound.Targets.Count == 0)
             {
                 ctx.StaleActionIds.Add(ev.ActionId);
+                ctx.SelectionBounds.Remove(bound.Id);
             }
         }
     }
 
     public void Replay(ClearSelectionEvent ev, CanvasState ctx)
     {
+        // Mark selection as stale if it has no targets
+        if (ev.CreatorConnectionId == ctx.MyConnectionId && ctx.SelectedElementIds.Count == 0)
+        {
+            ctx.StaleActionIds.Add(ev.ActionId);
+            return;
+        }
+
         foreach (var bound in ctx.SelectionBounds.Values)
         {
             if (bound.CreatorConnectionId == ev.CreatorConnectionId)
             {
                 ctx.SelectionBounds.Remove(bound.Id);
+                ctx.ActiveSelectionBoundId = null;
+                ctx.SelectedElementIds.Clear();
             }
         }
     }
@@ -96,9 +107,13 @@ public class SelectionReplayHandler :
             CheckAndSelect(boundRect, bound, ctx.ElementsWithLayers,
                 ownerFilter: bound.CreatorConnectionId);
 
-            ctx.ActiveSelectionBoundId = ev.BoundId;
-            ctx.SelectedElementIds.Clear();
-            ctx.SelectedElementIds.AddRange(bound.Targets);
+            if (bound.CreatorConnectionId == ctx.MyConnectionId)
+            {
+                ctx.ActiveSelectionBoundId = ev.BoundId;
+                ctx.SelectedElementIds.Clear();
+                ctx.SelectedElementIds.AddRange(bound.Targets);
+            }
+
             return true;
         }
 
