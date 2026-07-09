@@ -75,7 +75,6 @@ public class SelectionReplayHandler :
         if (ev.CreatorConnectionId == ctx.MyConnectionId && ctx.SelectedElementIds.Count == 0)
         {
             ctx.StaleActionIds.Add(ev.ActionId);
-            return;
         }
 
         foreach (var bound in ctx.SelectionBounds.Values)
