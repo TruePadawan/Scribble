@@ -81,22 +81,6 @@ public record AddTextEvent(
     HashSet<ToolOption> ToolOptions)
     : Event(ActionId), ITerminalEvent;
 
-// SELECT TOOL
-public record CreateSelectionBoundEvent(Guid ActionId, Guid BoundId, SKPoint StartPoint) : Event(ActionId);
-
-public record IncreaseSelectionBoundEvent(Guid ActionId, Guid BoundId, SKPoint Point) : Event(ActionId);
-
-public record EndSelectionEvent(Guid ActionId, Guid BoundId) : Event(ActionId), ITerminalEvent;
-
-public record ClearSelectionEvent(Guid ActionId) : Event(ActionId), ITerminalEvent;
-
-public record MoveCanvasElementsEvent(Guid ActionId, Guid BoundId, SKPoint Delta) : Event(ActionId);
-
-public record RotateCanvasElementsEvent(Guid ActionId, Guid BoundId, float DegreesRad, SKPoint Center)
-    : Event(ActionId);
-
-public record ScaleCanvasElementsEvent(Guid ActionId, Guid BoundId, SKPoint Scale, SKPoint Center) : Event(ActionId);
-
 // IMAGE TOOL
 public record AddImageEvent(
     Guid ActionId,
