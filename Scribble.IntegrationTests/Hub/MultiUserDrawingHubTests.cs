@@ -2,6 +2,7 @@ using FluentAssertions;
 using Microsoft.AspNetCore.SignalR.Client;
 using Scribble.Shared.Dtos;
 using Scribble.Shared.Lib;
+using Scribble.Shared.Lib.Events;
 
 namespace Scribble.IntegrationTests.Hub;
 

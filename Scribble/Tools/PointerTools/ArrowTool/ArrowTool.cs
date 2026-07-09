@@ -5,6 +5,7 @@ using Avalonia.Media.Imaging;
 using Avalonia.Platform;
 using Scribble.Services.CanvasStateService;
 using Scribble.Shared.Lib;
+using Scribble.Shared.Lib.Events;
 using SkiaSharp;
 
 namespace Scribble.Tools.PointerTools.ArrowTool;

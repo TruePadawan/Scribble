@@ -3,6 +3,7 @@ using Scribble.IntegrationTests.Hub;
 using Scribble.Services.MultiUserDrawing;
 using Scribble.Shared.Dtos;
 using Scribble.Shared.Lib;
+using Scribble.Shared.Lib.Events;
 
 namespace Scribble.IntegrationTests.Service;
 
