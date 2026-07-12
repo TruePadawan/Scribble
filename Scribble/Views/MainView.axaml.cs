@@ -196,6 +196,13 @@ public partial class MainView : UserControl
         // implicit pointer capture and kill PointerMoved/PointerReleased delivery.
         if (_quickSelectMoveActive) return;
 
+        // Quick-select borders are only relevant when the Select Tool is active.
+        if (_activePointerTool is not SelectTool)
+        {
+            QuickSelectionBorders.Children.Clear();
+            return;
+        }
+
         var selectableElements = _canvasStateService.CanvasElements.OfType<ISelectable>().ToList();
 
         if (QuickSelectBorderSetMatches(selectableElements))
@@ -362,10 +369,21 @@ public partial class MainView : UserControl
     }
 
     // If the active tool is a stroke tool, show its options else clear and hide the tool options UI
-    private void OnActiveToolChanged(PointerTool? tool)
+    private void OnActiveToolChanged(PointerTool? formerTool, PointerTool? currentTool)
     {
-        _activePointerTool = tool;
-        if (tool == null) return;
+        _activePointerTool = currentTool;
+        if (currentTool == null) return;
+
+        // Update quick-select borders immediately on tool switch, rather than
+        // waiting for the next canvas invalidation.
+        if (formerTool is SelectTool)
+        {
+            QuickSelectionBorders.Children.Clear();
+        }
+        else if (currentTool is SelectTool)
+        {
+            MarkCanvasElementsForSelection();
+        }
 
         if (_activePointerTool is StrokeTool strokeTool)
         {
@@ -376,9 +394,9 @@ public partial class MainView : UserControl
             _viewModel?.UiStateViewModel.ClearToolOptions();
         }
 
-        if (tool.Cursor != null)
+        if (currentTool.Cursor != null)
         {
-            MainCanvas.Cursor = tool.Cursor;
+            MainCanvas.Cursor = currentTool.Cursor;
         }
     }
 
