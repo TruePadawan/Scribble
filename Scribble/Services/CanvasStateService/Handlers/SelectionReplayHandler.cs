@@ -12,14 +12,17 @@ namespace Scribble.Services.CanvasStateService.Handlers;
 
 /// <summary>
 /// Handles replay and fast-path for selection-related events:
-/// CreateSelectionBoundEvent, IncreaseSelectionBoundEvent, EndSelectionEvent, ClearSelectionEvent
+/// CreateSelectionBoundEvent, IncreaseSelectionBoundEvent, EndSelectionEvent,
+/// ClearSelectionEvent, SelectByIdsEvent
 /// </summary>
 public class SelectionReplayHandler :
     IEventReplayHandler<CreateSelectionBoundEvent>,
     IEventReplayHandler<IncreaseSelectionBoundEvent>,
     IEventReplayHandler<EndSelectionEvent>,
     IEventReplayHandler<ClearSelectionEvent>,
-    IFastPathHandler<IncreaseSelectionBoundEvent>
+    IEventReplayHandler<SelectByIdsEvent>,
+    IFastPathHandler<IncreaseSelectionBoundEvent>,
+    IFastPathHandler<SelectByIdsEvent>
 {
     // Replay handlers
 
@@ -174,5 +177,79 @@ public class SelectionReplayHandler :
                 }
             }
         }
+    }
+
+    public void Replay(SelectByIdsEvent ev, CanvasState ctx)
+    {
+        ctx.SelectionBounds.Clear();
+
+        var bound = new SelectionBound
+        {
+            Id = ev.BoundId,
+            Path = new SKPath(),
+            CreatorConnectionId = ev.CreatorConnectionId
+        };
+
+        // Only include IDs that still exist on the canvas (guards against undo
+        // having removed an element that was originally in the selection)
+        var validIds = ctx.PaintableStrokes.Keys
+            .Concat(ctx.CanvasImages.Keys)
+            .ToHashSet();
+
+        foreach (var id in ev.ElementIds)
+        {
+            if (validIds.Contains(id))
+            {
+                bound.Targets.Add(id);
+            }
+        }
+
+        // Mark stale if nothing survived, mirrors EndSelectionEvent behaviour
+        if (bound.Targets.Count == 0)
+        {
+            ctx.StaleActionIds.Add(ev.ActionId);
+            return;
+        }
+
+        ctx.SelectionBounds[ev.BoundId] = bound;
+    }
+
+    public bool TryApplyFastPath(SelectByIdsEvent ev, CanvasState ctx)
+    {
+        ctx.SelectionBounds.Clear();
+
+        var bound = new SelectionBound
+        {
+            Id = ev.BoundId,
+            Path = new SKPath(),
+            CreatorConnectionId = ev.CreatorConnectionId
+        };
+
+        var validIds = ctx.ElementsWithLayers.Select(e => e.Id).ToHashSet();
+
+        foreach (var id in ev.ElementIds)
+        {
+            if (validIds.Contains(id))
+            {
+                bound.Targets.Add(id);
+            }
+        }
+
+        if (bound.Targets.Count == 0)
+        {
+            ctx.StaleActionIds.Add(ev.ActionId);
+            return true;
+        }
+
+        ctx.SelectionBounds[ev.BoundId] = bound;
+
+        if (ev.CreatorConnectionId == ctx.MyConnectionId)
+        {
+            ctx.ActiveSelectionBoundId = ev.BoundId;
+            ctx.SelectedElementIds.Clear();
+            ctx.SelectedElementIds.AddRange(bound.Targets);
+        }
+
+        return true;
     }
 }

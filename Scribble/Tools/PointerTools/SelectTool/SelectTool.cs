@@ -91,25 +91,27 @@ class SelectTool : PointerTool
     }
 
     /// <summary>
-    /// Selects all elements in the list
+    /// Selects all elements in the list by their IDs.
+    /// Fires a <see cref="SelectByIdsEvent"/> so the handler sets targets directly
+    /// without any spatial containment check.
     /// </summary>
     public void SelectElements(List<ISelectable> elements)
     {
         if (elements.Count == 0) return;
-        var allElementIds = CanvasStateService.CanvasElements.Select(element => element.Id).ToHashSet();
-        var canvasElements = elements.OfType<CanvasElement>().ToList();
-        var elementIds = canvasElements.Select(element => element.Id).ToHashSet();
-        if (allElementIds.IsSupersetOf(elementIds))
-        {
-            var combinedBounds = Utilities.GetElementsBounds(canvasElements);
-            var startPoint = new SKPoint(combinedBounds.Left - 1, combinedBounds.Top - 1);
-            var endPoint = new SKPoint(combinedBounds.Right + 1, combinedBounds.Bottom + 1);
-            var actionId = Guid.NewGuid();
-            var boundId = Guid.NewGuid();
 
-            CanvasStateService.ApplyEvent(new CreateSelectionBoundEvent(actionId, boundId, startPoint));
-            CanvasStateService.ApplyEvent(new IncreaseSelectionBoundEvent(actionId, boundId, endPoint));
-            CanvasStateService.ApplyEvent(new EndSelectionEvent(actionId, boundId));
-        }
+        var allElementIds = CanvasStateService.CanvasElements
+            .Select(e => e.Id)
+            .ToHashSet();
+
+        var elementIds = elements
+            .OfType<CanvasElement>()
+            .Select(e => e.Id)
+            .Where(id => allElementIds.Contains(id))
+            .ToList();
+
+        if (elementIds.Count == 0) return;
+
+        CanvasStateService.ApplyEvent(
+            new SelectByIdsEvent(Guid.NewGuid(), Guid.NewGuid(), elementIds));
     }
 }

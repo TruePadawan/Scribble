@@ -300,7 +300,15 @@ public partial class MainView : UserControl
             // Prevent MarkCanvasElementsForSelection from destroying this border
             // while SelectElements triggers canvas invalidation events
             _quickSelectMoveActive = true;
-            selectTool?.SelectElements([selectableElement]);
+            if ((e.KeyModifiers & KeyModifiers.Shift) != 0)
+            {
+                var currentlySelectedElements = _canvasStateService.GetSelectedElements().Cast<ISelectable>().ToList();
+                selectTool?.SelectElements([..currentlySelectedElements, selectableElement]);
+            }
+            else
+            {
+                selectTool?.SelectElements([selectableElement]);
+            }
 
             // Initialize move state so the user can immediately drag to move
             // without needing a second click on the selection overlay
@@ -835,9 +843,7 @@ public partial class MainView : UserControl
     private void QuickSelectBorderReleased(object? sender, PointerReleasedEventArgs e)
     {
         _quickSelectMoveActive = false;
-
-        SelectionBorder_OnPointerReleased(sender, e);
-
+        _selection.SelectionMoveCoord = SKPoint.Empty;
         // Rebuild the quick-select borders now that the gesture is complete,
         // since we skipped reconstruction during the drag
         MarkCanvasElementsForSelection();
