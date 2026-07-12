@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Scribble.Services.CanvasStateService.State;
 using Scribble.Shared.Lib.CanvasElements;
 using Scribble.Shared.Lib.CanvasElements.Strokes;
@@ -11,14 +12,17 @@ namespace Scribble.Services.CanvasStateService.Handlers;
 
 /// <summary>
 /// Handles replay and fast-path for selection-related events:
-/// CreateSelectionBoundEvent, IncreaseSelectionBoundEvent, EndSelectionEvent, ClearSelectionEvent
+/// CreateSelectionBoundEvent, IncreaseSelectionBoundEvent, EndSelectionEvent,
+/// ClearSelectionEvent, SelectByIdsEvent
 /// </summary>
 public class SelectionReplayHandler :
     IEventReplayHandler<CreateSelectionBoundEvent>,
     IEventReplayHandler<IncreaseSelectionBoundEvent>,
     IEventReplayHandler<EndSelectionEvent>,
     IEventReplayHandler<ClearSelectionEvent>,
-    IFastPathHandler<IncreaseSelectionBoundEvent>
+    IEventReplayHandler<SelectByIdsEvent>,
+    IFastPathHandler<IncreaseSelectionBoundEvent>,
+    IFastPathHandler<SelectByIdsEvent>
 {
     // Replay handlers
 
@@ -71,20 +75,34 @@ public class SelectionReplayHandler :
 
     public void Replay(ClearSelectionEvent ev, CanvasState ctx)
     {
-        // Mark selection as stale if it has no targets
-        if (ev.CreatorConnectionId == ctx.MyConnectionId && ctx.SelectedElementIds.Count == 0)
+        // Check if there are any selection bounds for this user.
+        // If not, the clear selection action can be marked stale.
+        var hasSelectionBounds =
+            ctx.SelectionBounds.Values.Any(bound => bound.CreatorConnectionId == ev.CreatorConnectionId);
+
+        if (ev.CreatorConnectionId == ctx.MyConnectionId && !hasSelectionBounds)
         {
             ctx.StaleActionIds.Add(ev.ActionId);
         }
 
+        var boundsToRemove = new List<Guid>();
         foreach (var bound in ctx.SelectionBounds.Values)
         {
             if (bound.CreatorConnectionId == ev.CreatorConnectionId)
             {
-                ctx.SelectionBounds.Remove(bound.Id);
-                ctx.ActiveSelectionBoundId = null;
-                ctx.SelectedElementIds.Clear();
+                boundsToRemove.Add(bound.Id);
             }
+        }
+
+        foreach (var boundId in boundsToRemove)
+        {
+            ctx.SelectionBounds.Remove(boundId);
+        }
+
+        if (ctx.MyConnectionId == ev.CreatorConnectionId)
+        {
+            ctx.ActiveSelectionBoundId = null;
+            ctx.SelectedElementIds.Clear();
         }
     }
 
@@ -159,5 +177,79 @@ public class SelectionReplayHandler :
                 }
             }
         }
+    }
+
+    public void Replay(SelectByIdsEvent ev, CanvasState ctx)
+    {
+        ctx.SelectionBounds.Clear();
+
+        var bound = new SelectionBound
+        {
+            Id = ev.BoundId,
+            Path = new SKPath(),
+            CreatorConnectionId = ev.CreatorConnectionId
+        };
+
+        // Only include IDs that still exist on the canvas (guards against undo
+        // having removed an element that was originally in the selection)
+        var validIds = ctx.PaintableStrokes.Keys
+            .Concat(ctx.CanvasImages.Keys)
+            .ToHashSet();
+
+        foreach (var id in ev.ElementIds)
+        {
+            if (validIds.Contains(id))
+            {
+                bound.Targets.Add(id);
+            }
+        }
+
+        // Mark stale if nothing survived, mirrors EndSelectionEvent behaviour
+        if (bound.Targets.Count == 0)
+        {
+            ctx.StaleActionIds.Add(ev.ActionId);
+            return;
+        }
+
+        ctx.SelectionBounds[ev.BoundId] = bound;
+    }
+
+    public bool TryApplyFastPath(SelectByIdsEvent ev, CanvasState ctx)
+    {
+        ctx.SelectionBounds.Clear();
+
+        var bound = new SelectionBound
+        {
+            Id = ev.BoundId,
+            Path = new SKPath(),
+            CreatorConnectionId = ev.CreatorConnectionId
+        };
+
+        var validIds = ctx.ElementsWithLayers.Select(e => e.Id).ToHashSet();
+
+        foreach (var id in ev.ElementIds)
+        {
+            if (validIds.Contains(id))
+            {
+                bound.Targets.Add(id);
+            }
+        }
+
+        if (bound.Targets.Count == 0)
+        {
+            ctx.StaleActionIds.Add(ev.ActionId);
+            return true;
+        }
+
+        ctx.SelectionBounds[ev.BoundId] = bound;
+
+        if (ev.CreatorConnectionId == ctx.MyConnectionId)
+        {
+            ctx.ActiveSelectionBoundId = ev.BoundId;
+            ctx.SelectedElementIds.Clear();
+            ctx.SelectedElementIds.AddRange(bound.Targets);
+        }
+
+        return true;
     }
 }

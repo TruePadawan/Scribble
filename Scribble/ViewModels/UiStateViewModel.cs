@@ -26,7 +26,7 @@ public partial class UiStateViewModel : ViewModelBase
     private bool CanZoomIn => ZoomLevel < CameraState.MaxZoom;
     private bool CanZoomOut => ZoomLevel > CameraState.MinZoom;
 
-    public event Action<PointerTool?>? ActiveToolChanged;
+    public event Action<PointerTool?, PointerTool?>? ActiveToolChanged;
     public event Action<double>? CenterZoomRequested;
 
     [ObservableProperty] private Color _backgroundColor;
@@ -78,7 +78,7 @@ public partial class UiStateViewModel : ViewModelBase
     partial void OnActivePointerToolChanged(PointerTool? oldValue, PointerTool? newValue)
     {
         oldValue?.HandleToolSwitchOut();
-        ActiveToolChanged?.Invoke(newValue);
+        ActiveToolChanged?.Invoke(oldValue, newValue);
         newValue?.HandleToolSwitchIn();
     }
 
@@ -184,7 +184,7 @@ public partial class UiStateViewModel : ViewModelBase
         ToolOptionsVisible = ActiveToolOptions.Count > 0;
     }
 
-    public void ShowSelectedCanvasElementOptions(List<CanvasElement> selectedElements)
+    public void ShowSelectedCanvasElementOptions(List<ISelectable> selectedElements)
     {
         var filteredStrokeIds = new Dictionary<ToolOption, List<Guid>>();
         foreach (var element in selectedElements)

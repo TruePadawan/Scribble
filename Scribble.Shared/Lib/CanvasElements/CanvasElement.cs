@@ -1,5 +1,6 @@
 using System.Text.Json.Serialization;
 using Scribble.Shared.Lib.CanvasElements.Strokes;
+using SkiaSharp;
 
 namespace Scribble.Shared.Lib.CanvasElements;
 
@@ -33,4 +34,17 @@ public interface IClonable
     /// Returns a deep copy of this element.
     /// </summary>
     CanvasElement Clone(bool preserveId = false);
+}
+
+public interface ISelectable
+{
+    /// <summary>
+    /// The bounds of the element.
+    /// </summary>
+    public SKRect Bounds { get; }
+
+    /// <summary>
+    /// The rotation of the element in radians.
+    /// </summary>
+    public float Rotation { get; set; }
 }
