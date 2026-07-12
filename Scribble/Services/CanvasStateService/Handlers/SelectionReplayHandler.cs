@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Scribble.Services.CanvasStateService.State;
 using Scribble.Shared.Lib.CanvasElements;
 using Scribble.Shared.Lib.CanvasElements.Strokes;
@@ -71,20 +72,34 @@ public class SelectionReplayHandler :
 
     public void Replay(ClearSelectionEvent ev, CanvasState ctx)
     {
-        // Mark selection as stale if it has no targets
-        if (ev.CreatorConnectionId == ctx.MyConnectionId && ctx.SelectedElementIds.Count == 0)
+        // Check if there are any selection bounds for this user.
+        // If not, the clear selection action can be marked stale.
+        var hasSelectionBounds =
+            ctx.SelectionBounds.Values.Any(bound => bound.CreatorConnectionId == ev.CreatorConnectionId);
+
+        if (ev.CreatorConnectionId == ctx.MyConnectionId && !hasSelectionBounds)
         {
             ctx.StaleActionIds.Add(ev.ActionId);
         }
 
+        var boundsToRemove = new List<Guid>();
         foreach (var bound in ctx.SelectionBounds.Values)
         {
             if (bound.CreatorConnectionId == ev.CreatorConnectionId)
             {
-                ctx.SelectionBounds.Remove(bound.Id);
-                ctx.ActiveSelectionBoundId = null;
-                ctx.SelectedElementIds.Clear();
+                boundsToRemove.Add(bound.Id);
             }
+        }
+
+        foreach (var boundId in boundsToRemove)
+        {
+            ctx.SelectionBounds.Remove(boundId);
+        }
+
+        if (ctx.MyConnectionId == ev.CreatorConnectionId)
+        {
+            ctx.ActiveSelectionBoundId = null;
+            ctx.SelectedElementIds.Clear();
         }
     }
 

@@ -184,7 +184,7 @@ public partial class UiStateViewModel : ViewModelBase
         ToolOptionsVisible = ActiveToolOptions.Count > 0;
     }
 
-    public void ShowSelectedCanvasElementOptions(List<CanvasElement> selectedElements)
+    public void ShowSelectedCanvasElementOptions(List<ISelectable> selectedElements)
     {
         var filteredStrokeIds = new Dictionary<ToolOption, List<Guid>>();
         foreach (var element in selectedElements)

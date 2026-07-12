@@ -34,6 +34,7 @@ using Scribble.Tools.PointerTools.TextTool;
 using Scribble.Utils;
 using Scribble.ViewModels;
 using SkiaSharp;
+using ISelectable = Scribble.Shared.Lib.CanvasElements.ISelectable;
 
 namespace Scribble.Views;
 
@@ -359,89 +360,174 @@ public partial class MainView : UserControl
     {
         if (_viewModel == null) return;
 
-        var hasEvents = _canvasStateService.CanvasEvents.Count > 0;
-        // Am I triggering a selection?
-        var triggeringSelectionAction = hasEvents &&
-                                        _canvasStateService.CanvasEvents.Last() is EndSelectionEvent es &&
-                                        _canvasStateService.IsLocalSelection(es.BoundId);
-        var allSelectedIds = _canvasStateService.SelectedElementIds;
+        var events = _canvasStateService.CanvasEvents;
+        var userIsSelecting = events.Count > 0
+                              && events.Last() is EndSelectionEvent es
+                              && _canvasStateService.IsLocalSelection(es.BoundId);
+        var selectedElementIds = _canvasStateService.SelectedElementIds;
 
-        if (allSelectedIds.Count > 0)
+        if (selectedElementIds.Count == 0)
         {
-            var selectedStrokes = _viewModel.CanvasElements
-                .Where(element => allSelectedIds.Contains(element.Id) && element is PaintableStroke)
-                .Cast<PaintableStroke>()
-                .ToList();
-            var selectedImages = _viewModel.CanvasElements
-                .Where(element => allSelectedIds.Contains(element.Id) && element is CanvasImage)
-                .Cast<CanvasImage>()
-                .ToList();
-            if (selectedStrokes.Count == 0 && selectedImages.Count == 0)
+            ClearSelectionOverlay(userIsSelecting);
+            return;
+        }
+
+        var selectedElements = _viewModel.CanvasElements
+            .Where(element => selectedElementIds.Contains(element.Id) && element is ISelectable)
+            .Cast<ISelectable>()
+            .ToList();
+
+        var (combinedBounds, rotationAngleDegrees, rotationCenter) =
+            ComputeSelectionGeometry(selectedElements);
+
+        ApplySelectionOverlay(selectedElements, combinedBounds, rotationAngleDegrees, rotationCenter);
+
+        if (userIsSelecting)
+        {
+            _viewModel.UiStateViewModel.ShowSelectedCanvasElementOptions([..selectedElements]);
+        }
+    }
+
+    /// <summary>
+    /// Computes the world-space bounding rect, rotation angle (degrees), and rotation
+    /// center for the given set of selected elements. For a single rotated element the
+    /// bounds are un-rotated so the overlay rectangle matches the element's original shape.
+    /// </summary>
+    private static (SKRect Bounds, float RotationDegrees, SKPoint RotationCenter)
+        ComputeSelectionGeometry(IReadOnlyList<ISelectable> selectedElements)
+    {
+        if (selectedElements.Count == 1)
+        {
+            return ComputeSingleElementGeometry(selectedElements[0]);
+        }
+
+        return ComputeMultiElementGeometry(selectedElements);
+    }
+
+    private static (SKRect Bounds, float RotationDegrees, SKPoint RotationCenter)
+        ComputeSingleElementGeometry(ISelectable element)
+    {
+        var rotationDegrees = Utilities.RadiansToDegrees(element.Rotation);
+        var elementIsRotated = Math.Abs(rotationDegrees) > 0.001f;
+
+        if (!elementIsRotated)
+        {
+            var bounds = element.Bounds;
+            return (bounds, 0f, new SKPoint(bounds.MidX, bounds.MidY));
+        }
+
+        switch (element)
+        {
+            case PaintableStroke stroke:
             {
-                SelectionOverlay.IsVisible = false;
-                return;
+                // Un-rotate the path to recover the axis-aligned bounding box
+                var center = new SKPoint(stroke.Bounds.MidX, stroke.Bounds.MidY);
+                var inverseRotation = SKMatrix.CreateRotationDegrees(-rotationDegrees, center.X, center.Y);
+                var clonedPath = stroke.Path.Clone();
+                clonedPath.Transform(inverseRotation);
+                return (clonedPath.Bounds, rotationDegrees, center);
             }
-
-            SKRect combinedBounds = SKRect.Empty;
-
-            foreach (var strokeBounds in selectedStrokes.Select(stroke => stroke.Path.Bounds))
+            case CanvasImage image:
             {
-                if (combinedBounds == SKRect.Empty)
-                {
-                    combinedBounds = strokeBounds;
-                }
-                else
-                {
-                    combinedBounds.Union(strokeBounds);
-                }
+                // Image bounds are rotation-independent; just record the center
+                var center = new SKPoint(image.Bounds.MidX, image.Bounds.MidY);
+                return (image.Bounds, rotationDegrees, center);
             }
+            default:
+                return (element.Bounds, 0f, new SKPoint(element.Bounds.MidX, element.Bounds.MidY));
+        }
+    }
 
-            foreach (var imageBounds in selectedImages.Select(canvasImage => canvasImage.Bounds))
+    private static (SKRect Bounds, float RotationDegrees, SKPoint RotationCenter)
+        ComputeMultiElementGeometry(IEnumerable<ISelectable> elements)
+    {
+        var combinedBounds = SKRect.Empty;
+        foreach (var bounds in elements.Select(e => e.Bounds))
+        {
+            if (combinedBounds == SKRect.Empty)
             {
-                if (combinedBounds == SKRect.Empty)
-                {
-                    combinedBounds = imageBounds;
-                }
-                else
-                {
-                    combinedBounds.Union(imageBounds);
-                }
+                combinedBounds = bounds;
             }
-
-            // Align the selection overlay with what it has selected
-            // Convert the world-space bounding rect corners to screen-space
-            var topLeftScreen = CameraState.WorldToScreen(new SKPoint(combinedBounds.Left, combinedBounds.Top));
-            var bottomRightScreen = CameraState.WorldToScreen(new SKPoint(combinedBounds.Right, combinedBounds.Bottom));
-            var screenWidth = bottomRightScreen.X - topLeftScreen.X;
-            var screenHeight = bottomRightScreen.Y - topLeftScreen.Y;
-
-            Canvas.SetLeft(SelectionOverlay, topLeftScreen.X);
-            Canvas.SetTop(SelectionOverlay, topLeftScreen.Y - 15 - 6); // rotation handle offset
-            SelectionBoxContainer.Width = screenWidth;
-            SelectionBoxContainer.Height = screenHeight;
-
-            SelectionOverlay.IsVisible = true;
-            _selection.SelectionBounds = combinedBounds;
-            bool isRotating = !double.IsNaN(_selection.SelectionRotationAngle);
-            bool isScaling = _selection.ActiveScaleHandle != null;
-            if (isRotating || isScaling)
+            else
             {
-                SelectionOverlay.IsVisible = false;
+                combinedBounds.Union(bounds);
             }
+        }
 
-            if (triggeringSelectionAction)
-            {
-                _viewModel.UiStateViewModel.ShowSelectedCanvasElementOptions([..selectedStrokes, ..selectedImages]);
-            }
+        // Multi-element selections are never rotated as a group
+        return (combinedBounds, 0f, SKPoint.Empty);
+    }
+
+    /// <summary>
+    /// Positions the selection overlay on screen, applies a rotation transform when a
+    /// single element is rotated, and hides the overlay while a rotate/scale gesture
+    /// is in progress.
+    /// </summary>
+    private void ApplySelectionOverlay(
+        List<ISelectable> selectedElements,
+        SKRect worldBounds,
+        float rotationAngleDegrees,
+        SKPoint worldRotationCenter)
+    {
+        // The rotation handle sits above the selection box (15 px width/height + 6 px gap)
+        const float rotationHandleOffset = 15 + 6;
+
+        // Convert world-space corners to screen-space
+        var topLeftScreen = CameraState.WorldToScreen(new SKPoint(worldBounds.Left, worldBounds.Top));
+        var bottomRightScreen = CameraState.WorldToScreen(new SKPoint(worldBounds.Right, worldBounds.Bottom));
+        var screenWidth = bottomRightScreen.X - topLeftScreen.X;
+        var screenHeight = bottomRightScreen.Y - topLeftScreen.Y;
+
+        Canvas.SetLeft(SelectionOverlay, topLeftScreen.X);
+        Canvas.SetTop(SelectionOverlay, topLeftScreen.Y - rotationHandleOffset);
+        SelectionBoxContainer.Width = screenWidth;
+        SelectionBoxContainer.Height = screenHeight;
+
+        var elementIsRotated = Math.Abs(rotationAngleDegrees) > 0.001f;
+        // Apply or clear rotation transform
+        if (selectedElements.Count == 1 && elementIsRotated)
+        {
+            var overlayLeft = topLeftScreen.X;
+            var overlayTop = topLeftScreen.Y - rotationHandleOffset;
+            var rotationCenterScreen = CameraState.WorldToScreen(worldRotationCenter);
+
+            // Express the rotation center in overlay-local coordinates
+            var localCenterX = rotationCenterScreen.X - overlayLeft;
+            var localCenterY = rotationCenterScreen.Y - overlayTop;
+            var overlayHeight = screenHeight + rotationHandleOffset;
+
+            SelectionOverlay.RenderTransformOrigin = new RelativePoint(
+                localCenterX / screenWidth,
+                localCenterY / overlayHeight,
+                RelativeUnit.Relative);
+            SelectionOverlay.RenderTransform = new RotateTransform(rotationAngleDegrees);
         }
         else
         {
-            SelectionOverlay.IsVisible = false;
-            _selection.SelectionBounds = SKRect.Empty;
-            if (triggeringSelectionAction)
-            {
-                _viewModel.UiStateViewModel.ClearToolOptions();
-            }
+            SelectionOverlay.RenderTransform = null;
+        }
+
+        _selection.SelectionBounds = worldBounds;
+
+        // Hide the overlay while a rotate or scale gesture is in progress so the
+        // handles don't fight with the pointer tracking
+        var gestureInProgress = !double.IsNaN(_selection.SelectionRotationAngle)
+                                || _selection.ActiveScaleHandle != null;
+        SelectionOverlay.IsVisible = !gestureInProgress;
+    }
+
+    /// <summary>
+    /// Hides the selection overlay and optionally resets tool options when
+    /// the hide was caused by a completed selection action that found nothing.
+    /// </summary>
+    private void ClearSelectionOverlay(bool userIsSelecting)
+    {
+        SelectionOverlay.IsVisible = false;
+        _selection.SelectionBounds = SKRect.Empty;
+
+        if (userIsSelecting)
+        {
+            _viewModel?.UiStateViewModel.ClearToolOptions();
         }
     }
 

@@ -158,4 +158,22 @@ public static class Utilities
 
         return totalBounds;
     }
+
+    /// <summary>
+    /// Converts degrees to radians
+    /// </summary>
+    /// <returns></returns>
+    public static float DegreesToRadians(float degrees)
+    {
+        return (float)(degrees * Math.PI / 180);
+    }
+
+    /// <summary>
+    /// Converts radians to degrees
+    /// </summary>
+    /// <returns></returns>
+    public static float RadiansToDegrees(float radians)
+    {
+        return (float)(radians * 180 / Math.PI);
+    }
 }

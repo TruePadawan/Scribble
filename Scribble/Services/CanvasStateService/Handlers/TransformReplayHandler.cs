@@ -46,27 +46,24 @@ public class TransformReplayHandler :
     {
         if (ctx.SelectionBounds.TryGetValue(ev.BoundId, out var bound))
         {
+            var rotationMatrix = SKMatrix.CreateRotation(ev.DegreesRad, ev.Center.X, ev.Center.Y);
             foreach (var boundTargetId in bound.Targets)
             {
                 if (ctx.PaintableStrokes.TryGetValue(boundTargetId, out var stroke))
                 {
-                    var matrix = SKMatrix.CreateRotation(ev.DegreesRad, ev.Center.X, ev.Center.Y);
-                    stroke.Path.Transform(matrix);
-                    if (stroke is TextStroke rotatedText)
-                    {
-                        rotatedText.TransformMatrix = rotatedText.TransformMatrix.PostConcat(matrix);
-                    }
+                    stroke.Rotation += ev.DegreesRad;
+                    stroke.Path.Transform(rotationMatrix);
+                    // Keep track of the transformations applied to the stroke
+                    stroke.TransformMatrix = stroke.TransformMatrix.PostConcat(rotationMatrix);
                 }
                 else if (ctx.CanvasImages.TryGetValue(boundTargetId, out var image))
                 {
                     image.Rotation += ev.DegreesRad;
-
                     // Rotate the bounds center around the rotation pivot
                     var imgCenter = new SKPoint(image.Bounds.MidX, image.Bounds.MidY);
-                    var rotated = SKMatrix.CreateRotation(ev.DegreesRad, ev.Center.X, ev.Center.Y)
-                        .MapPoint(imgCenter);
+                    var rotatedPoint = rotationMatrix.MapPoint(imgCenter);
                     var bounds = image.Bounds;
-                    bounds.Offset(rotated.X - imgCenter.X, rotated.Y - imgCenter.Y);
+                    bounds.Offset(rotatedPoint.X - imgCenter.X, rotatedPoint.Y - imgCenter.Y);
                     image.Bounds = bounds;
                 }
             }
@@ -77,21 +74,17 @@ public class TransformReplayHandler :
     {
         if (ctx.SelectionBounds.TryGetValue(ev.BoundId, out var bound))
         {
+            var scaleMatrix = SKMatrix.CreateScale(ev.Scale.X, ev.Scale.Y, ev.Center.X, ev.Center.Y);
             foreach (var boundTargetId in bound.Targets)
             {
                 if (ctx.PaintableStrokes.TryGetValue(boundTargetId, out var stroke))
                 {
-                    var matrix = SKMatrix.CreateScale(ev.Scale.X, ev.Scale.Y, ev.Center.X, ev.Center.Y);
-                    stroke.Path.Transform(matrix);
-                    if (stroke is TextStroke scaledText)
-                    {
-                        scaledText.TransformMatrix = scaledText.TransformMatrix.PostConcat(matrix);
-                    }
+                    stroke.Path.Transform(scaleMatrix);
+                    // Keep track of the transformations applied to the stroke
+                    stroke.TransformMatrix = stroke.TransformMatrix.PostConcat(scaleMatrix);
                 }
                 else if (ctx.CanvasImages.TryGetValue(boundTargetId, out var image))
                 {
-                    var scaleMatrix =
-                        SKMatrix.CreateScale(ev.Scale.X, ev.Scale.Y, ev.Center.X, ev.Center.Y);
                     var topLeft = scaleMatrix.MapPoint(new SKPoint(image.Bounds.Left, image.Bounds.Top));
                     var bottomRight =
                         scaleMatrix.MapPoint(new SKPoint(image.Bounds.Right, image.Bounds.Bottom));
@@ -124,16 +117,14 @@ public class TransformReplayHandler :
     {
         if (ctx.SelectionBounds.TryGetValue(ev.BoundId, out var bound))
         {
+            var translationMatrix = SKMatrix.CreateTranslation(ev.Delta.X, ev.Delta.Y);
             foreach (var boundTargetId in bound.Targets)
             {
                 if (ctx.PaintableStrokes.TryGetValue(boundTargetId, out var stroke))
                 {
-                    var matrix = SKMatrix.CreateTranslation(ev.Delta.X, ev.Delta.Y);
-                    stroke.Path.Transform(matrix);
-                    if (stroke is TextStroke textStroke)
-                    {
-                        textStroke.TransformMatrix = textStroke.TransformMatrix.PostConcat(matrix);
-                    }
+                    stroke.Path.Transform(translationMatrix);
+                    // Keep track of the transformations applied to the stroke
+                    stroke.TransformMatrix = stroke.TransformMatrix.PostConcat(translationMatrix);
                 }
                 else if (ctx.CanvasImages.TryGetValue(boundTargetId, out var image))
                 {
@@ -153,25 +144,21 @@ public class TransformReplayHandler :
     {
         if (ctx.SelectionBounds.TryGetValue(ev.BoundId, out var bound))
         {
+            var rotationMatrix = SKMatrix.CreateRotation(ev.DegreesRad, ev.Center.X, ev.Center.Y);
             foreach (var boundTargetId in bound.Targets)
             {
                 if (ctx.PaintableStrokes.TryGetValue(boundTargetId, out var stroke))
                 {
-                    var matrix = SKMatrix.CreateRotation(ev.DegreesRad, ev.Center.X,
-                        ev.Center.Y);
-                    stroke.Path.Transform(matrix);
-                    if (stroke is TextStroke textStroke)
-                    {
-                        textStroke.TransformMatrix = textStroke.TransformMatrix.PostConcat(matrix);
-                    }
+                    stroke.Rotation += ev.DegreesRad;
+                    stroke.Path.Transform(rotationMatrix);
+                    // Keep track of the transformations applied to the stroke
+                    stroke.TransformMatrix = stroke.TransformMatrix.PostConcat(rotationMatrix);
                 }
                 else if (ctx.CanvasImages.TryGetValue(boundTargetId, out var image))
                 {
                     image.Rotation += ev.DegreesRad;
                     var imgCenter = new SKPoint(image.Bounds.MidX, image.Bounds.MidY);
-                    var rotated = SKMatrix
-                        .CreateRotation(ev.DegreesRad, ev.Center.X, ev.Center.Y)
-                        .MapPoint(imgCenter);
+                    var rotated = rotationMatrix.MapPoint(imgCenter);
                     var bounds = image.Bounds;
                     bounds.Offset(rotated.X - imgCenter.X, rotated.Y - imgCenter.Y);
                     image.Bounds = bounds;
@@ -188,22 +175,18 @@ public class TransformReplayHandler :
     {
         if (ctx.SelectionBounds.TryGetValue(ev.BoundId, out var bound))
         {
+            var scaleMatrix = SKMatrix.CreateScale(ev.Scale.X, ev.Scale.Y, ev.Center.X,
+                ev.Center.Y);
             foreach (var boundTargetId in bound.Targets)
             {
                 if (ctx.PaintableStrokes.TryGetValue(boundTargetId, out var stroke))
                 {
-                    var matrix = SKMatrix.CreateScale(ev.Scale.X, ev.Scale.Y, ev.Center.X,
-                        ev.Center.Y);
-                    stroke.Path.Transform(matrix);
-                    if (stroke is TextStroke textStroke)
-                    {
-                        textStroke.TransformMatrix = textStroke.TransformMatrix.PostConcat(matrix);
-                    }
+                    stroke.Path.Transform(scaleMatrix);
+                    // Keep track of the transformations applied to the stroke
+                    stroke.TransformMatrix = stroke.TransformMatrix.PostConcat(scaleMatrix);
                 }
                 else if (ctx.CanvasImages.TryGetValue(boundTargetId, out var image))
                 {
-                    var scaleMatrix = SKMatrix.CreateScale(ev.Scale.X, ev.Scale.Y,
-                        ev.Center.X, ev.Center.Y);
                     var topLeft = scaleMatrix.MapPoint(new SKPoint(image.Bounds.Left, image.Bounds.Top));
                     var bottomRight =
                         scaleMatrix.MapPoint(new SKPoint(image.Bounds.Right, image.Bounds.Bottom));
@@ -235,19 +218,16 @@ public class TransformReplayHandler :
     /// </summary>
     internal static void MoveElements(IEnumerable<CanvasElement> elements, SKPoint delta)
     {
+        var translationMatrix = SKMatrix.CreateTranslation(delta.X, delta.Y);
         foreach (var canvasElement in elements)
         {
             switch (canvasElement)
             {
                 case PaintableStroke stroke:
                 {
-                    var matrix = SKMatrix.CreateTranslation(delta.X, delta.Y);
-                    stroke.Path.Transform(matrix);
-                    if (stroke is TextStroke movedText)
-                    {
-                        movedText.TransformMatrix = movedText.TransformMatrix.PostConcat(matrix);
-                    }
-
+                    stroke.Path.Transform(translationMatrix);
+                    // Keep track of the transformations applied to the stroke
+                    stroke.TransformMatrix = stroke.TransformMatrix.PostConcat(translationMatrix);
                     break;
                 }
                 case CanvasImage image:
