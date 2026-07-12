@@ -24,16 +24,16 @@ public class EraseTool : PointerTool
     {
         _strokeId = Guid.NewGuid();
         _actionId = Guid.NewGuid();
-        CanvasState.ApplyEvent(new StartEraseStrokeEvent(_actionId, _strokeId, startPoint));
+        CanvasStateService.ApplyEvent(new StartEraseStrokeEvent(_actionId, _strokeId, startPoint));
     }
 
     public override void HandlePointerMove(SKPoint prevCoord, SKPoint currentCoord)
     {
-        CanvasState.ApplyEvent(new EraseStrokeLineToEvent(_actionId, _strokeId, currentCoord));
+        CanvasStateService.ApplyEvent(new EraseStrokeLineToEvent(_actionId, _strokeId, currentCoord));
     }
 
     public override void HandlePointerRelease(SKPoint prevCoord, SKPoint currentCoord)
     {
-        CanvasState.ApplyEvent(new TriggerEraseEvent(_actionId, _strokeId));
+        CanvasStateService.ApplyEvent(new TriggerEraseEvent(_actionId, _strokeId));
     }
 }

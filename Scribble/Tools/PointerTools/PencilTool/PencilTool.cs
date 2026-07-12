@@ -29,7 +29,7 @@ public class PencilTool : StrokeTool
         _strokeId = Guid.NewGuid();
         _actionId = Guid.NewGuid();
         _lastAcceptedPoint = startPoint;
-        CanvasState.ApplyEvent(
+        CanvasStateService.ApplyEvent(
             new StartStrokeEvent(_actionId, _strokeId, startPoint, StrokePaint.Clone(), ToolType.Pencil, ToolOptions));
     }
 
@@ -42,11 +42,11 @@ public class PencilTool : StrokeTool
         }
 
         _lastAcceptedPoint = currentCoord;
-        CanvasState.ApplyEvent(new PencilStrokeLineToEvent(_actionId, _strokeId, currentCoord));
+        CanvasStateService.ApplyEvent(new PencilStrokeLineToEvent(_actionId, _strokeId, currentCoord));
     }
 
     public override void HandlePointerRelease(SKPoint prevCoord, SKPoint currentCoord)
     {
-        CanvasState.ApplyEvent(new EndStrokeEvent(_actionId));
+        CanvasStateService.ApplyEvent(new EndStrokeEvent(_actionId));
     }
 }
