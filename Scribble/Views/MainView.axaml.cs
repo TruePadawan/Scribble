@@ -349,7 +349,7 @@ public partial class MainView : UserControl
                 Tag = textStroke
             };
 
-            border.DoubleTapped += TextStrokeBorder_OnDoubleTapped;
+            border.PointerPressed += TextStrokeBorder_OnPointerPressed;
 
             Canvas.SetLeft(border, topLeftScreenPos.X);
             Canvas.SetTop(border, topLeftScreenPos.Y);
@@ -359,7 +359,7 @@ public partial class MainView : UserControl
         TextStrokeEditBorders.Children.AddRange(borders);
     }
 
-    private void TextStrokeBorder_OnDoubleTapped(object? sender, TappedEventArgs e)
+    private void TextStrokeBorder_OnPointerPressed(object? sender, PointerPressedEventArgs e)
     {
         if (sender is Border { Tag: TextStroke textStroke })
         {
