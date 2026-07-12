@@ -49,6 +49,9 @@
                 VerticalAlignment="Stretch"
                 Focusable="True">
 
+            <!-- COVERS ALL CANVAS ELEMENTS, TRIGGERS QUICK SELECTION -->
+            <Canvas Name="QuickSelectionBorders"></Canvas>
+
             <!-- COVERS SELECTED ELEMENTS -->
             <StackPanel Name="SelectionOverlay" Spacing="6" IsVisible="False">
                 <Border Name="SelectionRotationBtn" CornerRadius="100" BorderThickness="2" BorderBrush="Gray"

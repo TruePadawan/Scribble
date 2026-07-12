@@ -49,6 +49,7 @@ public partial class MainView : UserControl
     private readonly IDialogService _dialogService;
     private readonly IFileService _fileService;
     private readonly Selection _selection;
+    private bool _quickSelectMoveActive;
 
     public MainView()
     {
@@ -88,6 +89,7 @@ public partial class MainView : UserControl
             _viewModel = viewModel;
             _viewModel.RequestRefreshSelection += VisualizeSelection;
             _viewModel.RequestInvalidateSkiaCanvas += MainCanvas.InvalidateVisual;
+            _viewModel.RequestInvalidateSkiaCanvas += MarkCanvasElementsForSelection;
             _viewModel.RequestInvalidateSkiaCanvas += MarkTextStrokesForEditing;
             _viewModel.UiStateViewModel.CenterZoomRequested += OnCenterZoomRequested;
             _viewModel.UiStateViewModel.ActiveToolChanged += OnActiveToolChanged;
@@ -183,6 +185,127 @@ public partial class MainView : UserControl
     }
 
     /// <summary>
+    /// Put an invisible Border control on all canvas elements that allows quick selection.
+    /// Repositions existing borders when the element set is unchanged (e.g. pan/zoom/move),
+    /// and only does a full rebuild when elements are added or removed.
+    /// </summary>
+    private void MarkCanvasElementsForSelection()
+    {
+        // Don't rebuild the quick-select borders while a quick-select-initiated
+        // move is in progress. Destroying the pressed border would break the
+        // implicit pointer capture and kill PointerMoved/PointerReleased delivery.
+        if (_quickSelectMoveActive) return;
+
+        var selectableElements = _canvasStateService.CanvasElements.OfType<ISelectable>().ToList();
+
+        if (QuickSelectBorderSetMatches(selectableElements))
+        {
+            RepositionQuickSelectBorders(selectableElements);
+        }
+        else
+        {
+            RebuildQuickSelectBorders(selectableElements);
+        }
+    }
+
+    /// <summary>
+    /// Returns true when the existing quick borders correspond 1-to-1 (by element Id)
+    /// to <paramref name="elements"/>, meaning only a reposition is needed.
+    /// </summary>
+    private bool QuickSelectBorderSetMatches(List<ISelectable> elements)
+    {
+        var children = QuickSelectionBorders.Children;
+        if (children.Count != elements.Count) return false;
+
+        for (var i = 0; i < elements.Count; i++)
+        {
+            if (children[i] is not Border { Tag: CanvasElement existingEl } ||
+                elements[i] is not CanvasElement newEl ||
+                existingEl.Id != newEl.Id)
+                return false;
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// Cheap path: updates only the position and size of existing quick select borders without
+    /// touching the visual tree structure or allocating new objects.
+    /// </summary>
+    private void RepositionQuickSelectBorders(List<ISelectable> elements)
+    {
+        var children = QuickSelectionBorders.Children;
+        for (var i = 0; i < elements.Count; i++)
+        {
+            var border = (Border)children[i];
+            var bounds = elements[i].Bounds;
+            var topLeftScreenPos = CameraState.WorldToScreen(new SKPoint(bounds.Left, bounds.Top));
+            var bottomRightScreenPos = CameraState.WorldToScreen(new SKPoint(bounds.Right, bounds.Bottom));
+
+            border.Width = bottomRightScreenPos.X - topLeftScreenPos.X;
+            border.Height = bottomRightScreenPos.Y - topLeftScreenPos.Y;
+            // Refresh Tag in case the element object was changed
+            border.Tag = elements[i];
+            Canvas.SetLeft(border, topLeftScreenPos.X);
+            Canvas.SetTop(border, topLeftScreenPos.Y);
+        }
+    }
+
+    /// <summary>
+    /// Clears and recreates all borders. Only called when the set of
+    /// selectable elements has changed (elements added or removed).
+    /// </summary>
+    private void RebuildQuickSelectBorders(List<ISelectable> elements)
+    {
+        QuickSelectionBorders.Children.Clear();
+
+        var quickSelectBorders = new List<Border>(elements.Count);
+        foreach (var element in elements)
+        {
+            var bounds = element.Bounds;
+            var topLeftScreenPos = CameraState.WorldToScreen(new SKPoint(bounds.Left, bounds.Top));
+            var bottomRightScreenPos = CameraState.WorldToScreen(new SKPoint(bounds.Right, bounds.Bottom));
+
+            var border = new Border
+            {
+                Background = Brushes.Transparent,
+                Width = bottomRightScreenPos.X - topLeftScreenPos.X,
+                Height = bottomRightScreenPos.Y - topLeftScreenPos.Y,
+                Tag = element
+            };
+            border.PointerPressed += QuickSelectBorderPressed;
+            border.PointerMoved += SelectionBorder_OnPointerMoved;
+            border.PointerReleased += QuickSelectBorderReleased;
+            Canvas.SetLeft(border, topLeftScreenPos.X);
+            Canvas.SetTop(border, topLeftScreenPos.Y);
+            quickSelectBorders.Add(border);
+        }
+
+        QuickSelectionBorders.Children.AddRange(quickSelectBorders);
+    }
+
+    private void QuickSelectBorderPressed(object? sender, PointerPressedEventArgs e)
+    {
+        // Select the linked ISelectable element
+        if (sender is Border { Tag: ISelectable selectableElement })
+        {
+            var selectTool = _viewModel?.UiStateViewModel.AvailableTools.OfType<SelectTool>().FirstOrDefault();
+            // Prevent MarkCanvasElementsForSelection from destroying this border
+            // while SelectElements triggers canvas invalidation events
+            _quickSelectMoveActive = true;
+            selectTool?.SelectElements([selectableElement]);
+
+            // Initialize move state so the user can immediately drag to move
+            // without needing a second click on the selection overlay
+            if (e.Properties.IsLeftButtonPressed)
+            {
+                _selection.SelectionMoveCoord = GetPointerPosition(e);
+                _selection.MoveActionId = Guid.NewGuid();
+            }
+        }
+    }
+
+    /// <summary>
     /// Identify all text strokes and put an invisible Border control on them that triggers
     /// a pop-up for editing the text
     /// </summary>
@@ -206,23 +329,23 @@ public partial class MainView : UserControl
             var strokeBounds = textStroke.Path.Bounds;
 
             // Convert world-space bounds to screen-space for overlay positioning
-            var topLeftScreen = CameraState.WorldToScreen(new SKPoint(strokeBounds.Left, strokeBounds.Top));
-            var bottomRightScreen =
+            var topLeftScreenPos = CameraState.WorldToScreen(new SKPoint(strokeBounds.Left, strokeBounds.Top));
+            var bottomRightScreenPos =
                 CameraState.WorldToScreen(new SKPoint(strokeBounds.Right, strokeBounds.Bottom));
 
             var border = new Border
             {
                 Background = Brushes.Transparent,
-                Width = bottomRightScreen.X - topLeftScreen.X,
-                Height = bottomRightScreen.Y - topLeftScreen.Y,
+                Width = bottomRightScreenPos.X - topLeftScreenPos.X,
+                Height = bottomRightScreenPos.Y - topLeftScreenPos.Y,
                 Cursor = new Cursor(StandardCursorType.Ibeam),
                 Tag = textStroke
             };
 
             border.DoubleTapped += TextStrokeBorder_OnDoubleTapped;
 
-            Canvas.SetLeft(border, topLeftScreen.X);
-            Canvas.SetTop(border, topLeftScreen.Y);
+            Canvas.SetLeft(border, topLeftScreenPos.X);
+            Canvas.SetTop(border, topLeftScreenPos.Y);
             borders.Add(border);
         }
 
@@ -300,8 +423,9 @@ public partial class MainView : UserControl
         // Re-visualize selection if there was any before zooming, this is needed to correct the size of the selection
         // border post-zoom
         VisualizeSelection();
-        // Re-apply text edit overlay so it stays in sync with the zoom level
+        // Re-apply text edit overlay and quick-select borders so it stays in sync with the zoom level
         MarkTextStrokesForEditing();
+        MarkCanvasElementsForSelection();
     }
 
     private void ZoomToFitBtn_OnClick(object? sender, RoutedEventArgs e)
@@ -372,7 +496,7 @@ public partial class MainView : UserControl
             return;
         }
 
-        var selectedElements = _viewModel.CanvasElements
+        var selectedElements = _canvasStateService.CanvasElements
             .Where(element => selectedElementIds.Contains(element.Id) && element is ISelectable)
             .Cast<ISelectable>()
             .ToList();
@@ -441,18 +565,7 @@ public partial class MainView : UserControl
     private static (SKRect Bounds, float RotationDegrees, SKPoint RotationCenter)
         ComputeMultiElementGeometry(IEnumerable<ISelectable> elements)
     {
-        var combinedBounds = SKRect.Empty;
-        foreach (var bounds in elements.Select(e => e.Bounds))
-        {
-            if (combinedBounds == SKRect.Empty)
-            {
-                combinedBounds = bounds;
-            }
-            else
-            {
-                combinedBounds.Union(bounds);
-            }
-        }
+        var combinedBounds = Utilities.GetElementsBounds(elements.Cast<CanvasElement>().ToList());
 
         // Multi-element selections are never rotated as a group
         return (combinedBounds, 0f, SKPoint.Empty);
@@ -595,10 +708,12 @@ public partial class MainView : UserControl
 
         _prevCoord = pointerCoordinates;
 
-        // Re-apply text edit overlay if canvas is being panned around
+        // Re-apply text edit overlay and quick-select borders if canvas is being panned around
         if (_activePointerTool is PanningTool)
         {
+            VisualizeSelection();
             MarkTextStrokesForEditing();
+            MarkCanvasElementsForSelection();
         }
     }
 
@@ -663,6 +778,8 @@ public partial class MainView : UserControl
         }
 
         VisualizeSelection();
+        MarkTextStrokesForEditing();
+        MarkCanvasElementsForSelection();
         e.Handled = true;
     }
 
@@ -695,6 +812,17 @@ public partial class MainView : UserControl
         }
 
         _selection.SelectionMoveCoord = pointerCoordinates;
+    }
+
+    private void QuickSelectBorderReleased(object? sender, PointerReleasedEventArgs e)
+    {
+        _quickSelectMoveActive = false;
+
+        SelectionBorder_OnPointerReleased(sender, e);
+
+        // Rebuild the quick-select borders now that the gesture is complete,
+        // since we skipped reconstruction during the drag
+        MarkCanvasElementsForSelection();
     }
 
     private void SelectionBorder_OnPointerReleased(object? sender, PointerReleasedEventArgs e)

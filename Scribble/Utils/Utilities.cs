@@ -122,7 +122,7 @@ public static class Utilities
     }
 
     /// <summary>
-    /// Returns the bounds of the elements
+    /// Returns the combined bounds of the elements
     /// </summary>
     public static SKRect GetElementsBounds(IEnumerable<CanvasElement> elements)
     {
