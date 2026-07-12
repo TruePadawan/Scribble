@@ -1,12 +1,17 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Media;
 using Scribble.Services.CanvasStateService;
+using Scribble.Shared.Lib.CanvasElements;
 using Scribble.Shared.Lib.Events;
 using Scribble.State;
+using Scribble.Utils;
 using SkiaSharp;
+using ISelectable = Scribble.Shared.Lib.CanvasElements.ISelectable;
 
 namespace Scribble.Tools.PointerTools.SelectTool;
 
@@ -18,7 +23,8 @@ class SelectTool : PointerTool
     private Guid _boundId = Guid.NewGuid();
     private Guid _actionId = Guid.NewGuid();
 
-    public SelectTool(string name, ICanvasStateService canvasState, Canvas canvasContainer) : base(name, canvasState,
+    public SelectTool(string name, ICanvasStateService canvasStateService, Canvas canvasContainer) : base(name,
+        canvasStateService,
         LoadToolBitmap(typeof(SelectTool), "cursor.png"))
     {
         Cursor = Cursor.Default;
@@ -44,13 +50,13 @@ class SelectTool : PointerTool
         _canvasContainer.Children.Add(_selectionBorder);
         _boundId = Guid.NewGuid();
         _actionId = Guid.NewGuid();
-        if (CanvasState.ActiveSelectionBoundId != null)
+        if (CanvasStateService.ActiveSelectionBoundId != null)
         {
-            CanvasState.ClearSelection();
+            CanvasStateService.ClearSelection();
         }
 
         // Events use world-space coordinates
-        CanvasState.ApplyEvent(new CreateSelectionBoundEvent(_actionId, _boundId, coord));
+        CanvasStateService.ApplyEvent(new CreateSelectionBoundEvent(_actionId, _boundId, coord));
     }
 
     public override void HandlePointerMove(SKPoint prevCoord, SKPoint currentCoord)
@@ -67,7 +73,7 @@ class SelectTool : PointerTool
         Canvas.SetTop(_selectionBorder, Math.Min(_startPoint.Y, screenPos.Y));
 
         // Events use world-space coordinates
-        CanvasState.ApplyEvent(new IncreaseSelectionBoundEvent(_actionId, _boundId, currentCoord));
+        CanvasStateService.ApplyEvent(new IncreaseSelectionBoundEvent(_actionId, _boundId, currentCoord));
     }
 
     public override void HandlePointerRelease(SKPoint prevCoord, SKPoint currentCoord)
@@ -76,11 +82,36 @@ class SelectTool : PointerTool
 
         _canvasContainer.Children.Remove(_selectionBorder);
         _selectionBorder = null;
-        CanvasState.ApplyEvent(new EndSelectionEvent(_actionId, _boundId));
+        CanvasStateService.ApplyEvent(new EndSelectionEvent(_actionId, _boundId));
     }
 
     public override void HandleToolSwitchOut()
     {
-        CanvasState.ClearSelection();
+        CanvasStateService.ClearSelection();
+    }
+
+    /// <summary>
+    /// Selects all elements in the list by their IDs.
+    /// Fires a <see cref="SelectByIdsEvent"/> so the handler sets targets directly
+    /// without any spatial containment check.
+    /// </summary>
+    public void SelectElements(List<ISelectable> elements)
+    {
+        if (elements.Count == 0) return;
+
+        var allElementIds = CanvasStateService.CanvasElements
+            .Select(e => e.Id)
+            .ToHashSet();
+
+        var elementIds = elements
+            .OfType<CanvasElement>()
+            .Select(e => e.Id)
+            .Where(id => allElementIds.Contains(id))
+            .ToList();
+
+        if (elementIds.Count == 0) return;
+
+        CanvasStateService.ApplyEvent(
+            new SelectByIdsEvent(Guid.NewGuid(), Guid.NewGuid(), elementIds));
     }
 }

@@ -32,6 +32,7 @@ namespace Scribble.Shared.Lib;
 [JsonDerivedType(typeof(UpdateStrokeStyleEvent), typeDiscriminator: "UpdateStrokeStyleEvent")]
 [JsonDerivedType(typeof(UpdateStrokeThicknessEvent), typeDiscriminator: "UpdateStrokeThicknessEvent")]
 [JsonDerivedType(typeof(ClearSelectionEvent), typeDiscriminator: "ClearSelectionEvent")]
+[JsonDerivedType(typeof(SelectByIdsEvent), typeDiscriminator: "SelectByIdsEvent")]
 [JsonDerivedType(typeof(AddImageEvent), typeDiscriminator: "AddImageEvent")]
 [JsonDerivedType(typeof(UpdateTextEvent), typeDiscriminator: "UpdateTextEvent")]
 [JsonDerivedType(typeof(UpdateFontCasingEvent), typeDiscriminator: "UpdateFontCasingEvent")]

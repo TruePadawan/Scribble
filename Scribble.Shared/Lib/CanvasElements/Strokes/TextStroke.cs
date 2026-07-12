@@ -1,5 +1,4 @@
 using System.Text.Json.Serialization;
-using Scribble.Shared.Converters;
 using SkiaSharp;
 
 namespace Scribble.Shared.Lib.CanvasElements.Strokes;
@@ -20,12 +19,6 @@ public class TextStroke : PaintableStroke, IClonable
     /// This is the anchor used when rebuilding the path after font-size changes.
     /// </summary>
     public required SKPoint Position { get; set; }
-
-    /// <summary>
-    /// Cumulatively tracks translation, rotation, and scaling matrices applied to the stroke.
-    /// </summary>
-    [JsonConverter(typeof(SKMatrixJsonConverter))]
-    public SKMatrix TransformMatrix { get; set; } = SKMatrix.Identity;
 
     /// <summary>
     /// Whether this text stroke is rendered in bold.
@@ -66,7 +59,8 @@ public class TextStroke : PaintableStroke, IClonable
             IsBold = IsBold,
             IsItalic = IsItalic,
             LayerIndex = LayerIndex,
-            CreatorConnectionId = CreatorConnectionId
+            CreatorConnectionId = CreatorConnectionId,
+            Rotation = Rotation
         };
         return clone;
     }

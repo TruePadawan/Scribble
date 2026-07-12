@@ -147,7 +147,7 @@ public class TextTool : StrokeTool
         {
             if (_editingStroke != null && _editingStroke.Text != text)
             {
-                CanvasState.ApplyEvent(new UpdateTextEvent(_actionId, _editingStroke.Id, text));
+                CanvasStateService.ApplyEvent(new UpdateTextEvent(_actionId, _editingStroke.Id, text));
             }
             else if (_editingStroke == null)
             {
@@ -157,7 +157,7 @@ public class TextTool : StrokeTool
                 var textboxPos = CameraState.ScreenToWorld(screenPos);
                 textboxPos.Y += StrokePaint.TextSize;
                 var strokeId = Guid.NewGuid();
-                CanvasState.ApplyEvent(new AddTextEvent(_actionId, strokeId, textboxPos, text, StrokePaint.Clone(),
+                CanvasStateService.ApplyEvent(new AddTextEvent(_actionId, strokeId, textboxPos, text, StrokePaint.Clone(),
                     ToolOptions));
             }
         }

@@ -33,17 +33,17 @@ public class EllipseTool : StrokeTool
     {
         _strokeId = Guid.NewGuid();
         _actionId = Guid.NewGuid();
-        CanvasState.ApplyEvent(new StartStrokeEvent(_actionId, _strokeId, startPoint, StrokePaint.Clone(),
+        CanvasStateService.ApplyEvent(new StartStrokeEvent(_actionId, _strokeId, startPoint, StrokePaint.Clone(),
             ToolType.Ellipse, ToolOptions));
     }
 
     public override void HandlePointerMove(SKPoint prevCoord, SKPoint currentCoord)
     {
-        CanvasState.ApplyEvent(new LineStrokeLineToEvent(_actionId, _strokeId, currentCoord));
+        CanvasStateService.ApplyEvent(new LineStrokeLineToEvent(_actionId, _strokeId, currentCoord));
     }
 
     public override void HandlePointerRelease(SKPoint prevCoord, SKPoint currentCoord)
     {
-        CanvasState.ApplyEvent(new EndStrokeEvent(_actionId));
+        CanvasStateService.ApplyEvent(new EndStrokeEvent(_actionId));
     }
 }

@@ -70,7 +70,7 @@ public class ImageTool : PointerTool
             var actionId = Guid.NewGuid();
             var imageId = Guid.NewGuid();
             var imageSize = ScaleToFit(bitmap.Width, bitmap.Height, MaxImageDimension);
-            CanvasState.ApplyEvent(new AddImageEvent(actionId, imageId, base64String, imageCoord, imageSize));
+            CanvasStateService.ApplyEvent(new AddImageEvent(actionId, imageId, base64String, imageCoord, imageSize));
         });
     }
 

@@ -3,7 +3,7 @@ using SkiaSharp;
 
 namespace Scribble.Shared.Lib.CanvasElements;
 
-public class CanvasImage : CanvasElement, IClonable
+public class CanvasImage : CanvasElement, IClonable, ISelectable
 {
     public required string ImageBase64String { get; init; }
 
