@@ -219,7 +219,7 @@ public partial class MainView : UserControl
                 Tag = textStroke
             };
 
-            border.PointerPressed += TextStrokeBorder_OnPointerPressed;
+            border.DoubleTapped += TextStrokeBorder_OnDoubleTapped;
 
             Canvas.SetLeft(border, topLeftScreen.X);
             Canvas.SetTop(border, topLeftScreen.Y);
@@ -229,9 +229,9 @@ public partial class MainView : UserControl
         TextStrokeEditBorders.Children.AddRange(borders);
     }
 
-    private void TextStrokeBorder_OnPointerPressed(object? sender, PointerPressedEventArgs e)
+    private void TextStrokeBorder_OnDoubleTapped(object? sender, TappedEventArgs e)
     {
-        if (e.Properties.IsLeftButtonPressed && sender is Border { Tag: TextStroke textStroke })
+        if (sender is Border { Tag: TextStroke textStroke })
         {
             var textTool = _viewModel?.UiStateViewModel.AvailableTools.OfType<TextTool>().FirstOrDefault();
             textTool?.StartEditing(textStroke);
