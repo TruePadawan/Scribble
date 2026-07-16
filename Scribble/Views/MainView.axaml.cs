@@ -511,9 +511,14 @@ public partial class MainView : UserControl
         if (_viewModel == null) return;
 
         var events = _canvasStateService.CanvasEvents;
-        var userIsSelecting = events.Count > 0
-                              && events.Last() is EndSelectionEvent es
-                              && _canvasStateService.IsLocalSelection(es.BoundId);
+        var currentEvent = events.LastOrDefault();
+        var boundId = currentEvent switch
+        {
+            EndSelectionEvent endSelectionEvent => endSelectionEvent.BoundId,
+            SelectByIdsEvent selectByIdsEvent => selectByIdsEvent.BoundId,
+            _ => Guid.Empty
+        };
+        var userIsSelecting = boundId != Guid.Empty && _canvasStateService.IsLocalSelection(boundId);
         var selectedElementIds = _canvasStateService.SelectedElementIds;
 
         if (selectedElementIds.Count == 0)
