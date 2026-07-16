@@ -99,11 +99,15 @@ public class CanvasStateService : ICanvasStateService
         UndoRedoStateChanged?.Invoke();
     }
 
-    public bool IsLocalSelection(Guid boundId)
+    public Queue<Event> GetLocalCanvasEvents()
     {
-        if (!CurrentState.SelectionBounds.TryGetValue(boundId, out var bound)) return false;
+        return new Queue<Event>(CanvasEvents.Where(IsLocalEvent).ToList());
+    }
+
+    public bool IsLocalEvent(Event @event)
+    {
         var myConnectionId = _multiUserDrawingService.Room?.Me.ConnectionId;
-        return bound.CreatorConnectionId == myConnectionId;
+        return @event.CreatorConnectionId == myConnectionId;
     }
 
     public void ClearSelection()

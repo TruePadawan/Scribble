@@ -32,5 +32,6 @@ public interface ICanvasStateService
     List<CanvasElement> GetSelectedElements();
     void LoadCanvas(List<CanvasElement> elements);
     void ApplyEvent(Event @event, bool isLocalEvent = true);
-    bool IsLocalSelection(Guid boundId);
+    bool IsLocalEvent(Event @event);
+    Queue<Event> GetLocalCanvasEvents();
 }

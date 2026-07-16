@@ -510,20 +510,13 @@ public partial class MainView : UserControl
     {
         if (_viewModel == null) return;
 
-        var events = _canvasStateService.CanvasEvents;
-        var currentEvent = events.LastOrDefault();
-        var boundId = currentEvent switch
-        {
-            EndSelectionEvent endSelectionEvent => endSelectionEvent.BoundId,
-            SelectByIdsEvent selectByIdsEvent => selectByIdsEvent.BoundId,
-            _ => Guid.Empty
-        };
-        var userIsSelecting = boundId != Guid.Empty && _canvasStateService.IsLocalSelection(boundId);
+        var currentLocalEvent = _canvasStateService.GetLocalCanvasEvents().LastOrDefault();
+        var userIsSelecting = currentLocalEvent is EndSelectionEvent or SelectByIdsEvent;
         var selectedElementIds = _canvasStateService.SelectedElementIds;
 
-        if (selectedElementIds.Count == 0)
+        if (selectedElementIds.Count == 0 && userIsSelecting)
         {
-            ClearSelectionOverlay(userIsSelecting);
+            ClearSelectionOverlay(true);
             return;
         }
 
@@ -661,15 +654,14 @@ public partial class MainView : UserControl
     }
 
     /// <summary>
-    /// Hides the selection overlay and optionally resets tool options when
-    /// the hide was caused by a completed selection action that found nothing.
+    /// Hides the selection overlay and optionally resets tool options
     /// </summary>
-    private void ClearSelectionOverlay(bool userIsSelecting)
+    private void ClearSelectionOverlay(bool clearToolOptions = false)
     {
         SelectionOverlay.IsVisible = false;
         _selection.SelectionBounds = SKRect.Empty;
 
-        if (userIsSelecting)
+        if (clearToolOptions)
         {
             _viewModel?.UiStateViewModel.ClearToolOptions();
         }
