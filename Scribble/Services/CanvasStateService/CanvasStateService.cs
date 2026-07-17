@@ -198,7 +198,7 @@ public class CanvasStateService : ICanvasStateService
         {
             switch (@event)
             {
-                case ITerminalEvent when isLocalEvent:
+                case ITerminalEvent when isLocalEvent && !CurrentState.StaleActionIds.Contains(@event.ActionId):
                     TrackAction(@event.ActionId);
                     break;
                 case IncreaseSelectionBoundEvent:
