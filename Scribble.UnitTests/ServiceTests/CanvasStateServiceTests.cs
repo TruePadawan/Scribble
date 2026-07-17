@@ -489,6 +489,71 @@ public class CanvasStateServiceTests
     }
 
     [Fact]
+    public void ApplyEvent_CreateSelectionBound_PreservesOtherUsersSelection()
+    {
+        // Setup multi-user room and trigger connection
+        var room = new MultiUserDrawingRoom("room1", "myConnId", "me");
+        _multiUserDrawingService.Room.Returns(room);
+        _multiUserDrawingService.ConnectionStarted += Raise.Event<Action>();
+
+        // We need strokes to select, otherwise EndSelectionEvent marks things stale.
+        // For multi-user selection, users can only select elements they own.
+        var stroke1ActionId = Guid.NewGuid();
+        var stroke1Id = Guid.NewGuid();
+        var startStroke1 = new StartStrokeEvent(stroke1ActionId, stroke1Id, new SKPoint(10f, 10f), DefaultPaint(), ToolType.Pencil, []) 
+            { CreatorConnectionId = "myConnId" };
+        var endStroke1 = new EndStrokeEvent(stroke1ActionId) { CreatorConnectionId = "myConnId" };
+
+        var stroke2ActionId = Guid.NewGuid();
+        var stroke2Id = Guid.NewGuid();
+        var startStroke2 = new StartStrokeEvent(stroke2ActionId, stroke2Id, new SKPoint(20f, 20f), DefaultPaint(), ToolType.Pencil, []) 
+            { CreatorConnectionId = "otherConnId" };
+        var endStroke2 = new EndStrokeEvent(stroke2ActionId) { CreatorConnectionId = "otherConnId" };
+
+        _canvasStateService.ApplyEvent(startStroke1, isLocalEvent: false);
+        _canvasStateService.ApplyEvent(endStroke1, isLocalEvent: false);
+        _canvasStateService.ApplyEvent(startStroke2, isLocalEvent: false);
+        _canvasStateService.ApplyEvent(endStroke2, isLocalEvent: false);
+
+        // Simulate User A (otherConnId) selecting stroke2
+        var userAActionId = Guid.NewGuid();
+        var userABoundId = Guid.NewGuid();
+        _canvasStateService.ApplyEvent(new CreateSelectionBoundEvent(userAActionId, userABoundId, new SKPoint(0f, 0f)) { CreatorConnectionId = "otherConnId" }, isLocalEvent: false);
+        _canvasStateService.ApplyEvent(new IncreaseSelectionBoundEvent(userAActionId, userABoundId, new SKPoint(1000f, 1000f)) { CreatorConnectionId = "otherConnId" }, isLocalEvent: false);
+        _canvasStateService.ApplyEvent(new EndSelectionEvent(userAActionId, userABoundId) { CreatorConnectionId = "otherConnId" }, isLocalEvent: false);
+
+        // Verify userA's selection is active for them (and stored in our SelectionBounds state)
+        // Since we are "myConnId", our SelectedElementIds will be empty because we don't have a selection bound yet.
+        _canvasStateService.SelectedElementIds.Should().BeEmpty();
+
+        // Simulate User B (myConnId / me) starting a select action
+        var userBActionId = Guid.NewGuid();
+        var userBBoundId = Guid.NewGuid();
+        _canvasStateService.ApplyEvent(new CreateSelectionBoundEvent(userBActionId, userBBoundId, new SKPoint(0f, 0f)) { CreatorConnectionId = "myConnId" }, isLocalEvent: false);
+        _canvasStateService.ApplyEvent(new IncreaseSelectionBoundEvent(userBActionId, userBBoundId, new SKPoint(1000f, 1000f)) { CreatorConnectionId = "myConnId" }, isLocalEvent: false);
+        _canvasStateService.ApplyEvent(new EndSelectionEvent(userBActionId, userBBoundId) { CreatorConnectionId = "myConnId" }, isLocalEvent: false);
+
+        // Verify User B's selection succeeded
+        _canvasStateService.ActiveSelectionBoundId.Should().Be(userBBoundId);
+        _canvasStateService.SelectedElementIds.Should().ContainSingle(id => id == stroke1Id);
+
+        // Verify User A's selection bound was NOT cleared
+        // Clear User B's selection:
+        _canvasStateService.ApplyEvent(new ClearSelectionEvent(Guid.NewGuid()) { CreatorConnectionId = "myConnId" }, isLocalEvent: false);
+        _canvasStateService.ActiveSelectionBoundId.Should().BeNull();
+        _canvasStateService.SelectedElementIds.Should().BeEmpty();
+
+        // Now, switch our connection to "otherConnId" and trigger replay to verify User A's selection is still intact.
+        var room2 = new MultiUserDrawingRoom("room1", "otherConnId", "other");
+        _multiUserDrawingService.Room.Returns(room2);
+        _multiUserDrawingService.ConnectionStarted += Raise.Event<Action>();
+        _canvasStateService.ApplyEvent(new ClearSelectionEvent(Guid.NewGuid()) { CreatorConnectionId = "nonExistent" }, isLocalEvent: false);
+
+        _canvasStateService.ActiveSelectionBoundId.Should().Be(userABoundId);
+        _canvasStateService.SelectedElementIds.Should().ContainSingle(id => id == stroke2Id);
+    }
+
+    [Fact]
     public void ApplyEvent_SelectionBoundCoversStroke_SelectedElementIdsContainsStrokeId()
     {
         var (_, strokeId) = ApplyCompleteStroke(_canvasStateService,
@@ -595,6 +660,57 @@ public class CanvasStateServiceTests
         _canvasStateService.ApplyEvent(new CreateSelectionBoundEvent(actionId, boundId, new SKPoint(0, 0)));
         _canvasStateService.ApplyEvent(new EndSelectionEvent(actionId, boundId));
 
+        _canvasStateService.CanUndo.Should().BeFalse();
+    }
+
+    [Fact]
+    public void ApplyEvent_SelectByIds_AllValidIds_SelectsTheElements()
+    {
+        var (_, stroke1Id) = ApplyCompleteStroke(_canvasStateService, new SKPoint(0f, 0f), new SKPoint(10f, 10f));
+        var (_, stroke2Id) = ApplyCompleteStroke(_canvasStateService, new SKPoint(100f, 100f), new SKPoint(110f, 110f));
+
+        var boundId = Guid.NewGuid();
+        var actionId = Guid.NewGuid();
+        var selectEvent = new SelectByIdsEvent(actionId, boundId, [stroke1Id, stroke2Id]);
+
+        _canvasStateService.ApplyEvent(selectEvent);
+
+        _canvasStateService.ActiveSelectionBoundId.Should().Be(boundId);
+        _canvasStateService.SelectedElementIds.Should().BeEquivalentTo([stroke1Id, stroke2Id]);
+        _canvasStateService.CanUndo.Should().BeTrue();
+    }
+
+    [Fact]
+    public void ApplyEvent_SelectByIds_SomeValidIds_SelectsOnlyValidElements()
+    {
+        var (_, stroke1Id) = ApplyCompleteStroke(_canvasStateService, new SKPoint(0f, 0f), new SKPoint(10f, 10f));
+        var (_, stroke2Id) = ApplyCompleteStroke(_canvasStateService, new SKPoint(100f, 100f), new SKPoint(110f, 110f));
+        var randomId = Guid.NewGuid();
+
+        var boundId = Guid.NewGuid();
+        var actionId = Guid.NewGuid();
+        var selectEvent = new SelectByIdsEvent(actionId, boundId, [stroke1Id, randomId, stroke2Id]);
+
+        _canvasStateService.ApplyEvent(selectEvent);
+
+        _canvasStateService.ActiveSelectionBoundId.Should().Be(boundId);
+        _canvasStateService.SelectedElementIds.Should().BeEquivalentTo([stroke1Id, stroke2Id]);
+        _canvasStateService.CanUndo.Should().BeTrue();
+    }
+
+    [Fact]
+    public void ApplyEvent_SelectByIds_NoValidIds_MarksActionStaleAndDoesNotSelect()
+    {
+        var randomId = Guid.NewGuid();
+
+        var boundId = Guid.NewGuid();
+        var actionId = Guid.NewGuid();
+        var selectEvent = new SelectByIdsEvent(actionId, boundId, [randomId]);
+
+        _canvasStateService.ApplyEvent(selectEvent);
+
+        _canvasStateService.ActiveSelectionBoundId.Should().BeNull();
+        _canvasStateService.SelectedElementIds.Should().BeEmpty();
         _canvasStateService.CanUndo.Should().BeFalse();
     }
 

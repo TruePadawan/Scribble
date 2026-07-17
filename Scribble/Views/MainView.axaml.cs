@@ -510,15 +510,13 @@ public partial class MainView : UserControl
     {
         if (_viewModel == null) return;
 
-        var events = _canvasStateService.CanvasEvents;
-        var userIsSelecting = events.Count > 0
-                              && events.Last() is EndSelectionEvent es
-                              && _canvasStateService.IsLocalSelection(es.BoundId);
+        var currentLocalEvent = _canvasStateService.GetLocalCanvasEvents().LastOrDefault();
+        var userIsSelecting = currentLocalEvent is EndSelectionEvent or SelectByIdsEvent;
         var selectedElementIds = _canvasStateService.SelectedElementIds;
 
-        if (selectedElementIds.Count == 0)
+        if (selectedElementIds.Count == 0 && userIsSelecting)
         {
-            ClearSelectionOverlay(userIsSelecting);
+            ClearSelectionOverlay(true);
             return;
         }
 
@@ -647,24 +645,18 @@ public partial class MainView : UserControl
         }
 
         _selection.SelectionBounds = worldBounds;
-
-        // Hide the overlay while a rotate or scale gesture is in progress so the
-        // handles don't fight with the pointer tracking
-        var gestureInProgress = !double.IsNaN(_selection.SelectionRotationAngle)
-                                || _selection.ActiveScaleHandle != null;
-        SelectionOverlay.IsVisible = !gestureInProgress;
+        SelectionOverlay.IsVisible = selectedElements.Count > 0;
     }
 
     /// <summary>
-    /// Hides the selection overlay and optionally resets tool options when
-    /// the hide was caused by a completed selection action that found nothing.
+    /// Hides the selection overlay and optionally resets tool options
     /// </summary>
-    private void ClearSelectionOverlay(bool userIsSelecting)
+    private void ClearSelectionOverlay(bool clearToolOptions = false)
     {
         SelectionOverlay.IsVisible = false;
         _selection.SelectionBounds = SKRect.Empty;
 
-        if (userIsSelecting)
+        if (clearToolOptions)
         {
             _viewModel?.UiStateViewModel.ClearToolOptions();
         }

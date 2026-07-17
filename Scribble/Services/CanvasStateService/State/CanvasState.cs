@@ -91,4 +91,21 @@ public class CanvasState
 
         ElementsWithLayers = elements;
     }
+
+    /// <summary>
+    /// Removes all selection bounds owned by the given connection ID.
+    /// Other users' bounds are preserved.
+    /// </summary>
+    public void ClearSelectionBoundsForUser(string? connectionId)
+    {
+        var toRemove = SelectionBounds.Values
+            .Where(b => b.CreatorConnectionId == connectionId)
+            .Select(b => b.Id)
+            .ToList();
+
+        foreach (var id in toRemove)
+        {
+            SelectionBounds.Remove(id);
+        }
+    }
 }
