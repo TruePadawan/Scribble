@@ -31,7 +31,7 @@ public class SelectionReplayHandler :
         var selectionPath = new SKPath();
         selectionPath.MoveTo(ev.StartPoint);
 
-        ctx.SelectionBounds.Clear();
+        ctx.ClearSelectionBoundsForUser(ev.CreatorConnectionId);
 
         var selectionBound = new SelectionBound
         {
@@ -85,19 +85,7 @@ public class SelectionReplayHandler :
             ctx.StaleActionIds.Add(ev.ActionId);
         }
 
-        var boundsToRemove = new List<Guid>();
-        foreach (var bound in ctx.SelectionBounds.Values)
-        {
-            if (bound.CreatorConnectionId == ev.CreatorConnectionId)
-            {
-                boundsToRemove.Add(bound.Id);
-            }
-        }
-
-        foreach (var boundId in boundsToRemove)
-        {
-            ctx.SelectionBounds.Remove(boundId);
-        }
+        ctx.ClearSelectionBoundsForUser(ev.CreatorConnectionId);
 
         if (ctx.MyConnectionId == ev.CreatorConnectionId)
         {
@@ -181,7 +169,7 @@ public class SelectionReplayHandler :
 
     public void Replay(SelectByIdsEvent ev, CanvasState ctx)
     {
-        ctx.SelectionBounds.Clear();
+        ctx.ClearSelectionBoundsForUser(ev.CreatorConnectionId);
 
         var bound = new SelectionBound
         {
@@ -216,7 +204,7 @@ public class SelectionReplayHandler :
 
     public bool TryApplyFastPath(SelectByIdsEvent ev, CanvasState ctx)
     {
-        ctx.SelectionBounds.Clear();
+        ctx.ClearSelectionBoundsForUser(ev.CreatorConnectionId);
 
         var bound = new SelectionBound
         {

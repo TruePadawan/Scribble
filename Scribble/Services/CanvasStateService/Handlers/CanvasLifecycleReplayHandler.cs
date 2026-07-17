@@ -139,7 +139,7 @@ public class CanvasLifecycleReplayHandler :
         }
 
         // Automatically select the pasted elements
-        ctx.SelectionBounds.Clear();
+        ctx.ClearSelectionBoundsForUser(ev.CreatorConnectionId);
         var pasteSelectionPath = new SKPath();
         var selectionRect = Utilities.GetElementsBounds(pastedElements);
         pasteSelectionPath.AddRect(selectionRect);
