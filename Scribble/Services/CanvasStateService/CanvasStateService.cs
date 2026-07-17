@@ -201,9 +201,6 @@ public class CanvasStateService : ICanvasStateService
                 case ITerminalEvent when isLocalEvent && !CurrentState.StaleActionIds.Contains(@event.ActionId):
                     TrackAction(@event.ActionId);
                     break;
-                case IncreaseSelectionBoundEvent:
-                    SelectionInvalidated?.Invoke();
-                    break;
             }
 
             CanvasInvalidated?.Invoke();
