@@ -645,12 +645,7 @@ public partial class MainView : UserControl
         }
 
         _selection.SelectionBounds = worldBounds;
-
-        // Hide the overlay while a rotate or scale gesture is in progress so the
-        // handles don't fight with the pointer tracking
-        var gestureInProgress = !double.IsNaN(_selection.SelectionRotationAngle)
-                                || _selection.ActiveScaleHandle != null;
-        SelectionOverlay.IsVisible = !gestureInProgress;
+        SelectionOverlay.IsVisible = selectedElements.Count > 0;
     }
 
     /// <summary>
