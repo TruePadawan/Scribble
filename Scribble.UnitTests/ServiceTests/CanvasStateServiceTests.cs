@@ -598,6 +598,57 @@ public class CanvasStateServiceTests
         _canvasStateService.CanUndo.Should().BeFalse();
     }
 
+    [Fact]
+    public void ApplyEvent_SelectByIds_AllValidIds_SelectsTheElements()
+    {
+        var (_, stroke1Id) = ApplyCompleteStroke(_canvasStateService, new SKPoint(0f, 0f), new SKPoint(10f, 10f));
+        var (_, stroke2Id) = ApplyCompleteStroke(_canvasStateService, new SKPoint(100f, 100f), new SKPoint(110f, 110f));
+
+        var boundId = Guid.NewGuid();
+        var actionId = Guid.NewGuid();
+        var selectEvent = new SelectByIdsEvent(actionId, boundId, [stroke1Id, stroke2Id]);
+
+        _canvasStateService.ApplyEvent(selectEvent);
+
+        _canvasStateService.ActiveSelectionBoundId.Should().Be(boundId);
+        _canvasStateService.SelectedElementIds.Should().BeEquivalentTo([stroke1Id, stroke2Id]);
+        _canvasStateService.CanUndo.Should().BeTrue();
+    }
+
+    [Fact]
+    public void ApplyEvent_SelectByIds_SomeValidIds_SelectsOnlyValidElements()
+    {
+        var (_, stroke1Id) = ApplyCompleteStroke(_canvasStateService, new SKPoint(0f, 0f), new SKPoint(10f, 10f));
+        var (_, stroke2Id) = ApplyCompleteStroke(_canvasStateService, new SKPoint(100f, 100f), new SKPoint(110f, 110f));
+        var randomId = Guid.NewGuid();
+
+        var boundId = Guid.NewGuid();
+        var actionId = Guid.NewGuid();
+        var selectEvent = new SelectByIdsEvent(actionId, boundId, [stroke1Id, randomId, stroke2Id]);
+
+        _canvasStateService.ApplyEvent(selectEvent);
+
+        _canvasStateService.ActiveSelectionBoundId.Should().Be(boundId);
+        _canvasStateService.SelectedElementIds.Should().BeEquivalentTo([stroke1Id, stroke2Id]);
+        _canvasStateService.CanUndo.Should().BeTrue();
+    }
+
+    [Fact]
+    public void ApplyEvent_SelectByIds_NoValidIds_MarksActionStaleAndDoesNotSelect()
+    {
+        var randomId = Guid.NewGuid();
+
+        var boundId = Guid.NewGuid();
+        var actionId = Guid.NewGuid();
+        var selectEvent = new SelectByIdsEvent(actionId, boundId, [randomId]);
+
+        _canvasStateService.ApplyEvent(selectEvent);
+
+        _canvasStateService.ActiveSelectionBoundId.Should().BeNull();
+        _canvasStateService.SelectedElementIds.Should().BeEmpty();
+        _canvasStateService.CanUndo.Should().BeFalse();
+    }
+
 
     // Selection: Transform operations
     // These all go through the fast-path and require a bound + stroke already tracked
