@@ -500,13 +500,15 @@ public class CanvasStateServiceTests
         // For multi-user selection, users can only select elements they own.
         var stroke1ActionId = Guid.NewGuid();
         var stroke1Id = Guid.NewGuid();
-        var startStroke1 = new StartStrokeEvent(stroke1ActionId, stroke1Id, new SKPoint(10f, 10f), DefaultPaint(), ToolType.Pencil, []) 
+        var startStroke1 = new StartStrokeEvent(stroke1ActionId, stroke1Id, new SKPoint(10f, 10f), DefaultPaint(),
+                ToolType.Pencil, [])
             { CreatorConnectionId = "myConnId" };
         var endStroke1 = new EndStrokeEvent(stroke1ActionId) { CreatorConnectionId = "myConnId" };
 
         var stroke2ActionId = Guid.NewGuid();
         var stroke2Id = Guid.NewGuid();
-        var startStroke2 = new StartStrokeEvent(stroke2ActionId, stroke2Id, new SKPoint(20f, 20f), DefaultPaint(), ToolType.Pencil, []) 
+        var startStroke2 = new StartStrokeEvent(stroke2ActionId, stroke2Id, new SKPoint(20f, 20f), DefaultPaint(),
+                ToolType.Pencil, [])
             { CreatorConnectionId = "otherConnId" };
         var endStroke2 = new EndStrokeEvent(stroke2ActionId) { CreatorConnectionId = "otherConnId" };
 
@@ -518,9 +520,15 @@ public class CanvasStateServiceTests
         // Simulate User A (otherConnId) selecting stroke2
         var userAActionId = Guid.NewGuid();
         var userABoundId = Guid.NewGuid();
-        _canvasStateService.ApplyEvent(new CreateSelectionBoundEvent(userAActionId, userABoundId, new SKPoint(0f, 0f)) { CreatorConnectionId = "otherConnId" }, isLocalEvent: false);
-        _canvasStateService.ApplyEvent(new IncreaseSelectionBoundEvent(userAActionId, userABoundId, new SKPoint(1000f, 1000f)) { CreatorConnectionId = "otherConnId" }, isLocalEvent: false);
-        _canvasStateService.ApplyEvent(new EndSelectionEvent(userAActionId, userABoundId) { CreatorConnectionId = "otherConnId" }, isLocalEvent: false);
+        _canvasStateService.ApplyEvent(
+            new CreateSelectionBoundEvent(userAActionId, userABoundId, new SKPoint(0f, 0f))
+                { CreatorConnectionId = "otherConnId" }, isLocalEvent: false);
+        _canvasStateService.ApplyEvent(
+            new IncreaseSelectionBoundEvent(userAActionId, userABoundId, new SKPoint(1000f, 1000f))
+                { CreatorConnectionId = "otherConnId" }, isLocalEvent: false);
+        _canvasStateService.ApplyEvent(
+            new EndSelectionEvent(userAActionId, userABoundId) { CreatorConnectionId = "otherConnId" },
+            isLocalEvent: false);
 
         // Verify userA's selection is active for them (and stored in our SelectionBounds state)
         // Since we are "myConnId", our SelectedElementIds will be empty because we don't have a selection bound yet.
@@ -529,9 +537,15 @@ public class CanvasStateServiceTests
         // Simulate User B (myConnId / me) starting a select action
         var userBActionId = Guid.NewGuid();
         var userBBoundId = Guid.NewGuid();
-        _canvasStateService.ApplyEvent(new CreateSelectionBoundEvent(userBActionId, userBBoundId, new SKPoint(0f, 0f)) { CreatorConnectionId = "myConnId" }, isLocalEvent: false);
-        _canvasStateService.ApplyEvent(new IncreaseSelectionBoundEvent(userBActionId, userBBoundId, new SKPoint(1000f, 1000f)) { CreatorConnectionId = "myConnId" }, isLocalEvent: false);
-        _canvasStateService.ApplyEvent(new EndSelectionEvent(userBActionId, userBBoundId) { CreatorConnectionId = "myConnId" }, isLocalEvent: false);
+        _canvasStateService.ApplyEvent(
+            new CreateSelectionBoundEvent(userBActionId, userBBoundId, new SKPoint(0f, 0f))
+                { CreatorConnectionId = "myConnId" }, isLocalEvent: false);
+        _canvasStateService.ApplyEvent(
+            new IncreaseSelectionBoundEvent(userBActionId, userBBoundId, new SKPoint(1000f, 1000f))
+                { CreatorConnectionId = "myConnId" }, isLocalEvent: false);
+        _canvasStateService.ApplyEvent(
+            new EndSelectionEvent(userBActionId, userBBoundId) { CreatorConnectionId = "myConnId" },
+            isLocalEvent: false);
 
         // Verify User B's selection succeeded
         _canvasStateService.ActiveSelectionBoundId.Should().Be(userBBoundId);
@@ -539,7 +553,8 @@ public class CanvasStateServiceTests
 
         // Verify User A's selection bound was NOT cleared
         // Clear User B's selection:
-        _canvasStateService.ApplyEvent(new ClearSelectionEvent(Guid.NewGuid()) { CreatorConnectionId = "myConnId" }, isLocalEvent: false);
+        _canvasStateService.ApplyEvent(new ClearSelectionEvent(Guid.NewGuid()) { CreatorConnectionId = "myConnId" },
+            isLocalEvent: false);
         _canvasStateService.ActiveSelectionBoundId.Should().BeNull();
         _canvasStateService.SelectedElementIds.Should().BeEmpty();
 
@@ -547,7 +562,8 @@ public class CanvasStateServiceTests
         var room2 = new MultiUserDrawingRoom("room1", "otherConnId", "other");
         _multiUserDrawingService.Room.Returns(room2);
         _multiUserDrawingService.ConnectionStarted += Raise.Event<Action>();
-        _canvasStateService.ApplyEvent(new ClearSelectionEvent(Guid.NewGuid()) { CreatorConnectionId = "nonExistent" }, isLocalEvent: false);
+        _canvasStateService.ApplyEvent(new ClearSelectionEvent(Guid.NewGuid()) { CreatorConnectionId = "nonExistent" },
+            isLocalEvent: false);
 
         _canvasStateService.ActiveSelectionBoundId.Should().Be(userABoundId);
         _canvasStateService.SelectedElementIds.Should().ContainSingle(id => id == stroke2Id);
@@ -751,14 +767,14 @@ public class CanvasStateServiceTests
             new SKPoint(0f, 0f), new SKPoint(1000f, 1000f));
 
         var before = GetStrokeMidpoint(_canvasStateService, strokeId);
-        // Rotate 180° around the stroke midpoint, path should end up at approximately the same spot
+        // Rotate 180deg around the stroke midpoint, path should end up at approximately the same spot
         // because it's rotating around its own centre, but let's just verify the path changed
         var center = new SKPoint(150f, 0f);
         _canvasStateService.ApplyEvent(new RotateCanvasElementsEvent(
             Guid.NewGuid(), boundId, DegreesRad: MathF.PI, Center: center));
 
         var after = GetStrokeMidpoint(_canvasStateService, strokeId);
-        // After 180° rotation around (150, 0), midpoint at (150, 0) stays at (150, 0)
+        // After 180deg rotation around (150, 0), midpoint at (150, 0) stays at (150, 0)
         after.X.Should().BeApproximately(before.X, precision: 1f);
         after.Y.Should().BeApproximately(before.Y, precision: 1f);
     }
@@ -782,6 +798,121 @@ public class CanvasStateServiceTests
 
         var widthAfter = stroke.Path.TightBounds.Width;
         widthAfter.Should().BeApproximately(widthBefore * 2f, precision: 1f);
+    }
+
+    [Fact]
+    public void ApplyEvent_ScaleRotatedCanvasElement_ScalesAlongLocalAxes()
+    {
+        var (_, strokeId) = ApplyCompleteStroke(_canvasStateService,
+            new SKPoint(100f, 0f), new SKPoint(200f, 0f));
+        var (boundId, _) = ApplySelectionBound(_canvasStateService,
+            new SKPoint(0f, 0f), new SKPoint(1000f, 1000f));
+
+        var stroke = (DrawStroke)_canvasStateService.CanvasElements.First(e => e.Id == strokeId);
+
+        // Rotate 90deg around midpoint
+        var center = new SKPoint(150f, 0f);
+        _canvasStateService.ApplyEvent(new RotateCanvasElementsEvent(
+            Guid.NewGuid(), boundId, DegreesRad: MathF.PI / 2, Center: center));
+        _canvasStateService.ApplyEvent(new EndStrokeEvent(Guid.NewGuid()));
+
+        var boundsAfterRotate = stroke.Path.TightBounds;
+
+        // Scale 2x along X only, with rotation = π/2 and pivot at the rotated center
+        // This should scale along the element's LOCAL X axis (which is now world Y)
+        _canvasStateService.ApplyEvent(new ScaleCanvasElementsEvent(
+            Guid.NewGuid(), boundId,
+            Scale: new SKPoint(2f, 1f),
+            Center: center,
+            RotationRad: MathF.PI / 2));
+
+        var boundsAfterScale = stroke.Path.TightBounds;
+
+        // After rotating 90deg, the stroke is vertical. Scaling local-X by 2x
+        // should double the height in world space (since local X maps to world Y).
+        boundsAfterScale.Height.Should().BeApproximately(boundsAfterRotate.Height * 2f, precision: 2f);
+        // Width in world space should stay roughly the same (we only scaled local X)
+        boundsAfterScale.Width.Should().BeApproximately(boundsAfterRotate.Width, precision: 2f);
+    }
+
+    [Fact]
+    public void ApplyEvent_ScaleCanvasElements_UniformScale_MaintainsAspectRatio()
+    {
+        var (_, strokeId) = ApplyCompleteStroke(_canvasStateService,
+            new SKPoint(0f, 0f), new SKPoint(100f, 50f));
+        var (boundId, _) = ApplySelectionBound(_canvasStateService,
+            new SKPoint(0f, 0f), new SKPoint(1000f, 1000f));
+
+        var stroke = (DrawStroke)_canvasStateService.CanvasElements.First(e => e.Id == strokeId);
+        var widthBefore = stroke.Path.TightBounds.Width;
+        var heightBefore = stroke.Path.TightBounds.Height;
+        var aspectBefore = widthBefore / heightBefore;
+
+        // Uniform scale (same factor for X and Y, as used in multi-element scaling)
+        var uniformFactor = 3f;
+        _canvasStateService.ApplyEvent(new ScaleCanvasElementsEvent(
+            Guid.NewGuid(), boundId,
+            Scale: new SKPoint(uniformFactor, uniformFactor),
+            Center: new SKPoint(0f, 0f)));
+
+        var widthAfter = stroke.Path.TightBounds.Width;
+        var heightAfter = stroke.Path.TightBounds.Height;
+        var aspectAfter = widthAfter / heightAfter;
+
+        aspectAfter.Should().BeApproximately(aspectBefore, precision: 0.01f);
+        widthAfter.Should().BeApproximately(widthBefore * uniformFactor, precision: 1f);
+    }
+
+    [Fact]
+    public void ApplyEvent_ScaleRotatedCanvasImage_MaintainsUnrotatedBoundsAndCorrectsDrift()
+    {
+        var imgId = Guid.NewGuid();
+        _canvasStateService.ApplyEvent(new AddImageEvent(Guid.NewGuid(), imgId, "test.png", new SKPoint(0, 0),
+            new SKSize(100, 100)));
+
+        var (boundId, _) = ApplySelectionBound(_canvasStateService, new SKPoint(0, 0), new SKPoint(100, 100));
+
+        var image = (CanvasImage)_canvasStateService.CanvasElements.First(e => e.Id == imgId);
+        image.Rotation = MathF.PI / 4; // 45deg rotation
+
+        var center = new SKPoint(0f, 0f);
+        _canvasStateService.ApplyEvent(new ScaleCanvasElementsEvent(
+            Guid.NewGuid(), boundId,
+            Scale: new SKPoint(2f, 2f),
+            Center: center,
+            RotationRad: MathF.PI / 4));
+
+        // Image local bounds width and height should double
+        image.Bounds.Width.Should().BeApproximately(200f, precision: 0.01f);
+        image.Bounds.Height.Should().BeApproximately(200f, precision: 0.01f);
+        // Rotation must be preserved
+        image.Rotation.Should().BeApproximately(MathF.PI / 4, precision: 0.001f);
+        // Flip flags should remain false for positive scale
+        image.FlipX.Should().BeFalse();
+        image.FlipY.Should().BeFalse();
+    }
+
+    [Fact]
+    public void ApplyEvent_ScaleCanvasImagePastPivot_TogglesFlipFlagsInLocalSpace()
+    {
+        var imgId = Guid.NewGuid();
+        _canvasStateService.ApplyEvent(new AddImageEvent(Guid.NewGuid(), imgId, "test.png", new SKPoint(0, 0),
+            new SKSize(100, 100)));
+
+        var (boundId, _) = ApplySelectionBound(_canvasStateService, new SKPoint(0, 0), new SKPoint(100, 100));
+
+        var image = (CanvasImage)_canvasStateService.CanvasElements.First(e => e.Id == imgId);
+
+        // Scale by -1.5x along X (dragged past pivot horizontally)
+        _canvasStateService.ApplyEvent(new ScaleCanvasElementsEvent(
+            Guid.NewGuid(), boundId,
+            Scale: new SKPoint(-1.5f, 1.5f),
+            Center: new SKPoint(100f, 100f)));
+
+        image.FlipX.Should().BeTrue();
+        image.FlipY.Should().BeFalse();
+        image.Bounds.Width.Should().BeApproximately(150f, precision: 0.01f);
+        image.Bounds.Height.Should().BeApproximately(150f, precision: 0.01f);
     }
 
     // Layer Management

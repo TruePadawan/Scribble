@@ -118,7 +118,7 @@ public class SelectionTests
 
     // RefreshScalePivot
     [Fact]
-    public void RefreshScalePivot_TopLeftHandle_PivotIsBottomRight()
+    public void RefreshScalePivot_TopLeftHandle_NoRotation_PivotIsBottomRight()
     {
         var selection = new Selection
         {
@@ -126,13 +126,13 @@ public class SelectionTests
             ActiveScaleHandle = "ScaleHandleTl"
         };
 
-        selection.RefreshScalePivot();
+        selection.RefreshScalePivot(0f, new SKPoint(50f, 40f), false);
 
         selection.ScalePivot.Should().Be(new SKPoint(100f, 80f));
     }
 
     [Fact]
-    public void RefreshScalePivot_TopRightHandle_PivotIsBottomLeft()
+    public void RefreshScalePivot_TopRightHandle_NoRotation_PivotIsBottomLeft()
     {
         var selection = new Selection
         {
@@ -140,13 +140,13 @@ public class SelectionTests
             ActiveScaleHandle = "ScaleHandleTr"
         };
 
-        selection.RefreshScalePivot();
+        selection.RefreshScalePivot(0f, new SKPoint(50f, 40f), false);
 
         selection.ScalePivot.Should().Be(new SKPoint(0f, 80f));
     }
 
     [Fact]
-    public void RefreshScalePivot_BottomLeftHandle_PivotIsTopRight()
+    public void RefreshScalePivot_BottomLeftHandle_NoRotation_PivotIsTopRight()
     {
         var selection = new Selection
         {
@@ -154,13 +154,13 @@ public class SelectionTests
             ActiveScaleHandle = "ScaleHandleBl"
         };
 
-        selection.RefreshScalePivot();
+        selection.RefreshScalePivot(0f, new SKPoint(50f, 40f), false);
 
         selection.ScalePivot.Should().Be(new SKPoint(100f, 0f));
     }
 
     [Fact]
-    public void RefreshScalePivot_BottomRightHandle_PivotIsTopLeft()
+    public void RefreshScalePivot_BottomRightHandle_NoRotation_PivotIsTopLeft()
     {
         var selection = new Selection
         {
@@ -168,7 +168,7 @@ public class SelectionTests
             ActiveScaleHandle = "ScaleHandleBr"
         };
 
-        selection.RefreshScalePivot();
+        selection.RefreshScalePivot(0f, new SKPoint(50f, 40f), false);
 
         selection.ScalePivot.Should().Be(new SKPoint(0f, 0f));
     }
@@ -184,7 +184,7 @@ public class SelectionTests
             ScalePivot = originalPivot
         };
 
-        selection.RefreshScalePivot();
+        selection.RefreshScalePivot(0f, new SKPoint(50f, 40f), false);
 
         selection.ScalePivot.Should().Be(originalPivot);
     }
@@ -200,8 +200,66 @@ public class SelectionTests
             ScalePivot = originalPivot
         };
 
-        selection.RefreshScalePivot();
+        selection.RefreshScalePivot(0f, new SKPoint(50f, 40f), false);
 
         selection.ScalePivot.Should().Be(originalPivot);
+    }
+
+    [Fact]
+    public void RefreshScalePivot_90DegRotation_PivotIsRotatedOppositeCorner()
+    {
+        var selection = new Selection
+        {
+            SelectionBounds = SKRect.Create(0f, 0f, 100f, 100f),
+            ActiveScaleHandle = "ScaleHandleTl"
+        };
+
+        const float rotRad = (float)(Math.PI / 2); // 90deg clockwise
+        selection.RefreshScalePivot(rotRad, new SKPoint(50f, 50f), false);
+
+        selection.ScalePivot.X.Should().BeApproximately(0f, 1f);
+        selection.ScalePivot.Y.Should().BeApproximately(100f, 1f);
+    }
+
+    [Fact]
+    public void RefreshScalePivot_45DegRotation_StoresRotationContext()
+    {
+        var selection = new Selection
+        {
+            SelectionBounds = SKRect.Create(0f, 0f, 100f, 100f),
+            ActiveScaleHandle = "ScaleHandleBr"
+        };
+
+        var rotRad = (float)(Math.PI / 4);
+        var center = new SKPoint(50f, 50f);
+        selection.RefreshScalePivot(rotRad, center, true);
+
+        selection.ScaleRotationRad.Should().BeApproximately(rotRad, 1e-6f);
+        selection.ScaleRotationCenter.Should().Be(center);
+        selection.MaintainAspectRatio.Should().BeTrue();
+    }
+
+    // ClearScaleState
+    [Fact]
+    public void ClearScaleState_ResetsAllScaleFields()
+    {
+        var selection = new Selection
+        {
+            ActiveScaleHandle = "ScaleHandleTl",
+            ScalePivot = new SKPoint(10, 20),
+            ScalePrevCoord = new SKPoint(30, 40),
+            ScaleRotationRad = 1.5f,
+            ScaleRotationCenter = new SKPoint(50, 50),
+            MaintainAspectRatio = true
+        };
+
+        selection.ClearScaleState();
+
+        selection.ActiveScaleHandle.Should().BeNull();
+        selection.ScalePivot.Should().Be(SKPoint.Empty);
+        selection.ScalePrevCoord.Should().Be(SKPoint.Empty);
+        selection.ScaleRotationRad.Should().Be(0f);
+        selection.ScaleRotationCenter.Should().Be(SKPoint.Empty);
+        selection.MaintainAspectRatio.Should().BeFalse();
     }
 }
