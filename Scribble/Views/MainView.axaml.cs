@@ -991,19 +991,24 @@ public partial class MainView : UserControl
             }
 
             float scaleX, scaleY;
+            var scaleXRatio = currVector.X / prevVector.X;
+            var scaleYRatio = currVector.Y / prevVector.Y;
+
             if (_selection.MaintainAspectRatio)
             {
-                // Maintain aspect ratio: uniform scaling via diagonal distance ratio
+                // Maintain aspect ratio: uniform magnitude via diagonal distance ratio,
+                // signed according to which side of the pivot the pointer is on in local space.
                 var prevDist = MathF.Sqrt(prevVector.X * prevVector.X + prevVector.Y * prevVector.Y);
                 var currDist = MathF.Sqrt(currVector.X * currVector.X + currVector.Y * currVector.Y);
                 var uniform = currDist / prevDist;
-                scaleX = uniform;
-                scaleY = uniform;
+
+                scaleX = scaleXRatio < 0 ? -uniform : uniform;
+                scaleY = scaleYRatio < 0 ? -uniform : uniform;
             }
             else
             {
-                scaleX = currVector.X / prevVector.X;
-                scaleY = currVector.Y / prevVector.Y;
+                scaleX = scaleXRatio;
+                scaleY = scaleYRatio;
             }
 
             if (_canvasStateService.ActiveSelectionBoundId is { } scaleBoundId)

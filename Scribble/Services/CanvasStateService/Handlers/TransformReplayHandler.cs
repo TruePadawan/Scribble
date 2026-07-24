@@ -85,7 +85,7 @@ public class TransformReplayHandler :
                 }
                 else if (ctx.CanvasImages.TryGetValue(boundTargetId, out var image))
                 {
-                    ApplyScaleToImage(image, scaleMatrix);
+                    ApplyScaleToImage(image, ev);
                 }
             }
         }
@@ -165,7 +165,7 @@ public class TransformReplayHandler :
                 }
                 else if (ctx.CanvasImages.TryGetValue(boundTargetId, out var image))
                 {
-                    ApplyScaleToImage(image, scaleMatrix);
+                    ApplyScaleToImage(image, ev);
                 }
             }
 
@@ -233,26 +233,46 @@ public class TransformReplayHandler :
     }
 
     /// <summary>
-    /// Applies a scale matrix to an image's axis-aligned bounds, handling axis
-    /// inversion by swapping coordinates and toggling FlipX/FlipY.
+    /// Scales a canvas image in its local (un-rotated) space around the un-rotated pivot,
+    /// handling axis inversion (flipping) and correcting center drift so the world pivot stays anchored.
     /// </summary>
-    private static void ApplyScaleToImage(CanvasImage image, SKMatrix scaleMatrix)
+    private static void ApplyScaleToImage(CanvasImage image, ScaleCanvasElementsEvent ev)
     {
-        var topLeft = scaleMatrix.MapPoint(new SKPoint(image.Bounds.Left, image.Bounds.Top));
-        var bottomRight = scaleMatrix.MapPoint(new SKPoint(image.Bounds.Right, image.Bounds.Bottom));
+        var oldImgCenter = new SKPoint(image.Bounds.MidX, image.Bounds.MidY);
 
-        if (topLeft.X > bottomRight.X)
+        // Un-rotate the world pivot (ev.Center) into the image's local space
+        var unrotateMatrix = SKMatrix.CreateRotation(-image.Rotation, oldImgCenter.X, oldImgCenter.Y);
+        var localPivot = unrotateMatrix.MapPoint(ev.Center);
+
+        // Scale the local bounds relative to localPivot
+        var localScaleMatrix = SKMatrix.CreateScale(ev.Scale.X, ev.Scale.Y, localPivot.X, localPivot.Y);
+        var newTl = localScaleMatrix.MapPoint(new SKPoint(image.Bounds.Left, image.Bounds.Top));
+        var newBr = localScaleMatrix.MapPoint(new SKPoint(image.Bounds.Right, image.Bounds.Bottom));
+
+        // Handle flipping / axis inversion in local space
+        if (newTl.X > newBr.X)
         {
-            (topLeft.X, bottomRight.X) = (bottomRight.X, topLeft.X);
+            (newTl.X, newBr.X) = (newBr.X, newTl.X);
             image.FlipX = !image.FlipX;
         }
 
-        if (topLeft.Y > bottomRight.Y)
+        if (newTl.Y > newBr.Y)
         {
-            (topLeft.Y, bottomRight.Y) = (bottomRight.Y, topLeft.Y);
+            (newTl.Y, newBr.Y) = (newBr.Y, newTl.Y);
             image.FlipY = !image.FlipY;
         }
 
-        image.Bounds = new SKRect(topLeft.X, topLeft.Y, bottomRight.X, bottomRight.Y);
+        var candidateBounds = new SKRect(newTl.X, newTl.Y, newBr.X, newBr.Y);
+        var newImgCenter = new SKPoint(candidateBounds.MidX, candidateBounds.MidY);
+
+        // Calculate where localPivot lands in world space with candidateBounds
+        var rotateMatrix = SKMatrix.CreateRotation(image.Rotation, newImgCenter.X, newImgCenter.Y);
+        var worldPivotNew = rotateMatrix.MapPoint(localPivot);
+
+        // Correct center drift to keep world pivot anchored at ev.Center
+        var localShift = new SKPoint(ev.Center.X - worldPivotNew.X, ev.Center.Y - worldPivotNew.Y);
+        candidateBounds.Offset(localShift);
+
+        image.Bounds = candidateBounds;
     }
 }
