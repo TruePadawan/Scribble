@@ -645,7 +645,7 @@ public partial class MainView : UserControl
         }
 
         _selection.SelectionBounds = worldBounds;
-        SelectionOverlay.IsVisible = selectedElements.Count > 0;
+        SelectionOverlay.IsVisible = selectedElements.Count > 0 && double.IsNaN(_selection.SelectionRotationAngle);
     }
 
     /// <summary>
@@ -926,10 +926,28 @@ public partial class MainView : UserControl
         if (e.Properties.IsLeftButtonPressed && sender is Control control && _viewModel != null)
         {
             _selection.ActiveScaleHandle = control.Name;
-            _selection.ScalePrevCoord = GetPointerPosition(e);
             _selection.ScaleActionId = Guid.NewGuid();
-            _selection.RefreshScalePivot();
 
+            // Capture the element's rotation at gesture start so all subsequent
+            // pointer math happens in the element's local coordinate frame.
+            var selectedElements = _canvasStateService.CanvasElements
+                .Where(el => _canvasStateService.SelectedElementIds.Contains(el.Id) && el is ISelectable)
+                .Cast<ISelectable>().ToList();
+            var (bounds, rotDeg, rotCenter) = ComputeSelectionGeometry(selectedElements);
+            var rotRad = Utilities.DegreesToRadians(rotDeg);
+
+            _selection.SelectionBounds = bounds;
+            _selection.RefreshScalePivot(rotRad, rotCenter, isMultiElement: selectedElements.Count > 1);
+
+            // Store pointer position in local (un-rotated) frame
+            var worldCoord = GetPointerPosition(e);
+            if (Math.Abs(rotRad) > 0.001f)
+            {
+                var inverseRot = SKMatrix.CreateRotation(-rotRad, rotCenter.X, rotCenter.Y);
+                worldCoord = inverseRot.MapPoint(worldCoord);
+            }
+
+            _selection.ScalePrevCoord = worldCoord;
             e.Handled = true;
         }
     }
@@ -939,12 +957,27 @@ public partial class MainView : UserControl
         if (e.Properties.IsLeftButtonPressed && _selection.ActiveScaleHandle != null && _viewModel != null)
         {
             var currentCoord = GetPointerPosition(e);
+            var rotRad = _selection.ScaleRotationRad;
+            var rotCenter = _selection.ScaleRotationCenter;
 
-            // Skip if position hasn't changed (tablet pen jitter)
+            // Un-rotate the pointer into the element's local frame so that
+            // scale factors are computed along the element's own width/height axes.
+            SKPoint localPivot;
+            if (Math.Abs(rotRad) > 0.001f)
+            {
+                var inverseRot = SKMatrix.CreateRotation(-rotRad, rotCenter.X, rotCenter.Y);
+                currentCoord = inverseRot.MapPoint(currentCoord);
+                localPivot = inverseRot.MapPoint(_selection.ScalePivot);
+            }
+            else
+            {
+                localPivot = _selection.ScalePivot;
+            }
+
             if (Utilities.AreSamePosition(currentCoord, _selection.ScalePrevCoord)) return;
 
-            var prevVector = _selection.ScalePrevCoord - _selection.ScalePivot;
-            var currVector = currentCoord - _selection.ScalePivot;
+            var prevVector = _selection.ScalePrevCoord - localPivot;
+            var currVector = currentCoord - localPivot;
 
             // Avoid division by zero and tiny scales that collapse geometry
             if (Math.Abs(prevVector.X) < 1 || Math.Abs(prevVector.Y) < 1 ||
@@ -953,15 +986,30 @@ public partial class MainView : UserControl
                 return;
             }
 
-            var scaleX = currVector.X / prevVector.X;
-            var scaleY = currVector.Y / prevVector.Y;
+            float scaleX, scaleY;
+            if (_selection.IsMultiElementScale)
+            {
+                // Multi-element: uniform scaling via diagonal distance ratio
+                // preserves aspect ratio
+                var prevDist = MathF.Sqrt(prevVector.X * prevVector.X + prevVector.Y * prevVector.Y);
+                var currDist = MathF.Sqrt(currVector.X * currVector.X + currVector.Y * currVector.Y);
+                var uniform = currDist / prevDist;
+                scaleX = uniform;
+                scaleY = uniform;
+            }
+            else
+            {
+                scaleX = currVector.X / prevVector.X;
+                scaleY = currVector.Y / prevVector.Y;
+            }
 
             if (_canvasStateService.ActiveSelectionBoundId is { } scaleBoundId)
             {
-                _canvasStateService.ApplyEvent(new ScaleCanvasElementsEvent(_selection.ScaleActionId,
-                    scaleBoundId,
+                _canvasStateService.ApplyEvent(new ScaleCanvasElementsEvent(
+                    _selection.ScaleActionId, scaleBoundId,
                     new SKPoint(scaleX, scaleY),
-                    _selection.ScalePivot));
+                    _selection.ScalePivot, // world-space pivot
+                    rotRad));
             }
 
             _selection.ScalePrevCoord = currentCoord;
@@ -978,9 +1026,7 @@ public partial class MainView : UserControl
                 _canvasStateService.ApplyEvent(new EndStrokeEvent(_selection.ScaleActionId));
             }
 
-            _selection.ActiveScaleHandle = null;
-            _selection.ScalePivot = SKPoint.Empty;
-            _selection.ScalePrevCoord = SKPoint.Empty;
+            _selection.ClearScaleState();
             VisualizeSelection();
             e.Handled = true;
         }

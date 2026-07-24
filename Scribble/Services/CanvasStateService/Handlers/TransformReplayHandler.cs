@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using Scribble.Services.CanvasStateService.State;
 using Scribble.Shared.Lib.CanvasElements;
@@ -74,38 +75,17 @@ public class TransformReplayHandler :
     {
         if (ctx.SelectionBounds.TryGetValue(ev.BoundId, out var bound))
         {
-            var scaleMatrix = SKMatrix.CreateScale(ev.Scale.X, ev.Scale.Y, ev.Center.X, ev.Center.Y);
+            var scaleMatrix = BuildScaleMatrix(ev);
             foreach (var boundTargetId in bound.Targets)
             {
                 if (ctx.PaintableStrokes.TryGetValue(boundTargetId, out var stroke))
                 {
                     stroke.Path.Transform(scaleMatrix);
-                    // Keep track of the transformations applied to the stroke
                     stroke.TransformMatrix = stroke.TransformMatrix.PostConcat(scaleMatrix);
                 }
                 else if (ctx.CanvasImages.TryGetValue(boundTargetId, out var image))
                 {
-                    var topLeft = scaleMatrix.MapPoint(new SKPoint(image.Bounds.Left, image.Bounds.Top));
-                    var bottomRight =
-                        scaleMatrix.MapPoint(new SKPoint(image.Bounds.Right, image.Bounds.Bottom));
-
-                    // If the x-axis becomes inverted, swap the x coordinates so that the bound's width stays positive
-                    // Then flip the image horizontally
-                    if (topLeft.X > bottomRight.X)
-                    {
-                        (topLeft.X, bottomRight.X) = (bottomRight.X, topLeft.X);
-                        image.FlipX = !image.FlipX;
-                    }
-
-                    // If the y-axis becomes inverted, swap the y coordinates so that the bound's height stays positive
-                    // Then flip the image vertically
-                    if (topLeft.Y > bottomRight.Y)
-                    {
-                        (topLeft.Y, bottomRight.Y) = (bottomRight.Y, topLeft.Y);
-                        image.FlipY = !image.FlipY;
-                    }
-
-                    image.Bounds = new SKRect(topLeft.X, topLeft.Y, bottomRight.X, bottomRight.Y);
+                    ApplyScaleToImage(image, scaleMatrix);
                 }
             }
         }
@@ -175,35 +155,17 @@ public class TransformReplayHandler :
     {
         if (ctx.SelectionBounds.TryGetValue(ev.BoundId, out var bound))
         {
-            var scaleMatrix = SKMatrix.CreateScale(ev.Scale.X, ev.Scale.Y, ev.Center.X,
-                ev.Center.Y);
+            var scaleMatrix = BuildScaleMatrix(ev);
             foreach (var boundTargetId in bound.Targets)
             {
                 if (ctx.PaintableStrokes.TryGetValue(boundTargetId, out var stroke))
                 {
                     stroke.Path.Transform(scaleMatrix);
-                    // Keep track of the transformations applied to the stroke
                     stroke.TransformMatrix = stroke.TransformMatrix.PostConcat(scaleMatrix);
                 }
                 else if (ctx.CanvasImages.TryGetValue(boundTargetId, out var image))
                 {
-                    var topLeft = scaleMatrix.MapPoint(new SKPoint(image.Bounds.Left, image.Bounds.Top));
-                    var bottomRight =
-                        scaleMatrix.MapPoint(new SKPoint(image.Bounds.Right, image.Bounds.Bottom));
-
-                    if (topLeft.X > bottomRight.X)
-                    {
-                        (topLeft.X, bottomRight.X) = (bottomRight.X, topLeft.X);
-                        image.FlipX = !image.FlipX;
-                    }
-
-                    if (topLeft.Y > bottomRight.Y)
-                    {
-                        (topLeft.Y, bottomRight.Y) = (bottomRight.Y, topLeft.Y);
-                        image.FlipY = !image.FlipY;
-                    }
-
-                    image.Bounds = new SKRect(topLeft.X, topLeft.Y, bottomRight.X, bottomRight.Y);
+                    ApplyScaleToImage(image, scaleMatrix);
                 }
             }
 
@@ -240,5 +202,57 @@ public class TransformReplayHandler :
                 }
             }
         }
+    }
+
+    /// <summary>
+    /// Builds a scale matrix that works correctly for rotated elements.
+    /// For a rotated element the transform is:
+    ///   T(-pivot) · R(-θ) · S(sx,sy) · R(θ) · T(pivot)
+    /// This un-rotates around the pivot, scales along axis-aligned directions,
+    /// then re-rotates keeping the pivot corner fixed in world space.
+    /// When RotationRad is 0 this simplifies to a normal CreateScale(sx,sy,cx,cy).
+    /// </summary>
+    private static SKMatrix BuildScaleMatrix(ScaleCanvasElementsEvent ev)
+    {
+        if (Math.Abs(ev.RotationRad) <= 0.001f)
+        {
+            return SKMatrix.CreateScale(ev.Scale.X, ev.Scale.Y, ev.Center.X, ev.Center.Y);
+        }
+
+        var tToPivot = SKMatrix.CreateTranslation(-ev.Center.X, -ev.Center.Y);
+        var unrotate = SKMatrix.CreateRotation(-ev.RotationRad);
+        var scale = SKMatrix.CreateScale(ev.Scale.X, ev.Scale.Y);
+        var rerotate = SKMatrix.CreateRotation(ev.RotationRad);
+        var tBack = SKMatrix.CreateTranslation(ev.Center.X, ev.Center.Y);
+
+        return tToPivot
+            .PostConcat(unrotate)
+            .PostConcat(scale)
+            .PostConcat(rerotate)
+            .PostConcat(tBack);
+    }
+
+    /// <summary>
+    /// Applies a scale matrix to an image's axis-aligned bounds, handling axis
+    /// inversion by swapping coordinates and toggling FlipX/FlipY.
+    /// </summary>
+    private static void ApplyScaleToImage(CanvasImage image, SKMatrix scaleMatrix)
+    {
+        var topLeft = scaleMatrix.MapPoint(new SKPoint(image.Bounds.Left, image.Bounds.Top));
+        var bottomRight = scaleMatrix.MapPoint(new SKPoint(image.Bounds.Right, image.Bounds.Bottom));
+
+        if (topLeft.X > bottomRight.X)
+        {
+            (topLeft.X, bottomRight.X) = (bottomRight.X, topLeft.X);
+            image.FlipX = !image.FlipX;
+        }
+
+        if (topLeft.Y > bottomRight.Y)
+        {
+            (topLeft.Y, bottomRight.Y) = (bottomRight.Y, topLeft.Y);
+            image.FlipY = !image.FlipY;
+        }
+
+        image.Bounds = new SKRect(topLeft.X, topLeft.Y, bottomRight.X, bottomRight.Y);
     }
 }
