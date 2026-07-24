@@ -216,7 +216,7 @@ public partial class MainView : UserControl
     }
 
     /// <summary>
-    /// Returns true when the existing quick borders correspond 1-to-1 (by element Id)
+    /// Returns true when the existing quick borders correspond 1-to-1 (by element ID)
     /// to <paramref name="elements"/>, meaning only a reposition is needed.
     /// </summary>
     private bool QuickSelectBorderSetMatches(List<ISelectable> elements)
@@ -376,7 +376,7 @@ public partial class MainView : UserControl
         }
     }
 
-    // If the active tool is a stroke tool, show its options else clear and hide the tool options UI
+    // If the active tool is a stroke tool, show its options else clear up and hide the tool options UI
     private void OnActiveToolChanged(PointerTool? formerTool, PointerTool? currentTool)
     {
         _activePointerTool = currentTool;
@@ -446,7 +446,7 @@ public partial class MainView : UserControl
         MainCanvas.InvalidateVisual();
 
         _viewModel.UiStateViewModel.UpdateZoomLevel(newZoom);
-        // Re-visualize selection if there was any before zooming, this is needed to correct the size of the selection
+        // Re-visualise selection if there was any before zooming, this is needed to correct the size of the selection
         // border post-zoom
         VisualizeSelection();
         // Re-apply text edit overlay and quick-select borders so it stays in sync with the zoom level
@@ -454,7 +454,7 @@ public partial class MainView : UserControl
         MarkCanvasElementsForSelection();
     }
 
-    private void ZoomToFitBtn_OnClick(object? sender, RoutedEventArgs e)
+    private void ZoomToFitBtn_OnClick(object? sender, RoutedEventArgs? e)
     {
         if (_viewModel == null || _viewModel.CanvasElements.Count == 0) return;
 
@@ -496,7 +496,7 @@ public partial class MainView : UserControl
         CameraState.SetZoom(targetZoom);
         float finalZoom = CameraState.Zoom;
 
-        // Center the viewport
+        // Centre the viewport
         CameraState.WorldOffSetX = globalBounds.MidX - (viewportWidth / 2f) / finalZoom;
         CameraState.WorldOffSetY = globalBounds.MidY - (viewportHeight / 2f) / finalZoom;
 
@@ -538,8 +538,8 @@ public partial class MainView : UserControl
 
     /// <summary>
     /// Computes the world-space bounding rect, rotation angle (degrees), and rotation
-    /// center for the given set of selected elements. For a single rotated element the
-    /// bounds are un-rotated so the overlay rectangle matches the element's original shape.
+    /// centre for the given set of selected elements. For a single rotated element the
+    /// bounds are un-rotated, so the overlay rectangle matches the element's original shape.
     /// </summary>
     private static (SKRect Bounds, float RotationDegrees, SKPoint RotationCenter)
         ComputeSelectionGeometry(IReadOnlyList<ISelectable> selectedElements)
@@ -577,7 +577,7 @@ public partial class MainView : UserControl
             }
             case CanvasImage image:
             {
-                // Image bounds are rotation-independent; just record the center
+                // Image bounds are rotation-independent; just record the centre
                 var center = new SKPoint(image.Bounds.MidX, image.Bounds.MidY);
                 return (image.Bounds, rotationDegrees, center);
             }
@@ -628,7 +628,7 @@ public partial class MainView : UserControl
             var overlayTop = topLeftScreen.Y - rotationHandleOffset;
             var rotationCenterScreen = CameraState.WorldToScreen(worldRotationCenter);
 
-            // Express the rotation center in overlay-local coordinates
+            // Express the rotation centre in overlay-local coordinates
             var localCenterX = rotationCenterScreen.X - overlayLeft;
             var localCenterY = rotationCenterScreen.Y - overlayTop;
             var overlayHeight = screenHeight + rotationHandleOffset;
@@ -645,7 +645,7 @@ public partial class MainView : UserControl
         }
 
         _selection.SelectionBounds = worldBounds;
-        SelectionOverlay.IsVisible = selectedElements.Count > 0;
+        SelectionOverlay.IsVisible = selectedElements.Count > 0 && double.IsNaN(_selection.SelectionRotationAngle);
     }
 
     /// <summary>
@@ -926,10 +926,32 @@ public partial class MainView : UserControl
         if (e.Properties.IsLeftButtonPressed && sender is Control control && _viewModel != null)
         {
             _selection.ActiveScaleHandle = control.Name;
-            _selection.ScalePrevCoord = GetPointerPosition(e);
             _selection.ScaleActionId = Guid.NewGuid();
-            _selection.RefreshScalePivot();
 
+            // Capture the element's rotation at gesture start so all subsequent
+            // pointer math happens in the element's local coordinate frame.
+            var selectedElements = _canvasStateService.CanvasElements
+                .Where(el => _canvasStateService.SelectedElementIds.Contains(el.Id) && el is ISelectable)
+                .Cast<ISelectable>().ToList();
+            var (bounds, rotDeg, rotCenter) = ComputeSelectionGeometry(selectedElements);
+            var rotRad = Utilities.DegreesToRadians(rotDeg);
+
+            // Maintain aspect ratio for multi-element selections or canvas images
+            var maintainAspectRatio =
+                selectedElements.Count > 1 || selectedElements.Any(element => element is CanvasImage);
+
+            _selection.SelectionBounds = bounds;
+            _selection.RefreshScalePivot(rotRad, rotCenter, maintainAspectRatio);
+
+            // Store pointer position in local (un-rotated) frame
+            var worldCoord = GetPointerPosition(e);
+            if (Math.Abs(rotRad) > 0.001f)
+            {
+                var inverseRot = SKMatrix.CreateRotation(-rotRad, rotCenter.X, rotCenter.Y);
+                worldCoord = inverseRot.MapPoint(worldCoord);
+            }
+
+            _selection.ScalePrevCoord = worldCoord;
             e.Handled = true;
         }
     }
@@ -939,29 +961,63 @@ public partial class MainView : UserControl
         if (e.Properties.IsLeftButtonPressed && _selection.ActiveScaleHandle != null && _viewModel != null)
         {
             var currentCoord = GetPointerPosition(e);
+            var rotRad = _selection.ScaleRotationRad;
+            var rotCenter = _selection.ScaleRotationCenter;
 
-            // Skip if position hasn't changed (tablet pen jitter)
+            // Un-rotate the pointer into the element's local frame so that
+            // scale factors are computed along the element's own width/height axes.
+            SKPoint localPivot;
+            if (Math.Abs(rotRad) > 0.001f)
+            {
+                var inverseRot = SKMatrix.CreateRotation(-rotRad, rotCenter.X, rotCenter.Y);
+                currentCoord = inverseRot.MapPoint(currentCoord);
+                localPivot = inverseRot.MapPoint(_selection.ScalePivot);
+            }
+            else
+            {
+                localPivot = _selection.ScalePivot;
+            }
+
             if (Utilities.AreSamePosition(currentCoord, _selection.ScalePrevCoord)) return;
 
-            var prevVector = _selection.ScalePrevCoord - _selection.ScalePivot;
-            var currVector = currentCoord - _selection.ScalePivot;
+            var prevVector = _selection.ScalePrevCoord - localPivot;
+            var currVector = currentCoord - localPivot;
 
-            // Avoid division by zero and extremely small scales that collapse geometry
+            // Avoid division by zero and tiny scales that collapse geometry
             if (Math.Abs(prevVector.X) < 1 || Math.Abs(prevVector.Y) < 1 ||
                 Math.Abs(currVector.X) < 1 || Math.Abs(currVector.Y) < 1)
             {
                 return;
             }
 
-            var scaleX = currVector.X / prevVector.X;
-            var scaleY = currVector.Y / prevVector.Y;
+            float scaleX, scaleY;
+            var scaleXRatio = currVector.X / prevVector.X;
+            var scaleYRatio = currVector.Y / prevVector.Y;
+
+            if (_selection.MaintainAspectRatio)
+            {
+                // Maintain aspect ratio: uniform magnitude via diagonal distance ratio,
+                // signed according to which side of the pivot the pointer is on in local space.
+                var prevDist = MathF.Sqrt(prevVector.X * prevVector.X + prevVector.Y * prevVector.Y);
+                var currDist = MathF.Sqrt(currVector.X * currVector.X + currVector.Y * currVector.Y);
+                var uniform = currDist / prevDist;
+
+                scaleX = scaleXRatio < 0 ? -uniform : uniform;
+                scaleY = scaleYRatio < 0 ? -uniform : uniform;
+            }
+            else
+            {
+                scaleX = scaleXRatio;
+                scaleY = scaleYRatio;
+            }
 
             if (_canvasStateService.ActiveSelectionBoundId is { } scaleBoundId)
             {
-                _canvasStateService.ApplyEvent(new ScaleCanvasElementsEvent(_selection.ScaleActionId,
-                    scaleBoundId,
+                _canvasStateService.ApplyEvent(new ScaleCanvasElementsEvent(
+                    _selection.ScaleActionId, scaleBoundId,
                     new SKPoint(scaleX, scaleY),
-                    _selection.ScalePivot));
+                    _selection.ScalePivot, // world-space pivot
+                    rotRad));
             }
 
             _selection.ScalePrevCoord = currentCoord;
@@ -978,9 +1034,7 @@ public partial class MainView : UserControl
                 _canvasStateService.ApplyEvent(new EndStrokeEvent(_selection.ScaleActionId));
             }
 
-            _selection.ActiveScaleHandle = null;
-            _selection.ScalePivot = SKPoint.Empty;
-            _selection.ScalePrevCoord = SKPoint.Empty;
+            _selection.ClearScaleState();
             VisualizeSelection();
             e.Handled = true;
         }
@@ -1031,7 +1085,7 @@ public partial class MainView : UserControl
 
     private void RoomIdTextBox_OnTextChanged(object? sender, TextChangedEventArgs e)
     {
-        if (sender is TextBox textBox && textBox.Text != null)
+        if (sender is TextBox { Text: not null } textBox)
         {
             if (textBox.Text.Any(char.IsWhiteSpace))
             {
@@ -1062,7 +1116,7 @@ public partial class MainView : UserControl
         CloseExportImageWindow();
     }
 
-    private void ExportMenuOption_OnClick(object? sender, RoutedEventArgs e)
+    private void ExportMenuOption_OnClick(object? sender, RoutedEventArgs? e)
     {
         CloseMenu();
         _viewModel?.CanvasExportViewModel.UpdateCanvasPreview();
