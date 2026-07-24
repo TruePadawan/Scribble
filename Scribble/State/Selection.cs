@@ -21,7 +21,7 @@ public class Selection
     // in the element's local (un-rotated) coordinate frame throughout the gesture.
     public float ScaleRotationRad;
     public SKPoint ScaleRotationCenter = SKPoint.Empty;
-    public bool IsMultiElementScale;
+    public bool MaintainAspectRatio;
 
     public Guid MoveActionId = Guid.NewGuid();
     public Guid RotateActionId = Guid.NewGuid();
@@ -45,11 +45,11 @@ public class Selection
     /// When the element is rotated, the pivot is rotated into world space so it
     /// matches the visual corner position the user sees on screen.
     /// </summary>
-    public void RefreshScalePivot(float rotationRad, SKPoint rotationCenter, bool isMultiElement)
+    public void RefreshScalePivot(float rotationRad, SKPoint rotationCenter, bool maintainAspectRatio)
     {
         ScaleRotationRad = rotationRad;
         ScaleRotationCenter = rotationCenter;
-        IsMultiElementScale = isMultiElement;
+        MaintainAspectRatio = maintainAspectRatio;
 
         // Pick the opposite corner from the axis-aligned (un-rotated) bounds
         var localPivot = ActiveScaleHandle switch
@@ -78,6 +78,6 @@ public class Selection
         ScalePrevCoord = SKPoint.Empty;
         ScaleRotationRad = 0f;
         ScaleRotationCenter = SKPoint.Empty;
-        IsMultiElementScale = false;
+        MaintainAspectRatio = false;
     }
 }

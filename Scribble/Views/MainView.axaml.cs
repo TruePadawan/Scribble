@@ -936,8 +936,12 @@ public partial class MainView : UserControl
             var (bounds, rotDeg, rotCenter) = ComputeSelectionGeometry(selectedElements);
             var rotRad = Utilities.DegreesToRadians(rotDeg);
 
+            // Maintain aspect ratio for multi-element selections or canvas images
+            var maintainAspectRatio =
+                selectedElements.Count > 1 || selectedElements.Any(element => element is CanvasImage);
+
             _selection.SelectionBounds = bounds;
-            _selection.RefreshScalePivot(rotRad, rotCenter, isMultiElement: selectedElements.Count > 1);
+            _selection.RefreshScalePivot(rotRad, rotCenter, maintainAspectRatio);
 
             // Store pointer position in local (un-rotated) frame
             var worldCoord = GetPointerPosition(e);
@@ -987,10 +991,9 @@ public partial class MainView : UserControl
             }
 
             float scaleX, scaleY;
-            if (_selection.IsMultiElementScale)
+            if (_selection.MaintainAspectRatio)
             {
-                // Multi-element: uniform scaling via diagonal distance ratio
-                // preserves aspect ratio
+                // Maintain aspect ratio: uniform scaling via diagonal distance ratio
                 var prevDist = MathF.Sqrt(prevVector.X * prevVector.X + prevVector.Y * prevVector.Y);
                 var currDist = MathF.Sqrt(currVector.X * currVector.X + currVector.Y * currVector.Y);
                 var uniform = currDist / prevDist;
