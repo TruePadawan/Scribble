@@ -11,14 +11,14 @@ using SkiaSharp;
 namespace Scribble.Services.CanvasStateService.Handlers;
 
 /// <summary>
-/// Handles replay and fast-path for eraser-related events:
-/// StartEraseStrokeEvent, EraseStrokeLineToEvent, TriggerEraseEvent
+/// Handles replay and fast-path for eraser-related events
 /// </summary>
 public class EraserReplayHandler :
     IEventReplayHandler<StartEraseStrokeEvent>,
     IEventReplayHandler<EraseStrokeLineToEvent>,
     IEventReplayHandler<TriggerEraseEvent>,
-    IFastPathHandler<EraseStrokeLineToEvent>
+    IFastPathHandler<EraseStrokeLineToEvent>,
+    IEventReplayHandler<EraseByIdsEvent>
 {
     // Replay handlers
 
@@ -71,17 +71,19 @@ public class EraserReplayHandler :
     {
         if (ctx.EraserStrokes.TryGetValue(ev.StrokeId, out var currentEraserStroke))
         {
-            // Erase all targets
-            foreach (var targetId in currentEraserStroke.Targets)
-            {
-                ctx.PaintableStrokes.Remove(targetId);
-                ctx.CanvasImages.Remove(targetId);
-            }
-
             if (currentEraserStroke.Targets.Count == 0)
             {
                 ctx.StaleActionIds.Add(ev.ActionId);
                 ctx.EraserStrokes.Remove(ev.StrokeId);
+            }
+            else
+            {
+                // Erase all targets
+                foreach (var targetId in currentEraserStroke.Targets)
+                {
+                    ctx.PaintableStrokes.Remove(targetId);
+                    ctx.CanvasImages.Remove(targetId);
+                }
             }
         }
     }
@@ -168,6 +170,30 @@ public class EraserReplayHandler :
 
                     break;
                 }
+            }
+        }
+    }
+
+    public void Replay(EraseByIdsEvent @event, CanvasState ctx)
+    {
+        if (@event.ElementIds.Count == 0)
+        {
+            ctx.StaleActionIds.Add(@event.ActionId);
+        }
+        else
+        {
+            foreach (var elementId in @event.ElementIds)
+            {
+                ctx.PaintableStrokes.Remove(elementId);
+                ctx.CanvasImages.Remove(elementId);
+            }
+
+            ctx.ClearSelectionBoundsForUser(@event.CreatorConnectionId);
+
+            if (ctx.MyConnectionId == @event.CreatorConnectionId)
+            {
+                ctx.ActiveSelectionBoundId = null;
+                ctx.SelectedElementIds.Clear();
             }
         }
     }

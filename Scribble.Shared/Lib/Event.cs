@@ -38,6 +38,7 @@ namespace Scribble.Shared.Lib;
 [JsonDerivedType(typeof(UpdateFontCasingEvent), typeDiscriminator: "UpdateFontCasingEvent")]
 [JsonDerivedType(typeof(UpdateFontStyleEvent), typeDiscriminator: "UpdateFontStyleEvent")]
 [JsonDerivedType(typeof(PasteCanvasElementsEvent), typeDiscriminator: "PasteCanvasElementsEvent")]
+[JsonDerivedType(typeof(EraseByIdsEvent), typeDiscriminator: "EraseByIdsEvent")]
 public abstract record Event(Guid ActionId)
 {
     public Guid Id { get; } = Guid.NewGuid();

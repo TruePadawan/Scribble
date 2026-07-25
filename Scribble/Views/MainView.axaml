@@ -32,6 +32,9 @@
             <!-- Zoom -->
             <KeyBinding Gesture="Ctrl+OemMinus" Command="{Binding UiStateViewModel.ZoomOutCommand}" />
             <KeyBinding Gesture="Ctrl+OemPlus" Command="{Binding UiStateViewModel.ZoomInCommand}" />
+
+            <!-- Others -->
+            <KeyBinding Gesture="Delete" Command="{Binding DeleteCommand}" />
         </Panel.KeyBindings>
 
         <!-- Infinite canvas: SkiaCanvas fills the viewport, camera transform handles panning/zooming -->

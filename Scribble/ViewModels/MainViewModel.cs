@@ -149,4 +149,14 @@ public partial class MainViewModel : ViewModelBase
             .Select(e => e.Clone(preserveId: false))
             .ToList();
     }
+
+    /// <summary>
+    /// Deletes the selected elements
+    /// </summary>
+    [RelayCommand]
+    private void Delete()
+    {
+        if (CanvasStateService.SelectedElementIds.Count == 0) return;
+        CanvasStateService.ApplyEvent(new EraseByIdsEvent(Guid.NewGuid(), CanvasStateService.SelectedElementIds));
+    }
 }

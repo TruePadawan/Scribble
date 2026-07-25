@@ -512,6 +512,7 @@ public partial class MainView : UserControl
 
         var currentLocalEvent = _canvasStateService.GetLocalCanvasEvents().LastOrDefault();
         var userIsSelecting = currentLocalEvent is EndSelectionEvent or SelectByIdsEvent;
+        var refreshOptions = currentLocalEvent?.CreatorConnectionId == _multiUserDrawingService.ConnectionId;
         var selectedElementIds = _canvasStateService.SelectedElementIds;
 
         if (selectedElementIds.Count == 0 && userIsSelecting)
@@ -530,7 +531,7 @@ public partial class MainView : UserControl
 
         ApplySelectionOverlay(selectedElements, combinedBounds, rotationAngleDegrees, rotationCenter);
 
-        if (userIsSelecting)
+        if (refreshOptions)
         {
             _viewModel.UiStateViewModel.ShowSelectedCanvasElementOptions([..selectedElements]);
         }
