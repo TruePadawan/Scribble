@@ -794,7 +794,7 @@ public class CanvasStateServiceTests
         _canvasStateService.ApplyEvent(new ScaleCanvasElementsEvent(
             Guid.NewGuid(), boundId,
             Scale: new SKPoint(2f, 2f),
-            Center: new SKPoint(0f, 0f)));
+            Pivot: new SKPoint(0f, 0f)));
 
         var widthAfter = stroke.Path.TightBounds.Width;
         widthAfter.Should().BeApproximately(widthBefore * 2f, precision: 1f);
@@ -823,7 +823,7 @@ public class CanvasStateServiceTests
         _canvasStateService.ApplyEvent(new ScaleCanvasElementsEvent(
             Guid.NewGuid(), boundId,
             Scale: new SKPoint(2f, 1f),
-            Center: center,
+            Pivot: center,
             RotationRad: MathF.PI / 2));
 
         var boundsAfterScale = stroke.Path.TightBounds;
@@ -853,7 +853,7 @@ public class CanvasStateServiceTests
         _canvasStateService.ApplyEvent(new ScaleCanvasElementsEvent(
             Guid.NewGuid(), boundId,
             Scale: new SKPoint(uniformFactor, uniformFactor),
-            Center: new SKPoint(0f, 0f)));
+            Pivot: new SKPoint(0f, 0f)));
 
         var widthAfter = stroke.Path.TightBounds.Width;
         var heightAfter = stroke.Path.TightBounds.Height;
@@ -879,7 +879,7 @@ public class CanvasStateServiceTests
         _canvasStateService.ApplyEvent(new ScaleCanvasElementsEvent(
             Guid.NewGuid(), boundId,
             Scale: new SKPoint(2f, 2f),
-            Center: center,
+            Pivot: center,
             RotationRad: MathF.PI / 4));
 
         // Image local bounds width and height should double
@@ -907,7 +907,7 @@ public class CanvasStateServiceTests
         _canvasStateService.ApplyEvent(new ScaleCanvasElementsEvent(
             Guid.NewGuid(), boundId,
             Scale: new SKPoint(-1.5f, 1.5f),
-            Center: new SKPoint(100f, 100f)));
+            Pivot: new SKPoint(100f, 100f)));
 
         image.FlipX.Should().BeTrue();
         image.FlipY.Should().BeFalse();
