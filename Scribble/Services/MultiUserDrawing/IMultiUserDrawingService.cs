@@ -10,6 +10,7 @@ public interface IMultiUserDrawingService
 {
     MultiUserDrawingRoom? Room { get; }
     bool IsConnected { get; }
+    string? ConnectionId { get; }
 
     // Network events
     event Action? ConnectionStarted;

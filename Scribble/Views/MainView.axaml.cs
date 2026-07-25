@@ -335,7 +335,7 @@ public partial class MainView : UserControl
             .Where(canvasEl => canvasEl is TextStroke)
             // Only allow editing for text strokes created by the current user
             .Where(canvasEl => canvasEl.CreatorConnectionId == null ||
-                               canvasEl.CreatorConnectionId == _multiUserDrawingService.Room?.Me.ConnectionId)
+                               canvasEl.CreatorConnectionId == _multiUserDrawingService.ConnectionId)
             .Cast<TextStroke>()
             .ToList();
         var borders = new List<Border>();

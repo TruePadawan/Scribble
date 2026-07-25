@@ -14,7 +14,7 @@ public class MultiUserDrawingService : IMultiUserDrawingService
     public MultiUserDrawingRoom? Room { get; private set; }
     public event Action<MultiUserDrawingRoom?>? RoomChanged;
     public bool IsConnected => _connection.State == HubConnectionState.Connected;
-    private string? ConnectionId => _connection.ConnectionId;
+    public string? ConnectionId => _connection.ConnectionId;
 
     // Network Events
     public event Action? ConnectionStarted;

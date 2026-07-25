@@ -12,7 +12,7 @@ public interface ICanvasStateService
     IReadOnlyList<CanvasElement> CanvasElements { get; }
     Queue<Event> CanvasEvents { get; }
     Guid? ActiveSelectionBoundId { get; }
-    List<Guid> SelectedElementIds { get; }
+    IReadOnlyList<Guid> SelectedElementIds { get; }
     SKColor BackgroundColor { get; }
     bool HasEvents { get; }
     bool CanUndo { get; }
