@@ -34,7 +34,8 @@ public class DrawStroke : PaintableStroke, IClonable
             StablePath = StablePath != null ? new SKPath(StablePath) : null,
             LayerIndex = LayerIndex,
             CreatorConnectionId = CreatorConnectionId,
-            Rotation = Rotation
+            Rotation = Rotation,
+            TransformMatrix = TransformMatrix
         };
         return clone;
     }

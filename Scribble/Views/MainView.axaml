@@ -32,6 +32,9 @@
             <!-- Zoom -->
             <KeyBinding Gesture="Ctrl+OemMinus" Command="{Binding UiStateViewModel.ZoomOutCommand}" />
             <KeyBinding Gesture="Ctrl+OemPlus" Command="{Binding UiStateViewModel.ZoomInCommand}" />
+
+            <!-- Others -->
+            <KeyBinding Gesture="Delete" Command="{Binding DeleteCommand}" />
         </Panel.KeyBindings>
 
         <!-- Infinite canvas: SkiaCanvas fills the viewport, camera transform handles panning/zooming -->
@@ -96,6 +99,10 @@
                             PointerReleased="ScaleHandle_OnPointerReleased" />
                 </Grid>
             </StackPanel>
+
+            <!-- NODE HANDLES FOR POLYLINES (Outside SelectionOverlay to avoid rotation) -->
+            <Canvas Name="NodeHandlesOverlay" IsHitTestVisible="True" ClipToBounds="False" IsVisible="False" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+            </Canvas>
 
 
             <Canvas.Styles>
@@ -459,7 +466,7 @@
                                                   behaviours:ToggleButtonGroup.GroupName="EdgeStyle"
                                                   IsChecked="{Binding EdgeType,
                                                       Converter={StaticResource EnumBoolConverter},
-                                                      ConverterParameter={x:Static strokes:EdgeType.Rounded}}">
+                                                      ConverterParameter={x:Static strokes:EdgeType.Curved}}">
                                         <Image Source="avares://Scribble/Assets/rounded_edge.png" Width="20" />
                                     </ToggleButton>
                                 </StackPanel>

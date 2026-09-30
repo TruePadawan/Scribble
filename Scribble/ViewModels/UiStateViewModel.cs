@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Linq;
 using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -150,7 +151,7 @@ public partial class UiStateViewModel : ViewModelBase
                     break;
 
                 case ToolOption.EdgeType:
-                    strokeTool.StrokePaint.StrokeJoin = _toolOptionsValues.EdgeType == EdgeType.Rounded
+                    strokeTool.StrokePaint.StrokeJoin = _toolOptionsValues.EdgeType == EdgeType.Curved
                         ? SKStrokeJoin.Round
                         : SKStrokeJoin.Miter;
                     var edgeVm = new EdgeTypeOptionViewModel(_toolOptionsValues.EdgeType)
@@ -158,7 +159,7 @@ public partial class UiStateViewModel : ViewModelBase
                         EdgeTypeChanged = et =>
                         {
                             _toolOptionsValues.EdgeType = et;
-                            strokeTool.StrokePaint.StrokeJoin = et == EdgeType.Rounded
+                            strokeTool.StrokePaint.StrokeJoin = et == EdgeType.Curved
                                 ? SKStrokeJoin.Round
                                 : SKStrokeJoin.Miter;
                         }
@@ -344,7 +345,7 @@ public partial class UiStateViewModel : ViewModelBase
                         EdgeTypeChanged = et =>
                         {
                             _toolOptionsValues.EdgeType = et;
-                            var join = et == EdgeType.Rounded ? SKStrokeJoin.Round : SKStrokeJoin.Miter;
+                            var join = et == EdgeType.Curved ? SKStrokeJoin.Round : SKStrokeJoin.Miter;
                             _canvasStateService.ApplyEvent(
                                 new UpdateStrokeEdgeTypeEvent(Guid.NewGuid(), strokeIds, join));
                         }

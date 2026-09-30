@@ -216,14 +216,14 @@ public class TransformReplayHandler :
     {
         if (Math.Abs(ev.RotationRad) <= 0.001f)
         {
-            return SKMatrix.CreateScale(ev.Scale.X, ev.Scale.Y, ev.Center.X, ev.Center.Y);
+            return SKMatrix.CreateScale(ev.Scale.X, ev.Scale.Y, ev.Pivot.X, ev.Pivot.Y);
         }
 
-        var tToPivot = SKMatrix.CreateTranslation(-ev.Center.X, -ev.Center.Y);
+        var tToPivot = SKMatrix.CreateTranslation(-ev.Pivot.X, -ev.Pivot.Y);
         var unrotate = SKMatrix.CreateRotation(-ev.RotationRad);
         var scale = SKMatrix.CreateScale(ev.Scale.X, ev.Scale.Y);
         var rerotate = SKMatrix.CreateRotation(ev.RotationRad);
-        var tBack = SKMatrix.CreateTranslation(ev.Center.X, ev.Center.Y);
+        var tBack = SKMatrix.CreateTranslation(ev.Pivot.X, ev.Pivot.Y);
 
         return tToPivot
             .PostConcat(unrotate)
@@ -240,9 +240,9 @@ public class TransformReplayHandler :
     {
         var oldImgCenter = new SKPoint(image.Bounds.MidX, image.Bounds.MidY);
 
-        // Un-rotate the world pivot (ev.Center) into the image's local space
+        // Un-rotate the world pivot (ev.Pivot) into the image's local space
         var unrotateMatrix = SKMatrix.CreateRotation(-image.Rotation, oldImgCenter.X, oldImgCenter.Y);
-        var localPivot = unrotateMatrix.MapPoint(ev.Center);
+        var localPivot = unrotateMatrix.MapPoint(ev.Pivot);
 
         // Scale the local bounds relative to localPivot
         var localScaleMatrix = SKMatrix.CreateScale(ev.Scale.X, ev.Scale.Y, localPivot.X, localPivot.Y);
@@ -269,8 +269,8 @@ public class TransformReplayHandler :
         var rotateMatrix = SKMatrix.CreateRotation(image.Rotation, newImgCenter.X, newImgCenter.Y);
         var worldPivotNew = rotateMatrix.MapPoint(localPivot);
 
-        // Correct center drift to keep world pivot anchored at ev.Center
-        var localShift = new SKPoint(ev.Center.X - worldPivotNew.X, ev.Center.Y - worldPivotNew.Y);
+        // Correct center drift to keep world pivot anchored at ev.Pivot
+        var localShift = new SKPoint(ev.Pivot.X - worldPivotNew.X, ev.Pivot.Y - worldPivotNew.Y);
         candidateBounds.Offset(localShift);
 
         image.Bounds = candidateBounds;

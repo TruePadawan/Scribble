@@ -107,7 +107,7 @@ public class SkiaCanvas : Control
         canvas.Restore();
     }
 
-    private void DrawSingleElement(SKCanvas canvas, CanvasElement canvasElement)
+    private static void DrawSingleElement(SKCanvas canvas, CanvasElement canvasElement)
     {
         if (canvasElement is PaintableStroke paintableStroke)
         {
@@ -128,7 +128,8 @@ public class SkiaCanvas : Control
                 }
                 else
                 {
-                    if (paintableStroke.Paint.FillColor.Alpha != 0)
+                    var strokeIsTransparent = paintableStroke.Paint.FillColor.Alpha == 0;
+                    if (!strokeIsTransparent)
                     {
                         var strokeColor = paintToUse.Color;
                         paintToUse.Style = SKPaintStyle.StrokeAndFill;

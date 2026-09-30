@@ -22,7 +22,7 @@ public class CanvasStateService : ICanvasStateService
     public IReadOnlyList<CanvasElement> CanvasElements => CurrentState.ElementsWithLayers;
     public Queue<Event> CanvasEvents => new(_eventLog.Events);
     public Guid? ActiveSelectionBoundId => CurrentState.ActiveSelectionBoundId;
-    public List<Guid> SelectedElementIds => CurrentState.SelectedElementIds;
+    public IReadOnlyList<Guid> SelectedElementIds => CurrentState.SelectedElementIds;
     public SKColor BackgroundColor { get; private set; } = new(0, 0, 0, 162);
 
     public bool HasEvents => _eventLog.Events.Count > 0;
@@ -59,7 +59,7 @@ public class CanvasStateService : ICanvasStateService
         };
         _multiUserDrawingService.ConnectionStarted += () =>
         {
-            CurrentState.MyConnectionId = _multiUserDrawingService.Room?.Me.ConnectionId;
+            CurrentState.MyConnectionId = _multiUserDrawingService.ConnectionId;
         };
 
         _dispatcher = new EventReplayDispatcher(
@@ -106,7 +106,7 @@ public class CanvasStateService : ICanvasStateService
 
     public bool IsLocalEvent(Event @event)
     {
-        var myConnectionId = _multiUserDrawingService.Room?.Me.ConnectionId;
+        var myConnectionId = _multiUserDrawingService.ConnectionId;
         return @event.CreatorConnectionId == myConnectionId;
     }
 
@@ -234,7 +234,7 @@ public class CanvasStateService : ICanvasStateService
         }
 
         // Show the selection only on the client that is doing the selection
-        var myConnectionId = _multiUserDrawingService.Room?.Me.ConnectionId;
+        var myConnectionId = _multiUserDrawingService.ConnectionId;
         var mySelectionBound = bestState.SelectionBounds.Values
             .FirstOrDefault(b => b.CreatorConnectionId == myConnectionId);
         bestState.ActiveSelectionBoundId = mySelectionBound?.Id;

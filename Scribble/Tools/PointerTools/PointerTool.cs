@@ -42,9 +42,28 @@ public abstract class PointerTool(string name, ICanvasStateService canvasStateSe
     {
     }
 
+    public virtual void HandleDoubleClick(SKPoint coord)
+    {
+    }
+
     public virtual void HandlePointerRelease(SKPoint prevCoord, SKPoint currentCoord)
     {
     }
+
+    /// <summary>
+    /// Handles keyboard input while this tool is active.
+    /// Return true if the key was consumed and should not propagate further.
+    /// </summary>
+    public virtual bool HandleKeyPress(Key key)
+    {
+        return false;
+    }
+
+    /// <summary>
+    /// Indicates whether the tool is currently in an active, multi-step drawing operation.
+    /// When true, the view will forward pointer-move events even when the pointer button is not pressed.
+    /// </summary>
+    public virtual bool IsDrawing => false;
 
     /// <summary>
     /// This is called when the tool is switched in

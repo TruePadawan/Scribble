@@ -7,3 +7,5 @@ public record StartEraseStrokeEvent(Guid ActionId, Guid StrokeId, SKPoint StartP
 public record EraseStrokeLineToEvent(Guid ActionId, Guid StrokeId, SKPoint Point) : Event(ActionId);
 
 public record TriggerEraseEvent(Guid ActionId, Guid StrokeId) : Event(ActionId), ITerminalEvent;
+
+public record EraseByIdsEvent(Guid ActionId, IReadOnlyList<Guid> ElementIds) : Event(ActionId), ITerminalEvent;

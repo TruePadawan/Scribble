@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using Scribble.Services.CanvasStateService.State;
 using Scribble.Shared.Lib;
 using Scribble.Shared.Lib.CanvasElements.Strokes;
@@ -10,18 +11,21 @@ using SkiaSharp;
 namespace Scribble.Services.CanvasStateService.Handlers;
 
 /// <summary>
-/// Handles replay and fast-path for stroke-related events:
-/// StartStrokeEvent, PencilStrokeLineToEvent, LineStrokeLineToEvent, EndStrokeEvent
+/// Handles replay and fast-path for stroke-related events
 /// </summary>
 public class StrokeReplayHandler :
     IEventReplayHandler<StartStrokeEvent>,
     IEventReplayHandler<PencilStrokeLineToEvent>,
     IEventReplayHandler<LineStrokeLineToEvent>,
+    IEventReplayHandler<AddPolylineNodeEvent>,
+    IEventReplayHandler<MovePolylineNodeEvent>,
     IEventReplayHandler<EndStrokeEvent>,
     IFastPathHandler<StartStrokeEvent>,
     IFastPathHandler<EndStrokeEvent>,
     IFastPathHandler<PencilStrokeLineToEvent>,
-    IFastPathHandler<LineStrokeLineToEvent>
+    IFastPathHandler<LineStrokeLineToEvent>,
+    IFastPathHandler<AddPolylineNodeEvent>,
+    IFastPathHandler<MovePolylineNodeEvent>
 {
     // Replay handlers
 
@@ -62,6 +66,30 @@ public class StrokeReplayHandler :
             paintableStroke is DrawStroke ds)
         {
             RebuildLinePath(ds, ev.EndPoint);
+        }
+    }
+
+    public void Replay(AddPolylineNodeEvent ev, CanvasState ctx)
+    {
+        if (ctx.PaintableStrokes.TryGetValue(ev.StrokeId, out var paintableStroke) &&
+            paintableStroke is DrawStroke ds)
+        {
+            ds.RawPoints.Add(new StrokePoint(ev.Point, ev.TimeStamp.Ticks / TimeSpan.TicksPerMillisecond));
+            // Rebuild the path from all raw points with the last point as the endpoint
+            RebuildLinePath(ds, ds.RawPoints[^1].Point);
+        }
+    }
+
+    public void Replay(MovePolylineNodeEvent ev, CanvasState ctx)
+    {
+        if (ctx.PaintableStrokes.TryGetValue(ev.StrokeId, out var paintableStroke) &&
+            paintableStroke is DrawStroke ds)
+        {
+            if (ev.NodeIndex >= 0 && ev.NodeIndex < ds.RawPoints.Count)
+            {
+                ds.RawPoints[ev.NodeIndex] = new StrokePoint(ev.NewPosition, ev.TimeStamp.Ticks / TimeSpan.TicksPerMillisecond);
+                RebuildLinePath(ds, ds.RawPoints[^1].Point);
+            }
         }
     }
 
@@ -129,11 +157,40 @@ public class StrokeReplayHandler :
         return true;
     }
 
+    public bool TryApplyFastPath(AddPolylineNodeEvent ev, CanvasState ctx)
+    {
+        if (ctx.PaintableStrokes.TryGetValue(ev.StrokeId, out var stroke) && stroke is DrawStroke ds)
+        {
+            ds.RawPoints.Add(new StrokePoint(ev.Point, ev.TimeStamp.Ticks / TimeSpan.TicksPerMillisecond));
+            RebuildLinePath(ds, ds.RawPoints[^1].Point);
+            return true;
+        }
+
+        return false;
+    }
+
+    public bool TryApplyFastPath(MovePolylineNodeEvent ev, CanvasState ctx)
+    {
+        if (ctx.PaintableStrokes.TryGetValue(ev.StrokeId, out var stroke) && stroke is DrawStroke ds)
+        {
+            if (ev.NodeIndex >= 0 && ev.NodeIndex < ds.RawPoints.Count)
+            {
+                ds.RawPoints[ev.NodeIndex] = new StrokePoint(ev.NewPosition, ev.TimeStamp.Ticks / TimeSpan.TicksPerMillisecond);
+                RebuildLinePath(ds, ds.RawPoints[^1].Point);
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     /// <summary>
-    /// Builds the path for strokes: Rectangles, Ellipses, Lines, and Arrows
+    /// Builds the path for strokes: Rectangles, Ellipses, Lines, and Arrows.
+    /// For Line/Arrow, supports multi-point polylines by using all RawPoints
+    /// plus a tentative endpoint for rubberband preview.
     /// </summary>
     /// <param name="stroke">The DrawStroke object</param>
-    /// <param name="endPoint">The line endpoint</param>
+    /// <param name="endPoint">The tentative endpoint (mouse position for rubberband, or last confirmed node for finalized strokes)</param>
     private static void RebuildLinePath(DrawStroke stroke, SKPoint endPoint)
     {
         var lineStartPoint = stroke.RawPoints[0].Point;
@@ -141,46 +198,48 @@ public class StrokeReplayHandler :
 
         if (stroke.ToolType == ToolType.Rectangle)
         {
-            newPath.MoveTo(lineStartPoint);
-            var left = Math.Min(lineStartPoint.X, endPoint.X);
-            var top = Math.Min(lineStartPoint.Y, endPoint.Y);
-            var rect = SKRect.Create(new SKPoint(left, top),
-                Utilities.GetSize(lineStartPoint, endPoint));
-            if (stroke.Paint.StrokeJoin == SKStrokeJoin.Miter)
-            {
-                newPath.AddRect(rect);
-            }
-            else
-            {
-                newPath.AddRoundRect(rect, 24f, 24f);
-            }
+            PathUtilities.BuildRectangleShape(newPath, lineStartPoint, endPoint, stroke.Paint.StrokeJoin == SKStrokeJoin.Round);
         }
         else if (stroke.ToolType == ToolType.Ellipse)
         {
-            newPath.MoveTo(lineStartPoint);
-            var left = Math.Min(lineStartPoint.X, endPoint.X);
-            var top = Math.Min(lineStartPoint.Y, endPoint.Y);
-            var rect = SKRect.Create(new SKPoint(left, top),
-                Utilities.GetSize(lineStartPoint, endPoint));
-            newPath.AddOval(rect);
+            PathUtilities.BuildEllipseShape(newPath, lineStartPoint, endPoint);
         }
         else
         {
-            newPath.MoveTo(lineStartPoint);
-            newPath.LineTo(endPoint);
+            // Line or Arrow: build polyline from all confirmed raw points + tentative endpoint
+            var allPoints = stroke.RawPoints.Select(rp => rp.Point).ToList();
 
-            if (stroke.ToolType == ToolType.Arrow)
+            // Add the tentative endpoint for rubberband preview,
+            // but only if it differs from the last confirmed point
+            if (allPoints.Count > 0 && allPoints[^1] != endPoint)
             {
-                var (p1, p2) =
-                    ArrowTool.GetArrowHeadPoints(lineStartPoint, endPoint,
+                allPoints.Add(endPoint);
+            }
+
+            if (allPoints.Count > 0)
+            {
+                PathUtilities.BuildPolylinePath(newPath, allPoints, stroke.Paint.StrokeJoin == SKStrokeJoin.Round);
+
+                // Arrow head on the final segment
+                if (stroke.ToolType == ToolType.Arrow && allPoints.Count >= 2)
+                {
+                    var lastSegStart = allPoints[^2];
+                    var lastSegEnd = allPoints[^1];
+                    var (p1, p2) = ArrowTool.GetArrowHeadPoints(lastSegStart, lastSegEnd,
                         stroke.Paint.StrokeWidth);
 
-                newPath.MoveTo(endPoint);
-                newPath.LineTo(p1);
+                    newPath.MoveTo(lastSegEnd);
+                    newPath.LineTo(p1);
 
-                newPath.MoveTo(endPoint);
-                newPath.LineTo(p2);
+                    newPath.MoveTo(lastSegEnd);
+                    newPath.LineTo(p2);
+                }
             }
+        }
+
+        if (!stroke.TransformMatrix.IsIdentity)
+        {
+            newPath.Transform(stroke.TransformMatrix);
         }
 
         stroke.Path = newPath;

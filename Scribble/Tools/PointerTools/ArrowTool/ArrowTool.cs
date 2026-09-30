@@ -5,43 +5,23 @@ using Avalonia.Media.Imaging;
 using Avalonia.Platform;
 using Scribble.Services.CanvasStateService;
 using Scribble.Shared.Lib;
-using Scribble.Shared.Lib.Events;
 using SkiaSharp;
 
 namespace Scribble.Tools.PointerTools.ArrowTool;
 
-public class ArrowTool : StrokeTool
+public class ArrowTool : PolylineToolBase
 {
-    private Guid _strokeId = Guid.NewGuid();
-    private Guid _actionId = Guid.NewGuid();
-
     public ArrowTool(string name, ICanvasStateService canvasState) : base(name, canvasState,
         LoadToolBitmap(typeof(ArrowTool), "arrow.png"))
     {
-        ToolOptions = [ToolOption.StrokeColor, ToolOption.StrokeThickness, ToolOption.StrokeStyle];
+        ToolOptions = [ToolOption.StrokeColor, ToolOption.StrokeThickness, ToolOption.StrokeStyle, ToolOption.EdgeType];
         var plusBitmap = new Bitmap(AssetLoader.Open(new Uri("avares://Scribble/Assets/plus.png")));
         Cursor = new Cursor(plusBitmap, new PixelPoint(12, 12));
         HotKey = new KeyGesture(Key.D5);
         ToolTip = "Arrow Tool - 5";
     }
 
-    public override void HandlePointerClick(SKPoint startPoint)
-    {
-        _strokeId = Guid.NewGuid();
-        _actionId = Guid.NewGuid();
-        CanvasStateService.ApplyEvent(new StartStrokeEvent(_actionId, _strokeId, startPoint, StrokePaint.Clone(),
-            ToolType.Arrow, ToolOptions));
-    }
-
-    public override void HandlePointerMove(SKPoint prevCoord, SKPoint currentCoord)
-    {
-        CanvasStateService.ApplyEvent(new LineStrokeLineToEvent(_actionId, _strokeId, currentCoord));
-    }
-
-    public override void HandlePointerRelease(SKPoint prevCoord, SKPoint currentCoord)
-    {
-        CanvasStateService.ApplyEvent(new EndStrokeEvent(_actionId));
-    }
+    protected override ToolType GetToolType() => ToolType.Arrow;
 
     public static (SKPoint, SKPoint) GetArrowHeadPoints(SKPoint start, SKPoint end, float strokeWidth)
     {

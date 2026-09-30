@@ -24,5 +24,5 @@ public enum StrokeStyle
 public enum EdgeType
 {
     Sharp,
-    Rounded
+    Curved
 }

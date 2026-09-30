@@ -16,6 +16,7 @@ using Scribble.Services.CanvasStateService;
 using Scribble.Services.DialogService;
 using Scribble.Services.FileService;
 using Scribble.Services.MultiUserDrawing;
+using Scribble.Shared.Lib;
 using Scribble.Shared.Lib.CanvasElements;
 using Scribble.Shared.Lib.CanvasElements.Strokes;
 using Scribble.Shared.Lib.Events;
@@ -109,6 +110,15 @@ public partial class MainView : UserControl
         LoadAllTools(viewModel);
         // Ensure the canvas container gets focus so keybindings work immediately
         Dispatcher.UIThread.Post(() => CanvasContainer.Focus());
+
+        // Delegate keyboard input to the active tool (e.g. Esc/Enter to finalize polylines)
+        CanvasContainer.KeyDown += (_, e) =>
+        {
+            if (_activePointerTool?.HandleKeyPress(e.Key) == true)
+            {
+                e.Handled = true;
+            }
+        };
 
         // Add keybindings for click event handlers
         RootPanel.KeyBindings.Add(new KeyBinding
@@ -303,7 +313,7 @@ public partial class MainView : UserControl
             if ((e.KeyModifiers & KeyModifiers.Shift) != 0)
             {
                 var currentlySelectedElements = _canvasStateService.GetSelectedElements().Cast<ISelectable>().ToList();
-                selectTool?.SelectElements([..currentlySelectedElements, selectableElement]);
+                selectTool?.SelectElements([.. currentlySelectedElements, selectableElement]);
             }
             else
             {
@@ -335,7 +345,7 @@ public partial class MainView : UserControl
             .Where(canvasEl => canvasEl is TextStroke)
             // Only allow editing for text strokes created by the current user
             .Where(canvasEl => canvasEl.CreatorConnectionId == null ||
-                               canvasEl.CreatorConnectionId == _multiUserDrawingService.Room?.Me.ConnectionId)
+                               canvasEl.CreatorConnectionId == _multiUserDrawingService.ConnectionId)
             .Cast<TextStroke>()
             .ToList();
         var borders = new List<Border>();
@@ -512,6 +522,7 @@ public partial class MainView : UserControl
 
         var currentLocalEvent = _canvasStateService.GetLocalCanvasEvents().LastOrDefault();
         var userIsSelecting = currentLocalEvent is EndSelectionEvent or SelectByIdsEvent;
+        var refreshOptions = currentLocalEvent?.CreatorConnectionId == _multiUserDrawingService.ConnectionId;
         var selectedElementIds = _canvasStateService.SelectedElementIds;
 
         if (selectedElementIds.Count == 0 && userIsSelecting)
@@ -530,9 +541,9 @@ public partial class MainView : UserControl
 
         ApplySelectionOverlay(selectedElements, combinedBounds, rotationAngleDegrees, rotationCenter);
 
-        if (userIsSelecting)
+        if (refreshOptions)
         {
-            _viewModel.UiStateViewModel.ShowSelectedCanvasElementOptions([..selectedElements]);
+            _viewModel.UiStateViewModel.ShowSelectedCanvasElementOptions([.. selectedElements]);
         }
     }
 
@@ -646,6 +657,53 @@ public partial class MainView : UserControl
 
         _selection.SelectionBounds = worldBounds;
         SelectionOverlay.IsVisible = selectedElements.Count > 0 && double.IsNaN(_selection.SelectionRotationAngle);
+
+        if (selectedElements.Count == 1 && selectedElements[0] is DrawStroke ds &&
+            ds.ToolType is ToolType.Line or ToolType.Arrow && ds.RawPoints.Count >= 2)
+        {
+            NodeHandlesOverlay.IsVisible = true;
+
+            if (NodeHandlesOverlay.Children.Count != ds.RawPoints.Count)
+            {
+                NodeHandlesOverlay.Children.Clear();
+                for (var i = 0; i < ds.RawPoints.Count; i++)
+                {
+                    var handle = new Border
+                    {
+                        Width = 10,
+                        Height = 10,
+                        Background = new SolidColorBrush(Colors.White),
+                        BorderBrush = new SolidColorBrush(Color.Parse("#3880ff")),
+                        BorderThickness = new Thickness(2),
+                        CornerRadius = new CornerRadius(5),
+                        Cursor = new Cursor(StandardCursorType.SizeAll),
+                        Tag = i
+                    };
+
+                    handle.PointerPressed += NodeHandle_OnPointerPressed;
+                    handle.PointerMoved += NodeHandle_OnPointerMoved;
+                    handle.PointerReleased += NodeHandle_OnPointerReleased;
+
+                    NodeHandlesOverlay.Children.Add(handle);
+                }
+            }
+
+            for (var i = 0; i < ds.RawPoints.Count; i++)
+            {
+                var rawPoint = ds.RawPoints[i].Point;
+                var worldPoint = ds.TransformMatrix.MapPoint(rawPoint);
+                var screenPoint = CameraState.WorldToScreen(worldPoint);
+
+                var handle = (Border)NodeHandlesOverlay.Children[i];
+                Canvas.SetLeft(handle, screenPoint.X - 5);
+                Canvas.SetTop(handle, screenPoint.Y - 5);
+            }
+        }
+        else
+        {
+            NodeHandlesOverlay.Children.Clear();
+            NodeHandlesOverlay.IsVisible = false;
+        }
     }
 
     /// <summary>
@@ -723,6 +781,12 @@ public partial class MainView : UserControl
         {
             _activePointerTool?.HandlePointerMove(_prevCoord, pointerCoordinates);
         }
+        // Multi-click drawing mode: forward pointer moves even without the button pressed
+        // so the tool can show a rubberband preview from the last confirmed node to the cursor
+        else if (_activePointerTool?.IsDrawing == true)
+        {
+            _activePointerTool.HandlePointerMove(_prevCoord, pointerCoordinates);
+        }
 
         _prevCoord = pointerCoordinates;
 
@@ -737,6 +801,8 @@ public partial class MainView : UserControl
 
     private void MainCanvas_OnPointerPressed(object? sender, PointerPressedEventArgs e)
     {
+        Dispatcher.UIThread.Post(() => CanvasContainer.Focus());
+
         var screenPos = Utilities.ToSkPoint(e.GetPosition(MainCanvas));
         _lastWorldPointerPos = CameraState.ScreenToWorld(screenPos);
 
@@ -744,7 +810,15 @@ public partial class MainView : UserControl
         if (e.Properties.IsLeftButtonPressed)
         {
             _prevCoord = pointerCoordinates;
-            _activePointerTool?.HandlePointerClick(pointerCoordinates);
+
+            if (e.ClickCount >= 2)
+            {
+                _activePointerTool?.HandleDoubleClick(pointerCoordinates);
+            }
+            else
+            {
+                _activePointerTool?.HandlePointerClick(pointerCoordinates);
+            }
         }
     }
 
@@ -756,8 +830,12 @@ public partial class MainView : UserControl
             _activePointerTool?.HandlePointerRelease(_prevCoord, pointerCoordinates);
         }
 
-        // Reset the last coordinates when the mouse is released
-        _prevCoord = SKPoint.Empty;
+        // Reset the last coordinates when the mouse is released,
+        // unless the tool is in a multi-step drawing mode (e.g. polyline multi-click)
+        if (_activePointerTool?.IsDrawing != true)
+        {
+            _prevCoord = SKPoint.Empty;
+        }
     }
 
     private void MainCanvas_OnPointerWheelChanged(object? sender, PointerWheelEventArgs e)
@@ -1035,6 +1113,47 @@ public partial class MainView : UserControl
             }
 
             _selection.ClearScaleState();
+            VisualizeSelection();
+            e.Handled = true;
+        }
+    }
+
+    private void NodeHandle_OnPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed && sender is Border handle &&
+            handle.Tag is int index)
+        {
+            _selection.NodeDragActionId = Guid.NewGuid();
+            _selection.ActiveNodeIndex = index;
+            e.Handled = true;
+        }
+    }
+
+    private void NodeHandle_OnPointerMoved(object? sender, PointerEventArgs e)
+    {
+        if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed && _selection.ActiveNodeIndex != -1 &&
+            sender is Border handle && handle.Tag is int index && index == _selection.ActiveNodeIndex)
+        {
+            if (_canvasStateService.GetSelectedElements().Count == 1 &&
+                _canvasStateService.GetSelectedElements()[0] is DrawStroke ds)
+            {
+                var pointerCoordinates = GetPointerPosition(e);
+                // Inverse map from world coordinates to local stroke coordinates
+                var newLocalPoint = ds.TransformMatrix.Invert().MapPoint(pointerCoordinates);
+
+                _canvasStateService.ApplyEvent(new MovePolylineNodeEvent(_selection.NodeDragActionId, ds.Id, index,
+                    newLocalPoint));
+                e.Handled = true;
+            }
+        }
+    }
+
+    private void NodeHandle_OnPointerReleased(object? sender, PointerReleasedEventArgs e)
+    {
+        if (e.InitialPressMouseButton == MouseButton.Left && _selection.ActiveNodeIndex != -1)
+        {
+            _canvasStateService.ApplyEvent(new EndStrokeEvent(_selection.NodeDragActionId));
+            _selection.ActiveNodeIndex = -1;
             VisualizeSelection();
             e.Handled = true;
         }
