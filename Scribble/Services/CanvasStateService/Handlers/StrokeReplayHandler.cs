@@ -18,12 +18,14 @@ public class StrokeReplayHandler :
     IEventReplayHandler<PencilStrokeLineToEvent>,
     IEventReplayHandler<LineStrokeLineToEvent>,
     IEventReplayHandler<AddPolylineNodeEvent>,
+    IEventReplayHandler<MovePolylineNodeEvent>,
     IEventReplayHandler<EndStrokeEvent>,
     IFastPathHandler<StartStrokeEvent>,
     IFastPathHandler<EndStrokeEvent>,
     IFastPathHandler<PencilStrokeLineToEvent>,
     IFastPathHandler<LineStrokeLineToEvent>,
-    IFastPathHandler<AddPolylineNodeEvent>
+    IFastPathHandler<AddPolylineNodeEvent>,
+    IFastPathHandler<MovePolylineNodeEvent>
 {
     // Replay handlers
 
@@ -75,6 +77,19 @@ public class StrokeReplayHandler :
             ds.RawPoints.Add(new StrokePoint(ev.Point, ev.TimeStamp.Ticks / TimeSpan.TicksPerMillisecond));
             // Rebuild the path from all raw points with the last point as the endpoint
             RebuildLinePath(ds, ds.RawPoints[^1].Point);
+        }
+    }
+
+    public void Replay(MovePolylineNodeEvent ev, CanvasState ctx)
+    {
+        if (ctx.PaintableStrokes.TryGetValue(ev.StrokeId, out var paintableStroke) &&
+            paintableStroke is DrawStroke ds)
+        {
+            if (ev.NodeIndex >= 0 && ev.NodeIndex < ds.RawPoints.Count)
+            {
+                ds.RawPoints[ev.NodeIndex] = new StrokePoint(ev.NewPosition, ev.TimeStamp.Ticks / TimeSpan.TicksPerMillisecond);
+                RebuildLinePath(ds, ds.RawPoints[^1].Point);
+            }
         }
     }
 
@@ -154,6 +169,21 @@ public class StrokeReplayHandler :
         return false;
     }
 
+    public bool TryApplyFastPath(MovePolylineNodeEvent ev, CanvasState ctx)
+    {
+        if (ctx.PaintableStrokes.TryGetValue(ev.StrokeId, out var stroke) && stroke is DrawStroke ds)
+        {
+            if (ev.NodeIndex >= 0 && ev.NodeIndex < ds.RawPoints.Count)
+            {
+                ds.RawPoints[ev.NodeIndex] = new StrokePoint(ev.NewPosition, ev.TimeStamp.Ticks / TimeSpan.TicksPerMillisecond);
+                RebuildLinePath(ds, ds.RawPoints[^1].Point);
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     /// <summary>
     /// Builds the path for strokes: Rectangles, Ellipses, Lines, and Arrows.
     /// For Line/Arrow, supports multi-point polylines by using all RawPoints
@@ -186,24 +216,30 @@ public class StrokeReplayHandler :
                 allPoints.Add(endPoint);
             }
 
-            if (allPoints.Count == 0) return;
-
-            PathUtilities.BuildPolylinePath(newPath, allPoints, stroke.Paint.StrokeJoin == SKStrokeJoin.Round);
-
-            // Arrow head on the final segment
-            if (stroke.ToolType == ToolType.Arrow && allPoints.Count >= 2)
+            if (allPoints.Count > 0)
             {
-                var lastSegStart = allPoints[^2];
-                var lastSegEnd = allPoints[^1];
-                var (p1, p2) = ArrowTool.GetArrowHeadPoints(lastSegStart, lastSegEnd,
-                    stroke.Paint.StrokeWidth);
+                PathUtilities.BuildPolylinePath(newPath, allPoints, stroke.Paint.StrokeJoin == SKStrokeJoin.Round);
 
-                newPath.MoveTo(lastSegEnd);
-                newPath.LineTo(p1);
+                // Arrow head on the final segment
+                if (stroke.ToolType == ToolType.Arrow && allPoints.Count >= 2)
+                {
+                    var lastSegStart = allPoints[^2];
+                    var lastSegEnd = allPoints[^1];
+                    var (p1, p2) = ArrowTool.GetArrowHeadPoints(lastSegStart, lastSegEnd,
+                        stroke.Paint.StrokeWidth);
 
-                newPath.MoveTo(lastSegEnd);
-                newPath.LineTo(p2);
+                    newPath.MoveTo(lastSegEnd);
+                    newPath.LineTo(p1);
+
+                    newPath.MoveTo(lastSegEnd);
+                    newPath.LineTo(p2);
+                }
             }
+        }
+
+        if (!stroke.TransformMatrix.IsIdentity)
+        {
+            newPath.Transform(stroke.TransformMatrix);
         }
 
         stroke.Path = newPath;

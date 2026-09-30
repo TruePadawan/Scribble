@@ -26,6 +26,8 @@ public class Selection
     public Guid MoveActionId = Guid.NewGuid();
     public Guid RotateActionId = Guid.NewGuid();
     public Guid ScaleActionId = Guid.NewGuid();
+    public Guid NodeDragActionId = Guid.NewGuid();
+    public int ActiveNodeIndex = -1;
 
     public void RefreshSelectionCenter()
     {

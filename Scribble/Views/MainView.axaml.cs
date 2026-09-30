@@ -16,6 +16,7 @@ using Scribble.Services.CanvasStateService;
 using Scribble.Services.DialogService;
 using Scribble.Services.FileService;
 using Scribble.Services.MultiUserDrawing;
+using Scribble.Shared.Lib;
 using Scribble.Shared.Lib.CanvasElements;
 using Scribble.Shared.Lib.CanvasElements.Strokes;
 using Scribble.Shared.Lib.Events;
@@ -312,7 +313,7 @@ public partial class MainView : UserControl
             if ((e.KeyModifiers & KeyModifiers.Shift) != 0)
             {
                 var currentlySelectedElements = _canvasStateService.GetSelectedElements().Cast<ISelectable>().ToList();
-                selectTool?.SelectElements([..currentlySelectedElements, selectableElement]);
+                selectTool?.SelectElements([.. currentlySelectedElements, selectableElement]);
             }
             else
             {
@@ -542,7 +543,7 @@ public partial class MainView : UserControl
 
         if (refreshOptions)
         {
-            _viewModel.UiStateViewModel.ShowSelectedCanvasElementOptions([..selectedElements]);
+            _viewModel.UiStateViewModel.ShowSelectedCanvasElementOptions([.. selectedElements]);
         }
     }
 
@@ -656,6 +657,53 @@ public partial class MainView : UserControl
 
         _selection.SelectionBounds = worldBounds;
         SelectionOverlay.IsVisible = selectedElements.Count > 0 && double.IsNaN(_selection.SelectionRotationAngle);
+
+        if (selectedElements.Count == 1 && selectedElements[0] is DrawStroke ds &&
+            ds.ToolType is ToolType.Line or ToolType.Arrow && ds.RawPoints.Count >= 2)
+        {
+            NodeHandlesOverlay.IsVisible = true;
+
+            if (NodeHandlesOverlay.Children.Count != ds.RawPoints.Count)
+            {
+                NodeHandlesOverlay.Children.Clear();
+                for (var i = 0; i < ds.RawPoints.Count; i++)
+                {
+                    var handle = new Border
+                    {
+                        Width = 10,
+                        Height = 10,
+                        Background = new SolidColorBrush(Colors.White),
+                        BorderBrush = new SolidColorBrush(Color.Parse("#3880ff")),
+                        BorderThickness = new Thickness(2),
+                        CornerRadius = new CornerRadius(5),
+                        Cursor = new Cursor(StandardCursorType.SizeAll),
+                        Tag = i
+                    };
+
+                    handle.PointerPressed += NodeHandle_OnPointerPressed;
+                    handle.PointerMoved += NodeHandle_OnPointerMoved;
+                    handle.PointerReleased += NodeHandle_OnPointerReleased;
+
+                    NodeHandlesOverlay.Children.Add(handle);
+                }
+            }
+
+            for (var i = 0; i < ds.RawPoints.Count; i++)
+            {
+                var rawPoint = ds.RawPoints[i].Point;
+                var worldPoint = ds.TransformMatrix.MapPoint(rawPoint);
+                var screenPoint = CameraState.WorldToScreen(worldPoint);
+
+                var handle = (Border)NodeHandlesOverlay.Children[i];
+                Canvas.SetLeft(handle, screenPoint.X - 5);
+                Canvas.SetTop(handle, screenPoint.Y - 5);
+            }
+        }
+        else
+        {
+            NodeHandlesOverlay.Children.Clear();
+            NodeHandlesOverlay.IsVisible = false;
+        }
     }
 
     /// <summary>
@@ -762,7 +810,7 @@ public partial class MainView : UserControl
         if (e.Properties.IsLeftButtonPressed)
         {
             _prevCoord = pointerCoordinates;
-            
+
             if (e.ClickCount >= 2)
             {
                 _activePointerTool?.HandleDoubleClick(pointerCoordinates);
@@ -1065,6 +1113,47 @@ public partial class MainView : UserControl
             }
 
             _selection.ClearScaleState();
+            VisualizeSelection();
+            e.Handled = true;
+        }
+    }
+
+    private void NodeHandle_OnPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed && sender is Border handle &&
+            handle.Tag is int index)
+        {
+            _selection.NodeDragActionId = Guid.NewGuid();
+            _selection.ActiveNodeIndex = index;
+            e.Handled = true;
+        }
+    }
+
+    private void NodeHandle_OnPointerMoved(object? sender, PointerEventArgs e)
+    {
+        if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed && _selection.ActiveNodeIndex != -1 &&
+            sender is Border handle && handle.Tag is int index && index == _selection.ActiveNodeIndex)
+        {
+            if (_canvasStateService.GetSelectedElements().Count == 1 &&
+                _canvasStateService.GetSelectedElements()[0] is DrawStroke ds)
+            {
+                var pointerCoordinates = GetPointerPosition(e);
+                // Inverse map from world coordinates to local stroke coordinates
+                var newLocalPoint = ds.TransformMatrix.Invert().MapPoint(pointerCoordinates);
+
+                _canvasStateService.ApplyEvent(new MovePolylineNodeEvent(_selection.NodeDragActionId, ds.Id, index,
+                    newLocalPoint));
+                e.Handled = true;
+            }
+        }
+    }
+
+    private void NodeHandle_OnPointerReleased(object? sender, PointerReleasedEventArgs e)
+    {
+        if (e.InitialPressMouseButton == MouseButton.Left && _selection.ActiveNodeIndex != -1)
+        {
+            _canvasStateService.ApplyEvent(new EndStrokeEvent(_selection.NodeDragActionId));
+            _selection.ActiveNodeIndex = -1;
             VisualizeSelection();
             e.Handled = true;
         }

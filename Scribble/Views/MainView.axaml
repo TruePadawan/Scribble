@@ -100,6 +100,10 @@
                 </Grid>
             </StackPanel>
 
+            <!-- NODE HANDLES FOR POLYLINES (Outside SelectionOverlay to avoid rotation) -->
+            <Canvas Name="NodeHandlesOverlay" IsHitTestVisible="True" ClipToBounds="False" IsVisible="False" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+            </Canvas>
+
 
             <Canvas.Styles>
                 <Style Selector="TextBox:focus /template/ Border">
