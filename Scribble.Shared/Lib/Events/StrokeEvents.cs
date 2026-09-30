@@ -19,6 +19,9 @@ public record PencilStrokeLineToEvent(Guid ActionId, Guid StrokeId, SKPoint Poin
 // LINE + ARROW + RECTANGLE TOOL
 public record LineStrokeLineToEvent(Guid ActionId, Guid StrokeId, SKPoint EndPoint) : Event(ActionId);
 
+// POLYLINE NODE (LINE + ARROW multi-click mode)
+public record AddPolylineNodeEvent(Guid ActionId, Guid StrokeId, SKPoint Point) : Event(ActionId);
+
 // TEXT TOOL
 public record AddTextEvent(
     Guid ActionId,

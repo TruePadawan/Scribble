@@ -13,6 +13,7 @@ namespace Scribble.Shared.Lib;
 [JsonDerivedType(typeof(EraseStrokeLineToEvent), typeDiscriminator: "EraseStrokeLineTo")]
 [JsonDerivedType(typeof(TriggerEraseEvent), typeDiscriminator: "TriggerErase")]
 [JsonDerivedType(typeof(LineStrokeLineToEvent), typeDiscriminator: "LineStrokeLineTo")]
+[JsonDerivedType(typeof(AddPolylineNodeEvent), typeDiscriminator: "AddPolylineNode")]
 [JsonDerivedType(typeof(AddTextEvent), typeDiscriminator: "AddText")]
 [JsonDerivedType(typeof(CreateSelectionBoundEvent), typeDiscriminator: "CreateSelectionBound")]
 [JsonDerivedType(typeof(IncreaseSelectionBoundEvent), typeDiscriminator: "IncreaseSelectionBound")]
