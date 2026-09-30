@@ -462,7 +462,7 @@
                                                   behaviours:ToggleButtonGroup.GroupName="EdgeStyle"
                                                   IsChecked="{Binding EdgeType,
                                                       Converter={StaticResource EnumBoolConverter},
-                                                      ConverterParameter={x:Static strokes:EdgeType.Rounded}}">
+                                                      ConverterParameter={x:Static strokes:EdgeType.Curved}}">
                                         <Image Source="avares://Scribble/Assets/rounded_edge.png" Width="20" />
                                     </ToggleButton>
                                 </StackPanel>

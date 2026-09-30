@@ -14,7 +14,7 @@ public class ArrowTool : PolylineToolBase
     public ArrowTool(string name, ICanvasStateService canvasState) : base(name, canvasState,
         LoadToolBitmap(typeof(ArrowTool), "arrow.png"))
     {
-        ToolOptions = [ToolOption.StrokeColor, ToolOption.StrokeThickness, ToolOption.StrokeStyle];
+        ToolOptions = [ToolOption.StrokeColor, ToolOption.StrokeThickness, ToolOption.StrokeStyle, ToolOption.EdgeType];
         var plusBitmap = new Bitmap(AssetLoader.Open(new Uri("avares://Scribble/Assets/plus.png")));
         Cursor = new Cursor(plusBitmap, new PixelPoint(12, 12));
         HotKey = new KeyGesture(Key.D5);

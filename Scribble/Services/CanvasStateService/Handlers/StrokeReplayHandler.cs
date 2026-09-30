@@ -168,28 +168,11 @@ public class StrokeReplayHandler :
 
         if (stroke.ToolType == ToolType.Rectangle)
         {
-            newPath.MoveTo(lineStartPoint);
-            var left = Math.Min(lineStartPoint.X, endPoint.X);
-            var top = Math.Min(lineStartPoint.Y, endPoint.Y);
-            var rect = SKRect.Create(new SKPoint(left, top),
-                Utilities.GetSize(lineStartPoint, endPoint));
-            if (stroke.Paint.StrokeJoin == SKStrokeJoin.Miter)
-            {
-                newPath.AddRect(rect);
-            }
-            else
-            {
-                newPath.AddRoundRect(rect, 24f, 24f);
-            }
+            PathUtilities.BuildRectangleShape(newPath, lineStartPoint, endPoint, stroke.Paint.StrokeJoin == SKStrokeJoin.Round);
         }
         else if (stroke.ToolType == ToolType.Ellipse)
         {
-            newPath.MoveTo(lineStartPoint);
-            var left = Math.Min(lineStartPoint.X, endPoint.X);
-            var top = Math.Min(lineStartPoint.Y, endPoint.Y);
-            var rect = SKRect.Create(new SKPoint(left, top),
-                Utilities.GetSize(lineStartPoint, endPoint));
-            newPath.AddOval(rect);
+            PathUtilities.BuildEllipseShape(newPath, lineStartPoint, endPoint);
         }
         else
         {
@@ -205,11 +188,7 @@ public class StrokeReplayHandler :
 
             if (allPoints.Count == 0) return;
 
-            newPath.MoveTo(allPoints[0]);
-            for (var i = 1; i < allPoints.Count; i++)
-            {
-                newPath.LineTo(allPoints[i]);
-            }
+            PathUtilities.BuildPolylinePath(newPath, allPoints, stroke.Paint.StrokeJoin == SKStrokeJoin.Round);
 
             // Arrow head on the final segment
             if (stroke.ToolType == ToolType.Arrow && allPoints.Count >= 2)
