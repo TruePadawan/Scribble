@@ -110,6 +110,15 @@ public partial class MainView : UserControl
         // Ensure the canvas container gets focus so keybindings work immediately
         Dispatcher.UIThread.Post(() => CanvasContainer.Focus());
 
+        // Delegate keyboard input to the active tool (e.g. Esc/Enter to finalize polylines)
+        CanvasContainer.KeyDown += (_, e) =>
+        {
+            if (_activePointerTool?.HandleKeyPress(e.Key) == true)
+            {
+                e.Handled = true;
+            }
+        };
+
         // Add keybindings for click event handlers
         RootPanel.KeyBindings.Add(new KeyBinding
         {
@@ -724,6 +733,12 @@ public partial class MainView : UserControl
         {
             _activePointerTool?.HandlePointerMove(_prevCoord, pointerCoordinates);
         }
+        // Multi-click drawing mode: forward pointer moves even without the button pressed
+        // so the tool can show a rubberband preview from the last confirmed node to the cursor
+        else if (_activePointerTool?.IsDrawing == true)
+        {
+            _activePointerTool.HandlePointerMove(_prevCoord, pointerCoordinates);
+        }
 
         _prevCoord = pointerCoordinates;
 
@@ -738,6 +753,8 @@ public partial class MainView : UserControl
 
     private void MainCanvas_OnPointerPressed(object? sender, PointerPressedEventArgs e)
     {
+        Dispatcher.UIThread.Post(() => CanvasContainer.Focus());
+
         var screenPos = Utilities.ToSkPoint(e.GetPosition(MainCanvas));
         _lastWorldPointerPos = CameraState.ScreenToWorld(screenPos);
 
@@ -745,7 +762,15 @@ public partial class MainView : UserControl
         if (e.Properties.IsLeftButtonPressed)
         {
             _prevCoord = pointerCoordinates;
-            _activePointerTool?.HandlePointerClick(pointerCoordinates);
+            
+            if (e.ClickCount >= 2)
+            {
+                _activePointerTool?.HandleDoubleClick(pointerCoordinates);
+            }
+            else
+            {
+                _activePointerTool?.HandlePointerClick(pointerCoordinates);
+            }
         }
     }
 
@@ -757,8 +782,12 @@ public partial class MainView : UserControl
             _activePointerTool?.HandlePointerRelease(_prevCoord, pointerCoordinates);
         }
 
-        // Reset the last coordinates when the mouse is released
-        _prevCoord = SKPoint.Empty;
+        // Reset the last coordinates when the mouse is released,
+        // unless the tool is in a multi-step drawing mode (e.g. polyline multi-click)
+        if (_activePointerTool?.IsDrawing != true)
+        {
+            _prevCoord = SKPoint.Empty;
+        }
     }
 
     private void MainCanvas_OnPointerWheelChanged(object? sender, PointerWheelEventArgs e)
