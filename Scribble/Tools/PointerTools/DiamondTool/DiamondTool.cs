@@ -1,0 +1,50 @@
+using System;
+using Avalonia;
+using Avalonia.Input;
+using Avalonia.Media.Imaging;
+using Avalonia.Platform;
+using Scribble.Services.CanvasStateService;
+using Scribble.Shared.Lib;
+using Scribble.Shared.Lib.Events;
+using SkiaSharp;
+
+namespace Scribble.Tools.PointerTools.DiamondTool;
+
+public class DiamondTool : StrokeTool
+{
+    private Guid _strokeId = Guid.NewGuid();
+    private Guid _actionId = Guid.NewGuid();
+
+    public DiamondTool(string name, ICanvasStateService canvasState)
+        : base(name, canvasState, LoadToolBitmap(typeof(DiamondTool), "diamond.png"))
+    {
+        ToolOptions =
+        [
+            ToolOption.StrokeColor, ToolOption.StrokeThickness, ToolOption.StrokeStyle, ToolOption.FillColor,
+            ToolOption.EdgeType
+        ];
+        var plusBitmap = new Bitmap(AssetLoader.Open(new Uri("avares://Scribble/Assets/plus.png")));
+        Cursor = new Cursor(plusBitmap, new PixelPoint(12, 12));
+        // TODO: Rewrite the hotkeys for all tools
+        // HotKey = new KeyGesture(Key.D7);
+        // ToolTip = "Diamond Tool";
+    }
+
+    public override void HandlePointerClick(SKPoint startPoint)
+    {
+        _strokeId = Guid.NewGuid();
+        _actionId = Guid.NewGuid();
+        CanvasStateService.ApplyEvent(new StartStrokeEvent(_actionId, _strokeId, startPoint, StrokePaint.Clone(),
+            ToolType.Diamond, ToolOptions));
+    }
+
+    public override void HandlePointerMove(SKPoint prevCoord, SKPoint currentCoord)
+    {
+        CanvasStateService.ApplyEvent(new LineStrokeLineToEvent(_actionId, _strokeId, currentCoord));
+    }
+
+    public override void HandlePointerRelease(SKPoint prevCoord, SKPoint currentCoord)
+    {
+        CanvasStateService.ApplyEvent(new EndStrokeEvent(_actionId));
+    }
+}

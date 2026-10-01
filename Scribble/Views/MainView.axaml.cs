@@ -23,6 +23,7 @@ using Scribble.Shared.Lib.Events;
 using Scribble.State;
 using Scribble.Tools.PointerTools;
 using Scribble.Tools.PointerTools.ArrowTool;
+using Scribble.Tools.PointerTools.DiamondTool;
 using Scribble.Tools.PointerTools.EllipseTool;
 using Scribble.Tools.PointerTools.EraseTool;
 using Scribble.Tools.PointerTools.ImageTool;
@@ -171,6 +172,7 @@ public partial class MainView : UserControl
             new ArrowTool("ArrowTool", _canvasStateService),
             new EllipseTool("EllipseTool", _canvasStateService),
             new RectangleTool("RectangleTool", _canvasStateService),
+            new DiamondTool("DiamondTool", _canvasStateService),
             new TextTool("TextTool", _canvasStateService, CanvasContainer),
             new SelectTool("SelectTool", _canvasStateService, CanvasContainer),
             new ImageTool("ImageTool", _canvasStateService, _fileService, _dialogService),
@@ -541,7 +543,7 @@ public partial class MainView : UserControl
 
         ApplySelectionOverlay(selectedElements, combinedBounds, rotationAngleDegrees, rotationCenter);
 
-        if (refreshOptions)
+        if (refreshOptions && _activePointerTool is SelectTool)
         {
             _viewModel.UiStateViewModel.ShowSelectedCanvasElementOptions([.. selectedElements]);
         }

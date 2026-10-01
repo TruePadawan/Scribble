@@ -87,7 +87,8 @@ public class StrokeReplayHandler :
         {
             if (ev.NodeIndex >= 0 && ev.NodeIndex < ds.RawPoints.Count)
             {
-                ds.RawPoints[ev.NodeIndex] = new StrokePoint(ev.NewPosition, ev.TimeStamp.Ticks / TimeSpan.TicksPerMillisecond);
+                ds.RawPoints[ev.NodeIndex] =
+                    new StrokePoint(ev.NewPosition, ev.TimeStamp.Ticks / TimeSpan.TicksPerMillisecond);
                 RebuildLinePath(ds, ds.RawPoints[^1].Point);
             }
         }
@@ -175,7 +176,8 @@ public class StrokeReplayHandler :
         {
             if (ev.NodeIndex >= 0 && ev.NodeIndex < ds.RawPoints.Count)
             {
-                ds.RawPoints[ev.NodeIndex] = new StrokePoint(ev.NewPosition, ev.TimeStamp.Ticks / TimeSpan.TicksPerMillisecond);
+                ds.RawPoints[ev.NodeIndex] =
+                    new StrokePoint(ev.NewPosition, ev.TimeStamp.Ticks / TimeSpan.TicksPerMillisecond);
                 RebuildLinePath(ds, ds.RawPoints[^1].Point);
                 return true;
             }
@@ -195,45 +197,52 @@ public class StrokeReplayHandler :
     {
         var lineStartPoint = stroke.RawPoints[0].Point;
         var newPath = new SKPath();
+        var isCurvedStroke = stroke.Paint.StrokeJoin == SKStrokeJoin.Round;
 
-        if (stroke.ToolType == ToolType.Rectangle)
+        switch (stroke.ToolType)
         {
-            PathUtilities.BuildRectangleShape(newPath, lineStartPoint, endPoint, stroke.Paint.StrokeJoin == SKStrokeJoin.Round);
-        }
-        else if (stroke.ToolType == ToolType.Ellipse)
-        {
-            PathUtilities.BuildEllipseShape(newPath, lineStartPoint, endPoint);
-        }
-        else
-        {
-            // Line or Arrow: build polyline from all confirmed raw points + tentative endpoint
-            var allPoints = stroke.RawPoints.Select(rp => rp.Point).ToList();
-
-            // Add the tentative endpoint for rubberband preview,
-            // but only if it differs from the last confirmed point
-            if (allPoints.Count > 0 && allPoints[^1] != endPoint)
+            case ToolType.Rectangle:
+                PathUtilities.BuildRectangleShape(newPath, lineStartPoint, endPoint, isCurvedStroke);
+                break;
+            case ToolType.Diamond:
+                PathUtilities.BuildDiamondShape(newPath, lineStartPoint, endPoint, isCurvedStroke);
+                break;
+            case ToolType.Ellipse:
+                PathUtilities.BuildEllipseShape(newPath, lineStartPoint, endPoint);
+                break;
+            default:
             {
-                allPoints.Add(endPoint);
-            }
+                // Line or Arrow: build polyline from all confirmed raw points + tentative endpoint
+                var allPoints = stroke.RawPoints.Select(rp => rp.Point).ToList();
 
-            if (allPoints.Count > 0)
-            {
-                PathUtilities.BuildPolylinePath(newPath, allPoints, stroke.Paint.StrokeJoin == SKStrokeJoin.Round);
-
-                // Arrow head on the final segment
-                if (stroke.ToolType == ToolType.Arrow && allPoints.Count >= 2)
+                // Add the tentative endpoint for rubberband preview,
+                // but only if it differs from the last confirmed point
+                if (allPoints.Count > 0 && allPoints[^1] != endPoint)
                 {
-                    var lastSegStart = allPoints[^2];
-                    var lastSegEnd = allPoints[^1];
-                    var (p1, p2) = ArrowTool.GetArrowHeadPoints(lastSegStart, lastSegEnd,
-                        stroke.Paint.StrokeWidth);
-
-                    newPath.MoveTo(lastSegEnd);
-                    newPath.LineTo(p1);
-
-                    newPath.MoveTo(lastSegEnd);
-                    newPath.LineTo(p2);
+                    allPoints.Add(endPoint);
                 }
+
+                if (allPoints.Count > 0)
+                {
+                    PathUtilities.BuildPolylinePath(newPath, allPoints, stroke.Paint.StrokeJoin == SKStrokeJoin.Round);
+
+                    // Arrow head on the final segment
+                    if (stroke.ToolType == ToolType.Arrow && allPoints.Count >= 2)
+                    {
+                        var lastSegStart = allPoints[^2];
+                        var lastSegEnd = allPoints[^1];
+                        var (p1, p2) = ArrowTool.GetArrowHeadPoints(lastSegStart, lastSegEnd,
+                            stroke.Paint.StrokeWidth);
+
+                        newPath.MoveTo(lastSegEnd);
+                        newPath.LineTo(p1);
+
+                        newPath.MoveTo(lastSegEnd);
+                        newPath.LineTo(p2);
+                    }
+                }
+
+                break;
             }
         }
 
