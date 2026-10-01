@@ -4,6 +4,7 @@ namespace Scribble.Shared.Lib.Events;
 
 public record MoveCanvasElementsEvent(Guid ActionId, Guid BoundId, SKPoint Delta) : Event(ActionId);
 
+// TODO: Rename DegreesRad to AngleRad
 public record RotateCanvasElementsEvent(Guid ActionId, Guid BoundId, float DegreesRad, SKPoint Center)
     : Event(ActionId);
 
