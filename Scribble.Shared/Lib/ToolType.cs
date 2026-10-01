@@ -6,5 +6,6 @@ public enum ToolType
     Line,
     Arrow,
     Ellipse,
-    Rectangle
+    Rectangle,
+    Diamond
 }
