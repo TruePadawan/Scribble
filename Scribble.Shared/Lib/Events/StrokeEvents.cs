@@ -27,7 +27,7 @@ public record MovePolylineNodeEvent(
     Guid StrokeId,
     int NodeIndex,
     SKPoint NewPosition
-) : Event(ActionId), ITerminalEvent;
+) : Event(ActionId);
 
 // TEXT TOOL
 public record AddTextEvent(
