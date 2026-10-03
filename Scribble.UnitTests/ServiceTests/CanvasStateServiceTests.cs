@@ -1,6 +1,7 @@
 using Avalonia.Skia;
 using FluentAssertions;
 using NSubstitute;
+using NSubstitute.ReturnsExtensions;
 using Scribble.Services.CanvasStateService;
 using Scribble.Services.MultiUserDrawing;
 using Scribble.Shared.Lib;
@@ -19,7 +20,8 @@ public class CanvasStateServiceTests
     public CanvasStateServiceTests()
     {
         _multiUserDrawingService = Substitute.For<IMultiUserDrawingService>();
-        _multiUserDrawingService.Room.Returns((MultiUserDrawingRoom?)null);
+        _multiUserDrawingService.Room.ReturnsNull();
+        _multiUserDrawingService.ConnectionId.ReturnsNull();
         _canvasStateService = new CanvasStateService(_multiUserDrawingService);
     }
 
@@ -503,6 +505,8 @@ public class CanvasStateServiceTests
         var startStroke1 = new StartStrokeEvent(stroke1ActionId, stroke1Id, new SKPoint(10f, 10f), DefaultPaint(),
                 ToolType.Pencil, [])
             { CreatorConnectionId = "myConnId" };
+        var lineStroke1 = new PencilStrokeLineToEvent(stroke1ActionId, stroke1Id, new SKPoint(15f, 15f))
+            { CreatorConnectionId = "myConnId" };
         var endStroke1 = new EndStrokeEvent(stroke1ActionId) { CreatorConnectionId = "myConnId" };
 
         var stroke2ActionId = Guid.NewGuid();
@@ -510,12 +514,19 @@ public class CanvasStateServiceTests
         var startStroke2 = new StartStrokeEvent(stroke2ActionId, stroke2Id, new SKPoint(20f, 20f), DefaultPaint(),
                 ToolType.Pencil, [])
             { CreatorConnectionId = "otherConnId" };
+        var lineStroke2 = new PencilStrokeLineToEvent(stroke2ActionId, stroke2Id, new SKPoint(25f, 25f))
+            { CreatorConnectionId = "otherConnId" };
         var endStroke2 = new EndStrokeEvent(stroke2ActionId) { CreatorConnectionId = "otherConnId" };
 
         _canvasStateService.ApplyEvent(startStroke1, isLocalEvent: false);
+        _canvasStateService.ApplyEvent(lineStroke1, isLocalEvent: false);
         _canvasStateService.ApplyEvent(endStroke1, isLocalEvent: false);
         _canvasStateService.ApplyEvent(startStroke2, isLocalEvent: false);
+        _canvasStateService.ApplyEvent(lineStroke2, isLocalEvent: false);
         _canvasStateService.ApplyEvent(endStroke2, isLocalEvent: false);
+
+        // We act as myConnId
+        _multiUserDrawingService.ConnectionId.Returns("myConnId");
 
         // Simulate User A (otherConnId) selecting stroke2
         var userAActionId = Guid.NewGuid();
@@ -561,6 +572,7 @@ public class CanvasStateServiceTests
         // Now, switch our connection to "otherConnId" and trigger replay to verify User A's selection is still intact.
         var room2 = new MultiUserDrawingRoom("room1", "otherConnId", "other");
         _multiUserDrawingService.Room.Returns(room2);
+        _multiUserDrawingService.ConnectionId.Returns("otherConnId");
         _multiUserDrawingService.ConnectionStarted += Raise.Event<Action>();
         _canvasStateService.ApplyEvent(new ClearSelectionEvent(Guid.NewGuid()) { CreatorConnectionId = "nonExistent" },
             isLocalEvent: false);

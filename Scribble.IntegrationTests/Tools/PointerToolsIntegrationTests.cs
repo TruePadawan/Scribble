@@ -1,5 +1,6 @@
 using FluentAssertions;
 using NSubstitute;
+using NSubstitute.ReturnsExtensions;
 using Scribble.Services.CanvasStateService;
 using Scribble.Services.MultiUserDrawing;
 using Scribble.Shared.Lib;
@@ -17,7 +18,8 @@ public class PointerToolsIntegrationTests
     public PointerToolsIntegrationTests()
     {
         var mockHubService = Substitute.For<IMultiUserDrawingService>();
-        mockHubService.Room.Returns((MultiUserDrawingRoom?)null);
+        mockHubService.Room.ReturnsNull();
+        mockHubService.ConnectionId.ReturnsNull();
         _sut = new CanvasStateService(mockHubService);
     }
 

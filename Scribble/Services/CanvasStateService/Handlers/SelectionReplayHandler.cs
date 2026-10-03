@@ -146,7 +146,7 @@ public class SelectionReplayHandler :
             {
                 case PaintableStroke stroke:
                 {
-                    var strokeBounds = stroke.Path.Bounds;
+                    var strokeBounds = stroke.Path.TightBounds;
                     if (boundRect.Contains(strokeBounds))
                     {
                         bound.Targets.Add(stroke.Id);
