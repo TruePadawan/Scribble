@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFramework>net9.0</TargetFramework>
+        <TargetFramework>net10.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <IsPackable>false</IsPackable>
@@ -26,6 +26,9 @@
         </PackageReference>
         <PackageReference Include="xunit.runner.visualstudio"/>
         <PackageReference Include="xunit.v3"/>
+        <PackageReference Include="SkiaSharp.NativeAssets.Linux" />
+        <PackageReference Include="SkiaSharp.NativeAssets.macOS" />
+        <PackageReference Include="SkiaSharp.NativeAssets.Win32" />
     </ItemGroup>
 
     <ItemGroup>
