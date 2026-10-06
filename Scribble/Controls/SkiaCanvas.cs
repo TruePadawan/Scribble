@@ -39,6 +39,15 @@ public class SkiaCanvas : Control
         set => SetValue(CanvasBackgroundProperty, value);
     }
 
+    private static readonly SKPaint LightGridPaint = new()
+        { Color = SKColors.Black.WithAlpha(60), IsAntialias = true, Style = SKPaintStyle.Fill };
+
+    private static readonly SKPaint DarkGridPaint = new()
+        { Color = SKColors.White.WithAlpha(60), IsAntialias = true, Style = SKPaintStyle.Fill };
+
+    private static readonly SKPaint LowOpacityPaint = new()
+        { Color = SKColors.Black.WithAlpha(80) };
+
     private static bool IsCanvasElementVisible(CanvasElement element, SKRect visibleWorldRect)
     {
         SKRect elementBounds;
@@ -145,7 +154,9 @@ public class SkiaCanvas : Control
             finally
             {
                 if (needsMutablePaint)
+                {
                     paintToUse.Dispose();
+                }
             }
         }
         else if (canvasElement is CanvasImage canvasImage)
@@ -162,15 +173,14 @@ public class SkiaCanvas : Control
             if (canvasImage.FlipY)
                 canvas.Scale(1, -1, canvasImage.Bounds.MidX, canvasImage.Bounds.MidY);
 
+            var samplingOption = new SKSamplingOptions(SKFilterMode.Linear);
             if (canvasImage.IsToBeErased)
             {
-                using var lowOpacityPaint = new SKPaint();
-                lowOpacityPaint.Color = SKColors.Black.WithAlpha(80);
-                canvas.DrawBitmap(bitmap, canvasImage.Bounds, new SKSamplingOptions(SKFilterMode.Linear), lowOpacityPaint);
+                canvas.DrawBitmap(bitmap, canvasImage.Bounds, samplingOption, LowOpacityPaint);
             }
             else
             {
-                canvas.DrawBitmap(bitmap, canvasImage.Bounds, new SKSamplingOptions(SKFilterMode.Linear));
+                canvas.DrawBitmap(bitmap, canvasImage.Bounds, samplingOption);
             }
 
             canvas.Restore();
@@ -197,17 +207,12 @@ public class SkiaCanvas : Control
             var gridOffsetY = Mod(CameraState.WorldOffSetY * zoom, gridSpacing);
 
             // Determine if background is dark or light to pick dot color
-            bool isDarkBg = bgColor.R * 0.299 + bgColor.G * 0.587 + bgColor.B * 0.114 < 128;
-            var dotColor = isDarkBg ? SKColors.White.WithAlpha(60) : SKColors.Black.WithAlpha(60);
+            var isDarkBg = bgColor.R * 0.299 + bgColor.G * 0.587 + bgColor.B * 0.114 < 128;
+            var gridPaint = isDarkBg ? DarkGridPaint : LightGridPaint;
 
-            using var gridPaint = new SKPaint();
-            gridPaint.Color = dotColor;
-            gridPaint.IsAntialias = true;
-            gridPaint.Style = SKPaintStyle.Fill;
-
-            for (float x = -gridOffsetX; x < Bounds.Width; x += gridSpacing)
+            for (var x = -gridOffsetX; x < Bounds.Width; x += gridSpacing)
             {
-                for (float y = -gridOffsetY; y < Bounds.Height; y += gridSpacing)
+                for (var y = -gridOffsetY; y < Bounds.Height; y += gridSpacing)
                 {
                     canvas.DrawCircle(x, y, 1.5f, gridPaint);
                 }
