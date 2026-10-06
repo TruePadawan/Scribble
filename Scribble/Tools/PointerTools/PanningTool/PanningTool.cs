@@ -16,8 +16,8 @@ public class PanningTool : PointerTool
     {
         _requestCanvasRedraw = requestCanvasRedraw;
         Cursor = new Cursor(ToolIcon, new PixelPoint(10, 10));
-        HotKey = new KeyGesture(Key.D3);
-        ToolTip = "Panning Tool - 3";
+        HotKey = new KeyGesture(Key.H);
+        ToolTip = "Panning Tool (H)";
     }
 
     /// <summary>

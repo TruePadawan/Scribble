@@ -25,9 +25,8 @@ public class DiamondTool : StrokeTool
         ];
         var plusBitmap = new Bitmap(AssetLoader.Open(new Uri("avares://Scribble/Assets/plus.png")));
         Cursor = new Cursor(plusBitmap, new PixelPoint(12, 12));
-        // TODO: Rewrite the hotkeys for all tools
-        // HotKey = new KeyGesture(Key.D7);
-        // ToolTip = "Diamond Tool";
+        HotKey = new KeyGesture(Key.D);
+        ToolTip = "Diamond Tool (D)";
     }
 
     public override void HandlePointerClick(SKPoint startPoint)

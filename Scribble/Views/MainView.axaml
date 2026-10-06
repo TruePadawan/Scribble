@@ -22,8 +22,8 @@
             <!-- Menu Options -->
             <KeyBinding Gesture="Ctrl+O" Command="{Binding DocumentViewModel.LoadCanvasFromFileActionCommand}" />
             <KeyBinding Gesture="Ctrl+S" Command="{Binding DocumentViewModel.SaveCanvasToFileActionCommand}" />
-            <KeyBinding Gesture="Ctrl+R" Command="{Binding ResetCanvasCommand}" />
-            <KeyBinding Gesture="Ctrl+X" Command="{Binding ExitCommand}" />
+            <KeyBinding Gesture="Ctrl+Shift+N" Command="{Binding ResetCanvasCommand}" />
+            <KeyBinding Gesture="Ctrl+Q" Command="{Binding ExitCommand}" />
 
             <!-- Undo/Redo -->
             <KeyBinding Gesture="Ctrl+Z" Command="{Binding UndoCommand}" />

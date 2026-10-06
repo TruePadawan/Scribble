@@ -36,8 +36,8 @@ public class TextTool : StrokeTool
             IsStroke = false,
         };
 
-        HotKey = new KeyGesture(Key.D8);
-        ToolTip = "Text Tool - 8";
+        HotKey = new KeyGesture(Key.T);
+        ToolTip = "Text Tool (T)";
     }
 
     public override void HandlePointerClick(SKPoint coord)

@@ -17,8 +17,8 @@ public class ArrowTool : PolylineToolBase
         ToolOptions = [ToolOption.StrokeColor, ToolOption.StrokeThickness, ToolOption.StrokeStyle, ToolOption.EdgeType];
         var plusBitmap = new Bitmap(AssetLoader.Open(new Uri("avares://Scribble/Assets/plus.png")));
         Cursor = new Cursor(plusBitmap, new PixelPoint(12, 12));
-        HotKey = new KeyGesture(Key.D5);
-        ToolTip = "Arrow Tool - 5";
+        HotKey = new KeyGesture(Key.A);
+        ToolTip = "Arrow Tool (A)";
     }
 
     protected override ToolType GetToolType() => ToolType.Arrow;

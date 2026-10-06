@@ -16,8 +16,8 @@ public class EraseTool : PointerTool
         : base(name, canvasState, LoadToolBitmap(typeof(EraseTool), "eraser.png"))
     {
         Cursor = new Cursor(ToolIcon, new PixelPoint(6, 16));
-        HotKey = new KeyGesture(Key.D2);
-        ToolTip = "Erase Tool - 2";
+        HotKey = new KeyGesture(Key.E);
+        ToolTip = "Erase Tool (E)";
     }
 
     public override void HandlePointerClick(SKPoint startPoint)

@@ -16,8 +16,8 @@ public class LineTool : PolylineToolBase
         ToolOptions = [ToolOption.StrokeColor, ToolOption.StrokeThickness, ToolOption.StrokeStyle, ToolOption.EdgeType];
         var plusBitmap = new Bitmap(AssetLoader.Open(new Uri("avares://Scribble/Assets/plus.png")));
         Cursor = new Cursor(plusBitmap, new PixelPoint(12, 12));
-        HotKey = new KeyGesture(Key.D4);
-        ToolTip = "Line Tool - 4";
+        HotKey = new KeyGesture(Key.L);
+        ToolTip = "Line Tool (L)";
     }
 
     protected override ToolType GetToolType() => ToolType.Line;

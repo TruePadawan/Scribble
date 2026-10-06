@@ -25,8 +25,8 @@ public class EllipseTool : StrokeTool
         ];
         var plusBitmap = new Bitmap(AssetLoader.Open(new Uri("avares://Scribble/Assets/plus.png")));
         Cursor = new Cursor(plusBitmap, new PixelPoint(12, 12));
-        HotKey = new KeyGesture(Key.D6);
-        ToolTip = "Ellipse Tool - 6";
+        HotKey = new KeyGesture(Key.O);
+        ToolTip = "Ellipse Tool (O)";
     }
 
     public override void HandlePointerClick(SKPoint startPoint)

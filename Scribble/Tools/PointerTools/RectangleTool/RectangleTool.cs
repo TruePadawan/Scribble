@@ -25,8 +25,8 @@ public class RectangleTool : StrokeTool
         ];
         var plusBitmap = new Bitmap(AssetLoader.Open(new Uri("avares://Scribble/Assets/plus.png")));
         Cursor = new Cursor(plusBitmap, new PixelPoint(12, 12));
-        HotKey = new KeyGesture(Key.D7);
-        ToolTip = "Rectangle Tool - 7";
+        HotKey = new KeyGesture(Key.R);
+        ToolTip = "Rectangle Tool (R)";
     }
 
     public override void HandlePointerClick(SKPoint startPoint)

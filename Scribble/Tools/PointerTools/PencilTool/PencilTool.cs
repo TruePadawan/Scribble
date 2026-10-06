@@ -20,8 +20,8 @@ public class PencilTool : StrokeTool
     {
         ToolOptions = [ToolOption.StrokeColor, ToolOption.StrokeThickness];
         Cursor = new Cursor(ToolIcon, new PixelPoint(0, 20));
-        HotKey = new KeyGesture(Key.D1);
-        ToolTip = "Pencil Tool - 1";
+        HotKey = new KeyGesture(Key.P);
+        ToolTip = "Pencil Tool (P)";
     }
 
     public override void HandlePointerClick(SKPoint startPoint)
