@@ -29,11 +29,10 @@ public class FreehandPathBuilderTests
     /// <summary>Helper to build a complete path from a point list using AppendPoint</summary>
     private static SKPath BuildUsingAppendPoint(IReadOnlyList<StrokePoint> points)
     {
-        var path = new SKPath();
-        SKPath? stablePath = null;
+        var path = new SKPathBuilder();
+        SKPathBuilder? stablePath = null;
         FreehandPathBuilder.AppendPoint(path, ref stablePath, points);
-        stablePath?.Dispose();
-        return path;
+        return path.Snapshot();
     }
 
     // 0 points

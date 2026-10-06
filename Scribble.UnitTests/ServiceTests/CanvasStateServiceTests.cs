@@ -186,7 +186,7 @@ public class CanvasStateServiceTests
     {
         var stroke1Id = Guid.NewGuid();
         var stroke2Id = Guid.NewGuid();
-        var path = new SKPath();
+        var path = new SKPathBuilder();
         path.MoveTo(0f, 0f);
         path.LineTo(10f, 10f);
 
@@ -195,12 +195,12 @@ public class CanvasStateServiceTests
             new DrawStroke
             {
                 Id = stroke1Id, ToolType = ToolType.Pencil, LayerIndex = 0,
-                Path = path.Clone(), Paint = DefaultPaint(), ToolOptions = []
+                Path = path.Snapshot(), Paint = DefaultPaint(), ToolOptions = []
             },
             new DrawStroke
             {
                 Id = stroke2Id, ToolType = ToolType.Pencil, LayerIndex = 0,
-                Path = path.Clone(), Paint = DefaultPaint(), ToolOptions = []
+                Path = path.Snapshot(), Paint = DefaultPaint(), ToolOptions = []
             }
         };
 

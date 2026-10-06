@@ -25,9 +25,10 @@ public class DocumentServiceTests
 
     private static DrawStroke MakeStroke(SKColor? color = null)
     {
-        var path = new SKPath();
-        path.MoveTo(0f, 0f);
-        path.LineTo(100f, 50f);
+        var builder = new SKPathBuilder();
+        builder.MoveTo(0f, 0f);
+        builder.LineTo(100f, 50f);
+        var path = builder.Snapshot();
 
         return new DrawStroke
         {
