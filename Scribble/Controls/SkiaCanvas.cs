@@ -81,7 +81,7 @@ public class SkiaCanvas : Control
         canvas.Save();
 
         var viewMatrix = CameraState.GetViewMatrix();
-        canvas.Concat(ref viewMatrix);
+        canvas.Concat(in viewMatrix);
 
         // Compute the visible world-space rectangle for culling unnecessary strokes
         var viewportWidth = (float)Bounds.Width;
@@ -166,11 +166,11 @@ public class SkiaCanvas : Control
             {
                 using var lowOpacityPaint = new SKPaint();
                 lowOpacityPaint.Color = SKColors.Black.WithAlpha(80);
-                canvas.DrawBitmap(bitmap, canvasImage.Bounds, lowOpacityPaint);
+                canvas.DrawBitmap(bitmap, canvasImage.Bounds, new SKSamplingOptions(SKFilterMode.Linear), lowOpacityPaint);
             }
             else
             {
-                canvas.DrawBitmap(bitmap, canvasImage.Bounds);
+                canvas.DrawBitmap(bitmap, canvasImage.Bounds, new SKSamplingOptions(SKFilterMode.Linear));
             }
 
             canvas.Restore();

@@ -13,10 +13,8 @@ public static class TextPathBuilder
 
     public static SKPath Build(string text, float xPos, float yPos, float textSize, SKTypeface typeface)
     {
-        var combinedPath = new SKPath();
-        using var paint = new SKPaint();
-        paint.TextSize = textSize;
-        paint.Typeface = typeface;
+        var combinedPath = new SKPathBuilder();
+        using var font = new SKFont(typeface, textSize);
 
         // Replace tabs with spaces
         text = text.Replace("\t", TabReplacement);
@@ -29,10 +27,10 @@ public static class TextPathBuilder
             if (string.IsNullOrEmpty(lines[i])) continue;
 
             var lineY = yPos + i * lineHeight;
-            using var linePath = paint.GetTextPath(lines[i], xPos, lineY);
+            using var linePath = font.GetTextPath(lines[i], new SKPoint(xPos, lineY));
             combinedPath.AddPath(linePath);
         }
 
-        return combinedPath;
+        return combinedPath.Snapshot();
     }
 }

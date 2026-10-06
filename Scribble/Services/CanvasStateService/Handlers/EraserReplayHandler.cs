@@ -24,12 +24,12 @@ public class EraserReplayHandler :
 
     public void Replay(StartEraseStrokeEvent ev, CanvasState ctx)
     {
-        var eraserPath = new SKPath();
+        var eraserPath = new SKPathBuilder();
         eraserPath.MoveTo(ev.StartPoint);
         var newEraserStroke = new EraserStroke
         {
             Id = ev.StrokeId,
-            Path = eraserPath,
+            Path = eraserPath.Snapshot(),
             CreatorConnectionId = ev.CreatorConnectionId
         };
 
@@ -63,7 +63,9 @@ public class EraserReplayHandler :
                     ownerFilter: currentEraserStroke.CreatorConnectionId);
             }
 
-            currentEraserStroke.Path.LineTo(ev.Point);
+            var builder = new SKPathBuilder(currentEraserStroke.Path);
+            builder.LineTo(ev.Point);
+            currentEraserStroke.Path = builder.Snapshot();
         }
     }
 
@@ -109,7 +111,9 @@ public class EraserReplayHandler :
                     ownerFilter: currentEraserStroke.CreatorConnectionId);
             }
 
-            currentEraserStroke.Path.LineTo(ev.Point);
+            var builder = new SKPathBuilder(currentEraserStroke.Path);
+            builder.LineTo(ev.Point);
+            currentEraserStroke.Path = builder.Snapshot();
             return true;
         }
 

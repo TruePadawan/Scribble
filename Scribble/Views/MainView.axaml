@@ -782,7 +782,7 @@
                          HorizontalAlignment="Stretch"
                          VerticalContentAlignment="Center"
                          MaxLength="500"
-                         Watermark="Message..."
+                         PlaceholderText="Message..."
                          Text="{Binding MultiUserDrawingViewModel.Message}" />
                 <Button Grid.Column="1"
                         Height="40"
@@ -817,7 +817,7 @@
 
                     <StackPanel Orientation="Vertical" Spacing="6">
                         <Label Target="NameTextBox" Padding="0">Display name</Label>
-                        <TextBox Name="NameTextBox" Watermark="Archer" VerticalContentAlignment="Center"
+                        <TextBox Name="NameTextBox" PlaceholderText="Archer" VerticalContentAlignment="Center"
                                  Height="40" Text="{Binding MultiUserDrawingViewModel.ClientDisplayName}" />
                     </StackPanel>
 
@@ -831,7 +831,7 @@
                         </Button>
                         <TextBox Grid.Column="1" Grid.Row="1"
                                  Name="RoomIdTextBox"
-                                 Watermark="Room ID"
+                                 PlaceholderText="Room ID"
                                  KeyDown="RoomIdTextBox_OnKeyDown"
                                  TextChanged="RoomIdTextBox_OnTextChanged"
                                  Text="{Binding MultiUserDrawingViewModel.RoomId}"
@@ -870,17 +870,15 @@
                             </TextBlock>
                         </StackPanel>
                         <StackPanel Orientation="Vertical" Spacing="4">
-                            <TextBlock TextWrapping="Wrap" Foreground="WhiteSmoke">
-                                <TextBlock VerticalAlignment="Center">
-                                    Scribble by
-                                </TextBlock>
+                            <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <TextBlock Text="Scribble by " Foreground="WhiteSmoke" VerticalAlignment="Center" />
                                 <HyperlinkButton Content="Hermes"
                                                  Padding="0"
                                                  Margin="0"
                                                  VerticalAlignment="Center"
                                                  Command="{Binding OpenUrlCommand}"
                                                  CommandParameter="https://github.com/TruePadawan" />
-                            </TextBlock>
+                            </WrapPanel>
                             <HyperlinkButton Name="Icons8Button"
                                              Content="Icons by Icons8"
                                              Padding="0"

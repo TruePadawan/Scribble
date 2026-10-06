@@ -40,7 +40,7 @@ public class CanvasImage : CanvasElement, IClonable, ISelectable
             var downscaledBitmap = new SKBitmap(
                 Math.Min(bitmap.Width, targetWidth),
                 Math.Min(bitmap.Height, targetHeight));
-            bitmap.ScalePixels(downscaledBitmap, SKFilterQuality.High);
+            bitmap.ScalePixels(downscaledBitmap, new SKSamplingOptions(SKCubicResampler.Mitchell));
             bitmap.Dispose();
             _cachedBitmap = downscaledBitmap;
         }

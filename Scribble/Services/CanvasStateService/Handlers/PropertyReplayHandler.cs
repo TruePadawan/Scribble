@@ -85,8 +85,8 @@ public class PropertyReplayHandler :
 
                 if (nodes.Count > 0)
                 {
-                    ds.Path.Reset();
-                    PathUtilities.BuildPolylinePath(ds.Path, nodes, ds.Paint.StrokeJoin == SKStrokeJoin.Round);
+                    var builder = new SKPathBuilder();
+                    PathUtilities.BuildPolylinePath(builder, nodes, ds.Paint.StrokeJoin == SKStrokeJoin.Round);
 
                     if (ds.ToolType == ToolType.Arrow && nodes.Count >= 2)
                     {
@@ -95,11 +95,12 @@ public class PropertyReplayHandler :
                         var (p1, p2) = ArrowTool.GetArrowHeadPoints(
                             lastSegStart, lastSegEnd, ds.Paint.StrokeWidth);
 
-                        ds.Path.MoveTo(lastSegEnd);
-                        ds.Path.LineTo(p1);
-                        ds.Path.MoveTo(lastSegEnd);
-                        ds.Path.LineTo(p2);
+                        builder.MoveTo(lastSegEnd);
+                        builder.LineTo(p1);
+                        builder.MoveTo(lastSegEnd);
+                        builder.LineTo(p2);
                     }
+                    ds.Path = builder.Snapshot();
                 }
             }
             else
@@ -130,22 +131,24 @@ public class PropertyReplayHandler :
                 );
 
                 // Rebuild the path with the new edge type
-                stroke.Path.Reset();
+                var builder = new SKPathBuilder();
                 if (stroke is DrawStroke dsShape && dsShape.ToolType == ToolType.Ellipse)
                 {
-                    PathUtilities.BuildEllipseShape(stroke.Path, lineStartPoint, lineEndPoint);
+                    PathUtilities.BuildEllipseShape(builder, lineStartPoint, lineEndPoint);
                 }
                 else
                 {
-                    PathUtilities.BuildRectangleShape(stroke.Path, lineStartPoint, lineEndPoint, stroke.Paint.StrokeJoin == SKStrokeJoin.Round);
+                    PathUtilities.BuildRectangleShape(builder, lineStartPoint, lineEndPoint, stroke.Paint.StrokeJoin == SKStrokeJoin.Round);
                 }
 
+                var finalPath = builder.Snapshot();
                 // Re-apply the rotation
                 if (Math.Abs(rotationAngle) > 0.001f)
                 {
-                    stroke.Path.Transform(
+                    finalPath.Transform(
                         SKMatrix.CreateRotation(rotationAngle, center.X, center.Y));
                 }
+                stroke.Path = finalPath;
             }
         }
     }

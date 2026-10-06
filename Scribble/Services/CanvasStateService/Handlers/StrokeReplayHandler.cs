@@ -31,13 +31,13 @@ public class StrokeReplayHandler :
 
     public void Replay(StartStrokeEvent ev, CanvasState ctx)
     {
-        var newLinePath = new SKPath();
+        var newLinePath = new SKPathBuilder();
         newLinePath.MoveTo(ev.StartPoint);
         ctx.PaintableStrokes[ev.StrokeId] = new DrawStroke
         {
             Id = ev.StrokeId,
             Paint = ev.StrokePaint.Clone(),
-            Path = newLinePath,
+            Path = newLinePath.Snapshot(),
             RawPoints = [new StrokePoint(ev.StartPoint, ev.TimeStamp.Ticks / TimeSpan.TicksPerMillisecond)],
             ToolType = ev.ToolType,
             ToolOptions = ev.ToolOptions,
@@ -53,10 +53,10 @@ public class StrokeReplayHandler :
             dsPencil.RawPoints.Add(new StrokePoint(ev.Point,
                 ev.TimeStamp.Ticks / TimeSpan.TicksPerMillisecond));
             var stable = dsPencil.StablePath;
-            var newPath = new SKPath();
+            var newPath = new SKPathBuilder();
             FreehandPathBuilder.AppendPoint(newPath, ref stable, dsPencil.RawPoints);
             dsPencil.StablePath = stable;
-            dsPencil.Path = newPath;
+            dsPencil.Path = newPath.Snapshot();
         }
     }
 
@@ -109,10 +109,10 @@ public class StrokeReplayHandler :
             ds.RawPoints.Add(new StrokePoint(ev.Point,
                 ev.TimeStamp.Ticks / TimeSpan.TicksPerMillisecond));
             var stable = ds.StablePath;
-            var newPath = new SKPath();
+            var newPath = new SKPathBuilder();
             FreehandPathBuilder.AppendPoint(newPath, ref stable, ds.RawPoints);
             ds.StablePath = stable;
-            ds.Path = newPath;
+            ds.Path = newPath.Snapshot();
 
             return true;
         }
@@ -133,13 +133,13 @@ public class StrokeReplayHandler :
 
     public bool TryApplyFastPath(StartStrokeEvent ev, CanvasState ctx)
     {
-        var newLinePath = new SKPath();
+        var newLinePath = new SKPathBuilder();
         newLinePath.MoveTo(ev.StartPoint);
         var ds = new DrawStroke
         {
             Id = ev.StrokeId,
             Paint = ev.StrokePaint.Clone(),
-            Path = newLinePath,
+            Path = newLinePath.Snapshot(),
             RawPoints = [new StrokePoint(ev.StartPoint, ev.TimeStamp.Ticks / TimeSpan.TicksPerMillisecond)],
             ToolType = ev.ToolType,
             ToolOptions = ev.ToolOptions,
@@ -196,7 +196,7 @@ public class StrokeReplayHandler :
     private static void RebuildLinePath(DrawStroke stroke, SKPoint endPoint)
     {
         var lineStartPoint = stroke.RawPoints[0].Point;
-        var newPath = new SKPath();
+        var newPath = new SKPathBuilder();
         var isCurvedStroke = stroke.Paint.StrokeJoin == SKStrokeJoin.Round;
 
         switch (stroke.ToolType)
@@ -246,11 +246,12 @@ public class StrokeReplayHandler :
             }
         }
 
+        var finalPath = newPath.Snapshot();
         if (!stroke.TransformMatrix.IsIdentity)
         {
-            newPath.Transform(stroke.TransformMatrix);
+            finalPath.Transform(stroke.TransformMatrix);
         }
 
-        stroke.Path = newPath;
+        stroke.Path = finalPath;
     }
 }
