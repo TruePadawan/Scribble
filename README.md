@@ -2,10 +2,10 @@
 A cross-platform (windows/linux) infinite whiteboard
 
 ### Tech Stack
-- [C#/.NET](https://dotnet.microsoft.com/en-us/): Core
-- [Avalonia UI](https://avaloniaui.net): For consistent cross-platform user interface  
+- [C#/.NET](https://dotnet.microsoft.com/en-us/): Core (.NET 10)
+- [Avalonia UI](https://avaloniaui.net): For consistent cross-platform user interface (v12)
 - [Icons8](https://icons8.com): Icons
-- [SkiaSharp](https://skiasharp.com): Graphics rendering
+- [SkiaSharp](https://skiasharp.com): Hardware-accelerated graphics rendering
 - [SignalR](https://dotnet.microsoft.com/en-us/apps/aspnet/signalr): Collaborative drawing
 - [Render + Docker](https://render.com/): Hosting the SignalR server
 
@@ -18,7 +18,7 @@ A cross-platform (windows/linux) infinite whiteboard
 ## Local Setup
 
 ### Prerequisites
-* [.NET SDK](https://dotnet.microsoft.com/download) (Version 8.0 or newer recommended)
+* [.NET SDK](https://dotnet.microsoft.com/download) (Version 10.0 required)
 
 ### Running the Application
 
@@ -39,4 +39,10 @@ To run Scribble locally, you will need to start both the backend server and the 
    ```bash
    cd Scribble.Server
    dotnet run
-   ``` 
+   ```
+
+### Running Tests
+To execute the automated test suite locally via the new Microsoft Testing Platform:
+```bash
+dotnet test Scribble.slnx
+```
