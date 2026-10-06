@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
-using Avalonia.Input;
+using Avalonia.Input.Platform;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform.Storage;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -151,14 +151,7 @@ public partial class CanvasExportViewModel : ViewModelBase
         var clipboard = Utilities.GetTopLevel()?.Clipboard;
         if (clipboard == null || PreviewImage == null) return;
 
-        // Encode bitmap to PNG bytes for clipboard
-        using var memoryStream = new MemoryStream();
-        PreviewImage.Save(memoryStream);
-        memoryStream.Position = 0;
-
-        var dataObject = new DataObject();
-        dataObject.Set("image/png", memoryStream.ToArray());
-        await clipboard.SetDataObjectAsync(dataObject);
+        await clipboard.SetBitmapAsync(PreviewImage);
     }
 
     private byte[]? GetImageData(
@@ -230,7 +223,7 @@ public partial class CanvasExportViewModel : ViewModelBase
                     canvas.Scale(-1, 1, canvasImage.Bounds.MidX, canvasImage.Bounds.MidY);
                 if (canvasImage.FlipY)
                     canvas.Scale(1, -1, canvasImage.Bounds.MidX, canvasImage.Bounds.MidY);
-                canvas.DrawBitmap(bitmap, canvasImage.Bounds);
+                canvas.DrawBitmap(bitmap, canvasImage.Bounds, new SKSamplingOptions(SKFilterMode.Linear), null);
                 canvas.Restore();
             }
         }

@@ -38,7 +38,7 @@ public class DrawStroke : PaintableStroke, IClonable
         }
     }
 
-    [JsonIgnore] public SKPath? StablePath { get; set; }
+    [JsonIgnore] public SKPathBuilder? StablePath { get; set; }
 
     public override CanvasElement Clone(bool preserveId = false)
     {
@@ -50,7 +50,7 @@ public class DrawStroke : PaintableStroke, IClonable
             ToolOptions = [.. ToolOptions],
             Paint = Paint.Clone(),
             RawPoints = [.. RawPoints],
-            StablePath = StablePath != null ? new SKPath(StablePath) : null,
+            StablePath = StablePath != null ? new SKPathBuilder(StablePath.Snapshot()) : null,
             LayerIndex = LayerIndex,
             CreatorConnectionId = CreatorConnectionId,
             Rotation = Rotation,

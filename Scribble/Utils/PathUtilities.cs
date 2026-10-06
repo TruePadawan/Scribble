@@ -12,7 +12,7 @@ public static class PathUtilities
     /// <summary>
     /// Builds a polyline or curved path from a sequence of nodes.
     /// </summary>
-    public static void BuildPolylinePath(SKPath path, IReadOnlyList<SKPoint> nodes, bool isCurved)
+    public static void BuildPolylinePath(SKPathBuilder path, IReadOnlyList<SKPoint> nodes, bool isCurved)
     {
         if (nodes.Count == 0) return;
 
@@ -50,7 +50,7 @@ public static class PathUtilities
     /// <summary>
     /// Builds a rectangular path (either sharp or rounded) between two points.
     /// </summary>
-    public static void BuildRectangleShape(SKPath path, SKPoint startPoint, SKPoint endPoint, bool isCurved)
+    public static void BuildRectangleShape(SKPathBuilder path, SKPoint startPoint, SKPoint endPoint, bool isCurved)
     {
         path.MoveTo(startPoint);
         var left = Math.Min(startPoint.X, endPoint.X);
@@ -70,7 +70,7 @@ public static class PathUtilities
     /// <summary>
     /// Builds an elliptical path between two points.
     /// </summary>
-    public static void BuildEllipseShape(SKPath path, SKPoint startPoint, SKPoint endPoint)
+    public static void BuildEllipseShape(SKPathBuilder path, SKPoint startPoint, SKPoint endPoint)
     {
         path.MoveTo(startPoint);
         var left = Math.Min(startPoint.X, endPoint.X);
@@ -82,7 +82,7 @@ public static class PathUtilities
     /// <summary>
     /// Builds a diamond path (either sharp or rounded) between two points.
     /// </summary>
-    public static void BuildDiamondShape(SKPath path, SKPoint startPoint, SKPoint endPoint, bool isCurved)
+    public static void BuildDiamondShape(SKPathBuilder path, SKPoint startPoint, SKPoint endPoint, bool isCurved)
     {
         var left = Math.Min(startPoint.X, endPoint.X);
         var right = Math.Max(startPoint.X, endPoint.X);

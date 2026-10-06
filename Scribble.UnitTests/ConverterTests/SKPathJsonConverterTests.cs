@@ -27,9 +27,10 @@ public class SKPathJsonConverterTests
     public void Write_PathWithLine_ProducesSvgMoveAndLineCommands()
     {
         // A MoveTo alone produces no SVG output in Skia; a drawing operation is required
-        var path = new SKPath();
-        path.MoveTo(0f, 0f);
-        path.LineTo(10f, 20f);
+        var builder = new SKPathBuilder();
+        builder.MoveTo(0f, 0f);
+        builder.LineTo(10f, 20f);
+        var path = builder.Snapshot();
 
         var json = JsonSerializer.Serialize(path, Options);
 
@@ -39,9 +40,10 @@ public class SKPathJsonConverterTests
     [Fact]
     public void Write_PathWithLine_ProducesSvgLineCommand()
     {
-        var path = new SKPath();
-        path.MoveTo(0f, 0f);
-        path.LineTo(10f, 10f);
+        var builder = new SKPathBuilder();
+        builder.MoveTo(0f, 0f);
+        builder.LineTo(10f, 10f);
+        var path = builder.Snapshot();
 
         var json = JsonSerializer.Serialize(path, Options);
 
@@ -51,9 +53,10 @@ public class SKPathJsonConverterTests
     [Fact]
     public void Write_PathWithQuadCurve_ProducesSvgQuadCommand()
     {
-        var path = new SKPath();
-        path.MoveTo(0f, 0f);
-        path.QuadTo(5f, 10f, 10f, 0f);
+        var builder = new SKPathBuilder();
+        builder.MoveTo(0f, 0f);
+        builder.QuadTo(5f, 10f, 10f, 0f);
+        var path = builder.Snapshot();
 
         var json = JsonSerializer.Serialize(path, Options);
 
@@ -104,9 +107,10 @@ public class SKPathJsonConverterTests
     [Fact]
     public void RoundTrip_PathWithLine_PointsArePreserved()
     {
-        var original = new SKPath();
-        original.MoveTo(0f, 0f);
-        original.LineTo(100f, 50f);
+        var builder = new SKPathBuilder();
+        builder.MoveTo(0f, 0f);
+        builder.LineTo(100f, 50f);
+        var original = builder.Snapshot();
 
         var json = JsonSerializer.Serialize(original, Options);
         var result = JsonSerializer.Deserialize<SKPath>(json, Options);
@@ -122,12 +126,13 @@ public class SKPathJsonConverterTests
     {
         // Compare SVG strings rather than PointCount: Close() inserts an implicit
         // closing point that causes PointCount to differ after deserialization.
-        var original = new SKPath();
-        original.MoveTo(0f, 0f);
-        original.LineTo(50f, 0f);
-        original.QuadTo(75f, 50f, 50f, 100f);
-        original.LineTo(0f, 100f);
-        original.Close();
+        var builder = new SKPathBuilder();
+        builder.MoveTo(0f, 0f);
+        builder.LineTo(50f, 0f);
+        builder.QuadTo(75f, 50f, 50f, 100f);
+        builder.LineTo(0f, 100f);
+        builder.Close();
+        var original = builder.Snapshot();
 
         var json = JsonSerializer.Serialize(original, Options);
         var result = JsonSerializer.Deserialize<SKPath>(json, Options);

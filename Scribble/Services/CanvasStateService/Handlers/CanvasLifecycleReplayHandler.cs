@@ -140,14 +140,14 @@ public class CanvasLifecycleReplayHandler :
 
         // Automatically select the pasted elements
         ctx.ClearSelectionBoundsForUser(ev.CreatorConnectionId);
-        var pasteSelectionPath = new SKPath();
+        var pasteSelectionPath = new SKPathBuilder();
         var selectionRect = Utilities.GetElementsBounds(pastedElements);
         pasteSelectionPath.AddRect(selectionRect);
 
         var pasteSelectionBound = new SelectionBound
         {
             Id = ev.SelectionBoundId,
-            Path = pasteSelectionPath,
+            Path = pasteSelectionPath.Snapshot(),
             CreatorConnectionId = ev.CreatorConnectionId,
             Targets = [..pastedElements.Select(e => e.Id)]
         };

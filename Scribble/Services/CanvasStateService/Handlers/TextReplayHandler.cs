@@ -20,7 +20,7 @@ public class TextReplayHandler :
 {
     public void Replay(AddTextEvent ev, CanvasState ctx)
     {
-        var textPath = new SKPath();
+        var textPath = new SKPathBuilder();
         textPath.MoveTo(ev.Position);
         using var builtPath = TextPathBuilder.Build(ev.Text, ev.Position.X, ev.Position.Y, ev.Paint.TextSize,
             StrokePaint.DefaultTypeFace);
@@ -29,7 +29,7 @@ public class TextReplayHandler :
         {
             Id = ev.StrokeId,
             Paint = ev.Paint.Clone(),
-            Path = textPath,
+            Path = textPath.Snapshot(),
             ToolOptions = ev.ToolOptions,
             Text = ev.Text,
             Position = ev.Position,
@@ -46,16 +46,16 @@ public class TextReplayHandler :
             textStroke.Text = ev.NewText;
             using var updateTextTypeface = SKTypeface.FromFamilyName(
                 StrokePaint.DefaultTypeFace.FamilyName, textStroke.SkFontStyle);
-            using var newTextPath = new SKPath();
+            var newTextPath = new SKPathBuilder();
             newTextPath.MoveTo(textStroke.Position);
             using var builtPath = TextPathBuilder.Build(ev.NewText, textStroke.Position.X, textStroke.Position.Y,
                 textStroke.Paint.TextSize, updateTextTypeface);
             newTextPath.AddPath(builtPath);
 
-            newTextPath.Transform(textStroke.TransformMatrix);
+            var finalPath = newTextPath.Snapshot();
+            finalPath.Transform(textStroke.TransformMatrix);
 
-            textStroke.Path.Reset();
-            textStroke.Path.AddPath(newTextPath);
+            textStroke.Path = finalPath;
         }
     }
 
@@ -67,14 +67,14 @@ public class TextReplayHandler :
             {
                 using var fontSizeTypeface = SKTypeface.FromFamilyName(
                     StrokePaint.DefaultTypeFace.FamilyName, ts.SkFontStyle);
-                using var noTransformTextPath = new SKPath();
+                var noTransformTextPath = new SKPathBuilder();
                 noTransformTextPath.MoveTo(ts.Position);
                 using var builtPath = TextPathBuilder.Build(ts.Text, ts.Position.X, ts.Position.Y, ev.FontSize,
                     fontSizeTypeface);
                 noTransformTextPath.AddPath(builtPath);
-                noTransformTextPath.Transform(ts.TransformMatrix);
-                ts.Path.Reset();
-                ts.Path.AddPath(noTransformTextPath);
+                var finalPath = noTransformTextPath.Snapshot();
+                finalPath.Transform(ts.TransformMatrix);
+                ts.Path = finalPath;
             }
         }
     }
@@ -90,16 +90,16 @@ public class TextReplayHandler :
                 // Recreate stroke paths
                 using var casingTypeface = SKTypeface.FromFamilyName(
                     StrokePaint.DefaultTypeFace.FamilyName, ts.SkFontStyle);
-                using var newTextPath = new SKPath();
+                var newTextPath = new SKPathBuilder();
                 newTextPath.MoveTo(ts.Position);
                 using var builtPath = TextPathBuilder.Build(ts.Text, ts.Position.X, ts.Position.Y,
                     ts.Paint.TextSize, casingTypeface);
                 newTextPath.AddPath(builtPath);
 
-                newTextPath.Transform(ts.TransformMatrix);
+                var finalPath = newTextPath.Snapshot();
+                finalPath.Transform(ts.TransformMatrix);
 
-                ts.Path.Reset();
-                ts.Path.AddPath(newTextPath);
+                ts.Path = finalPath;
             }
         }
     }
@@ -132,16 +132,16 @@ public class TextReplayHandler :
                     StrokePaint.DefaultTypeFace.FamilyName, ts.SkFontStyle);
 
                 // Recreate stroke paths
-                using var newTextPath = new SKPath();
+                var newTextPath = new SKPathBuilder();
                 newTextPath.MoveTo(ts.Position);
                 using var builtPath = TextPathBuilder.Build(ts.Text, ts.Position.X, ts.Position.Y,
                     ts.Paint.TextSize, newTypeFace);
                 newTextPath.AddPath(builtPath);
 
-                newTextPath.Transform(ts.TransformMatrix);
+                var finalPath = newTextPath.Snapshot();
+                finalPath.Transform(ts.TransformMatrix);
 
-                ts.Path.Reset();
-                ts.Path.AddPath(newTextPath);
+                ts.Path = finalPath;
             }
         }
     }

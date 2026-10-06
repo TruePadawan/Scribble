@@ -4,6 +4,7 @@ using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
@@ -1189,10 +1190,13 @@ public partial class MainView : UserControl
         LiveDrawingWindowOverlay.IsVisible = true;
     }
 
-    private void RoomIdClipboardButton_OnClick(object? sender, RoutedEventArgs e)
+    private async void RoomIdClipboardButton_OnClick(object? sender, RoutedEventArgs e)
     {
         var clipboard = Utilities.GetTopLevel()?.Clipboard;
-        clipboard?.SetTextAsync(RoomIdTextBox.Text);
+        if (clipboard != null)
+        {
+            await clipboard.SetTextAsync(RoomIdTextBox.Text ?? string.Empty);
+        }
     }
 
     private void RoomIdTextBox_OnKeyDown(object? sender, KeyEventArgs e)

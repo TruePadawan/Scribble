@@ -13,6 +13,7 @@ using Scribble.Shared.Lib.Events;
 using Scribble.State;
 using Scribble.Utils;
 using SkiaSharp;
+using Avalonia.Threading;
 
 namespace Scribble.Tools.PointerTools.TextTool;
 
@@ -82,7 +83,7 @@ public class TextTool : StrokeTool
 
         _currentTextBox.LostFocus += TextboxLostFocusHandler;
         _canvasContainer.Children.Add(_currentTextBox);
-        _currentTextBox.Focus();
+        Dispatcher.UIThread.Post(() => _currentTextBox.Focus());
     }
 
     public void StartEditing(TextStroke textStroke)
@@ -129,11 +130,14 @@ public class TextTool : StrokeTool
 
         _currentTextBox.LostFocus += TextboxLostFocusHandler;
         _canvasContainer.Children.Add(_currentTextBox);
-        _currentTextBox.Focus();
-        _currentTextBox.CaretIndex = _currentTextBox.Text?.Length ?? 0;
+        Dispatcher.UIThread.Post(() =>
+        {
+            _currentTextBox.Focus();
+            _currentTextBox.CaretIndex = _currentTextBox.Text?.Length ?? 0;
+        });
     }
 
-    private void TextboxLostFocusHandler(object? sender, RoutedEventArgs args)
+    private void TextboxLostFocusHandler(object? sender, FocusChangedEventArgs args)
     {
         FinalizeText(false);
     }
@@ -157,7 +161,8 @@ public class TextTool : StrokeTool
                 var textboxPos = CameraState.ScreenToWorld(screenPos);
                 textboxPos.Y += StrokePaint.TextSize;
                 var strokeId = Guid.NewGuid();
-                CanvasStateService.ApplyEvent(new AddTextEvent(_actionId, strokeId, textboxPos, text, StrokePaint.Clone(),
+                CanvasStateService.ApplyEvent(new AddTextEvent(_actionId, strokeId, textboxPos, text,
+                    StrokePaint.Clone(),
                     ToolOptions));
             }
         }

@@ -294,9 +294,10 @@ public class UtilitiesTests
     [Fact]
     public void GetElementsBounds_SingleStroke_ReturnsStrokeBoundsInflatedByHalfStrokeWidth()
     {
-        var path = new SKPath();
-        path.MoveTo(10f, 10f);
-        path.LineTo(50f, 50f);
+        var builder = new SKPathBuilder();
+        builder.MoveTo(10f, 10f);
+        builder.LineTo(50f, 50f);
+        var path = builder.Snapshot();
 
         var stroke = new DrawStroke
         {
@@ -331,9 +332,10 @@ public class UtilitiesTests
     [Fact]
     public void GetElementsBounds_MultipleElements_ReturnsUnionOfBounds()
     {
-        var path = new SKPath();
-        path.MoveTo(10f, 10f);
-        path.LineTo(50f, 50f);
+        var builder = new SKPathBuilder();
+        builder.MoveTo(10f, 10f);
+        builder.LineTo(50f, 50f);
+        var path = builder.Snapshot();
 
         var stroke = new DrawStroke
         {

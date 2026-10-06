@@ -28,7 +28,7 @@ public class SelectionReplayHandler :
 
     public void Replay(CreateSelectionBoundEvent ev, CanvasState ctx)
     {
-        var selectionPath = new SKPath();
+        var selectionPath = new SKPathBuilder();
         selectionPath.MoveTo(ev.StartPoint);
 
         ctx.ClearSelectionBoundsForUser(ev.CreatorConnectionId);
@@ -36,7 +36,7 @@ public class SelectionReplayHandler :
         var selectionBound = new SelectionBound
         {
             Id = ev.BoundId,
-            Path = selectionPath,
+            Path = selectionPath.Snapshot(),
             CreatorConnectionId = ev.CreatorConnectionId
         };
         ctx.SelectionBounds[ev.BoundId] = selectionBound;
@@ -47,9 +47,10 @@ public class SelectionReplayHandler :
         if (ctx.SelectionBounds.TryGetValue(ev.BoundId, out var bound))
         {
             var boundOrigin = bound.Path.Points[0];
-            bound.Path.Reset();
-            bound.Path.MoveTo(boundOrigin);
-            bound.Path.LineTo(ev.Point);
+            var builder = new SKPathBuilder();
+            builder.MoveTo(boundOrigin);
+            builder.LineTo(ev.Point);
+            bound.Path = builder.Snapshot();
 
             // Check for strokes that are within this bound
             var top = Math.Min(boundOrigin.Y, ev.Point.Y);
@@ -101,9 +102,10 @@ public class SelectionReplayHandler :
         if (ctx.SelectionBounds.TryGetValue(ev.BoundId, out var bound))
         {
             var boundOrigin = bound.Path.Points[0];
-            bound.Path.Reset();
-            bound.Path.MoveTo(boundOrigin);
-            bound.Path.LineTo(ev.Point);
+            var builder = new SKPathBuilder();
+            builder.MoveTo(boundOrigin);
+            builder.LineTo(ev.Point);
+            bound.Path = builder.Snapshot();
 
             var top = Math.Min(boundOrigin.Y, ev.Point.Y);
             var left = Math.Min(boundOrigin.X, ev.Point.X);

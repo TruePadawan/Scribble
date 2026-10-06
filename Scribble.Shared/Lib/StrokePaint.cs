@@ -65,9 +65,7 @@ public class StrokePaint
             StrokeJoin = this.StrokeJoin,
             StrokeWidth = this.StrokeWidth,
             Color = this.Color,
-            TextSize = this.TextSize,
-            PathEffect = this.PathEffect,
-            Typeface = DefaultTypeFace
+            PathEffect = this.PathEffect
         };
         return paint;
     }

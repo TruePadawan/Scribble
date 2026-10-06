@@ -57,7 +57,7 @@
                         <TextBlock Text="#" VerticalAlignment="Center" Foreground="#AAAAAA" FontWeight="Bold" />
                         <TextBox Name="HexTextBox"
                                  Width="120"
-                                 Watermark="FFFFFF"
+                                 PlaceholderText="FFFFFF"
                                  TextChanged="HexTextBox_OnTextChanged" />
                     </StackPanel>
 

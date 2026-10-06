@@ -9,7 +9,7 @@ namespace Scribble.Utils;
 /// </summary>
 public static class FreehandPathBuilder
 {
-    public static void AppendPoint(SKPath path, ref SKPath? stablePath, IReadOnlyList<StrokePoint> points)
+    public static void AppendPoint(SKPathBuilder path, ref SKPathBuilder? stablePath, IReadOnlyList<StrokePoint> points)
     {
         switch (points.Count)
         {
@@ -29,7 +29,7 @@ public static class FreehandPathBuilder
         // points.Count >= 3
         if (stablePath == null)
         {
-            stablePath = new SKPath();
+            stablePath = new SKPathBuilder();
             stablePath.MoveTo(points[0].Point);
             for (int i = 1; i < points.Count - 1; i++)
             {
@@ -48,7 +48,8 @@ public static class FreehandPathBuilder
             stablePath.QuadTo(controlPoint.X, controlPoint.Y, midPoint.X, midPoint.Y);
         }
 
-        path.AddPath(stablePath);
+        using var stableSnapshot = stablePath.Snapshot();
+        path.AddPath(stableSnapshot);
         path.LineTo(points[^1].Point);
     }
 }

@@ -27,7 +27,6 @@ public class SKColorJsonConverterTests
 
         var json = JsonSerializer.Serialize(color, Options);
 
-        Console.WriteLine(color);
         json.Should().Be($"\"{color}\"");
     }
 
