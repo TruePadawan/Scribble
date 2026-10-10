@@ -105,7 +105,8 @@ public partial class CanvasExportViewModel : ViewModelBase
         if (file != null && PreviewImage != null)
         {
             await using var stream = await file.OpenWriteAsync();
-            PreviewImage.Save(stream);
+            // TODO: Find out why JPEG has dark background while PNG is transparent
+            PreviewImage.Save(stream, new PngBitmapEncoderOptions());
         }
     }
 
@@ -140,7 +141,7 @@ public partial class CanvasExportViewModel : ViewModelBase
             if (file != null)
             {
                 await using var fileStream = await file.OpenWriteAsync();
-                jpegBitmap.Save(fileStream);
+                jpegBitmap.Save(fileStream, new JpegBitmapEncoderOptions());
             }
         }
     }
@@ -223,7 +224,7 @@ public partial class CanvasExportViewModel : ViewModelBase
                     canvas.Scale(-1, 1, canvasImage.Bounds.MidX, canvasImage.Bounds.MidY);
                 if (canvasImage.FlipY)
                     canvas.Scale(1, -1, canvasImage.Bounds.MidX, canvasImage.Bounds.MidY);
-                canvas.DrawBitmap(bitmap, canvasImage.Bounds, new SKSamplingOptions(SKFilterMode.Linear), null);
+                canvas.DrawBitmap(bitmap, canvasImage.Bounds, new SKSamplingOptions(SKFilterMode.Linear));
                 canvas.Restore();
             }
         }
