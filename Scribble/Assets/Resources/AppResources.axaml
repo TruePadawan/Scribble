@@ -1,0 +1,47 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <ResourceDictionary.ThemeDictionaries>
+        <ResourceDictionary x:Key="Default">
+        </ResourceDictionary>
+        <ResourceDictionary x:Key="Light">
+            <SolidColorBrush x:Key="PanelBackgroundBrush" Color="#475569" />
+            <SolidColorBrush x:Key="PanelTransparentBackgroundBrush" Color="#EE475569" />
+            
+            <SolidColorBrush x:Key="ButtonBackgroundBrush" Color="#64748B" />
+            <SolidColorBrush x:Key="ButtonHoverBrush" Color="#334155" />
+            <SolidColorBrush x:Key="ButtonPressedBrush" Color="#1E293B" />
+            
+            <SolidColorBrush x:Key="MenuButtonHoverBrush" Color="#334155" />
+            
+            <SolidColorBrush x:Key="ItemHoverTransparentBrush" Color="#33000000" />
+            <SolidColorBrush x:Key="ItemSelectedTransparentBrush" Color="#66000000" />
+            
+            <SolidColorBrush x:Key="ChatboxBackgroundBrush" Color="#CC475569" />
+            
+            <SolidColorBrush x:Key="PrimaryTextBrush" Color="#FFFFFF" />
+            <SolidColorBrush x:Key="SecondaryTextBrush" Color="#CBD5E1" />
+            
+            <SolidColorBrush x:Key="MenuSeparatorBrush" Color="#80CBD5E1" />
+        </ResourceDictionary>
+        <ResourceDictionary x:Key="Dark">
+            <SolidColorBrush x:Key="PanelBackgroundBrush" Color="#2B2B2B" />
+            <SolidColorBrush x:Key="PanelTransparentBackgroundBrush" Color="#EE2B2B2B" />
+            
+            <SolidColorBrush x:Key="ButtonBackgroundBrush" Color="#2C2C2C" />
+            <SolidColorBrush x:Key="ButtonHoverBrush" Color="#3C3C3C" />
+            <SolidColorBrush x:Key="ButtonPressedBrush" Color="#1C1C1C" />
+            
+            <SolidColorBrush x:Key="MenuButtonHoverBrush" Color="#5B5B5B" />
+            
+            <SolidColorBrush x:Key="ItemHoverTransparentBrush" Color="#1AFFFFFF" />
+            <SolidColorBrush x:Key="ItemSelectedTransparentBrush" Color="#33FFFFFF" />
+            
+            <SolidColorBrush x:Key="ChatboxBackgroundBrush" Color="#CC1E1E1E" />
+            
+            <SolidColorBrush x:Key="PrimaryTextBrush" Color="#FFFFFF" />
+            <SolidColorBrush x:Key="SecondaryTextBrush" Color="#AAAAAA" />
+            
+            <SolidColorBrush x:Key="MenuSeparatorBrush" Color="#49808080" />
+        </ResourceDictionary>
+    </ResourceDictionary.ThemeDictionaries>
+</ResourceDictionary>

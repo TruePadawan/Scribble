@@ -129,7 +129,7 @@
                     <Image Source="avares://Scribble/Assets/menu.png" Margin="4" Width="24" Height="24" />
                     <Button.Styles>
                         <Style Selector="Button">
-                            <Setter Property="Background" Value="#2B2B2B" />
+                            <Setter Property="Background" Value="{DynamicResource PanelBackgroundBrush}" />
                             <Setter Property="Transitions">
                                 <Transitions>
                                     <BrushTransition Property="Background" Duration="0:0:0.15" />
@@ -138,13 +138,13 @@
                             </Setter>
                         </Style>
                         <Style Selector="Button:pointerover /template/ ContentPresenter">
-                            <Setter Property="Background" Value="#5b5b5b" />
+                            <Setter Property="Background" Value="{DynamicResource MenuButtonHoverBrush}" />
                         </Style>
                     </Button.Styles>
                 </Button>
 
                 <!-- Menu Options -->
-                <Border Name="MenuOptions" Background="#2B2B2B" HorizontalAlignment="Left" CornerRadius="6" Padding="8"
+                <Border Name="MenuOptions" Background="{DynamicResource PanelBackgroundBrush}" HorizontalAlignment="Left" CornerRadius="6" Padding="8"
                         IsVisible="False">
                     <StackPanel Spacing="4">
                         <Button Name="OpenFileMenuOption" HorizontalAlignment="Stretch"
@@ -181,7 +181,7 @@
                                 <Label FontSize="12">Reset canvas</Label>
                             </StackPanel>
                         </Button>
-                        <Rectangle Height="2" Fill="#49808080" />
+                        <Rectangle Height="2" Fill="{DynamicResource MenuSeparatorBrush}" />
                         <Button Name="AboutOption" Margin="0" HorizontalAlignment="Stretch" Click="AboutOption_OnClick">
                             <StackPanel Orientation="Horizontal" Spacing="4">
                                 <Image Source="avares://Scribble/Assets/about.png" Width="18" Height="18" />
@@ -199,8 +199,11 @@
 
                         <StackPanel.Styles>
                             <Style Selector="Button">
-                                <Setter Property="Background" Value="#2B2B2B" />
+                                <Setter Property="Background" Value="{DynamicResource PanelBackgroundBrush}" />
                                 <Setter Property="Padding" Value="6" />
+                            </Style>
+                            <Style Selector="Label">
+                                <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
                             </Style>
                         </StackPanel.Styles>
                     </StackPanel>
@@ -212,7 +215,7 @@
         <StackPanel Orientation="Horizontal" Spacing="12" HorizontalAlignment="Center" VerticalAlignment="Top"
                     Margin="0,12,0,0">
             <Border
-                Background="#EE2B2B2B"
+                Background="{DynamicResource PanelTransparentBackgroundBrush}"
                 CornerRadius="16"
                 Padding="4"
                 BoxShadow="0 4 20 0 #60000000">
@@ -254,20 +257,20 @@
                             </Setter>
                         </Style>
                         <Style Selector="ListBoxItem:pointerover">
-                            <Setter Property="Background" Value="#1AFFFFFF" />
+                            <Setter Property="Background" Value="{DynamicResource ItemHoverTransparentBrush}" />
                         </Style>
                         <Style Selector="ListBoxItem:selected">
-                            <Setter Property="Background" Value="#33FFFFFF" />
+                            <Setter Property="Background" Value="{DynamicResource ItemSelectedTransparentBrush}" />
                         </Style>
                         <Style Selector="ListBoxItem:selected /template/ ContentPresenter">
-                            <Setter Property="Background" Value="#33FFFFFF" />
+                            <Setter Property="Background" Value="{DynamicResource ItemSelectedTransparentBrush}" />
                         </Style>
                     </ListBox.Styles>
                 </ListBox>
             </Border>
 
             <Border
-                Background="#EE2B2B2B"
+                Background="{DynamicResource PanelTransparentBackgroundBrush}"
                 CornerRadius="16"
                 Padding="4"
                 BoxShadow="0 4 20 0 #60000000">
@@ -286,7 +289,7 @@
                         CornerRadius="32"
                         Background="Black">
                         <TextBlock Text="{Binding MultiUserDrawingViewModel.ClientCount}"
-                                   Foreground="White"
+                                   Foreground="{DynamicResource PrimaryTextBrush}"
                                    FontSize="14" />
                     </Border>
                 </Panel>
@@ -307,7 +310,7 @@
                     </Setter>
                 </Style>
                 <Style Selector="Button:pointerover">
-                    <Setter Property="Background" Value="#1AFFFFFF" />
+                    <Setter Property="Background" Value="{DynamicResource ItemHoverTransparentBrush}" />
                     <!-- <Setter Property="RenderTransform" Value="scale(1.1)" /> -->
                 </Style>
             </StackPanel.Styles>
@@ -321,7 +324,7 @@
             Margin="0, 12, 12, 0"
             Spacing="4">
             <Border
-                Background="#EE2B2B2B"
+                Background="{DynamicResource PanelTransparentBackgroundBrush}"
                 CornerRadius="16"
                 Padding="16"
                 BoxShadow="0 4 20 0 #60000000">
@@ -341,7 +344,7 @@
             </Border>
 
             <Border Name="ToolOptionsBorder"
-                    Background="#EE2B2B2B"
+                    Background="{DynamicResource PanelTransparentBackgroundBrush}"
                     CornerRadius="16"
                     Padding="16"
                     BoxShadow="0 4 20 0 #60000000"
@@ -553,7 +556,7 @@
             <StackPanel.Styles>
                 <Style Selector="Label">
                     <Setter Property="FontSize" Value="12" />
-                    <Setter Property="Foreground" Value="#AAAAAA" />
+                    <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}" />
                     <Setter Property="Margin" Value="0,0,0,4" />
                 </Style>
             </StackPanel.Styles>
@@ -573,18 +576,18 @@
                 <Button
                     Name="ZoomToFitBtn"
                     ToolTip.Tip="Zoom to fit content - Shift + 1"
-                    Background="#2c2c2c"
+                    Background="{DynamicResource ButtonBackgroundBrush}"
                     CornerRadius="8"
                     Padding="12, 6"
                     HorizontalAlignment="Stretch"
                     HorizontalContentAlignment="Center"
                     Click="ZoomToFitBtn_OnClick">
-                    <TextBlock Text="Zoom to Fit" Foreground="White" FontSize="12" />
+                    <TextBlock Text="Zoom to Fit" Foreground="{DynamicResource PrimaryTextBrush}" FontSize="12" />
                 </Button>
 
                 <Border
                     CornerRadius="8"
-                    Background="#2c2c2c">
+                    Background="{DynamicResource ButtonBackgroundBrush}">
                     <StackPanel Orientation="Horizontal" Spacing="2">
                         <Button ToolTip.Tip="Zoom out - Ctrl + '-'"
                                 Name="ZoomOutBtn"
@@ -601,24 +604,24 @@
                     </StackPanel>
                     <Border.Styles>
                         <Style Selector="Button">
-                            <Setter Property="Background" Value="#2c2c2c" />
+                            <Setter Property="Background" Value="{DynamicResource ButtonBackgroundBrush}" />
                         </Style>
 
                         <Style Selector="Button:pointerover /template/ ContentPresenter">
-                            <Setter Property="Background" Value="#3c3c3c" />
+                            <Setter Property="Background" Value="{DynamicResource ButtonHoverBrush}" />
                         </Style>
 
                         <Style Selector="Button:pressed /template/ ContentPresenter">
-                            <Setter Property="Background" Value="#1c1c1c" />
+                            <Setter Property="Background" Value="{DynamicResource ButtonPressedBrush}" />
                         </Style>
 
                         <Style Selector="Button:disabled /template/ ContentPresenter">
-                            <Setter Property="Background" Value="#2c2c2c" />
+                            <Setter Property="Background" Value="{DynamicResource ButtonBackgroundBrush}" />
                         </Style>
 
                         <Style Selector="TextBlock">
-                            <Setter Property="Foreground" Value="White" />
-                            <Setter Property="Background" Value="#2c2c2c" />
+                            <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
+                            <Setter Property="Background" Value="{DynamicResource ButtonBackgroundBrush}" />
                         </Style>
                     </Border.Styles>
                 </Border>
@@ -626,7 +629,7 @@
 
             <!-- Undo/Redo Buttons -->
             <Border CornerRadius="8"
-                    Background="#2c2c2c"
+                    Background="{DynamicResource ButtonBackgroundBrush}"
                     VerticalAlignment="Bottom">
                 <StackPanel Orientation="Horizontal">
                     <Button ToolTip.Tip="Undo - Ctrl+Z"
@@ -642,19 +645,19 @@
                 </StackPanel>
                 <Border.Styles>
                     <Style Selector="Button">
-                        <Setter Property="Background" Value="#2c2c2c" />
+                        <Setter Property="Background" Value="{DynamicResource ButtonBackgroundBrush}" />
                     </Style>
 
                     <Style Selector="Button:pointerover /template/ ContentPresenter">
-                        <Setter Property="Background" Value="#3c3c3c" />
+                        <Setter Property="Background" Value="{DynamicResource ButtonHoverBrush}" />
                     </Style>
 
                     <Style Selector="Button:pressed /template/ ContentPresenter">
-                        <Setter Property="Background" Value="#1c1c1c" />
+                        <Setter Property="Background" Value="{DynamicResource ButtonPressedBrush}" />
                     </Style>
 
                     <Style Selector="Button:disabled /template/ ContentPresenter">
-                        <Setter Property="Background" Value="#2c2c2c" />
+                        <Setter Property="Background" Value="{DynamicResource ButtonBackgroundBrush}" />
                     </Style>
                 </Border.Styles>
             </Border>
@@ -669,7 +672,7 @@
                        PointerPressed="ExportImageWindowOverlay_OnPointerPressed" />
 
             <Border HorizontalAlignment="Center" VerticalAlignment="Center"
-                    Background="#2B2B2B"
+                    Background="{DynamicResource PanelBackgroundBrush}"
                     CornerRadius="16"
                     Padding="16"
                     BoxShadow="0 4 20 0 #60000000"
@@ -746,11 +749,11 @@
             <Button HorizontalAlignment="Left"
                     Padding="6,4"
                     FontSize="14"
-                    Background="#CC1E1E1E"
+                    Background="{DynamicResource ChatboxBackgroundBrush}"
                     CornerRadius="4"
                     Content="{Binding MultiUserDrawingViewModel.ChatToggleText}"
                     Command="{Binding MultiUserDrawingViewModel.ToggleChatVisibilityCommand}" />
-            <Border Background="#CC1E1E1E" CornerRadius="8"
+            <Border Background="{DynamicResource ChatboxBackgroundBrush}" CornerRadius="8"
                     IsVisible="{Binding MultiUserDrawingViewModel.IsChatVisible}">
                 <Grid RowDefinitions="*" MaxHeight="400">
                     <ListBox Name="ChatListBox" Background="Transparent"
@@ -801,16 +804,16 @@
                        IsVisible="False" PointerPressed="LiveDrawingWindowOverlay_OnPointerPressed" />
 
             <Border HorizontalAlignment="Center" VerticalAlignment="Center"
-                    Background="#2B2B2B"
+                    Background="{DynamicResource PanelBackgroundBrush}"
                     Padding="18"
                     CornerRadius="12">
                 <StackPanel MinWidth="400" Spacing="12">
-                    <TextBlock HorizontalAlignment="Center" Foreground="#AAAAAA" Margin="0, 0, 0, 12">Multi-User Drawing (DEMO)</TextBlock>
+                    <TextBlock HorizontalAlignment="Center" Foreground="{DynamicResource SecondaryTextBrush}" Margin="0, 0, 0, 12">Multi-User Drawing (DEMO)</TextBlock>
                     <StackPanel Orientation="Vertical" Spacing="8">
-                        <TextBlock FontSize="12" TextWrapping="Wrap" Foreground="WhiteSmoke">
+                        <TextBlock FontSize="12" TextWrapping="Wrap" Foreground="{DynamicResource PrimaryTextBrush}">
                             If the room id doesn't belong to any active room, the room is automatically created
                         </TextBlock>
-                        <TextBlock FontSize="12" TextWrapping="Wrap" Foreground="WhiteSmoke" FontStyle="Italic">
+                        <TextBlock FontSize="12" TextWrapping="Wrap" Foreground="{DynamicResource PrimaryTextBrush}" FontStyle="Italic">
                             Note: It might take a minute for the initial connection to be established
                         </TextBlock>
                     </StackPanel>
@@ -842,7 +845,7 @@
                         </Button>
                     </Grid>
 
-                    <Button Name="EnterRoomButton" HorizontalAlignment="Stretch" Foreground="WhiteSmoke" Padding="8"
+                    <Button Name="EnterRoomButton" HorizontalAlignment="Stretch" Foreground="{DynamicResource PrimaryTextBrush}" Padding="8"
                             HorizontalContentAlignment="Center"
                             Content="{Binding MultiUserDrawingViewModel.RoomButtonText}"
                             Command="{Binding MultiUserDrawingViewModel.ToggleRoomConnectionCommand}" />
@@ -858,20 +861,20 @@
                        IsVisible="False" PointerPressed="AboutScribbleOverlay_OnPointerPressed" />
 
             <Border HorizontalAlignment="Center" VerticalAlignment="Center"
-                    Background="#2B2B2B"
+                    Background="{DynamicResource PanelBackgroundBrush}"
                     Padding="18"
                     CornerRadius="12">
                 <StackPanel MaxWidth="600" Spacing="12">
-                    <TextBlock HorizontalAlignment="Center" Foreground="#AAAAAA" Margin="0, 0, 0, 12">About Scribble</TextBlock>
+                    <TextBlock HorizontalAlignment="Center" Foreground="{DynamicResource SecondaryTextBrush}" Margin="0, 0, 0, 12">About Scribble</TextBlock>
                     <StackPanel Orientation="Vertical" Spacing="12">
                         <StackPanel Orientation="Vertical" Spacing="4">
-                            <TextBlock TextWrapping="Wrap" FontWeight="ExtraLight">
+                            <TextBlock TextWrapping="Wrap" FontWeight="ExtraLight" Foreground="{DynamicResource PrimaryTextBrush}">
                                 Scribble is a cross-platform digital whiteboard program built with C#/.NET, AvaloniaUI, SignalR, SkiaSharp.
                             </TextBlock>
                         </StackPanel>
                         <StackPanel Orientation="Vertical" Spacing="4">
                             <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                <TextBlock Text="Scribble by " Foreground="WhiteSmoke" VerticalAlignment="Center" />
+                                <TextBlock Text="Scribble by " Foreground="{DynamicResource PrimaryTextBrush}" VerticalAlignment="Center" />
                                 <HyperlinkButton Content="Hermes"
                                                  Padding="0"
                                                  Margin="0"

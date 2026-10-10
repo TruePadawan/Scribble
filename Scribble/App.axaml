@@ -7,8 +7,14 @@
     <!-- "Default" ThemeVariant follows system theme variant. "Dark" or "Light" are other available options. -->
 
     <Application.Resources>
-        <converters:EnumToBoolConverter x:Key="EnumBoolConverter" />
-        <converters:BoolToBrushConverter x:Key="BoolToBrushConverter" />
+        <ResourceDictionary>
+            <converters:EnumToBoolConverter x:Key="EnumBoolConverter" />
+            <converters:BoolToBrushConverter x:Key="BoolToBrushConverter" />
+
+            <ResourceDictionary.MergedDictionaries>
+                <MergeResourceInclude Source="avares://Scribble/Assets/Resources/AppResources.axaml" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
     </Application.Resources>
 
     <Application.DataTemplates>
@@ -18,5 +24,9 @@
     <Application.Styles>
         <FluentTheme />
         <StyleInclude Source="avares://Avalonia.Controls.ColorPicker/Themes/Fluent/Fluent.xaml" />
+        
+        <Style Selector="FlyoutPresenter">
+            <Setter Property="Background" Value="{DynamicResource PanelBackgroundBrush}" />
+        </Style>
     </Application.Styles>
 </Application>
