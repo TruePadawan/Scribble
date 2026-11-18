@@ -213,4 +213,62 @@ public class DocumentServiceTests
         _canvasStateService.Received(1).LoadCanvas(
             Arg.Is<List<CanvasElement>>(list => list.Count == 2));
     }
+
+    // Change a live image after capture to verify the saved snapshot stays stable.
+    [AvaloniaFact]
+    public async Task RoundTrip_ImagesKeepIndependentTransformsAndShareEmbeddedFile()
+    {
+        var first = MakeImage();
+        first.Rotation = 1.5f;
+        first.FlipX = true;
+        var second = MakeImage();
+        second.Rotation = -0.5f;
+        second.FlipY = true;
+        List<CanvasElement> loaded = [];
+        _canvasStateService.When(state => state.LoadCanvas(Arg.Any<List<CanvasElement>>()))
+            .Do(call => loaded = call.Arg<List<CanvasElement>>());
+        _canvasStateService.CanvasElements.Returns([first, second]);
+        using var stream = new MemoryStream();
+
+        using var snapshot = _documentService.CaptureSnapshot();
+        first.Rotation = 0;
+        first.FlipX = false;
+        await _documentService.SaveAsync(stream, snapshot);
+        stream.Position = 0;
+        using var json = await JsonDocument.ParseAsync(stream);
+        json.RootElement.GetProperty("files").GetPropertyCount().Should().Be(1);
+        stream.Position = 0;
+        await _documentService.LoadAsync(stream);
+
+        loaded.Cast<CanvasImage>().Select(image => (image.Id, image.Rotation, image.FlipX, image.FlipY))
+            .Should().Equal((first.Id, 1.5f, true, false), (second.Id, -0.5f, false, true));
+    }
+
+    // Load an image saved before transform fields were added.
+    [AvaloniaFact]
+    public async Task LoadAsync_LegacyImageDefaultsToUntransformed()
+    {
+        using var stream = MakeStream("""
+            {
+                "elements": {
+                    "strokes": [],
+                    "images": [{
+                        "Width": 100, "Height": 50,
+                        "FileId": "4efe31af-a08b-4123-82fd-cb8c3b12252a"
+                    }]
+                },
+                "files": { "4efe31af-a08b-4123-82fd-cb8c3b12252a": "IMAGE" }
+            }
+            """);
+        List<CanvasElement> loaded = [];
+        _canvasStateService.When(state => state.LoadCanvas(Arg.Any<List<CanvasElement>>()))
+            .Do(call => loaded = call.Arg<List<CanvasElement>>());
+
+        await _documentService.LoadAsync(stream);
+
+        var image = loaded.Should().ContainSingle().Which.Should().BeOfType<CanvasImage>().Which;
+        image.Rotation.Should().Be(0);
+        image.FlipX.Should().BeFalse();
+        image.FlipY.Should().BeFalse();
+    }
 }

@@ -47,9 +47,8 @@ public partial class DocumentViewModel : ViewModelBase
         var file = await _fileService.PickFileToSaveAsync(filePickOptions);
         if (file != null)
         {
-            await using var stream = await file.OpenWriteAsync();
-            await _documentService.SaveAsync(stream);
-            _autoSaveService.DeleteAutoSavedState();
+            // Let the save service coordinate this file write with pending recovery writes.
+            await _autoSaveService.SaveDocumentAsync(file.OpenWriteAsync);
         }
     }
 

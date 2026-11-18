@@ -1,9 +1,13 @@
 using System;
+using System.Threading.Tasks;
 using Avalonia;
+using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
+using Avalonia.Threading;
 using Microsoft.Extensions.DependencyInjection;
 using Scribble.Extensions;
+using Scribble.Services.AutoSaveService;
 using Scribble.ViewModels;
 using Scribble.Views;
 
@@ -26,22 +30,42 @@ public partial class App : Application
 
         Services = serviceCollection.BuildServiceProvider();
         var viewModel = Services.GetRequiredService<MainViewModel>();
+        var autoSave = Services.GetRequiredService<AutoSaveService>();
+        Control? surface = null;
 
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            desktop.MainWindow = new MainWindow
+            var window = new MainWindow
             {
+                IsEnabled = false,
                 DataContext = viewModel
             };
+            desktop.MainWindow = window;
+            desktop.Exit += (_, _) => autoSave.Dispose();
+            surface = window;
         }
         else if (ApplicationLifetime is ISingleViewApplicationLifetime singleViewPlatform)
         {
-            singleViewPlatform.MainView = new MainView
+            var view = new MainView
             {
+                IsEnabled = false,
                 DataContext = viewModel,
             };
+            singleViewPlatform.MainView = view;
+            surface = view;
         }
 
         base.OnFrameworkInitializationCompleted();
+        if (surface is not null) Dispatcher.UIThread.Post(() => _ = RestoreCanvasAsync(autoSave, surface));
+    }
+
+    // Restore the previous canvas before enabling input and focusing it.
+    private static async Task RestoreCanvasAsync(AutoSaveService autoSave, Control surface)
+    {
+        await autoSave.RestoreAsync();
+        // Allow edits after recovery has finished.
+        surface.IsEnabled = true;
+        if (surface is ContentControl { Content: MainView windowView }) windowView.FocusCanvas();
+        if (surface is MainView view) view.FocusCanvas();
     }
 }

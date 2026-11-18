@@ -5,6 +5,7 @@ using Scribble.Services.CanvasStateService;
 using Scribble.Services.DocumentService;
 using Scribble.Services.MultiUserDrawing;
 using Scribble.Shared.Lib;
+using SkiaSharp;
 
 namespace Scribble.UnitTests.ServiceTests;
 
@@ -30,6 +31,8 @@ public class AutoSaveServiceTests : IDisposable
         _canvasStateService = Substitute.For<ICanvasStateService>();
         _documentService = Substitute.For<IDocumentService>();
         _multiUserDrawingService = Substitute.For<IMultiUserDrawingService>();
+        _documentService.CaptureSnapshot().Returns(_ => new DocumentSnapshot([], _canvasStateService.BackgroundColor));
+        Directory.CreateDirectory(AppDataPath);
 
         _autoSaveService = new AutoSaveService(
             _canvasStateService, _documentService, _multiUserDrawingService,
@@ -41,23 +44,23 @@ public class AutoSaveServiceTests : IDisposable
     private string AppDataPath => Path.Combine(_tempDir, "Scribble");
     private string AutoSavedStateFilePath => Path.Combine(AppDataPath, "autosave.scribble");
 
+    // Verify a manual save clears the recovery file it covers.
     [Fact]
-    public void DeleteAutoSavedState_FileExists_FileIsDeleted()
+    public async Task SaveDocumentAsync_FileExists_FileIsDeleted()
     {
         File.Create(AutoSavedStateFilePath).Dispose();
         File.Exists(AutoSavedStateFilePath).Should().BeTrue();
 
-        _autoSaveService.DeleteAutoSavedState();
+        await _autoSaveService.SaveDocumentAsync(() => Task.FromResult<Stream>(new MemoryStream()));
 
         File.Exists(AutoSavedStateFilePath).Should().BeFalse();
     }
 
+    // Verify a manual save also works before the first autosave.
     [Fact]
-    public void DeleteAutoSavedState_FileDoesNotExist_NoExceptionThrown()
+    public async Task SaveDocumentAsync_FileDoesNotExist_NoExceptionThrown()
     {
-        var act = () => _autoSaveService.DeleteAutoSavedState();
-
-        act.Should().NotThrow();
+        await _autoSaveService.SaveDocumentAsync(() => Task.FromResult<Stream>(new MemoryStream()));
     }
 
     [Fact]
@@ -85,7 +88,7 @@ public class AutoSaveServiceTests : IDisposable
 
         await Task.Delay(AfterDebounce, TestContext.Current.CancellationToken);
 
-        await _documentService.DidNotReceive().SaveAsync(Arg.Any<Stream>());
+        await _documentService.DidNotReceive().SaveAsync(Arg.Any<Stream>(), Arg.Any<DocumentSnapshot>());
     }
 
     [Fact]
@@ -95,7 +98,7 @@ public class AutoSaveServiceTests : IDisposable
 
         await Task.Delay(AfterDebounce, TestContext.Current.CancellationToken);
 
-        await _documentService.Received().SaveAsync(Arg.Any<Stream>());
+        await _documentService.Received().SaveAsync(Arg.Any<Stream>(), Arg.Any<DocumentSnapshot>());
         File.Exists(AutoSavedStateFilePath).Should().BeTrue();
     }
 
@@ -113,7 +116,7 @@ public class AutoSaveServiceTests : IDisposable
 
         await Task.Delay(AfterDebounce, TestContext.Current.CancellationToken);
 
-        await _documentService.DidNotReceive().SaveAsync(Arg.Any<Stream>());
+        await _documentService.DidNotReceive().SaveAsync(Arg.Any<Stream>(), Arg.Any<DocumentSnapshot>());
     }
 
     [Fact]
@@ -127,7 +130,222 @@ public class AutoSaveServiceTests : IDisposable
         // Wait for the debounce to settle after the final invalidation
         await Task.Delay(AfterDebounce, TestContext.Current.CancellationToken);
 
-        await _documentService.Received(1).SaveAsync(Arg.Any<Stream>());
+        await _documentService.Received(1).SaveAsync(Arg.Any<Stream>(), Arg.Any<DocumentSnapshot>());
+    }
+
+    // Exercise recovery and replacement in the same app session.
+    [Fact]
+    public async Task RestoreThenSaveTwice_ClosesHandlesAndReplacesWithShorterFile()
+    {
+        File.WriteAllText(AutoSavedStateFilePath, "original recovery");
+        await _autoSaveService.RestoreAsync();
+        await _documentService.Received(1).LoadAsync(Arg.Any<Stream>());
+        using (File.Open(AutoSavedStateFilePath, FileMode.Open, FileAccess.ReadWrite, FileShare.None))
+        {
+            // An exclusive open confirms that startup released the read handle.
+        }
+
+        var content = "replacement document";
+        _documentService.SaveAsync(Arg.Any<Stream>(), Arg.Any<DocumentSnapshot>())
+            .Returns(call => call.Arg<Stream>().WriteAsync(System.Text.Encoding.UTF8.GetBytes(content)).AsTask());
+        _canvasStateService.CanvasInvalidated += Raise.Event<Action>();
+        await WaitForRecoveryAsync(content);
+
+        content = "short";
+        _canvasStateService.CanvasInvalidated += Raise.Event<Action>();
+        await WaitForRecoveryAsync(content);
+    }
+
+    // Hold the first write open while changing the background.
+    [Fact]
+    public async Task EditDuringAutosave_PublishesFollowUpSnapshot()
+    {
+        var writing = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var secondWrite = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var releaseSecond = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var cancellationToken = TestContext.Current.CancellationToken;
+        _canvasStateService.BackgroundColor.Returns(SKColors.Red);
+        _documentService.SaveAsync(Arg.Any<Stream>(), Arg.Any<DocumentSnapshot>()).Returns(async call =>
+        {
+            var color = call.Arg<DocumentSnapshot>().BackgroundColor;
+            if (color == SKColors.Red)
+            {
+                writing.TrySetResult();
+                await release.Task.WaitAsync(cancellationToken);
+            }
+            else
+            {
+                secondWrite.TrySetResult();
+                await releaseSecond.Task.WaitAsync(cancellationToken);
+            }
+            await call.Arg<Stream>().WriteAsync(System.Text.Encoding.UTF8.GetBytes(color.ToString()), cancellationToken);
+        });
+
+        _canvasStateService.CanvasInvalidated += Raise.Event<Action>();
+        try
+        {
+            await writing.Task.WaitAsync(TimeSpan.FromSeconds(3), cancellationToken);
+            _canvasStateService.BackgroundColor.Returns(SKColors.Blue);
+            _canvasStateService.BackgroundColorChanged += Raise.Event<Action>();
+            release.SetResult();
+            // Inspect the first published revision before allowing the second write to finish.
+            await secondWrite.Task.WaitAsync(TimeSpan.FromSeconds(3), cancellationToken);
+            await WaitForRecoveryAsync(SKColors.Red.ToString());
+            releaseSecond.SetResult();
+            await WaitForRecoveryAsync(SKColors.Blue.ToString());
+        }
+        finally
+        {
+            release.TrySetResult();
+            releaseSecond.TrySetResult();
+        }
+    }
+
+    // Fail a partial write and check recovery before allowing the retry.
+    [Fact]
+    public async Task WriteFailure_PreservesRecoveryAndRetries()
+    {
+        File.WriteAllText(AutoSavedStateFilePath, "previous revision");
+        var retryStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var attempts = 0;
+        var cancellationToken = TestContext.Current.CancellationToken;
+        _documentService.SaveAsync(Arg.Any<Stream>(), Arg.Any<DocumentSnapshot>()).Returns(async call =>
+        {
+            if (Interlocked.Increment(ref attempts) == 1)
+            {
+                await call.Arg<Stream>().WriteAsync("partial write"u8.ToArray(), cancellationToken);
+                throw new IOException("Simulated write failure");
+            }
+            retryStarted.TrySetResult();
+            await release.Task.WaitAsync(cancellationToken);
+            await call.Arg<Stream>().WriteAsync("new revision"u8.ToArray(), cancellationToken);
+        });
+
+        _canvasStateService.BackgroundColorChanged += Raise.Event<Action>();
+        try
+        {
+            await retryStarted.Task.WaitAsync(TimeSpan.FromSeconds(3), cancellationToken);
+            File.ReadAllText(AutoSavedStateFilePath).Should().Be("previous revision");
+            release.SetResult();
+            await WaitForRecoveryAsync("new revision");
+        }
+        finally
+        {
+            release.TrySetResult();
+        }
+    }
+
+    // Enter a live room before the pending local write can publish.
+    [Fact]
+    public async Task JoinRoomDuringWrite_DiscardsPendingPublication()
+    {
+        File.WriteAllText(AutoSavedStateFilePath, "previous revision");
+        var writing = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var cancellationToken = TestContext.Current.CancellationToken;
+        _documentService.SaveAsync(Arg.Any<Stream>(), Arg.Any<DocumentSnapshot>()).Returns(async call =>
+        {
+            writing.TrySetResult();
+            await release.Task.WaitAsync(cancellationToken);
+            await call.Arg<Stream>().WriteAsync("pending revision"u8.ToArray(), cancellationToken);
+        });
+
+        _canvasStateService.CanvasInvalidated += Raise.Event<Action>();
+        try
+        {
+            await writing.Task.WaitAsync(TimeSpan.FromSeconds(3), cancellationToken);
+            var room = new MultiUserDrawingRoom("room1", "conn-A", "Alice");
+            _multiUserDrawingService.Room.Returns(room);
+            _multiUserDrawingService.RoomChanged += Raise.Event<Action<MultiUserDrawingRoom?>>(room);
+            release.SetResult();
+            await WaitUntilAsync(() => !Directory.EnumerateFiles(AppDataPath, "*.tmp").Any());
+            File.ReadAllText(AutoSavedStateFilePath).Should().Be("previous revision");
+        }
+        finally
+        {
+            release.TrySetResult();
+        }
+    }
+
+    // Finish an older manual save after a newer autosave has published.
+    [Fact]
+    public async Task ManualSaveFinishesAfterNewerAutosave_PreservesNewerRecovery()
+    {
+        var manualWrite = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var cancellationToken = TestContext.Current.CancellationToken;
+        _documentService.SaveAsync(Arg.Any<Stream>(), Arg.Any<DocumentSnapshot>()).Returns(async call =>
+        {
+            var stream = call.Arg<Stream>();
+            if (stream is MemoryStream)
+            {
+                manualWrite.TrySetResult();
+                await release.Task.WaitAsync(cancellationToken);
+            }
+            else
+            {
+                await stream.WriteAsync("newer revision"u8.ToArray(), cancellationToken);
+            }
+        });
+
+        var save = _autoSaveService.SaveDocumentAsync(() => Task.FromResult<Stream>(new MemoryStream()));
+        try
+        {
+            await manualWrite.Task.WaitAsync(TimeSpan.FromSeconds(3), cancellationToken);
+            _canvasStateService.CanvasInvalidated += Raise.Event<Action>();
+            await WaitForRecoveryAsync("newer revision");
+            release.SetResult();
+            await save;
+            File.ReadAllText(AutoSavedStateFilePath).Should().Be("newer revision");
+        }
+        finally
+        {
+            release.TrySetResult();
+        }
+    }
+
+    // Preserve the unreadable file when publishing a fresh recovery.
+    [Fact]
+    public async Task RecoveryCannotBeRead_NextAutosaveKeepsOriginalAsBackup()
+    {
+        File.WriteAllText(AutoSavedStateFilePath, "invalid document");
+        _documentService.LoadAsync(Arg.Any<Stream>())
+            .Returns(Task.FromException(new InvalidDataException("Simulated parse failure")));
+
+        await _autoSaveService.RestoreAsync();
+        File.ReadAllText(AutoSavedStateFilePath).Should().Be("invalid document");
+
+        _documentService.SaveAsync(Arg.Any<Stream>(), Arg.Any<DocumentSnapshot>())
+            .Returns(call => call.Arg<Stream>().WriteAsync("usable recovery"u8.ToArray()).AsTask());
+        _canvasStateService.CanvasInvalidated += Raise.Event<Action>();
+        await WaitForRecoveryAsync("usable recovery");
+
+        var backup = Directory.EnumerateFiles(AppDataPath, "*.bak").Should().ContainSingle().Which;
+        File.ReadAllText(backup).Should().Be("invalid document");
+    }
+
+    // Wait for the published recovery to contain the expected content.
+    private Task WaitForRecoveryAsync(string content)
+    {
+        return WaitUntilAsync(() =>
+        {
+            if (!File.Exists(AutoSavedStateFilePath)) return false;
+            // Let Windows replace the recovery file while the test reads it.
+            using var stream = File.Open(AutoSavedStateFilePath, FileMode.Open, FileAccess.Read,
+                FileShare.ReadWrite | FileShare.Delete);
+            using var reader = new StreamReader(stream);
+            return reader.ReadToEnd() == content;
+        });
+    }
+
+    // Bound the wait for a background file operation.
+    private static async Task WaitUntilAsync(Func<bool> condition)
+    {
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        timeout.CancelAfter(TimeSpan.FromSeconds(3));
+        while (!condition()) await Task.Delay(10, timeout.Token);
     }
 
     public void Dispose()

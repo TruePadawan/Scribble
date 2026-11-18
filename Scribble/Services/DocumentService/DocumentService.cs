@@ -25,17 +25,26 @@ public class DocumentService : IDocumentService
         _canvasStateService = canvasStateService;
     }
 
+    // Capture an independent copy of the document on the UI thread.
+    public DocumentSnapshot CaptureSnapshot()
+    {
+        Dispatcher.UIThread.VerifyAccess();
+        // Copy mutable elements before serializing on a background thread.
+        var elements = _canvasStateService.CanvasElements.OfType<IClonable>()
+            .Select(element => element.Clone(preserveId: true)).ToList();
+        return new DocumentSnapshot(elements, _canvasStateService.BackgroundColor);
+    }
+
     public async Task SaveAsync(Stream stream)
     {
-        List<CanvasElement> canvasElements = [];
-        SKColor backgroundColor = default;
-        Dispatcher.UIThread.Invoke(() =>
-        {
-            canvasElements = _canvasStateService.CanvasElements.ToList();
-            backgroundColor = _canvasStateService.BackgroundColor;
-        });
+        using var snapshot = await Dispatcher.UIThread.InvokeAsync(CaptureSnapshot);
+        await SaveAsync(stream, snapshot);
+    }
 
-        await Task.Run(async () =>
+    // Write the captured document without reading live canvas state.
+    public Task SaveAsync(Stream stream, DocumentSnapshot snapshot)
+    {
+        return Task.Run(async () =>
         {
             await using var streamWriter = new StreamWriter(stream, Encoding.UTF8, leaveOpen: true);
 
@@ -47,7 +56,7 @@ public class DocumentService : IDocumentService
             var jsonCanvasStrokes = new JsonArray();
             var jsonCanvasImages = new JsonArray();
             Dictionary<string, Guid> imageBase64EncodedStrings = [];
-            foreach (var element in canvasElements)
+            foreach (var element in snapshot.Elements)
             {
                 if (element is PaintableStroke stroke)
                 {
@@ -98,7 +107,7 @@ public class DocumentService : IDocumentService
                     ["images"] = jsonCanvasImages
                 },
                 ["files"] = files,
-                ["backgroundColor"] = backgroundColor.ToString()
+                ["backgroundColor"] = snapshot.BackgroundColor.ToString()
             };
             await streamWriter.WriteAsync(canvasState.ToJsonString(serializerOptions));
         });
@@ -163,12 +172,15 @@ public class DocumentService : IDocumentService
             }
         }
 
-        _canvasStateService.LoadCanvas(canvasElements);
-
+        // Apply the loaded elements and background together on the UI thread.
         var bgColorString = canvasState["backgroundColor"]?.ToString();
-        if (bgColorString != null && SKColor.TryParse(bgColorString, out var bgColor))
+        await Dispatcher.UIThread.InvokeAsync(() =>
         {
-            _canvasStateService.SetBackgroundColor(bgColor);
-        }
+            _canvasStateService.LoadCanvas(canvasElements);
+            if (bgColorString != null && SKColor.TryParse(bgColorString, out var bgColor))
+            {
+                _canvasStateService.SetBackgroundColor(bgColor);
+            }
+        });
     }
 }
