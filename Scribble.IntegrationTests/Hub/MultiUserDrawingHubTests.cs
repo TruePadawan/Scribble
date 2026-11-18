@@ -11,11 +11,16 @@ public class MultiUserDrawingHubTests(HubServerFixture fixture) : IClassFixture<
 {
     private HubConnection _aliceConnection = null!;
     private HubConnection _bobConnection = null!;
+    private IDisposable _answerAliceSnapshotRequests = null!;
 
     public async ValueTask InitializeAsync()
     {
         _aliceConnection = fixture.CreateHubConnection();
         _bobConnection = fixture.CreateHubConnection();
+        _answerAliceSnapshotRequests = _aliceConnection.On<string>("RequestCanvasState", targetId =>
+        {
+            _ = _aliceConnection.SendAsync("SendCanvasStateToClient", targetId, "[]");
+        });
 
         await _aliceConnection.StartAsync();
         await _bobConnection.StartAsync();
@@ -23,6 +28,7 @@ public class MultiUserDrawingHubTests(HubServerFixture fixture) : IClassFixture<
 
     public async ValueTask DisposeAsync()
     {
+        _answerAliceSnapshotRequests.Dispose();
         await _aliceConnection.StopAsync();
         await _bobConnection.StopAsync();
         await _aliceConnection.DisposeAsync();
@@ -197,22 +203,128 @@ public class MultiUserDrawingHubTests(HubServerFixture fixture) : IClassFixture<
     [Fact]
     public async Task SendCanvasStateToClient_TargetClientReceivesPayload()
     {
+        _answerAliceSnapshotRequests.Dispose();
         var roomId = Guid.NewGuid().ToString();
         await _aliceConnection.InvokeAsync("JoinRoom", roomId, "Alice",
             cancellationToken: TestContext.Current.CancellationToken);
-        await _bobConnection.InvokeAsync("JoinRoom", roomId, "Bob",
-            cancellationToken: TestContext.Current.CancellationToken);
 
         var bobStateTcs = new TaskCompletionSource<string>();
-        _bobConnection.On<string>("ReceiveCanvasState", state => { bobStateTcs.TrySetResult(state); });
+        using var receiver = _bobConnection.On<string>("ReceiveCanvasState", state => { bobStateTcs.TrySetResult(state); });
+        var requested = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var request = _aliceConnection.On<string>("RequestCanvasState", targetId => { requested.TrySetResult(targetId); });
+        var join = _bobConnection.InvokeAsync("JoinRoom", roomId, "Bob",
+            cancellationToken: TestContext.Current.CancellationToken);
 
-        const string payload = "mock_serialized_state";
-        await _aliceConnection.InvokeAsync("SendCanvasStateToClient", _bobConnection.ConnectionId, payload,
+        const string payload = "[]";
+        var target = await requested.Task.WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken);
+        await _aliceConnection.InvokeAsync("SendCanvasStateToClient", target, payload,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var receivedState =
             await bobStateTcs.Task.WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken);
         receivedState.Should().Be(payload);
+        await join;
+    }
+
+    // Check that one requested snapshot reaches the joining client.
+    [Fact]
+    public async Task SnapshotCanOnlyBeDeliveredOnceByDesignatedHost()
+    {
+        _answerAliceSnapshotRequests.Dispose();
+        var cancellationToken = TestContext.Current.CancellationToken;
+        var roomId = Guid.NewGuid().ToString();
+        await _aliceConnection.InvokeAsync("JoinRoom", roomId, "Alice", cancellationToken);
+        var requested = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var request = _aliceConnection.On<string>("RequestCanvasState", target => { requested.TrySetResult(target); });
+        var snapshots = new System.Collections.Concurrent.ConcurrentQueue<string>();
+        using var receiver = _bobConnection.On<string>("ReceiveCanvasState", snapshots.Enqueue);
+        var join = _bobConnection.InvokeAsync("JoinRoom", roomId, "Bob", cancellationToken);
+        var targetId = await requested.Task.WaitAsync(TimeSpan.FromSeconds(2), cancellationToken);
+
+        await using var outsider = fixture.CreateHubConnection();
+        await outsider.StartAsync(cancellationToken);
+        await outsider.InvokeAsync("SendCanvasStateToClient", targetId, "[ ]", cancellationToken);
+        await _aliceConnection.InvokeAsync("SendCanvasStateToClient", targetId, "[]", cancellationToken);
+        await join;
+        await _aliceConnection.InvokeAsync("SendCanvasStateToClient", targetId, "[ ]", cancellationToken);
+
+        // A later room message confirms preceding deliveries have been processed.
+        var messageReceived = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var message = _bobConnection.On<Message>("ReceiveMessage", incoming =>
+        {
+            if (incoming.Content == "barrier") messageReceived.TrySetResult();
+        });
+        await _aliceConnection.InvokeAsync("SendMessage", roomId, new MessageDto("1", "Alice", "barrier"),
+            cancellationToken);
+        await messageReceived.Task.WaitAsync(TimeSpan.FromSeconds(2), cancellationToken);
+        snapshots.Should().Equal("[]");
+    }
+
+    // Check that drawing is routed only within the sender's room.
+    [Fact]
+    public async Task DrawingRequiresRoomMembershipAndUsesServerCreatorId()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        var roomId = Guid.NewGuid().ToString();
+        await _aliceConnection.InvokeAsync("JoinRoom", roomId, "Alice", cancellationToken);
+        await _bobConnection.InvokeAsync("JoinRoom", roomId, "Bob", cancellationToken);
+        await using var otherRoomConnection = fixture.CreateHubConnection();
+        await otherRoomConnection.StartAsync(cancellationToken);
+        await otherRoomConnection.InvokeAsync("JoinRoom", Guid.NewGuid().ToString(), "Charlie", cancellationToken);
+
+        var delivered = new TaskCompletionSource<Event>(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var receiver = _bobConnection.On<Event>("ReceiveEvent", incoming => { delivered.TrySetResult(incoming); });
+        var authorized = new EndStrokeEvent(Guid.NewGuid());
+        await otherRoomConnection.InvokeAsync("SendEvent", roomId, new EndStrokeEvent(Guid.NewGuid()), cancellationToken);
+        await _aliceConnection.InvokeAsync("SendEvent", roomId, authorized, cancellationToken);
+
+        var result = await delivered.Task.WaitAsync(TimeSpan.FromSeconds(2), cancellationToken);
+        result.ActionId.Should().Be(authorized.ActionId);
+        result.CreatorConnectionId.Should().Be(_aliceConnection.ConnectionId);
+    }
+
+    // Disconnect the original host while a third member is joining.
+    [Fact]
+    public async Task HostLeavesDuringSnapshotRequest_NextSynchronizedMemberAnswers()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        var roomId = Guid.NewGuid().ToString();
+        await _aliceConnection.InvokeAsync("JoinRoom", roomId, "Alice", cancellationToken);
+        await _bobConnection.InvokeAsync("JoinRoom", roomId, "Bob", cancellationToken);
+        _answerAliceSnapshotRequests.Dispose();
+
+        var requested = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var request = _aliceConnection.On<string>("RequestCanvasState", _ => { requested.TrySetResult(); });
+        // Bob already has the canvas and can take over when Alice leaves.
+        using var answer = _bobConnection.On<string>("RequestCanvasState", target =>
+        {
+            _ = _bobConnection.SendAsync("SendCanvasStateToClient", target, "[]");
+        });
+        await using var joiningClient = fixture.CreateHubConnection();
+        await joiningClient.StartAsync(cancellationToken);
+        var join = joiningClient.InvokeAsync("JoinRoom", roomId, "Charlie", cancellationToken);
+
+        await requested.Task.WaitAsync(TimeSpan.FromSeconds(2), cancellationToken);
+        await _aliceConnection.StopAsync(cancellationToken);
+        await join.WaitAsync(TimeSpan.FromSeconds(2), cancellationToken);
+    }
+
+    // Verify that a join fails promptly when no host remains.
+    [Fact]
+    public async Task OnlyHostLeavesDuringSnapshotRequest_JoinFails()
+    {
+        _answerAliceSnapshotRequests.Dispose();
+        var cancellationToken = TestContext.Current.CancellationToken;
+        var roomId = Guid.NewGuid().ToString();
+        await _aliceConnection.InvokeAsync("JoinRoom", roomId, "Alice", cancellationToken);
+        var requested = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var request = _aliceConnection.On<string>("RequestCanvasState", _ => { requested.TrySetResult(); });
+        var join = _bobConnection.InvokeAsync("JoinRoom", roomId, "Bob", cancellationToken);
+
+        await requested.Task.WaitAsync(TimeSpan.FromSeconds(2), cancellationToken);
+        await _aliceConnection.StopAsync(cancellationToken);
+        await Assert.ThrowsAsync<Microsoft.AspNetCore.SignalR.HubException>(
+            () => join.WaitAsync(TimeSpan.FromSeconds(2), cancellationToken));
     }
 
     // -- Chat Messaging --

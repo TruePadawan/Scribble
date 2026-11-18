@@ -13,12 +13,16 @@ public class MultiUserDrawingServiceIntegrationTests(HubServerFixture fixture)
 {
     private MultiUserDrawingService _aliceService = null!;
     private MultiUserDrawingService _bobService = null!;
+    private Action<string> _answerAliceSnapshotRequests = null!;
 
     public ValueTask InitializeAsync()
     {
         // Leverage the internal constructor to bypass standard network pipeline
         _aliceService = new MultiUserDrawingService(fixture.CreateHubConnection());
         _bobService = new MultiUserDrawingService(fixture.CreateHubConnection());
+        // Give ordinary join tests a host that responds with an empty canvas.
+        _answerAliceSnapshotRequests = targetId => _ = _aliceService.SendCanvasStateToClientAsync(targetId, new());
+        _aliceService.CanvasStateRequested += _answerAliceSnapshotRequests;
         return ValueTask.CompletedTask;
     }
 
@@ -158,6 +162,7 @@ public class MultiUserDrawingServiceIntegrationTests(HubServerFixture fixture)
     [Fact]
     public async Task SendCanvasStateToClientAsync_TargetClient_CanvasStateReceivedFires()
     {
+        _aliceService.CanvasStateRequested -= _answerAliceSnapshotRequests;
         var roomId = Guid.NewGuid().ToString();
         await _aliceService.JoinRoomAsync(roomId, "Alice");
 
@@ -170,7 +175,8 @@ public class MultiUserDrawingServiceIntegrationTests(HubServerFixture fixture)
         var bobStateTcs = new TaskCompletionSource<Queue<Event>>();
         _bobService.CanvasStateReceived += events => { bobStateTcs.TrySetResult(events); };
 
-        await _bobService.JoinRoomAsync(roomId, "Bob");
+        // Keep the join pending until the test supplies the host's snapshot.
+        var join = _bobService.JoinRoomAsync(roomId, "Bob");
         var bobConnectionId =
             await aliceRequestTcs.Task.WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken);
 
@@ -182,6 +188,7 @@ public class MultiUserDrawingServiceIntegrationTests(HubServerFixture fixture)
         var receivedQueue =
             await bobStateTcs.Task.WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken);
         receivedQueue.Should().HaveCount(1);
+        await join;
     }
 
     // -- Room membership events --
