@@ -10,5 +10,9 @@ public record CanvasImageDto
     public float X { get; init; }
     public float Y { get; init; }
     public int LayerIndex { get; init; }
+    // Older files omit these fields and load without rotation or flips.
+    public float Rotation { get; init; }
+    public bool FlipX { get; init; }
+    public bool FlipY { get; init; }
     public Guid FileId { get; init; }
 }

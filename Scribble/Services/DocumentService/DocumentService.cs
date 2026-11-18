@@ -66,6 +66,7 @@ public class DocumentService : IDocumentService
                         imageBase64EncodedStrings[canvasImage.ImageBase64String] = fileId;
                     }
 
+                    // Each placement keeps its own transform even when images share a file ID.
                     var canvasImageDto = new CanvasImageDto
                     {
                         Id = canvasImage.Id,
@@ -74,6 +75,9 @@ public class DocumentService : IDocumentService
                         X = canvasImage.Bounds.Left,
                         Y = canvasImage.Bounds.Top,
                         LayerIndex = canvasImage.LayerIndex,
+                        Rotation = canvasImage.Rotation,
+                        FlipX = canvasImage.FlipX,
+                        FlipY = canvasImage.FlipY,
                         FileId = fileId
                     };
                     jsonCanvasImages.Add(JsonSerializer.SerializeToNode(canvasImageDto, serializerOptions));
@@ -144,6 +148,9 @@ public class DocumentService : IDocumentService
                 {
                     Id = deserializedImageDto.Id,
                     LayerIndex = deserializedImageDto.LayerIndex,
+                    Rotation = deserializedImageDto.Rotation,
+                    FlipX = deserializedImageDto.FlipX,
+                    FlipY = deserializedImageDto.FlipY,
                     Bounds = SKRect.Create(
                         deserializedImageDto.X,
                         deserializedImageDto.Y,

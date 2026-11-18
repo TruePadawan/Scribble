@@ -111,7 +111,7 @@ public partial class MainView : UserControl
     {
         LoadAllTools(viewModel);
         // Ensure the canvas container gets focus so keybindings work immediately
-        Dispatcher.UIThread.Post(() => CanvasContainer.Focus());
+        Dispatcher.UIThread.Post(FocusCanvas);
 
         // Delegate keyboard input to the active tool (e.g. Esc/Enter to finalize polylines)
         CanvasContainer.KeyDown += (_, e) =>
@@ -160,6 +160,9 @@ public partial class MainView : UserControl
             }, CanExecuteKeyBinding)
         });
     }
+
+    // Return keyboard focus to the canvas and its shortcuts.
+    internal void FocusCanvas() => CanvasContainer.Focus();
 
     private void LoadAllTools(MainViewModel viewModel)
     {

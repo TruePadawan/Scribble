@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using Avalonia.Threading;
 using Scribble.Services.CanvasStateService.Handlers;
@@ -55,7 +56,16 @@ public class CanvasStateService : ICanvasStateService
         _multiUserDrawingService.CanvasStateReceived += OnCanvasStateReceived;
         _multiUserDrawingService.CanvasStateRequested += async (clientId) =>
         {
-            await _multiUserDrawingService.SendCanvasStateToClientAsync(clientId, CanvasEvents);
+            try
+            {
+                // Copy the event log on the thread that owns it.
+                var events = await Dispatcher.UIThread.InvokeAsync(() => CanvasEvents);
+                await _multiUserDrawingService.SendCanvasStateToClientAsync(clientId, events);
+            }
+            catch (Exception exception)
+            {
+                Trace.TraceError("Could not send the room canvas. {0}", exception);
+            }
         };
         _multiUserDrawingService.ConnectionStarted += () =>
         {
