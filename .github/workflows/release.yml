@@ -15,7 +15,7 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '9.0'
+          dotnet-version: '10.0.x'
 
       # Share the cache with the build job to speed things up
       - name: Cache NuGet Packages
@@ -28,7 +28,7 @@ jobs:
 
       - name: Run All Tests
         # This will fail the job if any test in the solution fails
-        run: dotnet test --verbosity normal
+        run: dotnet test --solution Scribble.slnx --verbosity normal
 
   build-and-release:
     needs: test
@@ -43,7 +43,7 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '9.0'
+          dotnet-version: '10.0.x'
 
       # CACHING STEP
       - name: Cache NuGet Packages
