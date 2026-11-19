@@ -14,6 +14,7 @@ using Scribble.IntegrationTests.Hub;
 using Scribble.Services.MultiUserDrawing;
 using Scribble.Shared.Dtos;
 using Scribble.Shared.Lib;
+using Scribble.Shared.Lib.CanvasElements.Strokes;
 using Scribble.Shared.Lib.Events;
 
 namespace Scribble.IntegrationTests.Service;
@@ -183,6 +184,10 @@ public class MultiUserDrawingServiceIntegrationTests(HubServerFixture fixture)
         var requested = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
         _aliceService.CanvasStateRequested += id => requested.TrySetResult(id);
         var roomId = Guid.NewGuid().ToString();
+        var canvas = new CanvasStateService(_bobService);
+        var stroke = AddLocalStroke(canvas);
+        AddLocalStroke(canvas);
+        canvas.Undo();
         await _aliceService.JoinRoomAsync(roomId, "Alice");
         var join = _bobService.JoinRoomAsync(roomId, "Bob");
         var token = TestContext.Current.CancellationToken;
@@ -193,6 +198,10 @@ public class MultiUserDrawingServiceIntegrationTests(HubServerFixture fixture)
             fixture.Faults.Abort(id);
         await join.WaitAsync(TimeSpan.FromSeconds(5), token);
         _bobService.Room.Should().BeNull();
+        _bobService.IsJoining.Should().BeFalse();
+        canvas.CanvasElements.Should().ContainSingle().Which.Id.Should().Be(stroke);
+        canvas.CanUndo.Should().BeTrue();
+        canvas.CanRedo.Should().BeTrue();
 
         await _bobService.JoinRoomAsync(Guid.NewGuid().ToString(), "Bob");
         _bobService.IsConnected.Should().BeTrue();
@@ -236,6 +245,7 @@ public class MultiUserDrawingServiceIntegrationTests(HubServerFixture fixture)
         var receivedEvt =
             await bobEventTcs.Task.WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken);
         receivedEvt.Should().BeOfType<EndStrokeEvent>();
+        receivedEvt.Id.Should().Be(endStrokeEvent.Id);
     }
 
     [Fact]
@@ -270,7 +280,7 @@ public class MultiUserDrawingServiceIntegrationTests(HubServerFixture fixture)
     }
 
     [Fact]
-    public async Task SendCanvasStateToClientAsync_TargetClient_CanvasStateReceivedFires()
+    public async Task SendCanvasStateToClientAsync_TargetClient_RoomCanvasReadyFires()
     {
         _aliceService.CanvasStateRequested -= _answerAliceSnapshotRequests;
         var roomId = Guid.NewGuid().ToString();
@@ -282,8 +292,8 @@ public class MultiUserDrawingServiceIntegrationTests(HubServerFixture fixture)
             aliceRequestTcs.TrySetResult(targetClientConnectionId);
         };
 
-        var bobStateTcs = new TaskCompletionSource<Queue<Event>>();
-        _bobService.CanvasStateReceived += events => { bobStateTcs.TrySetResult(events); };
+        var bobStateTcs = new TaskCompletionSource<Queue<Event>?>();
+        _bobService.RoomCanvasReady += (snapshot, _) => { bobStateTcs.TrySetResult(snapshot); };
 
         // Keep the join pending until the test supplies the host's snapshot.
         var join = _bobService.JoinRoomAsync(roomId, "Bob");
@@ -298,7 +308,121 @@ public class MultiUserDrawingServiceIntegrationTests(HubServerFixture fixture)
         var receivedQueue =
             await bobStateTcs.Task.WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken);
         receivedQueue.Should().HaveCount(1);
+        receivedQueue.Peek().Id.Should().Be(queue.Peek().Id);
         await join;
+    }
+
+    // Use a held snapshot to exercise the overlap between snapshot history and live edits.
+    [Fact]
+    public async Task JoinExistingRoom_MergesLiveStrokePointsAndClearsPreviousHistory()
+    {
+        _aliceService.CanvasStateRequested -= _answerAliceSnapshotRequests;
+        var requested = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
+        _aliceService.CanvasStateRequested += id => requested.TrySetResult(id);
+        var roomId = Guid.NewGuid().ToString();
+        var canvas = new CanvasStateService(_bobService);
+        AddLocalStroke(canvas);
+        AddLocalStroke(canvas);
+        canvas.Undo();
+        canvas.CanUndo.Should().BeTrue();
+        canvas.CanRedo.Should().BeTrue();
+        var previousEvents = canvas.CanvasEvents.Select(evt => evt.Id).ToArray();
+
+        await _aliceService.JoinRoomAsync(roomId, "Alice");
+        var join = _bobService.JoinRoomAsync(roomId, "Bob");
+        var token = TestContext.Current.CancellationToken;
+        var target = await requested.Task.WaitAsync(TimeSpan.FromSeconds(5), token);
+        _bobService.IsJoining.Should().BeTrue();
+        canvas.CanUndo.Should().BeFalse();
+        canvas.CanRedo.Should().BeFalse();
+        canvas.Undo();
+        canvas.Redo();
+        AddLocalStroke(canvas);
+        canvas.CanvasEvents.Select(evt => evt.Id).Should().Equal(previousEvents);
+
+        var action = Guid.NewGuid();
+        var stroke = Guid.NewGuid();
+        var start = new StartStrokeEvent(action, stroke, new SKPoint(5, 5), new StrokePaint(), ToolType.Pencil, []);
+        var overlap = new PencilStrokeLineToEvent(action, stroke, new SKPoint(15, 15));
+        var later = new PencilStrokeLineToEvent(action, stroke, new SKPoint(25, 25));
+        var end = new EndStrokeEvent(action);
+        await _aliceService.BroadcastEventAsync(start);
+        await _aliceService.BroadcastEventAsync(overlap);
+        await _aliceService.BroadcastEventAsync(later);
+        await _aliceService.BroadcastEventAsync(end);
+        // The snapshot represents the host's canvas before the last point arrived.
+        await _aliceService.SendCanvasStateToClientAsync(target, new Queue<Event>([start, overlap]));
+        await join.WaitAsync(TimeSpan.FromSeconds(5), token);
+
+        _bobService.IsJoining.Should().BeFalse();
+        canvas.CanvasEvents.Select(evt => evt.Id).Should().Equal(start.Id, overlap.Id, later.Id, end.Id);
+        var drawing = canvas.CanvasElements.Should().ContainSingle().Which
+            .Should().BeOfType<DrawStroke>().Which;
+        drawing.RawPoints.Select(point => point.Point).Should().Equal(start.StartPoint, overlap.Point, later.Point);
+        canvas.CanUndo.Should().BeFalse();
+        canvas.CanRedo.Should().BeFalse();
+
+        // A copy that arrives after synchronization should also be ignored.
+        var duplicateReceived = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        _bobService.EventReceived += evt =>
+        {
+            if (evt.Id == overlap.Id) duplicateReceived.TrySetResult();
+        };
+        await _aliceService.BroadcastEventAsync(overlap);
+        await duplicateReceived.Task.WaitAsync(TimeSpan.FromSeconds(5), token);
+        canvas.CanvasEvents.Select(evt => evt.Id).Should().Equal(start.Id, overlap.Id, later.Id, end.Id);
+    }
+
+    // A room without a host starts from the first member's current canvas.
+    [Fact]
+    public async Task JoinEmptyRoom_KeepsSoloCanvasAndUndoHistory()
+    {
+        var canvas = new CanvasStateService(_aliceService);
+        var stroke = AddLocalStroke(canvas);
+
+        await _aliceService.JoinRoomAsync(Guid.NewGuid().ToString(), "Alice");
+
+        _aliceService.Room.Should().NotBeNull();
+        canvas.CanvasElements.Should().ContainSingle().Which.Id.Should().Be(stroke);
+        canvas.CanUndo.Should().BeTrue();
+        canvas.Undo();
+        canvas.CanvasElements.Should().BeEmpty();
+    }
+
+    // A server-confirmed join with an unusable snapshot must preserve the solo board.
+    [Fact]
+    public async Task JoinExistingRoom_InvalidSnapshot_KeepsSoloCanvasAndUndoHistory()
+    {
+        var token = TestContext.Current.CancellationToken;
+        var roomId = Guid.NewGuid().ToString();
+        await using var host = fixture.CreateHubConnection();
+        await host.StartAsync(token);
+        await host.InvokeAsync("JoinRoom", roomId, "Host", token);
+        var requested = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var request = host.On<string>("RequestCanvasState", id => { requested.TrySetResult(id); });
+
+        var canvas = new CanvasStateService(_bobService);
+        var stroke = AddLocalStroke(canvas);
+        var join = _bobService.JoinRoomAsync(roomId, "Bob");
+        var target = await requested.Task.WaitAsync(TimeSpan.FromSeconds(5), token);
+        await host.InvokeAsync("SendCanvasStateToClient", target, "{invalid json", token);
+        await join.WaitAsync(TimeSpan.FromSeconds(5), token);
+
+        _bobService.IsJoining.Should().BeFalse();
+        _bobService.Room.Should().BeNull();
+        canvas.CanvasElements.Should().ContainSingle().Which.Id.Should().Be(stroke);
+        canvas.CanUndo.Should().BeTrue();
+    }
+
+    // Build a complete local stroke so the canvas has an undoable action.
+    private static Guid AddLocalStroke(CanvasStateService canvas)
+    {
+        var action = Guid.NewGuid();
+        var stroke = Guid.NewGuid();
+        canvas.ApplyEvent(new StartStrokeEvent(action, stroke, new SKPoint(5, 5),
+            new StrokePaint(), ToolType.Pencil, []));
+        canvas.ApplyEvent(new EndStrokeEvent(action));
+        return stroke;
     }
 
     // -- Room membership events --
