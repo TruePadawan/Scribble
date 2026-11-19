@@ -121,6 +121,17 @@ public static class Utilities
         return SKPoint.Distance(point, closest) < tolerance;
     }
 
+    // Return the axis-aligned world bounds of an image as drawn.
+    internal static SKRect GetImageWorldBounds(CanvasImage image)
+    {
+        var bounds = image.Bounds;
+        if (image.Rotation == 0f) return bounds;
+
+        // Centered flips leave the outer bounds unchanged.
+        var rotation = SKMatrix.CreateRotation(image.Rotation, bounds.MidX, bounds.MidY);
+        return rotation.MapRect(bounds);
+    }
+
     /// <summary>
     /// Returns the combined bounds of the elements
     /// </summary>
@@ -145,13 +156,14 @@ public static class Utilities
             }
             else if (element is CanvasImage canvasImage)
             {
+                var imageBounds = GetImageWorldBounds(canvasImage);
                 if (totalBounds.IsEmpty)
                 {
-                    totalBounds = canvasImage.Bounds;
+                    totalBounds = imageBounds;
                 }
                 else
                 {
-                    totalBounds.Union(canvasImage.Bounds);
+                    totalBounds.Union(imageBounds);
                 }
             }
         }

@@ -48,7 +48,8 @@ public class SkiaCanvas : Control
     private static readonly SKPaint LowOpacityPaint = new()
         { Color = SKColors.Black.WithAlpha(80) };
 
-    private static bool IsCanvasElementVisible(CanvasElement element, SKRect visibleWorldRect)
+    // Cull elements using their visible bounds in world coordinates.
+    internal static bool IsCanvasElementVisible(CanvasElement element, SKRect visibleWorldRect)
     {
         SKRect elementBounds;
         switch (element)
@@ -57,7 +58,7 @@ public class SkiaCanvas : Control
                 elementBounds = stroke.Path.Bounds;
                 break;
             case CanvasImage image:
-                elementBounds = image.Bounds;
+                elementBounds = Utilities.GetImageWorldBounds(image);
                 break;
             default:
                 // Unknown element type, draw it to be safe

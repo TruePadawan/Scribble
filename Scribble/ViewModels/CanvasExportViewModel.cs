@@ -155,7 +155,8 @@ public partial class CanvasExportViewModel : ViewModelBase
         await clipboard.SetBitmapAsync(PreviewImage);
     }
 
-    private byte[]? GetImageData(
+    // Render the requested elements into an encoded image.
+    internal static byte[]? GetImageData(
         List<CanvasElement> elements,
         bool includeBackground,
         SKColor backgroundColor,
