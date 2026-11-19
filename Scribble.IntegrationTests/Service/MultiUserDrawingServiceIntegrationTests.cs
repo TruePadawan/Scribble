@@ -1,3 +1,14 @@
+using Avalonia.Headless.XUnit;
+using Avalonia.Threading;
+using NSubstitute;
+using Scribble.Services.AutoSaveService;
+using Scribble.Services.CanvasStateService;
+using Scribble.Services.DialogService;
+using Scribble.Services.DocumentService;
+using Scribble.ViewModels;
+using SkiaSharp;
+using System.Text.Json;
+using Microsoft.AspNetCore.SignalR.Client;
 using FluentAssertions;
 using Scribble.IntegrationTests.Hub;
 using Scribble.Services.MultiUserDrawing;
@@ -18,8 +29,8 @@ public class MultiUserDrawingServiceIntegrationTests(HubServerFixture fixture)
     public ValueTask InitializeAsync()
     {
         // Leverage the internal constructor to bypass standard network pipeline
-        _aliceService = new MultiUserDrawingService(fixture.CreateHubConnection());
-        _bobService = new MultiUserDrawingService(fixture.CreateHubConnection());
+        _aliceService = new MultiUserDrawingService(fixture.CreateHubConnection);
+        _bobService = new MultiUserDrawingService(fixture.CreateHubConnection);
         // Give ordinary join tests a host that responds with an empty canvas.
         _answerAliceSnapshotRequests = targetId => _ = _aliceService.SendCanvasStateToClientAsync(targetId, new());
         _aliceService.CanvasStateRequested += _answerAliceSnapshotRequests;
@@ -100,12 +111,111 @@ public class MultiUserDrawingServiceIntegrationTests(HubServerFixture fixture)
     [Fact]
     public async Task JoinRoomAsync_InvalidServer_RoomRemainsNull()
     {
-        var invalidService = new MultiUserDrawingService("http://localhost:9999/badurl");
+        var invalidService = new MultiUserDrawingService(() =>
+            new HubConnectionBuilder().WithUrl("http://localhost:9999/badurl").Build());
 
         await invalidService.JoinRoomAsync("room", "Alice");
 
         invalidService.Room.Should().BeNull();
         invalidService.IsConnected.Should().BeFalse();
+    }
+
+    // Exercise the desktop notification path and real recovery file after a server-side abort.
+    [AvaloniaFact]
+    public async Task ServerDisconnect_PreservesCanvasAndResumesSoloAutosave()
+    {
+        var token = TestContext.Current.CancellationToken;
+        var service = new MultiUserDrawingService(fixture.CreateHubConnection, Dispatcher.UIThread);
+        var canvas = new CanvasStateService(service);
+        var viewModel = new MultiUserDrawingViewModel(service, Substitute.For<IDialogService>(), canvas);
+        var directory = Directory.CreateTempSubdirectory("scribble-disconnect-");
+        using var autosave = new AutoSaveService(canvas, new DocumentService(canvas), service,
+            directory.FullName, TimeSpan.FromMilliseconds(20), dispatcher: Dispatcher.UIThread);
+        var stopped = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        service.ConnectionStopped += () =>
+        {
+            Dispatcher.UIThread.VerifyAccess();
+            stopped.TrySetResult();
+        };
+
+        try
+        {
+            await service.JoinRoomAsync(Guid.NewGuid().ToString(), "Alice");
+            viewModel.IsLive.Should().BeTrue();
+            var oldConnection = service.ConnectionId!;
+            var stroke = Guid.NewGuid();
+            canvas.ApplyEvent(new StartStrokeEvent(Guid.NewGuid(), stroke, new SKPoint(5, 5),
+                new StrokePaint(), ToolType.Pencil, []));
+            fixture.Faults.Abort(oldConnection);
+            await stopped.Task.WaitAsync(TimeSpan.FromSeconds(5), token);
+
+            viewModel.IsLive.Should().BeFalse();
+            service.Room.Should().BeNull();
+            canvas.CanvasElements.Should().ContainSingle().Which.Id.Should().Be(stroke);
+            canvas.SetBackgroundColor(SKColors.Blue);
+            var file = Path.Combine(directory.FullName, "Scribble", "autosave.scribble");
+            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(token);
+            timeout.CancelAfter(TimeSpan.FromSeconds(5));
+            while (!File.Exists(file)) await Task.Delay(10, timeout.Token);
+            using var recovery = JsonDocument.Parse(await File.ReadAllTextAsync(file, token));
+            recovery.RootElement.GetProperty("backgroundColor").GetString().Should().Be(SKColors.Blue.ToString());
+            recovery.RootElement.GetProperty("elements").GetProperty("strokes")[0].GetProperty("Id")
+                .GetGuid().Should().Be(stroke);
+
+            await service.JoinRoomAsync(Guid.NewGuid().ToString(), "Alice");
+            service.ConnectionId.Should().NotBe(oldConnection);
+            viewModel.IsLive.Should().BeTrue();
+        }
+        finally
+        {
+            await service.LeaveRoomAsync("Alice");
+            autosave.Dispose();
+            directory.Delete(true);
+        }
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task DisconnectDuringJoin_ClearsPendingRoomAndAllowsRejoin(bool leaveExplicitly)
+    {
+        _aliceService.CanvasStateRequested -= _answerAliceSnapshotRequests;
+        var requested = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
+        _aliceService.CanvasStateRequested += id => requested.TrySetResult(id);
+        var roomId = Guid.NewGuid().ToString();
+        await _aliceService.JoinRoomAsync(roomId, "Alice");
+        var join = _bobService.JoinRoomAsync(roomId, "Bob");
+        var token = TestContext.Current.CancellationToken;
+        var id = await requested.Task.WaitAsync(TimeSpan.FromSeconds(5), token);
+        if (leaveExplicitly)
+            await _bobService.LeaveRoomAsync("Bob").WaitAsync(TimeSpan.FromSeconds(5), token);
+        else
+            fixture.Faults.Abort(id);
+        await join.WaitAsync(TimeSpan.FromSeconds(5), token);
+        _bobService.Room.Should().BeNull();
+
+        await _bobService.JoinRoomAsync(Guid.NewGuid().ToString(), "Bob");
+        _bobService.IsConnected.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task DisconnectDuringLeave_PublishesCleanupOnce()
+    {
+        var roomCleared = 0;
+        var stopped = 0;
+        await _aliceService.JoinRoomAsync(Guid.NewGuid().ToString(), "Alice");
+        _aliceService.RoomChanged += room =>
+        {
+            if (room is null) Interlocked.Increment(ref roomCleared);
+        };
+        _aliceService.ConnectionStopped += () => Interlocked.Increment(ref stopped);
+        fixture.Faults.AbortOnLeave(_aliceService.ConnectionId!);
+        await _aliceService.LeaveRoomAsync("Alice");
+        await _aliceService.JoinRoomAsync(Guid.NewGuid().ToString(), "Alice");
+
+        roomCleared.Should().Be(1);
+        stopped.Should().Be(1);
+        _aliceService.Room.Should().NotBeNull();
     }
 
     // -- Event Relay --
