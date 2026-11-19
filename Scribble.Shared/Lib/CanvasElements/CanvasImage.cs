@@ -52,6 +52,13 @@ public class CanvasImage : CanvasElement, IClonable, ISelectable
         return _cachedBitmap;
     }
 
+    // Release the decoded bitmap owned by a detached snapshot.
+    public void ReleaseCachedBitmap()
+    {
+        _cachedBitmap?.Dispose();
+        _cachedBitmap = null;
+    }
+
     public CanvasElement Clone(bool preserveId = false)
     {
         var clone = new CanvasImage

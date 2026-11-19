@@ -78,6 +78,7 @@ public partial class MainView : UserControl
     {
         if (_viewModel != null)
         {
+            _viewModel.CanvasExportViewModel.CloseExport();
             _viewModel.RequestRefreshSelection -= VisualizeSelection;
             _viewModel.RequestInvalidateSkiaCanvas -= MainCanvas.InvalidateVisual;
             _viewModel.RequestInvalidateSkiaCanvas -= MarkTextStrokesForEditing;
@@ -744,6 +745,7 @@ public partial class MainView : UserControl
     {
         ExportImageWindow.IsVisible = false;
         ExportImageWindowOverlay.IsVisible = false;
+        _viewModel?.CanvasExportViewModel.CloseExport();
 
         Dispatcher.UIThread.Post(() => CanvasContainer.Focus());
     }
@@ -1247,7 +1249,7 @@ public partial class MainView : UserControl
     private void ExportMenuOption_OnClick(object? sender, RoutedEventArgs? e)
     {
         CloseMenu();
-        _viewModel?.CanvasExportViewModel.UpdateCanvasPreview();
+        _viewModel?.CanvasExportViewModel.OpenExport();
         ExportImageWindow.IsVisible = true;
         ExportImageWindowOverlay.IsVisible = true;
     }
