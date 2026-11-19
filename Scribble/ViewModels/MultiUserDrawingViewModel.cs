@@ -3,7 +3,6 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading.Tasks;
 using Avalonia.Media;
-using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Scribble.Services.CanvasStateService;
@@ -79,17 +78,15 @@ public partial class MultiUserDrawingViewModel : ViewModelBase
             // Clear all messages after leaving a room
             if (room == null)
             {
-                Dispatcher.UIThread.Post(() => Messages.Clear());
+                Messages.Clear();
             }
         };
-        _multiUserDrawingService.MessageReceived += message =>
-        {
-            Dispatcher.UIThread.Post(() => Messages.Add(new ChatMessage(message)));
-        };
+        _multiUserDrawingService.MessageReceived += message => { Messages.Add(new ChatMessage(message)); };
         _multiUserDrawingService.MessageSent += messageId =>
         {
             // Update the sent status of the chat message
-            Dispatcher.UIThread.Post(() => { Messages.First(message => message.Id == messageId).IsSent = true; });
+            var message = Messages.FirstOrDefault(item => item.Id == messageId);
+            message?.IsSent = true;
         };
     }
 
@@ -143,7 +140,7 @@ public partial class MultiUserDrawingViewModel : ViewModelBase
         {
             IsSent = false
         };
-        Dispatcher.UIThread.Post(() => Messages.Add(chatMessage));
+        Messages.Add(chatMessage);
         Message = string.Empty;
 
         await _multiUserDrawingService.BroadcastMessageAsync(new MessageDto(messageId, ClientDisplayName,

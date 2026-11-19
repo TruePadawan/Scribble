@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using Avalonia.Threading;
 using Scribble.Services.CanvasStateService.Handlers;
 using Scribble.Services.CanvasStateService.State;
 using Scribble.Services.MultiUserDrawing;
@@ -58,9 +57,8 @@ public class CanvasStateService : ICanvasStateService
         {
             try
             {
-                // Copy the event log on the thread that owns it.
-                var events = await Dispatcher.UIThread.InvokeAsync(() => CanvasEvents);
-                await _multiUserDrawingService.SendCanvasStateToClientAsync(clientId, events);
+                // Network notifications arrive on the UI thread, which owns the event log.
+                await _multiUserDrawingService.SendCanvasStateToClientAsync(clientId, CanvasEvents);
             }
             catch (Exception exception)
             {
@@ -71,6 +69,8 @@ public class CanvasStateService : ICanvasStateService
         {
             CurrentState.MyConnectionId = _multiUserDrawingService.ConnectionId;
         };
+
+        _multiUserDrawingService.ConnectionStopped += () => CurrentState.MyConnectionId = null;
 
         _dispatcher = new EventReplayDispatcher(
             new StrokeReplayHandler(),
@@ -168,23 +168,20 @@ public class CanvasStateService : ICanvasStateService
     // Event handler for when another client in the room draws something
     private void OnNetworkEventReceived(Event @event)
     {
-        Dispatcher.UIThread.Post(() => { ProcessEvent(@event); });
+        ProcessEvent(@event);
     }
 
     // Event handler for processing the canvas state snapshot received from the room's host
     private void OnCanvasStateReceived(Queue<Event> events)
     {
-        Dispatcher.UIThread.Post(() =>
+        _eventLog = new EventLog();
+        _checkpointManager = new CheckpointManager();
+        foreach (var ev in events)
         {
-            _eventLog = new EventLog();
-            _checkpointManager = new CheckpointManager();
-            foreach (var ev in events)
-            {
-                _eventLog.Append(ev);
-            }
+            _eventLog.Append(ev);
+        }
 
-            ReplayEvents();
-        });
+        ReplayEvents();
     }
 
     /// <summary>

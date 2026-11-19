@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
+using Avalonia.Threading;
 using Microsoft.AspNetCore.SignalR.Client;
 using Scribble.Shared.Dtos;
 using Scribble.Shared.Lib;
@@ -10,13 +12,17 @@ namespace Scribble.Services.MultiUserDrawing;
 
 public class MultiUserDrawingService : IMultiUserDrawingService
 {
-    private readonly HubConnection _connection;
-    public MultiUserDrawingRoom? Room { get; private set; }
-    public event Action<MultiUserDrawingRoom?>? RoomChanged;
-    public bool IsConnected => _connection.State == HubConnectionState.Connected;
-    public string? ConnectionId => _connection.ConnectionId;
+    private readonly Func<HubConnection> _createConnection;
+    private readonly Dispatcher? _dispatcher;
+    private readonly Lock _gate = new();
+    private volatile HubConnection? _connection;
+    private volatile MultiUserDrawingRoom? _room;
+    private bool _joinPending;
+    public MultiUserDrawingRoom? Room => _room;
+    public bool IsConnected => _connection?.State == HubConnectionState.Connected;
+    public string? ConnectionId => _connection?.ConnectionId;
 
-    // Network Events
+    public event Action<MultiUserDrawingRoom?>? RoomChanged;
     public event Action? ConnectionStarted;
     public event Action? ConnectionStopped;
     public event Action<Event>? EventReceived;
@@ -28,170 +34,175 @@ public class MultiUserDrawingService : IMultiUserDrawingService
     public event Action<string>? MessageSent;
 
     public MultiUserDrawingService(string serverUrl)
+        : this(() => new HubConnectionBuilder().WithUrl(serverUrl).Build(), Dispatcher.UIThread)
     {
-        _connection = new HubConnectionBuilder().WithUrl(serverUrl).Build();
-        RegisterEventHandlers();
     }
 
-    internal MultiUserDrawingService(HubConnection connection)
+    internal MultiUserDrawingService(Func<HubConnection> createConnection, Dispatcher? dispatcher = null)
     {
-        _connection = connection;
-        RegisterEventHandlers();
+        _createConnection = createConnection;
+        _dispatcher = dispatcher;
     }
 
-    private void RegisterEventHandlers()
+    // Recheck the session when queued UI work actually runs.
+    private async Task ForSessionAsync(HubConnection connection, Action action)
     {
-        // Listen for draw events from others in the room
-        _connection.On<Event>("ReceiveEvent", @event => { EventReceived?.Invoke(@event); });
-
-        // Only relevant when this client is the host, listens for requests for the canvas state from other clients
-        _connection.On<string>("RequestCanvasState", clientId => CanvasStateRequested?.Invoke(clientId));
-
-        // We're a new client joining a room, listens for the response from the host carrying the canvas state
-        _connection.On<string>("ReceiveCanvasState", serializedEvents =>
+        void Run()
         {
-            var events = JsonSerializer.Deserialize<Queue<Event>>(serializedEvents);
-            if (events != null)
+            lock (_gate)
             {
-                CanvasStateReceived?.Invoke(events);
+                if (connection == _connection) action();
+            }
+        }
+
+        if (_dispatcher is null || _dispatcher.CheckAccess()) Run();
+        else await _dispatcher.InvokeAsync(Run);
+    }
+
+    private void RegisterEventHandlers(HubConnection connection)
+    {
+        // Each handler belongs to this transport, including after a later rejoin.
+        connection.Closed += _ => EndSessionAsync(connection);
+        connection.On<Event>("ReceiveEvent", evt =>
+            ForSessionAsync(connection, () => EventReceived?.Invoke(evt)));
+        connection.On<string>("RequestCanvasState", target =>
+            ForSessionAsync(connection, () => CanvasStateRequested?.Invoke(target)));
+        connection.On<string>("ReceiveCanvasState", serialized =>
+        {
+            var events = JsonSerializer.Deserialize<Queue<Event>>(serialized);
+            return ForSessionAsync(connection, () =>
+            {
+                if (events != null) CanvasStateReceived?.Invoke(events);
+            });
+        });
+        connection.On<MultiUserDrawingClient, List<MultiUserDrawingClient>>("ClientJoined", (client, clients) =>
+            ForSessionAsync(connection, () => UpdateRoster(client, clients, ClientJoinedRoom)));
+        connection.On<MultiUserDrawingClient, List<MultiUserDrawingClient>>("ClientLeft", (client, clients) =>
+            ForSessionAsync(connection, () => UpdateRoster(client, clients, ClientLeftRoom)));
+        connection.On<Message>("ReceiveMessage", message =>
+            ForSessionAsync(connection, () => MessageReceived?.Invoke(message)));
+        connection.On<string>("MessageSent", id =>
+            ForSessionAsync(connection, () => MessageSent?.Invoke(id)));
+    }
+
+    // Replace the room's member list and notify listeners of the join or leave.
+    private void UpdateRoster(MultiUserDrawingClient client, List<MultiUserDrawingClient> clients,
+        Action<MultiUserDrawingClient, List<MultiUserDrawingClient>>? notify)
+    {
+        if (_room is not { } room) return;
+        _room = new MultiUserDrawingRoom(room.RoomId, room.Me.ConnectionId, room.Me.Name) { Clients = clients };
+        notify?.Invoke(client, clients);
+        RoomChanged?.Invoke(_room);
+    }
+
+    // Close, failed join, and explicit leave can all finish the same session.
+    private async Task EndSessionAsync(HubConnection connection)
+    {
+        var ownsCleanup = false;
+        await ForSessionAsync(connection, () =>
+        {
+            ownsCleanup = true;
+            _connection = null;
+            _joinPending = false;
+            var hadRoom = _room != null;
+            _room = null;
+            if (hadRoom)
+            {
+                RoomChanged?.Invoke(null);
+                ConnectionStopped?.Invoke();
             }
         });
 
-        // listens for broadcasts that a client joined the room
-        _connection.On<MultiUserDrawingClient, List<MultiUserDrawingClient>>("ClientJoined",
-            (client, usersInRoom) =>
-            {
-                ClientJoinedRoom?.Invoke(client, usersInRoom);
-                RefreshRoomClients(client, usersInRoom);
-            });
-
-        // listens for broadcasts that a client left the room
-        _connection.On<MultiUserDrawingClient, List<MultiUserDrawingClient>>("ClientLeft",
-            (client, usersInRoom) =>
-            {
-                ClientLeftRoom?.Invoke(client, usersInRoom);
-                RefreshRoomClients(client, usersInRoom);
-            });
-
-        // listens for broadcasts that a client sent a message
-        _connection.On<Message>("ReceiveMessage", message => MessageReceived?.Invoke(message));
-
-        _connection.On<string>("MessageSent", messageId => MessageSent?.Invoke(messageId));
+        if (ownsCleanup) await connection.DisposeAsync();
     }
 
-    // Starts a connection to the SignalR server
-    private async Task StartAsync()
-    {
-        if (IsConnected) return;
-        await _connection.StartAsync();
-        ConnectionStarted?.Invoke();
-    }
-
-    // Kill the SignalR connection
-    private async Task StopAsync()
-    {
-        await _connection.StopAsync();
-        ConnectionStopped?.Invoke();
-    }
-
-    /// <summary>
-    /// Joins a room
-    /// </summary>
-    /// <param name="roomId">Room ID</param>
-    /// <param name="displayName">Client's display name</param>
     public async Task JoinRoomAsync(string roomId, string displayName)
     {
+        HubConnection connection;
+        lock (_gate)
+        {
+            if (_connection != null) return;
+            connection = _createConnection();
+            RegisterEventHandlers(connection);
+            _connection = connection;
+            _joinPending = true;
+        }
+
         try
         {
-            await StartAsync();
-            if (ConnectionId == null) return;
-
-            // Initialize Room early before invoking JoinRoom on the server
-            // so that the client can respond to ClientJoined/ClientLeft immediately
-            Room = new MultiUserDrawingRoom(roomId, ConnectionId, displayName);
-            RoomChanged?.Invoke(Room);
-
-            await _connection.InvokeAsync("JoinRoom", roomId, displayName);
+            await connection.StartAsync();
+            await ForSessionAsync(connection, () =>
+            {
+                var id = connection.ConnectionId ?? throw new InvalidOperationException("Room connection closed.");
+                _room = new MultiUserDrawingRoom(roomId, id, displayName);
+                ConnectionStarted?.Invoke();
+                RoomChanged?.Invoke(_room);
+            });
+            await connection.InvokeAsync("JoinRoom", roomId, displayName);
+            lock (_gate)
+            {
+                if (_connection == connection) _joinPending = false;
+            }
         }
         catch (Exception e)
         {
             Console.WriteLine($"Failed to join room - {e.Message}");
-            await StopAsync();
-
-            Room = null;
-            RoomChanged?.Invoke(null);
+            await EndSessionAsync(connection);
         }
     }
 
-    /// <summary>
-    /// Leaves a room
-    /// </summary>
     public async Task LeaveRoomAsync(string displayName)
     {
+        HubConnection connection;
+        MultiUserDrawingRoom? joinedRoom;
+        lock (_gate)
+        {
+            if (_connection is null) return;
+            connection = _connection;
+            // Closing the transport cancels a join still waiting on the host.
+            joinedRoom = _joinPending ? null : _room;
+        }
+
         try
         {
-            if (Room != null && IsConnected)
+            if (joinedRoom != null && connection.State == HubConnectionState.Connected)
             {
-                await _connection.InvokeAsync("LeaveRoom", Room.RoomId, displayName);
-                await StopAsync();
-                Room = null;
-                RoomChanged?.Invoke(null);
+                await connection.InvokeAsync("LeaveRoom", joinedRoom.RoomId, displayName);
             }
         }
         catch (Exception e)
         {
-            Console.WriteLine(e);
-            Console.WriteLine($"Failed to leave room, Hub connection state - {_connection.State}");
+            Console.WriteLine($"Failed to leave room - {e.Message}");
+        }
+        finally
+        {
+            await EndSessionAsync(connection);
         }
     }
 
-    /// <summary>
-    /// Broadcasts an event to all other clients in a room
-    /// </summary>
-    /// <param name="evt">Event to be broadcast</param>
-    public async Task BroadcastEventAsync(Event evt)
+    public Task BroadcastEventAsync(Event evt)
     {
-        if (Room != null && IsConnected)
-        {
-            await _connection.InvokeAsync("SendEvent", Room.RoomId, evt);
-        }
+        var connection = _connection;
+        var room = Room;
+        return room != null && connection?.ConnectionId == room.Me.ConnectionId
+            ? connection.InvokeAsync("SendEvent", room.RoomId, evt)
+            : Task.CompletedTask;
     }
 
-    /// <summary>
-    /// Sends the canvas state to a specific client
-    /// </summary>
-    /// <param name="targetId">Target client's connection ID</param>
-    /// <param name="events">Latest queue of events in the room</param>
-    public async Task SendCanvasStateToClientAsync(string targetId, Queue<Event> events)
+    public Task SendCanvasStateToClientAsync(string targetId, Queue<Event> events)
     {
-        if (_connection.State == HubConnectionState.Connected)
-        {
-            var serializedEvents = JsonSerializer.Serialize(events);
-            await _connection.InvokeAsync("SendCanvasStateToClient", targetId, serializedEvents);
-        }
+        var connection = _connection;
+        return connection?.State == HubConnectionState.Connected
+            ? connection.InvokeAsync("SendCanvasStateToClient", targetId, JsonSerializer.Serialize(events))
+            : Task.CompletedTask;
     }
 
-    /// <summary>
-    /// Refreshes the room clients list
-    /// </summary>
-    /// <param name="client"></param>
-    /// <param name="clients"></param>
-    private void RefreshRoomClients(MultiUserDrawingClient client, List<MultiUserDrawingClient> clients)
+    public Task BroadcastMessageAsync(MessageDto message)
     {
-        if (Room == null || ConnectionId == null) return;
-        Room = new MultiUserDrawingRoom(Room.RoomId, ConnectionId, Room.Me.Name)
-        {
-            Clients = clients
-        };
-        RoomChanged?.Invoke(Room);
-        Console.WriteLine($"{client.Name} Joined");
-    }
-
-    public async Task BroadcastMessageAsync(MessageDto message)
-    {
-        if (Room != null && IsConnected)
-        {
-            await _connection.InvokeAsync("SendMessage", Room.RoomId, message);
-        }
+        var connection = _connection;
+        var room = Room;
+        return room != null && connection?.ConnectionId == room.Me.ConnectionId
+            ? connection.InvokeAsync("SendMessage", room.RoomId, message)
+            : Task.CompletedTask;
     }
 }

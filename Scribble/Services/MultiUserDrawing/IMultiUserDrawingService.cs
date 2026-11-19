@@ -12,7 +12,7 @@ public interface IMultiUserDrawingService
     bool IsConnected { get; }
     string? ConnectionId { get; }
 
-    // Network events
+    // The desktop service delivers lifecycle and network notifications on the UI thread.
     event Action? ConnectionStarted;
     event Action? ConnectionStopped;
     event Action<Event>? EventReceived;
