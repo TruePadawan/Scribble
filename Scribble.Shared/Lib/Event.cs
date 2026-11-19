@@ -43,7 +43,8 @@ namespace Scribble.Shared.Lib;
 [JsonDerivedType(typeof(EraseByIdsEvent), typeDiscriminator: "EraseByIdsEvent")]
 public abstract record Event(Guid ActionId)
 {
-    public Guid Id { get; } = Guid.NewGuid();
+    // Preserve this identity when an event travels through SignalR or a room snapshot.
+    public Guid Id { get; init; } = Guid.NewGuid();
     public DateTime TimeStamp { get; init; } = DateTime.UtcNow;
 
     /// <summary>
