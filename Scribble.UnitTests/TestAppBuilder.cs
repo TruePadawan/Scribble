@@ -10,5 +10,7 @@ public class TestAppBuilder
 {
     public static AppBuilder BuildAvaloniaApp() =>
         AppBuilder.Configure<HeadlessApp>()
-            .UseHeadless(new AvaloniaHeadlessPlatformOptions());
+            // Decode bitmaps at their actual size for export and clipboard tests.
+            .UseSkia()
+            .UseHeadless(new AvaloniaHeadlessPlatformOptions { UseHeadlessDrawing = false });
 }

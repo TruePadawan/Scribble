@@ -1,4 +1,6 @@
+using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -27,11 +29,31 @@ public partial class CanvasExportViewModel : ViewModelBase
     [ObservableProperty] private Bitmap? _previewImage;
     [ObservableProperty] private bool _includeBackground;
 
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasOutputDimensions))]
+    private string? _outputDimensions;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasExportError))]
+    private string? _exportError;
+
+    private const int PreviewMaxEdge = 1_024;
+    private const int OutputMaxEdge = 16_384;
+    // One RGBA surface at this limit uses 64 MiB before encoding.
+    private const long OutputMaxPixels = 16_777_216;
+    private const double Padding = 20;
+
     private readonly IFileService _fileService;
     private readonly ICanvasStateService _canvasStateService;
 
     private DocumentSnapshot? _snapshot;
-    private byte[]? _previewPng;
+    private bool _outputFits;
+
+    // Show dimensions when the dialog contains exportable elements.
+    public bool HasOutputDimensions => OutputDimensions is not null;
+
+    // Show an inline error when rendering or validation fails.
+    public bool HasExportError => ExportError is not null;
 
     // Refresh the current snapshot when the background option changes.
     partial void OnIncludeBackgroundChanged(bool value) => UpdateCanvasPreview();
@@ -71,35 +93,70 @@ public partial class CanvasExportViewModel : ViewModelBase
     {
         _snapshot?.Dispose();
         _snapshot = null;
+        _outputFits = false;
+        OutputDimensions = null;
+        ExportError = null;
         SetPreview(null);
     }
 
     // Limit the snapshot to elements that the export renderer can draw.
     private static bool IsExportable(CanvasElement element) => element is PaintableStroke or CanvasImage;
 
-    // Render the open snapshot using the current export options.
+    // Fit the complete canvas in a small preview and validate the requested output separately.
     private void UpdateCanvasPreview()
     {
-        SetPreview(_snapshot is { } snapshot
-            ? GetImageData(snapshot.Elements, IncludeBackground, snapshot.BackgroundColor, ImageScale,
-                SKEncodedImageFormat.Png)
-            : null);
+        if (_snapshot is not { Elements.Count: > 0 } snapshot) return;
+
+        var bounds = Utilities.GetElementsBounds(snapshot.Elements);
+        var (width, height) = GetPaddedSize(bounds);
+        var outputWidth = Math.Ceiling(width * ImageScale);
+        var outputHeight = Math.Ceiling(height * ImageScale);
+        _outputFits = ValidateOutputSize(outputWidth, outputHeight) is not null;
+        if (!IsPositiveSize(outputWidth, outputHeight))
+        {
+            OutputDimensions = null;
+            ExportError = "The canvas has invalid export dimensions.";
+            SetPreview(null);
+            return;
+        }
+
+        OutputDimensions = $"{outputWidth:N0} × {outputHeight:N0} px";
+        ExportError = _outputFits ? null : "Image is too large. Try a smaller selection or lower scale.";
+
+        Bitmap? bitmap = null;
+        try
+        {
+            var scale = Math.Min(ImageScale, PreviewMaxEdge / Math.Max(width, height));
+            // Clamp after rounding to guard against floating-point error at the cap.
+            var size = new SKSizeI(
+                (int)Math.Clamp(Math.Ceiling(width * scale), 1, PreviewMaxEdge),
+                (int)Math.Clamp(Math.Ceiling(height * scale), 1, PreviewMaxEdge));
+            var encoded = RenderImage(snapshot.Elements, bounds, size, scale, IncludeBackground,
+                snapshot.BackgroundColor, SKEncodedImageFormat.Png);
+            if (encoded is not null) bitmap = DecodeBitmap(encoded);
+        }
+        catch (Exception exception)
+        {
+            Trace.TraceError("Could not render the export preview. {0}", exception);
+        }
+
+        if (bitmap is null) ReportRenderError();
+        SetPreview(bitmap);
     }
 
-    // Keep the encoded PNG alongside its preview so saving does not re-encode it.
-    private void SetPreview(byte[]? encoded)
+    // Replace the preview and release its previous native bitmap.
+    private void SetPreview(Bitmap? bitmap)
     {
         var previous = PreviewImage;
-        _previewPng = encoded;
-        PreviewImage = encoded is null ? null : DecodeBitmap(encoded);
+        PreviewImage = bitmap;
         previous?.Dispose();
         ExportCanvasToPngCommand.NotifyCanExecuteChanged();
         ExportCanvasToJpegCommand.NotifyCanExecuteChanged();
         CopyCanvasToClipboardCommand.NotifyCanExecuteChanged();
     }
 
-    // Enable export commands once the snapshot has rendered successfully.
-    private bool CanExport() => _previewPng is not null;
+    // Enable output only when the requested dimensions fit and a preview is available.
+    private bool CanExport() => _outputFits && PreviewImage is not null;
 
     // Decode the PNG for display or clipboard use.
     private static Bitmap DecodeBitmap(byte[] encoded)
@@ -108,19 +165,44 @@ public partial class CanvasExportViewModel : ViewModelBase
         return new Bitmap(stream);
     }
 
+    // Use the same inline feedback for preview and output render failures.
+    private void ReportRenderError()
+    {
+        ExportError ??= "Could not render the image. Try a smaller selection or lower scale.";
+    }
+
+    // Encode at the selected output scale, independently of the preview.
+    private byte[]? RenderOutput(SKEncodedImageFormat format)
+    {
+        if (_snapshot is not { } snapshot || !CanExport()) return null;
+
+        ExportError = null;
+        try
+        {
+            var encoded = GetImageData(snapshot.Elements, IncludeBackground, snapshot.BackgroundColor, ImageScale,
+                format);
+            if (encoded is not null) return encoded;
+        }
+        catch (Exception exception)
+        {
+            Trace.TraceError("Could not render the export image. {0}", exception);
+        }
+
+        ReportRenderError();
+        return null;
+    }
+
     [RelayCommand(CanExecute = nameof(CanExport))]
     private Task ExportCanvasToPngAsync()
     {
-        return _previewPng is { } encoded ? SaveImageAsync(encoded, "PNG", ".png") : Task.CompletedTask;
+        var encoded = RenderOutput(SKEncodedImageFormat.Png);
+        return encoded is null ? Task.CompletedTask : SaveImageAsync(encoded, "PNG", ".png");
     }
 
     [RelayCommand(CanExecute = nameof(CanExport))]
     private Task ExportCanvasToJpegAsync()
     {
-        if (_snapshot is not { } snapshot || !CanExport()) return Task.CompletedTask;
-
-        var encoded = GetImageData(snapshot.Elements, IncludeBackground, snapshot.BackgroundColor, ImageScale,
-            SKEncodedImageFormat.Jpeg);
+        var encoded = RenderOutput(SKEncodedImageFormat.Jpeg);
         return encoded is null ? Task.CompletedTask : SaveImageAsync(encoded, "JPEG", ".jpeg");
     }
 
@@ -149,9 +231,20 @@ public partial class CanvasExportViewModel : ViewModelBase
     // Give the clipboard a bitmap it can keep after the export dialog closes.
     internal async Task CopyToClipboardAsync(IClipboard clipboard)
     {
-        if (_previewPng is not { } encoded) return;
+        if (RenderOutput(SKEncodedImageFormat.Png) is not { } encoded) return;
 
-        var transfer = new ExportClipboardImage(DecodeBitmap(encoded));
+        ExportClipboardImage transfer;
+        try
+        {
+            transfer = new ExportClipboardImage(DecodeBitmap(encoded));
+        }
+        catch (Exception exception)
+        {
+            Trace.TraceError("Could not decode the image for the clipboard. {0}", exception);
+            ReportRenderError();
+            return;
+        }
+
         try
         {
             await clipboard.SetDataAsync(transfer);
@@ -175,7 +268,30 @@ public partial class CanvasExportViewModel : ViewModelBase
         public void Dispose() => bitmap.Dispose();
     }
 
-    // Render the requested elements into an encoded image.
+    // Calculate padded dimensions without subtracting the float edges in single precision.
+    private static (double Width, double Height) GetPaddedSize(SKRect bounds)
+    {
+        return ((double)bounds.Right - bounds.Left + 2 * Padding,
+            (double)bounds.Bottom - bounds.Top + 2 * Padding);
+    }
+
+    // Reject empty or non-finite dimensions before any conversion to integers.
+    private static bool IsPositiveSize(double width, double height) =>
+        double.IsFinite(width) && double.IsFinite(height) && width > 0 && height > 0;
+
+    // Round up and validate output dimensions before allocating a native surface.
+    internal static SKSizeI? ValidateOutputSize(double width, double height)
+    {
+        width = Math.Ceiling(width);
+        height = Math.Ceiling(height);
+        if (!IsPositiveSize(width, height) || width > OutputMaxEdge || height > OutputMaxEdge)
+            return null;
+
+        var size = new SKSizeI((int)width, (int)height);
+        return checked((long)size.Width * size.Height) <= OutputMaxPixels ? size : null;
+    }
+
+    // Render the requested elements at full resolution if they fit the output limits.
     internal static byte[]? GetImageData(
         IReadOnlyList<CanvasElement> elements,
         bool includeBackground,
@@ -183,22 +299,27 @@ public partial class CanvasExportViewModel : ViewModelBase
         int scale,
         SKEncodedImageFormat format)
     {
-        if (elements.Count == 0)
-        {
-            return null;
-        }
+        if (elements.Count == 0) return null;
 
-        // Calculate the bounding box of all elements
-        SKRect bounds = Utilities.GetElementsBounds(elements);
-        // Add padding
-        bounds.Inflate(20, 20);
+        var bounds = Utilities.GetElementsBounds(elements);
+        var (width, height) = GetPaddedSize(bounds);
+        var size = ValidateOutputSize(width * scale, height * scale);
+        return size is { } outputSize
+            ? RenderImage(elements, bounds, outputSize, scale, includeBackground, backgroundColor, format)
+            : null;
+    }
 
-        // Determine the final image size based on scale
-        var finalImgWidth = (int)(bounds.Width * scale);
-        var finalImgHeight = (int)(bounds.Height * scale);
-
-        // Create an off-screen surface
-        var imageInfo = new SKImageInfo(finalImgWidth, finalImgHeight, SKColorType.Rgba8888, SKAlphaType.Premul);
+    // Draw either the bounded preview or a validated full-resolution image.
+    private static byte[]? RenderImage(
+        IReadOnlyList<CanvasElement> elements,
+        SKRect bounds,
+        SKSizeI size,
+        double scale,
+        bool includeBackground,
+        SKColor backgroundColor,
+        SKEncodedImageFormat format)
+    {
+        var imageInfo = new SKImageInfo(size.Width, size.Height, SKColorType.Rgba8888, SKAlphaType.Premul);
         using var surface = SKSurface.Create(imageInfo);
         if (surface is null) return null;
         var canvas = surface.Canvas;
@@ -214,8 +335,8 @@ public partial class CanvasExportViewModel : ViewModelBase
             canvas.Clear(includeBackground ? backgroundColor : SKColors.Transparent);
         }
 
-        canvas.Scale(scale);
-        canvas.Translate(-bounds.Left, -bounds.Top);
+        canvas.Scale((float)scale);
+        canvas.Translate((float)(Padding - bounds.Left), (float)(Padding - bounds.Top));
 
         // Draw in the layer order captured when the dialog opened.
         foreach (var element in elements)
@@ -261,7 +382,7 @@ public partial class CanvasExportViewModel : ViewModelBase
         }
 
         using var image = surface.Snapshot();
-        using var data = image.Encode(format, 100);
+        using var data = image?.Encode(format, 100);
 
         return data?.ToArray();
     }

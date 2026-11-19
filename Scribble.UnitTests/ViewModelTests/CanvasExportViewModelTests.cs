@@ -157,6 +157,112 @@ public class CanvasExportViewModelTests
         }
     }
 
+    // Check output limits without allocating surfaces at the boundary.
+    [Theory]
+    [InlineData(16_383, 1, true)]
+    [InlineData(16_384, 1, true)]
+    [InlineData(16_385, 1, false)]
+    [InlineData(1, 16_385, false)]
+    [InlineData(4_096, 4_095, true)]
+    [InlineData(4_096, 4_096, true)]
+    [InlineData(4_096, 4_097, false)]
+    [InlineData(0, 1, false)]
+    [InlineData(double.NaN, 1, false)]
+    [InlineData(1, double.PositiveInfinity, false)]
+    public void ValidateOutputSize_AtAllocationLimits_AcceptsOnlySupportedDimensions(
+        double width, double height, bool expected)
+    {
+        CanvasExportViewModel.ValidateOutputSize(width, height).HasValue.Should().Be(expected);
+    }
+
+    // A sparse board still previews, but commands cannot write or copy an oversized output.
+    [AvaloniaFact]
+    public async Task OpenExport_SparseBoard_ShowsBoundedPreviewAndRejectsOutput()
+    {
+        _canvas.CanvasElements.Returns([CreateImage(0, 0), CreateImage(50_000, 20_000)]);
+        _export.OpenExport();
+        try
+        {
+            _export.OutputDimensions.Should().Be($"{50_070:N0} × {20_070:N0} px");
+            _export.ExportError.Should().Contain("too large");
+            _export.PreviewImage!.PixelSize.Width.Should().Be(1_024);
+            _export.PreviewImage.PixelSize.Height.Should().BeInRange(410, 411);
+            _export.ExportCanvasToPngCommand.CanExecute(null).Should().BeFalse();
+            _export.ExportCanvasToJpegCommand.CanExecute(null).Should().BeFalse();
+            _export.CopyCanvasToClipboardCommand.CanExecute(null).Should().BeFalse();
+
+            var clipboard = Substitute.For<IClipboard>();
+            await _export.ExportCanvasToPngCommand.ExecuteAsync(null);
+            await _export.ExportCanvasToJpegCommand.ExecuteAsync(null);
+            await _export.CopyToClipboardAsync(clipboard);
+            await _files.DidNotReceive().PickFileToSaveAsync(Arg.Any<FilePickerSaveOptions>());
+            await clipboard.DidNotReceive().SetDataAsync(Arg.Any<IAsyncDataTransfer>());
+        }
+        finally
+        {
+            _export.CloseExport();
+        }
+    }
+
+    // Confirm all outputs use the selected scale even when the preview is much smaller.
+    [AvaloniaFact]
+    public async Task Export_RequestedImageLargerThanPreview_WritesFullResolution()
+    {
+        _canvas.CanvasElements.Returns([CreateImage(0, 0), CreateImage(1_300, 0)]);
+        _export.ImageScale = 2;
+        _export.OpenExport();
+        try
+        {
+            _export.PreviewImage!.PixelSize.Width.Should().Be(1_024);
+            _export.OutputDimensions.Should().Be($"{2_740:N0} × {140:N0} px");
+            using var png = await SaveAndDecodeAsync(jpeg: false);
+            using var jpeg = await SaveAndDecodeAsync(jpeg: true);
+            png.Width.Should().Be(2_740);
+            png.Height.Should().Be(140);
+            jpeg.Width.Should().Be(png.Width);
+            jpeg.Height.Should().Be(png.Height);
+            png.GetPixel(50, 50).Should().Be(SKColors.Blue);
+            png.GetPixel(2_680, 50).Should().Be(SKColors.Blue);
+
+            var clipboard = Substitute.For<IClipboard>();
+            IAsyncDataTransfer? data = null;
+            clipboard.SetDataAsync(Arg.Do<IAsyncDataTransfer>(transfer => data = transfer))
+                .Returns(Task.CompletedTask);
+            await _export.CopyToClipboardAsync(clipboard);
+            data.Should().NotBeNull();
+            using var transfer = data!;
+            var bitmap = await transfer.TryGetBitmapAsync();
+            bitmap!.PixelSize.Width.Should().Be(png.Width);
+            bitmap.PixelSize.Height.Should().Be(png.Height);
+        }
+        finally
+        {
+            _export.CloseExport();
+        }
+    }
+
+    // Invalid image data exercises the inline render failure path.
+    [AvaloniaFact]
+    public void OpenExport_RenderFails_ShowsErrorAndDisablesOutput()
+    {
+        _canvas.CanvasElements.Returns([new CanvasImage
+        {
+            Bounds = SKRect.Create(0, 0, 30, 30),
+            ImageBase64String = "invalid base64!",
+        }]);
+        _export.OpenExport();
+        try
+        {
+            _export.PreviewImage.Should().BeNull();
+            _export.ExportError.Should().Contain("Could not render");
+            _export.ExportCanvasToPngCommand.CanExecute(null).Should().BeFalse();
+        }
+        finally
+        {
+            _export.CloseExport();
+        }
+    }
+
     // Save through the regular command and decode the bytes written to the file.
     private async Task<SKBitmap> SaveAndDecodeAsync(bool jpeg)
     {

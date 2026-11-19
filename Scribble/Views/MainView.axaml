@@ -716,6 +716,12 @@
                                 </StackPanel>
                             </Grid>
                             <StackPanel Grid.Row="1" Orientation="Vertical" Spacing="2" VerticalAlignment="Bottom">
+                                <TextBlock Text="{Binding CanvasExportViewModel.OutputDimensions}"
+                                           IsVisible="{Binding CanvasExportViewModel.HasOutputDimensions}"
+                                           Margin="0,0,0,6" TextWrapping="Wrap" MaxWidth="220" />
+                                <TextBlock Text="{Binding CanvasExportViewModel.ExportError}"
+                                           IsVisible="{Binding CanvasExportViewModel.HasExportError}"
+                                           Margin="0,0,0,6" TextWrapping="Wrap" MaxWidth="220" />
                                 <Button HorizontalAlignment="Stretch"
                                         HorizontalContentAlignment="Center"
                                         Padding="8"
