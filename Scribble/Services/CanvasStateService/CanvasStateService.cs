@@ -29,8 +29,8 @@ public class CanvasStateService : ICanvasStateService
 
     private readonly Stack<Guid> _undoStack = [];
     private readonly Stack<Guid> _redoStack = [];
-    public bool CanUndo => _undoStack.Count > 0;
-    public bool CanRedo => _redoStack.Count > 0;
+    public bool CanUndo => !_multiUserDrawingService.IsJoining && _undoStack.Count > 0;
+    public bool CanRedo => !_multiUserDrawingService.IsJoining && _redoStack.Count > 0;
 
     private readonly IMultiUserDrawingService _multiUserDrawingService;
     private readonly EventReplayDispatcher _dispatcher;
@@ -42,7 +42,7 @@ public class CanvasStateService : ICanvasStateService
 
     public void SetBackgroundColor(SKColor color)
     {
-        if (BackgroundColor == color) return;
+        if (_multiUserDrawingService.IsJoining || BackgroundColor == color) return;
         BackgroundColor = color;
         BackgroundColorChanged?.Invoke();
     }
@@ -52,7 +52,8 @@ public class CanvasStateService : ICanvasStateService
         _multiUserDrawingService = multiUserDrawingService;
 
         _multiUserDrawingService.EventReceived += OnNetworkEventReceived;
-        _multiUserDrawingService.CanvasStateReceived += OnCanvasStateReceived;
+        _multiUserDrawingService.RoomCanvasReady += OnRoomCanvasReady;
+        _multiUserDrawingService.JoiningChanged += () => UndoRedoStateChanged?.Invoke();
         _multiUserDrawingService.CanvasStateRequested += async (clientId) =>
         {
             try
@@ -89,7 +90,7 @@ public class CanvasStateService : ICanvasStateService
 
     public void Undo()
     {
-        if (_undoStack.Count == 0) return;
+        if (!CanUndo) return;
         var actionId = _undoStack.Pop();
 
         _redoStack.Push(actionId);
@@ -100,7 +101,7 @@ public class CanvasStateService : ICanvasStateService
 
     public void Redo()
     {
-        if (_redoStack.Count == 0) return;
+        if (!CanRedo) return;
         var actionId = _redoStack.Pop();
 
         _undoStack.Push(actionId);
@@ -135,6 +136,8 @@ public class CanvasStateService : ICanvasStateService
 
     public void LoadCanvas(List<CanvasElement> elements)
     {
+        if (_multiUserDrawingService.IsJoining) return;
+
         _undoStack.Clear();
         _redoStack.Clear();
 
@@ -149,6 +152,9 @@ public class CanvasStateService : ICanvasStateService
 
     public void ApplyEvent(Event @event, bool isLocalEvent = true)
     {
+        // Keep the current document intact until the room join has succeeded.
+        if (_multiUserDrawingService.IsJoining) return;
+
         // Stamp the creator's connection ID on every local event while in a room.
         // Remote events arrive pre-stamped by their originating client.
         if (isLocalEvent && _multiUserDrawingService.Room != null)
@@ -171,17 +177,26 @@ public class CanvasStateService : ICanvasStateService
         ProcessEvent(@event);
     }
 
-    // Event handler for processing the canvas state snapshot received from the room's host
-    private void OnCanvasStateReceived(Queue<Event> events)
+    // Install the confirmed room history and merge updates received during the join.
+    private void OnRoomCanvasReady(Queue<Event>? snapshot, IReadOnlyList<Event> bufferedEvents)
     {
-        _eventLog = new EventLog();
-        _checkpointManager = new CheckpointManager();
-        foreach (var ev in events)
+        if (snapshot != null)
         {
-            _eventLog.Append(ev);
+            _eventLog = new EventLog();
+            _checkpointManager = new CheckpointManager();
+            _undoStack.Clear();
+            _redoStack.Clear();
+            foreach (var ev in snapshot) _eventLog.Append(ev);
         }
 
-        ReplayEvents();
+        // The first member keeps the existing canvas and its local undo history.
+        var changed = snapshot != null;
+        foreach (var ev in bufferedEvents)
+        {
+            changed |= _eventLog.Append(ev);
+        }
+
+        if (changed) ReplayEvents();
     }
 
     /// <summary>
@@ -198,7 +213,7 @@ public class CanvasStateService : ICanvasStateService
 
     private void ProcessEvent(Event @event, bool isLocalEvent = false)
     {
-        _eventLog.Append(@event);
+        if (!_eventLog.Append(@event)) return;
 
         // Fast path: for events during active drawing, apply directly to the existing state
         if (_dispatcher.TryFastPath(@event, CurrentState))
@@ -228,6 +243,8 @@ public class CanvasStateService : ICanvasStateService
     {
         _checkpointManager.TryGetValidCheckpoint(_eventLog.HiddenActionIds, out var bestState, out var lastEventId);
         var activeEvents = _eventLog.GetActiveEventsSince(lastEventId);
+        bestState.MyConnectionId =
+            _multiUserDrawingService.Room?.Me.ConnectionId ?? _multiUserDrawingService.ConnectionId;
 
         foreach (var ev in activeEvents)
         {
@@ -241,7 +258,7 @@ public class CanvasStateService : ICanvasStateService
         }
 
         // Show the selection only on the client that is doing the selection
-        var myConnectionId = _multiUserDrawingService.ConnectionId;
+        var myConnectionId = bestState.MyConnectionId;
         var mySelectionBound = bestState.SelectionBounds.Values
             .FirstOrDefault(b => b.CreatorConnectionId == myConnectionId);
         bestState.ActiveSelectionBoundId = mySelectionBound?.Id;

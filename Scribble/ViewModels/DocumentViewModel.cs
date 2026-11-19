@@ -55,7 +55,7 @@ public partial class DocumentViewModel : ViewModelBase
     [RelayCommand]
     private async Task LoadCanvasFromFileAction()
     {
-        if (_multiUserDrawingService.Room != null) return;
+        if (_multiUserDrawingService.Room != null || _multiUserDrawingService.IsJoining) return;
 
         var filePickerOptions = new FilePickerOpenOptions
         {

@@ -8,16 +8,21 @@ namespace Scribble.Services.CanvasStateService.State;
 public class EventLog
 {
     private readonly List<Event> _events = [];
+    private readonly HashSet<Guid> _eventIds = [];
     private readonly HashSet<Guid> _staleActionIds = [];
     private readonly HashSet<Guid> _hiddenActionIds = [];
 
     public IReadOnlyList<Event> Events => _events;
     public HashSet<Guid> HiddenActionIds => [.._hiddenActionIds];
 
-    public void Append(Event ev)
+    // Ignore events already present in the host snapshot or live history.
+    public bool Append(Event ev)
     {
+        if (!_eventIds.Add(ev.Id)) return false;
+
         _events.Add(ev);
         ProcessEventVisibility(ev);
+        return true;
     }
 
     public void MarkActionStale(Guid actionId)

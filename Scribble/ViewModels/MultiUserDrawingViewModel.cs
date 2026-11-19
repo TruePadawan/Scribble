@@ -50,16 +50,18 @@ public partial class MultiUserDrawingViewModel : ViewModelBase
 
     public string ChatToggleText => IsChatVisible ? "Collapse Chatbox" : "Expand Chatbox";
     public int ClientCount => Room?.Clients.Count ?? 0;
-    public bool CanResetCanvas => Room == null;
+    public bool CanResetCanvas => Room == null && CanEditCanvas;
+    // Pause canvas input while the connection prepares the shared board.
+    public bool CanEditCanvas => !_multiUserDrawingService.IsJoining;
     public bool IsLive => Room != null;
-    private bool CanGenerateRoomId => Room == null;
+    private bool CanGenerateRoomId => Room == null && CanEditCanvas;
 
     private bool CanToggleRoomConnection =>
         !string.IsNullOrWhiteSpace(RoomId) && !string.IsNullOrWhiteSpace(ClientDisplayName);
 
     private bool CanSendMessage => !string.IsNullOrWhiteSpace(Message);
 
-    public string RoomButtonText => IsLive ? "Leave Room" : "Enter Room";
+    public string RoomButtonText => !CanEditCanvas ? "Joining…" : IsLive ? "Leave Room" : "Enter Room";
 
     public IBrush LiveDrawingButtonBackground =>
         IsLive ? new SolidColorBrush(Colors.Green) : new SolidColorBrush(Colors.Transparent);
@@ -72,6 +74,13 @@ public partial class MultiUserDrawingViewModel : ViewModelBase
         _dialogService = dialogService;
         _canvasStateService = canvasStateService;
 
+        _multiUserDrawingService.JoiningChanged += () =>
+        {
+            OnPropertyChanged(nameof(CanEditCanvas));
+            OnPropertyChanged(nameof(CanResetCanvas));
+            OnPropertyChanged(nameof(RoomButtonText));
+            GenerateRoomIdCommand.NotifyCanExecuteChanged();
+        };
         _multiUserDrawingService.RoomChanged += room =>
         {
             Room = room;

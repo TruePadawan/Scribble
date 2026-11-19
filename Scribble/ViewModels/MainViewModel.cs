@@ -116,7 +116,7 @@ public partial class MainViewModel : ViewModelBase
     [RelayCommand]
     private async Task ResetCanvas()
     {
-        if (_multiUserDrawingService.Room != null) return;
+        if (_multiUserDrawingService.Room != null || _multiUserDrawingService.IsJoining) return;
 
         if (CanvasStateService.HasEvents)
         {

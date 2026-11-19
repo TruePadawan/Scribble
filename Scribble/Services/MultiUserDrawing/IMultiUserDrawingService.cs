@@ -10,6 +10,8 @@ public interface IMultiUserDrawingService
 {
     MultiUserDrawingRoom? Room { get; }
     bool IsConnected { get; }
+    // True while the connection is setting up its room canvas.
+    bool IsJoining { get; }
     string? ConnectionId { get; }
 
     // The desktop service delivers lifecycle and network notifications on the UI thread.
@@ -17,7 +19,10 @@ public interface IMultiUserDrawingService
     event Action? ConnectionStopped;
     event Action<Event>? EventReceived;
     event Action<string>? CanvasStateRequested;
-    event Action<Queue<Event>>? CanvasStateReceived;
+    // Commit the optional host snapshot and buffered live events together.
+    event Action<Queue<Event>?, IReadOnlyList<Event>>? RoomCanvasReady;
+    // Notify the desktop when editing needs to pause or resume.
+    event Action? JoiningChanged;
     event Action<MultiUserDrawingClient, List<MultiUserDrawingClient>>? ClientJoinedRoom;
     event Action<MultiUserDrawingClient, List<MultiUserDrawingClient>>? ClientLeftRoom;
     event Action<Message>? MessageReceived;
