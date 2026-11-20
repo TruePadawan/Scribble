@@ -228,6 +228,11 @@ public class SelectionReplayHandler :
         if (bound.Targets.Count == 0)
         {
             ctx.StaleActionIds.Add(ev.ActionId);
+            if (ev.CreatorConnectionId == ctx.MyConnectionId)
+            {
+                ctx.ActiveSelectionBoundId = null;
+                ctx.SelectedElementIds.Clear();
+            }
             return true;
         }
 

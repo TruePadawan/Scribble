@@ -125,7 +125,7 @@ public partial class MultiUserDrawingViewModel : ViewModelBase, IDisposable
     {
         if (!_multiUserDrawingService.IsConnected)
         {
-            if (_canvasStateService.HasEvents)
+            if (_canvasStateService.CanvasElements.Count > 0)
             {
                 var confirmed = await _dialogService.ShowWarningConfirmationAsync("Warning",
                     "This might clear your current canvas. Are you sure you want to proceed?");

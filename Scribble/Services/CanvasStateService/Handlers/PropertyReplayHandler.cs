@@ -26,7 +26,8 @@ public class PropertyReplayHandler :
     {
         foreach (var strokeId in ev.StrokeIds)
         {
-            ctx.PaintableStrokes[strokeId].Paint.Color = ev.NewColor;
+            if (ctx.PaintableStrokes.TryGetValue(strokeId, out var stroke))
+                stroke.Paint.Color = ev.NewColor;
         }
     }
 
@@ -34,7 +35,8 @@ public class PropertyReplayHandler :
     {
         foreach (var strokeId in ev.StrokeIds)
         {
-            ctx.PaintableStrokes[strokeId].Paint.StrokeWidth = ev.NewThickness;
+            if (ctx.PaintableStrokes.TryGetValue(strokeId, out var stroke))
+                stroke.Paint.StrokeWidth = ev.NewThickness;
         }
     }
 
@@ -42,7 +44,8 @@ public class PropertyReplayHandler :
     {
         foreach (var strokeId in ev.StrokeIds)
         {
-            ctx.PaintableStrokes[strokeId].Paint.DashIntervals = ev.NewDashIntervals;
+            if (ctx.PaintableStrokes.TryGetValue(strokeId, out var stroke))
+                stroke.Paint.DashIntervals = ev.NewDashIntervals;
         }
     }
 
@@ -50,7 +53,8 @@ public class PropertyReplayHandler :
     {
         foreach (var strokeId in ev.StrokeIds)
         {
-            ctx.PaintableStrokes[strokeId].Paint.FillColor = ev.NewFillColor;
+            if (ctx.PaintableStrokes.TryGetValue(strokeId, out var stroke))
+                stroke.Paint.FillColor = ev.NewFillColor;
         }
     }
 
@@ -58,7 +62,7 @@ public class PropertyReplayHandler :
     {
         foreach (var strokeId in ev.StrokeIds)
         {
-            var stroke = ctx.PaintableStrokes[strokeId];
+            if (!ctx.PaintableStrokes.TryGetValue(strokeId, out var stroke)) continue;
             stroke.Paint.StrokeJoin = ev.NewStrokeJoin;
             // Recreate the stroke paths, preserving any rotation
 
