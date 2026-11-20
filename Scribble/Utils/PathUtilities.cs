@@ -9,6 +9,36 @@ namespace Scribble.Utils;
 /// </summary>
 public static class PathUtilities
 {
+    // Calculate the two wing tips for an arrow shaft in world coordinates.
+    public static (SKPoint, SKPoint) GetArrowHeadPoints(SKPoint start, SKPoint end, float strokeWidth)
+    {
+        float arrowLength = strokeWidth * 10.0f;
+        float arrowAngle = (float)(Math.PI / 6);
+
+        // Calculate the angle of the main line
+        float dy = end.Y - start.Y;
+        float dx = end.X - start.X;
+        float lineAngle = (float)Math.Atan2(dy, dx);
+
+        // Calculate the angles for the left and right wings of the arrow head
+        float leftWingAngle = lineAngle + (float)Math.PI - arrowAngle;
+        float rightWingAngle = lineAngle + (float)Math.PI + arrowAngle;
+
+        // Calculate the coordinates (Polar -> Cartesian)
+        // x = r * cos(theta), y = r * sin(theta)
+        SKPoint leftPoint = new SKPoint(
+            end.X + arrowLength * (float)Math.Cos(leftWingAngle),
+            end.Y + arrowLength * (float)Math.Sin(leftWingAngle)
+        );
+
+        SKPoint rightPoint = new SKPoint(
+            end.X + arrowLength * (float)Math.Cos(rightWingAngle),
+            end.Y + arrowLength * (float)Math.Sin(rightWingAngle)
+        );
+
+        return (leftPoint, rightPoint);
+    }
+
     /// <summary>
     /// Builds a polyline or curved path from a sequence of nodes.
     /// </summary>

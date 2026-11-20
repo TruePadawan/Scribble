@@ -96,7 +96,7 @@ public class PropertyReplayHandler :
                     {
                         var lastSegStart = nodes[^2];
                         var lastSegEnd = nodes[^1];
-                        var (p1, p2) = ArrowTool.GetArrowHeadPoints(
+                        var (p1, p2) = PathUtilities.GetArrowHeadPoints(
                             lastSegStart, lastSegEnd, ds.Paint.StrokeWidth);
 
                         builder.MoveTo(lastSegEnd);

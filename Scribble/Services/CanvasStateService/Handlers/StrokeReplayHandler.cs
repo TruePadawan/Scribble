@@ -231,7 +231,7 @@ public class StrokeReplayHandler :
                     {
                         var lastSegStart = allPoints[^2];
                         var lastSegEnd = allPoints[^1];
-                        var (p1, p2) = ArrowTool.GetArrowHeadPoints(lastSegStart, lastSegEnd,
+                        var (p1, p2) = PathUtilities.GetArrowHeadPoints(lastSegStart, lastSegEnd,
                             stroke.Paint.StrokeWidth);
 
                         newPath.MoveTo(lastSegEnd);
