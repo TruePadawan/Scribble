@@ -7,17 +7,7 @@ public class CanvasImage : CanvasElement, IClonable, ISelectable
 {
     public required string ImageBase64String { get; init; }
 
-    [JsonIgnore] private SKRect _bounds;
-
-    public required SKRect Bounds
-    {
-        get => _bounds;
-        set
-        {
-            _bounds = value;
-            _cachedBitmap = null;
-        }
-    }
+    public required SKRect Bounds { get; set; }
 
     public float Rotation { get; set; }
     public bool FlipX { get; set; }
@@ -26,30 +16,42 @@ public class CanvasImage : CanvasElement, IClonable, ISelectable
 
     [JsonIgnore] private SKBitmap? _cachedBitmap;
 
+    private SKSizeI _sourceSize;
+
+    // Each placement has an immutable encoded source. Reuse its pixels while the decode size matches.
     public SKBitmap GetBitmap()
     {
-        if (_cachedBitmap is not null) return _cachedBitmap;
+        var size = GetDecodeSize(_sourceSize);
+        if (_cachedBitmap != null && _cachedBitmap.Width == size.Width && _cachedBitmap.Height == size.Height)
+            return _cachedBitmap;
 
-        var bitmap = SKBitmap.Decode(Convert.FromBase64String(ImageBase64String));
-        var targetWidth = (int)Bounds.Width;
-        var targetHeight = (int)Bounds.Height;
+        var decoded = SKBitmap.Decode(Convert.FromBase64String(ImageBase64String))
+                      ?? throw new InvalidOperationException("The image could not be decoded.");
 
-        if (targetWidth > 0 && targetHeight > 0 &&
-            (bitmap.Width > targetWidth || bitmap.Height > targetHeight))
+        _sourceSize = new SKSizeI(decoded.Width, decoded.Height);
+        size = GetDecodeSize(_sourceSize);
+
+        if (decoded.Width != size.Width || decoded.Height != size.Height)
         {
-            var downscaledBitmap = new SKBitmap(
-                Math.Min(bitmap.Width, targetWidth),
-                Math.Min(bitmap.Height, targetHeight));
-            bitmap.ScalePixels(downscaledBitmap, new SKSamplingOptions(SKCubicResampler.Mitchell));
-            bitmap.Dispose();
-            _cachedBitmap = downscaledBitmap;
-        }
-        else
-        {
-            _cachedBitmap = bitmap;
+            using var original = decoded;
+            decoded = original.Resize(size, new SKSamplingOptions(SKCubicResampler.Mitchell))
+                      ?? throw new InvalidOperationException("The image could not be resized.");
         }
 
-        return _cachedBitmap;
+        // Recorded frames can share these pixels safely after this placement replaces its cache.
+        decoded.SetImmutable();
+        _cachedBitmap?.Dispose();
+        _cachedBitmap = decoded;
+        return decoded;
+    }
+
+    // Cap the cached resolution at the original dimensions.
+    private SKSizeI GetDecodeSize(SKSizeI source)
+    {
+        var width = (int)Bounds.Width;
+        var height = (int)Bounds.Height;
+        if (width <= 0 || height <= 0) return source;
+        return new SKSizeI(Math.Min(source.Width, width), Math.Min(source.Height, height));
     }
 
     // Release the decoded bitmap owned by a detached snapshot.
@@ -65,7 +67,7 @@ public class CanvasImage : CanvasElement, IClonable, ISelectable
         {
             Id = preserveId ? Id : Guid.NewGuid(),
             ImageBase64String = ImageBase64String,
-            Bounds = _bounds,
+            Bounds = Bounds,
             Rotation = Rotation,
             FlipX = FlipX,
             FlipY = FlipY,

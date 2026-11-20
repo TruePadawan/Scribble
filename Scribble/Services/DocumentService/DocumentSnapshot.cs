@@ -17,6 +17,7 @@ public sealed class DocumentSnapshot(IReadOnlyList<CanvasElement> elements, SKCo
     {
         foreach (var element in Elements)
         {
+            if (element is PaintableStroke paintable) paintable.Paint.DisposeSkPaint();
             if (element is Stroke stroke) stroke.Path.Dispose();
             if (element is DrawStroke drawStroke) drawStroke.StablePath?.Dispose();
             if (element is CanvasImage image) image.ReleaseCachedBitmap();

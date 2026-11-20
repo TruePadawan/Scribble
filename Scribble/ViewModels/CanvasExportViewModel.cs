@@ -10,6 +10,7 @@ using Avalonia.Media.Imaging;
 using Avalonia.Platform.Storage;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Scribble.Controls;
 using Scribble.Services.CanvasStateService;
 using Scribble.Services.DocumentService;
 using Scribble.Services.FileService;
@@ -29,16 +30,16 @@ public partial class CanvasExportViewModel : ViewModelBase
     [ObservableProperty] private Bitmap? _previewImage;
     [ObservableProperty] private bool _includeBackground;
 
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasOutputDimensions))]
+    [ObservableProperty] [NotifyPropertyChangedFor(nameof(HasOutputDimensions))]
     private string? _outputDimensions;
 
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasExportError))]
+    [ObservableProperty] [NotifyPropertyChangedFor(nameof(HasExportError))]
     private string? _exportError;
 
     private const int PreviewMaxEdge = 1_024;
+
     private const int OutputMaxEdge = 16_384;
+
     // One RGBA surface at this limit uses 64 MiB before encoding.
     private const long OutputMaxPixels = 16_777_216;
     private const double Padding = 20;
@@ -341,44 +342,7 @@ public partial class CanvasExportViewModel : ViewModelBase
         // Draw in the layer order captured when the dialog opened.
         foreach (var element in elements)
         {
-            if (element is PaintableStroke paintableStroke)
-            {
-                using var paintToUse = paintableStroke.Paint.ToSkPaint();
-                if (paintableStroke.Path.PointCount == 1)
-                {
-                    canvas.DrawPoint(paintableStroke.Path.Points[0], paintToUse);
-                }
-                else
-                {
-                    if (paintableStroke.Paint.FillColor.Alpha != 0)
-                    {
-                        var strokeColor = paintToUse.Color;
-                        paintToUse.Style = SKPaintStyle.StrokeAndFill;
-                        paintToUse.Color = paintableStroke.Paint.FillColor;
-                        canvas.DrawPath(paintableStroke.Path, paintToUse);
-                        paintToUse.Style = SKPaintStyle.Stroke;
-                        paintToUse.Color = strokeColor;
-                    }
-
-                    canvas.DrawPath(paintableStroke.Path, paintToUse);
-                }
-            }
-            else if (element is CanvasImage canvasImage)
-            {
-                var bitmap = canvasImage.GetBitmap();
-                // Pushes a snapshot of the current canvas state (transforms, clipping regions, etc.) onto an internal stack before rotating canvas
-                // Needed for drawing rotated images
-                canvas.Save();
-                canvas.RotateRadians(canvasImage.Rotation, canvasImage.Bounds.MidX, canvasImage.Bounds.MidY);
-
-                // Flip the canvas to apply image-flips
-                if (canvasImage.FlipX)
-                    canvas.Scale(-1, 1, canvasImage.Bounds.MidX, canvasImage.Bounds.MidY);
-                if (canvasImage.FlipY)
-                    canvas.Scale(1, -1, canvasImage.Bounds.MidX, canvasImage.Bounds.MidY);
-                canvas.DrawBitmap(bitmap, canvasImage.Bounds, new SKSamplingOptions(SKFilterMode.Linear));
-                canvas.Restore();
-            }
+            CanvasElementRenderer.Draw(canvas, element);
         }
 
         using var image = surface.Snapshot();

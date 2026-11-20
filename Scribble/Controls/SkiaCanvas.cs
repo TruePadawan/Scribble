@@ -45,9 +45,6 @@ public class SkiaCanvas : Control
     private static readonly SKPaint DarkGridPaint = new()
         { Color = SKColors.White.WithAlpha(60), IsAntialias = true, Style = SKPaintStyle.Fill };
 
-    private static readonly SKPaint LowOpacityPaint = new()
-        { Color = SKColors.Black.WithAlpha(80) };
-
     // Cull elements using their visible bounds in world coordinates.
     internal static bool IsCanvasElementVisible(CanvasElement element, SKRect visibleWorldRect)
     {
@@ -56,6 +53,9 @@ public class SkiaCanvas : Control
         {
             case PaintableStroke stroke:
                 elementBounds = stroke.Path.Bounds;
+                // Include the outline and single-point strokes at the edge of the viewport.
+                var margin = Math.Max(1f, stroke.Paint.StrokeWidth / 2);
+                elementBounds.Inflate(margin, margin);
                 break;
             case CanvasImage image:
                 elementBounds = Utilities.GetImageWorldBounds(image);
@@ -75,16 +75,15 @@ public class SkiaCanvas : Control
 
         var bounds = new Rect(0, 0, Bounds.Width, Bounds.Height);
 
-        // Snapshot the element list on the UI thread, the render thread must not enumerate
-        // the same mutable list that the UI thread modifies
-        var elementsToDraw = CanvasElements.ToList();
-        var bgColor = CanvasBackground;
-        context.Custom(
-            new SkiaDrawOperation(bounds, canvas => { DrawCanvasElementsOnCanvas(canvas, elementsToDraw, bgColor); }));
+        context.Custom(new SkiaDrawOperation(bounds, CaptureFrame()));
     }
 
-    private void DrawCanvasElementsOnCanvas(SKCanvas canvas, IEnumerable<CanvasElement> elementsToDraw, Color bgColor)
+    // Record the visible board on the UI thread while the camera and live elements are stable.
+    internal SKPicture CaptureFrame()
     {
+        using var recorder = new SKPictureRecorder();
+        var canvas = recorder.BeginRecording(SKRect.Create((float)Bounds.Width, (float)Bounds.Height));
+        var bgColor = CanvasBackground;
         DrawBackground(canvas, bgColor);
 
         // Save the existing canvas state (Avalonia's DPI/layout matrix) so we can restore it later
@@ -103,89 +102,39 @@ public class SkiaCanvas : Control
             CameraState.WorldOffSetY + viewportHeight / CameraState.Zoom
         );
 
-        // Draw elements in layer-aware order: lower LayerIndex values are rendered first,
-        // while preserving the existing relative order within each layer.
-        foreach (var canvasElement in elementsToDraw
-                     .OrderBy(e => e.LayerIndex)
-                     .ThenBy(e => e.CreatedAt))
+        // CanvasStateService already publishes layer order. Sort only callers that supply unordered elements.
+        if (CanvasElements is { Count: > 0 } elements)
         {
-            if (!IsCanvasElementVisible(canvasElement, visibleWorldRect)) continue;
-            DrawSingleElement(canvas, canvasElement);
+            var ordered = InDrawingOrder(elements)
+                ? elements
+                : elements.OrderBy(element => element.LayerIndex).ThenBy(element => element.CreatedAt).ToList();
+            foreach (var element in ordered)
+            {
+                if (!IsCanvasElementVisible(element, visibleWorldRect)) continue;
+                var erasePreview =
+                    element is PaintableStroke { IsToBeErased: true } or CanvasImage { IsToBeErased: true };
+                CanvasElementRenderer.Draw(canvas, element, erasePreview);
+            }
         }
 
         // Restore to the pre-camera state
         canvas.Restore();
+        // The picture retains recorded paths, paints and immutable pixels until the operation retires.
+        return recorder.EndRecording();
     }
 
-    private static void DrawSingleElement(SKCanvas canvas, CanvasElement canvasElement)
+    // Check the paint order without allocating a sorted copy on each pointer move.
+    private static bool InDrawingOrder(List<CanvasElement> elements)
     {
-        if (canvasElement is PaintableStroke paintableStroke)
+        for (var i = 1; i < elements.Count; i++)
         {
-            var needsMutablePaint = paintableStroke.IsToBeErased || paintableStroke.Paint.FillColor.Alpha != 0;
-            var paintToUse = needsMutablePaint
-                ? paintableStroke.Paint.ToSkPaint()
-                : paintableStroke.Paint.GetCachedSkPaint();
-            try
-            {
-                if (paintableStroke.IsToBeErased)
-                {
-                    paintToUse.Color = paintToUse.Color.WithAlpha(80);
-                }
-
-                if (paintableStroke.Path.PointCount == 1)
-                {
-                    canvas.DrawPoint(paintableStroke.Path.Points[0], paintToUse);
-                }
-                else
-                {
-                    var strokeIsTransparent = paintableStroke.Paint.FillColor.Alpha == 0;
-                    if (!strokeIsTransparent)
-                    {
-                        var strokeColor = paintToUse.Color;
-                        paintToUse.Style = SKPaintStyle.StrokeAndFill;
-                        paintToUse.Color = paintableStroke.Paint.FillColor;
-                        canvas.DrawPath(paintableStroke.Path, paintToUse);
-                        paintToUse.Style = SKPaintStyle.Stroke;
-                        paintToUse.Color = strokeColor;
-                    }
-
-                    canvas.DrawPath(paintableStroke.Path, paintToUse);
-                }
-            }
-            finally
-            {
-                if (needsMutablePaint)
-                {
-                    paintToUse.Dispose();
-                }
-            }
+            var previous = elements[i - 1];
+            var next = elements[i];
+            if (previous.LayerIndex > next.LayerIndex ||
+                (previous.LayerIndex == next.LayerIndex && previous.CreatedAt > next.CreatedAt)) return false;
         }
-        else if (canvasElement is CanvasImage canvasImage)
-        {
-            var bitmap = canvasImage.GetBitmap();
-            // Pushes a snapshot of the current canvas state (transforms, clipping regions, etc.) onto an internal stack before rotating canvas
-            // Needed for drawing rotated images
-            canvas.Save();
-            canvas.RotateRadians(canvasImage.Rotation, canvasImage.Bounds.MidX, canvasImage.Bounds.MidY);
 
-            // Flip the canvas to apply image-flips
-            if (canvasImage.FlipX)
-                canvas.Scale(-1, 1, canvasImage.Bounds.MidX, canvasImage.Bounds.MidY);
-            if (canvasImage.FlipY)
-                canvas.Scale(1, -1, canvasImage.Bounds.MidX, canvasImage.Bounds.MidY);
-
-            var samplingOption = new SKSamplingOptions(SKFilterMode.Linear);
-            if (canvasImage.IsToBeErased)
-            {
-                canvas.DrawBitmap(bitmap, canvasImage.Bounds, samplingOption, LowOpacityPaint);
-            }
-            else
-            {
-                canvas.DrawBitmap(bitmap, canvasImage.Bounds, samplingOption);
-            }
-
-            canvas.Restore();
-        }
+        return true;
     }
 
     private void DrawBackground(SKCanvas canvas, Color bgColor)
@@ -264,15 +213,15 @@ public class SkiaCanvas : Control
     }
 }
 
-internal class SkiaDrawOperation(Rect bounds, Action<SKCanvas> drawAction) : ICustomDrawOperation
+// Own the recorded frame for its entire scene-graph lifetime.
+internal sealed class SkiaDrawOperation(Rect bounds, SKPicture picture) : ICustomDrawOperation
 {
     public Rect Bounds { get; } = bounds;
 
     public bool Equals(ICustomDrawOperation? other) => false;
 
-    public void Dispose()
-    {
-    }
+    // Release the native drawing commands when Avalonia retires the frame.
+    public void Dispose() => picture.Dispose();
 
     public bool HitTest(Point p) => false;
 
@@ -282,7 +231,6 @@ internal class SkiaDrawOperation(Rect bounds, Action<SKCanvas> drawAction) : ICu
         if (leaseFeature == null) return;
 
         using var lease = leaseFeature.Lease();
-        var canvas = lease.SkCanvas;
-        drawAction(canvas);
+        lease.SkCanvas.DrawPicture(picture);
     }
 }
