@@ -128,7 +128,7 @@ public class MultiUserDrawingServiceIntegrationTests(HubServerFixture fixture)
         var token = TestContext.Current.CancellationToken;
         var service = new MultiUserDrawingService(fixture.CreateHubConnection, Dispatcher.UIThread);
         var canvas = new CanvasStateService(service);
-        var viewModel = new MultiUserDrawingViewModel(service, Substitute.For<IDialogService>(), canvas);
+        using var viewModel = new MultiUserDrawingViewModel(service, Substitute.For<IDialogService>(), canvas);
         var directory = Directory.CreateTempSubdirectory("scribble-disconnect-");
         using var autosave = new AutoSaveService(canvas, new DocumentService(canvas), service,
             directory.FullName, TimeSpan.FromMilliseconds(20), dispatcher: Dispatcher.UIThread);

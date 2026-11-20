@@ -33,10 +33,11 @@ public static class ServiceCollectionExtensions
             new MultiUserDrawingService(serverUrl));
         collection.AddSingleton<ICanvasStateService, CanvasStateService>();
         collection.AddSingleton<IDocumentService, DocumentService>();
+        // One chat history follows the application-wide room connection across editor views.
+        collection.AddSingleton<MultiUserDrawingViewModel>();
 
         collection.AddTransient<CanvasExportViewModel>();
         collection.AddTransient<UiStateViewModel>();
-        collection.AddTransient<MultiUserDrawingViewModel>();
         collection.AddTransient<DocumentViewModel>();
         collection.AddTransient<MainViewModel>();
 

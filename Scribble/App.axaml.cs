@@ -28,7 +28,8 @@ public partial class App : Application
         var serviceCollection = new ServiceCollection();
         serviceCollection.AddCommonServices();
 
-        Services = serviceCollection.BuildServiceProvider();
+        var provider = serviceCollection.BuildServiceProvider();
+        Services = provider;
         var viewModel = Services.GetRequiredService<MainViewModel>();
         var autoSave = Services.GetRequiredService<AutoSaveService>();
         Control? surface = null;
@@ -41,7 +42,8 @@ public partial class App : Application
                 DataContext = viewModel
             };
             desktop.MainWindow = window;
-            desktop.Exit += (_, _) => autoSave.Dispose();
+            // The provider owns autosave and the room model and releases both on exit.
+            desktop.Exit += (_, _) => provider.Dispose();
             surface = window;
         }
         else if (ApplicationLifetime is ISingleViewApplicationLifetime singleViewPlatform)

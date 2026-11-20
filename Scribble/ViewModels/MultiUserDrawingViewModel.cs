@@ -16,7 +16,7 @@ namespace Scribble.ViewModels;
 /// <summary>
 /// View model for managing multi-user drawing
 /// </summary>
-public partial class MultiUserDrawingViewModel : ViewModelBase
+public partial class MultiUserDrawingViewModel : ViewModelBase, IDisposable
 {
     // Services
     private readonly IMultiUserDrawingService _multiUserDrawingService;
@@ -50,7 +50,9 @@ public partial class MultiUserDrawingViewModel : ViewModelBase
 
     public string ChatToggleText => IsChatVisible ? "Collapse Chatbox" : "Expand Chatbox";
     public int ClientCount => Room?.Clients.Count ?? 0;
+
     public bool CanResetCanvas => Room == null && CanEditCanvas;
+
     // Pause canvas input while the connection prepares the shared board.
     public bool CanEditCanvas => !_multiUserDrawingService.IsJoining;
     public bool IsLive => Room != null;
@@ -74,29 +76,48 @@ public partial class MultiUserDrawingViewModel : ViewModelBase
         _dialogService = dialogService;
         _canvasStateService = canvasStateService;
 
-        _multiUserDrawingService.JoiningChanged += () =>
-        {
-            OnPropertyChanged(nameof(CanEditCanvas));
-            OnPropertyChanged(nameof(CanResetCanvas));
-            OnPropertyChanged(nameof(RoomButtonText));
-            GenerateRoomIdCommand.NotifyCanExecuteChanged();
-        };
-        _multiUserDrawingService.RoomChanged += room =>
-        {
-            Room = room;
-            // Clear all messages after leaving a room
-            if (room == null)
-            {
-                Messages.Clear();
-            }
-        };
-        _multiUserDrawingService.MessageReceived += message => { Messages.Add(new ChatMessage(message)); };
-        _multiUserDrawingService.MessageSent += messageId =>
-        {
-            // Update the sent status of the chat message
-            var message = Messages.FirstOrDefault(item => item.Id == messageId);
-            message?.IsSent = true;
-        };
+        // Chat and delivery updates follow the room even while the editor view is detached.
+        _multiUserDrawingService.JoiningChanged += RefreshJoining;
+        _multiUserDrawingService.RoomChanged += RefreshRoom;
+        _multiUserDrawingService.MessageReceived += ReceiveMessage;
+        _multiUserDrawingService.MessageSent += ConfirmMessage;
+        RefreshRoom(_multiUserDrawingService.Room);
+        RefreshJoining();
+    }
+
+    // Release subscriptions when the application closes its room service owner.
+    public void Dispose()
+    {
+        _multiUserDrawingService.JoiningChanged -= RefreshJoining;
+        _multiUserDrawingService.RoomChanged -= RefreshRoom;
+        _multiUserDrawingService.MessageReceived -= ReceiveMessage;
+        _multiUserDrawingService.MessageSent -= ConfirmMessage;
+    }
+
+    // Refresh controls affected by the join gate.
+    private void RefreshJoining()
+    {
+        OnPropertyChanged(nameof(CanEditCanvas));
+        OnPropertyChanged(nameof(CanResetCanvas));
+        OnPropertyChanged(nameof(RoomButtonText));
+        GenerateRoomIdCommand.NotifyCanExecuteChanged();
+    }
+
+    // Keep chat history only for the same room session.
+    private void RefreshRoom(MultiUserDrawingRoom? room)
+    {
+        if (room == null || Room?.Me.ConnectionId != room.Me.ConnectionId) Messages.Clear();
+        Room = room;
+    }
+
+    // Append a received chat message to the conversation.
+    private void ReceiveMessage(Message message) => Messages.Add(new ChatMessage(message));
+
+    // Mark the optimistic message as delivered.
+    private void ConfirmMessage(string messageId)
+    {
+        var message = Messages.FirstOrDefault(item => item.Id == messageId);
+        message?.IsSent = true;
     }
 
     [RelayCommand(CanExecute = nameof(CanToggleRoomConnection))]
