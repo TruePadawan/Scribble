@@ -9,7 +9,6 @@ public class EventLog
 {
     private readonly List<Event> _events = [];
     private readonly HashSet<Guid> _eventIds = [];
-    private readonly HashSet<Guid> _staleActionIds = [];
     private readonly HashSet<Guid> _hiddenActionIds = [];
 
     public IReadOnlyList<Event> Events => _events;
@@ -23,11 +22,6 @@ public class EventLog
         _events.Add(ev);
         ProcessEventVisibility(ev);
         return true;
-    }
-
-    public void MarkActionStale(Guid actionId)
-    {
-        _staleActionIds.Add(actionId);
     }
 
     private void ProcessEventVisibility(Event ev)
@@ -64,10 +58,11 @@ public class EventLog
             var ev = _events[i];
 
             // Skip undo/redo events themselves since their side effects 
-            // are already evaluated in the hidden/stale logic
+            // are already evaluated in the visibility pass
             if (ev is UndoEvent or RedoEvent) continue;
 
-            if (!_hiddenActionIds.Contains(ev.ActionId) && !_staleActionIds.Contains(ev.ActionId))
+            // Empty gestures can still clear a previous selection. Replay them in order.
+            if (!_hiddenActionIds.Contains(ev.ActionId))
             {
                 activeEvents.Add(ev);
             }

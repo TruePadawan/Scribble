@@ -17,10 +17,7 @@ public class CanvasState
     public List<CanvasElement> ElementsWithLayers { get; private set; } = [];
     public List<Guid> SelectedElementIds { get; } = [];
     public Guid? ActiveSelectionBoundId { get; set; }
-    public List<Guid> StaleActionIds { get; } = [];
-
-    public int MaxLayerIndex { get; set; }
-    public int MinLayerIndex { get; set; }
+    public HashSet<Guid> StaleActionIds { get; } = [];
 
     public string? MyConnectionId { get; set; }
 
@@ -28,8 +25,6 @@ public class CanvasState
     {
         var clone = new CanvasState
         {
-            MaxLayerIndex = MaxLayerIndex,
-            MinLayerIndex = MinLayerIndex,
             ActiveSelectionBoundId = ActiveSelectionBoundId,
             MyConnectionId = MyConnectionId
         };
@@ -61,8 +56,24 @@ public class CanvasState
             clone.EraserStrokes[key] = value.Clone(preserveId: true);
         }
 
+        clone.StaleActionIds.UnionWith(StaleActionIds);
         clone.NormalizeLayers();
         return clone;
+    }
+
+    // Append new drawing elements above the current board and keep their lookup in sync.
+    internal void AddOnTop<T>(T element, Dictionary<Guid, T> lookup) where T : CanvasElement
+    {
+        if (lookup.TryGetValue(element.Id, out var previous)) ElementsWithLayers.Remove(previous);
+        element.LayerIndex = ElementsWithLayers.Count;
+        lookup[element.Id] = element;
+        ElementsWithLayers.Add(element);
+
+        // Replacing an existing ID can leave a gap in the previous layer positions.
+        if (previous != null)
+        {
+            for (var i = 0; i < ElementsWithLayers.Count; i++) ElementsWithLayers[i].LayerIndex = i;
+        }
     }
 
     public void NormalizeLayers()
@@ -71,22 +82,16 @@ public class CanvasState
             .Concat(CanvasImages.Values)
             .ToList();
 
-        elements.Sort((a, b) => a.LayerIndex.CompareTo(b.LayerIndex));
+        // IDs survive serialization and break ties consistently across both element types.
+        elements.Sort((a, b) =>
+        {
+            var order = a.LayerIndex.CompareTo(b.LayerIndex);
+            return order != 0 ? order : a.Id.CompareTo(b.Id);
+        });
 
         for (var i = 0; i < elements.Count; i++)
         {
             elements[i].LayerIndex = i;
-        }
-
-        if (elements.Count > 0)
-        {
-            MinLayerIndex = 0;
-            MaxLayerIndex = elements.Count - 1;
-        }
-        else
-        {
-            MinLayerIndex = 0;
-            MaxLayerIndex = 0;
         }
 
         ElementsWithLayers = elements;

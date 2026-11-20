@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using Scribble.Services.CanvasStateService.Handlers;
 using Scribble.Services.CanvasStateService.State;
 using Scribble.Services.MultiUserDrawing;
 using Scribble.Shared.Lib;
@@ -87,19 +86,7 @@ public class CanvasStateService : ICanvasStateService
 
         _multiUserDrawingService.ConnectionStopped += () => CurrentState.MyConnectionId = null;
 
-        _dispatcher = new EventReplayDispatcher(
-            new StrokeReplayHandler(),
-            new EraserReplayHandler(),
-            new SelectionReplayHandler(),
-            new TransformReplayHandler(),
-            new TextReplayHandler(),
-            new PropertyReplayHandler(),
-            new CanvasLifecycleReplayHandler()
-        );
-
-#if DEBUG
-        _dispatcher.ValidateCompleteness(typeof(Event).Assembly);
-#endif
+        _dispatcher = new EventReplayDispatcher();
     }
 
     public void Undo()
@@ -229,36 +216,12 @@ public class CanvasStateService : ICanvasStateService
     {
         if (!_eventLog.Append(@event)) return;
 
-        var previous = CurrentState;
         var previousSelection = SelectedElementIds.ToArray();
         var selectionEvent = @event is CreateSelectionBoundEvent or IncreaseSelectionBoundEvent
             or EndSelectionEvent or ClearSelectionEvent or SelectByIdsEvent;
         var transient = selectionEvent || @event is StartEraseStrokeEvent or EraseStrokeLineToEvent or EndStrokeEvent;
 
-        // Fast paths mutate live elements. Rebuilds can compare their old and new materialized boards.
-        var previousLine = @event is LineStrokeLineToEvent line &&
-                           previous.PaintableStrokes.TryGetValue(line.StrokeId, out var stroke)
-            ? stroke.Path
-            : null;
-        bool contentChanged;
-        if (_dispatcher.TryFastPath(@event, CurrentState))
-        {
-            contentChanged = !transient && @event switch
-            {
-                MoveCanvasElementsEvent move => move.Delta != SKPoint.Empty && HasTargets(move.BoundId),
-                RotateCanvasElementsEvent rotate => rotate.DegreesRad != 0 && HasTargets(rotate.BoundId),
-                ScaleCanvasElementsEvent scale => scale.Scale != new SKPoint(1, 1) && HasTargets(scale.BoundId),
-                LineStrokeLineToEvent update when previousLine != null =>
-                    previousLine.ToSvgPathData() != CurrentState.PaintableStrokes[update.StrokeId].Path.ToSvgPathData(),
-                _ => true
-            };
-        }
-        else
-        {
-            ReplayEvents();
-            contentChanged = !transient && !CanvasContent.Equals(previous.ElementsWithLayers, CanvasElements);
-        }
-
+        var contentChanged = ApplyToCanvas(@event, transient);
         if (contentChanged) ContentChanged?.Invoke();
         if (!selectionEvent && @event is not EndStrokeEvent) CanvasInvalidated?.Invoke();
         var selectionChanged = !previousSelection.SequenceEqual(SelectedElementIds);
@@ -273,6 +236,32 @@ public class CanvasStateService : ICanvasStateService
         {
             TrackAction(@event.ActionId);
         }
+    }
+
+    // Apply an appended event and report whether the saved drawing changed.
+    private bool ApplyToCanvas(Event @event, bool transient)
+    {
+        // Fast paths mutate live elements. Rebuilds can compare their old and new materialized boards.
+        var previousLine = @event is LineStrokeLineToEvent line &&
+                           CurrentState.PaintableStrokes.TryGetValue(line.StrokeId, out var stroke)
+            ? stroke.Path
+            : null;
+        if (_dispatcher.TryApplyIncrementally(@event, CurrentState))
+        {
+            return !transient && @event switch
+            {
+                MoveCanvasElementsEvent move => move.Delta != SKPoint.Empty && HasTargets(move.BoundId),
+                RotateCanvasElementsEvent rotate => rotate.DegreesRad != 0 && HasTargets(rotate.BoundId),
+                ScaleCanvasElementsEvent scale => scale.Scale != new SKPoint(1, 1) && HasTargets(scale.BoundId),
+                LineStrokeLineToEvent update when previousLine != null =>
+                    previousLine.ToSvgPathData() != CurrentState.PaintableStrokes[update.StrokeId].Path.ToSvgPathData(),
+                _ => true
+            };
+        }
+
+        var previous = CurrentState;
+        ReplayEvents();
+        return !transient && !CanvasContent.Equals(previous.ElementsWithLayers, CanvasElements);
     }
 
     // Only transforms with surviving targets can change persistent content.
@@ -296,12 +285,6 @@ public class CanvasStateService : ICanvasStateService
             _dispatcher.Dispatch(ev, bestState);
         }
 
-        // Forward any newly discovered stale actions to the event log
-        foreach (var staleActionId in bestState.StaleActionIds)
-        {
-            _eventLog.MarkActionStale(staleActionId);
-        }
-
         // Show the selection only on the client that is doing the selection
         var myConnectionId = bestState.MyConnectionId;
         var mySelectionBound = bestState.SelectionBounds.Values
@@ -312,8 +295,6 @@ public class CanvasStateService : ICanvasStateService
         {
             bestState.SelectedElementIds.AddRange(mySelectionBound.Targets);
         }
-
-        bestState.NormalizeLayers();
 
         if (activeEvents.Count > _checkpointInterval && _eventLog.Events.Count > 0)
         {
