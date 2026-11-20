@@ -23,7 +23,8 @@ public class AutoSaveService : IDisposable
     private readonly TimeSpan _debounceDelay;
     private readonly TimeSpan _maxDelay;
     private readonly Lock _gate = new();
-    private readonly Timer _timer;
+    private readonly IAutoSaveClock _clock;
+    private readonly IAutoSaveTimer _timer;
 
     private long _editRevision;
 
@@ -64,20 +65,21 @@ public class AutoSaveService : IDisposable
     internal AutoSaveService(ICanvasStateService canvasStateService, IDocumentService documentService,
         IMultiUserDrawingService multiUserDrawingService, string customBaseDirectory,
         TimeSpan? debounceDelay = null, TimeSpan? maxDelay = null, IDialogService? dialogService = null,
-        Dispatcher? dispatcher = null)
+        Dispatcher? dispatcher = null, IAutoSaveClock? clock = null)
     {
         _canvasStateService = canvasStateService;
         _documentService = documentService;
         _multiUserDrawingService = multiUserDrawingService;
         _dialogService = dialogService;
         _dispatcher = dispatcher;
+        _clock = clock ?? new SystemAutoSaveClock();
         _appDataPath = Path.Combine(customBaseDirectory, "Scribble");
         _recoveryPath = Path.Combine(_appDataPath, "autosave.scribble");
         _debounceDelay = debounceDelay ?? TimeSpan.FromSeconds(2);
         _maxDelay = maxDelay ?? TimeSpan.FromSeconds(10);
 
         _paused = _multiUserDrawingService.IsJoining || _multiUserDrawingService.Room != null;
-        _timer = new Timer(_ => _ = SavePendingAsync());
+        _timer = _clock.CreateTimer(() => _ = SavePendingAsync());
         _canvasStateService.ContentChanged += OnDocumentChanged;
         _documentService.DocumentOpened += OnDocumentOpened;
         _multiUserDrawingService.JoiningChanged += RefreshRoomPhase;
@@ -123,7 +125,7 @@ public class AutoSaveService : IDisposable
 
             _editRevision++;
             if (_paused) return;
-            _lastEditAt = Environment.TickCount64;
+            _lastEditAt = _clock.GetTimestampMilliseconds();
             // Keep the first edit's deadline even when later edits reset the quiet period.
             _firstPendingAt ??= _lastEditAt;
             ScheduleWrite();
@@ -135,13 +137,13 @@ public class AutoSaveService : IDisposable
     {
         if (_paused || _writeInProgress || _disposed || _firstPendingAt is null) return;
 
-        _timer.Change(TimeSpan.FromMilliseconds(Math.Max(0, GetDelayMilliseconds())), Timeout.InfiniteTimeSpan);
+        _timer.Change(TimeSpan.FromMilliseconds(Math.Max(0, GetDelayMilliseconds())));
     }
 
     // Use the earlier of the quiet period and the maximum wait.
     private long GetDelayMilliseconds()
     {
-        var now = Environment.TickCount64;
+        var now = _clock.GetTimestampMilliseconds();
         return Math.Min((long)_debounceDelay.TotalMilliseconds - (now - _lastEditAt),
             (long)_maxDelay.TotalMilliseconds - (now - _firstPendingAt!.Value));
     }
@@ -236,7 +238,7 @@ public class AutoSaveService : IDisposable
                 if (!_paused && _editRevision > CoveredRevision && _firstPendingAt is null)
                 {
                     // Give a failed write the normal debounce interval before retrying.
-                    _firstPendingAt = _lastEditAt = Environment.TickCount64;
+                    _firstPendingAt = _lastEditAt = _clock.GetTimestampMilliseconds();
                 }
 
                 ScheduleWrite();
@@ -301,7 +303,7 @@ public class AutoSaveService : IDisposable
             if (CoveredRevision == _editRevision)
             {
                 _firstPendingAt = null;
-                _timer.Change(Timeout.Infinite, Timeout.Infinite);
+                _timer.Change(Timeout.InfiniteTimeSpan);
             }
         }
     }
@@ -322,10 +324,10 @@ public class AutoSaveService : IDisposable
             _paused = paused;
             _session++;
             _firstPendingAt = null;
-            _timer.Change(Timeout.Infinite, Timeout.Infinite);
+            _timer.Change(Timeout.InfiniteTimeSpan);
             if (!paused && _editRevision > CoveredRevision)
             {
-                _firstPendingAt = _lastEditAt = Environment.TickCount64;
+                _firstPendingAt = _lastEditAt = _clock.GetTimestampMilliseconds();
                 ScheduleWrite();
             }
         }
@@ -340,7 +342,7 @@ public class AutoSaveService : IDisposable
             _session++;
             _manualRevision = _editRevision;
             _firstPendingAt = null;
-            _timer.Change(Timeout.Infinite, Timeout.Infinite);
+            _timer.Change(Timeout.InfiniteTimeSpan);
             try
             {
                 if (!_preserveRecoveryFile && File.Exists(_recoveryPath)) File.Delete(_recoveryPath);
