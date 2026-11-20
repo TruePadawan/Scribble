@@ -1,9 +1,13 @@
 name: Build and Release Scribble
 
 on:
+  pull_request:
   push:
     tags:
-      - 'v*' # Triggers ONLY when a tag starting with 'v' (e.g., v1.1.4) is pushed
+      - 'v*'
+
+permissions:
+  contents: read
 
 jobs:
   test:
@@ -35,6 +39,7 @@ jobs:
         run: dotnet test --solution Scribble.slnx --verbosity normal
 
   build-and-release:
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
     needs: test
     runs-on: ubuntu-latest
     permissions:
