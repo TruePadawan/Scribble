@@ -54,7 +54,16 @@ public partial class MainView : UserControl
     private readonly Selection _selection;
     private bool _quickSelectMoveActive;
 
-    public MainView()
+    private readonly List<PointerTool> _tools;
+    private MainViewModel? _toolOwner;
+
+    // Resolve services for the editor created by Avalonia.
+    public MainView() : this(((App)Application.Current!).Services)
+    {
+    }
+
+    // Build the controls and shortcuts once for this view.
+    internal MainView(IServiceProvider services)
     {
         InitializeComponent();
         _prevCoord = SKPoint.Empty;
@@ -67,53 +76,105 @@ public partial class MainView : UserControl
         SelectionBorder.Cursor = new Cursor(moveIconBitmap, new PixelPoint(18, 18));
         SelectionRotationBtn.Cursor = new Cursor(rotateIconBitmap, new PixelPoint(12, 12));
 
-        var services = ((App)Application.Current!).Services;
         _canvasStateService = services.GetRequiredService<ICanvasStateService>();
         _dialogService = services.GetRequiredService<IDialogService>();
         _fileService = services.GetRequiredService<IFileService>();
         _multiUserDrawingService = services.GetRequiredService<IMultiUserDrawingService>();
+        _tools = CreateTools();
+        RegisterShortcuts();
     }
 
+    // Bind only while the view belongs to a visual tree.
+    protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        base.OnAttachedToVisualTree(e);
+        BindEditor(DataContext as MainViewModel);
+    }
+
+    // Release view and model subscriptions even if the context is retained.
+    protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        BindEditor(null);
+        base.OnDetachedFromVisualTree(e);
+    }
+
+    // Replace the editor when an attached view receives a different context.
     protected override void OnDataContextChanged(EventArgs e)
     {
-        if (_viewModel != null)
-        {
-            _viewModel.CanvasExportViewModel.CloseExport();
-            _viewModel.RequestRefreshSelection -= VisualizeSelection;
-            _viewModel.RequestInvalidateSkiaCanvas -= MainCanvas.InvalidateVisual;
-            _viewModel.RequestInvalidateSkiaCanvas -= MarkTextStrokesForEditing;
-            _viewModel.UiStateViewModel.CenterZoomRequested -= OnCenterZoomRequested;
-            _viewModel.UiStateViewModel.ActiveToolChanged -= OnActiveToolChanged;
-        }
-
         base.OnDataContextChanged(e);
-
-        if (DataContext is MainViewModel viewModel)
+        var currentVm = DataContext as MainViewModel;
+        if (_toolOwner != currentVm && _toolOwner != null)
         {
-            _viewModel = viewModel;
-            _viewModel.RequestRefreshSelection += VisualizeSelection;
-            _viewModel.RequestInvalidateSkiaCanvas += MainCanvas.InvalidateVisual;
-            _viewModel.RequestInvalidateSkiaCanvas += MarkCanvasElementsForSelection;
-            _viewModel.RequestInvalidateSkiaCanvas += MarkTextStrokesForEditing;
-            _viewModel.UiStateViewModel.CenterZoomRequested += OnCenterZoomRequested;
-            _viewModel.UiStateViewModel.ActiveToolChanged += OnActiveToolChanged;
-
-            OnAppStartUp(viewModel);
+            // End gestures only when the model changes, including changes while detached.
+            _toolOwner.UiStateViewModel.ActivePointerTool = null;
+            _toolOwner.UiStateViewModel.AvailableTools.Clear();
+            _toolOwner.UiStateViewModel.ClearToolOptions();
+            _toolOwner.CanvasExportViewModel.CloseExport();
+            ExportImageWindow.IsVisible = ExportImageWindowOverlay.IsVisible = false;
+            _toolOwner = null;
         }
+
+        if (VisualRoot != null) BindEditor(currentVm);
+    }
+
+    // Transfer subscriptions and tools to the model currently shown.
+    private void BindEditor(MainViewModel? currentVm)
+    {
+        if (_viewModel == currentVm) return;
+
+        // Teardown
+        if (_viewModel is { } previous)
+        {
+            previous.RequestRefreshSelection -= VisualizeSelection;
+            previous.RequestInvalidateSkiaCanvas -= MainCanvas.InvalidateVisual;
+            previous.RequestInvalidateSkiaCanvas -= MarkCanvasElementsForSelection;
+            previous.RequestInvalidateSkiaCanvas -= MarkTextStrokesForEditing;
+            previous.UiStateViewModel.CenterZoomRequested -= OnCenterZoomRequested;
+            previous.UiStateViewModel.ActiveToolChanged -= OnActiveToolChanged;
+            previous.Deactivate();
+            _activePointerTool = null;
+            _quickSelectMoveActive = false;
+            QuickSelectionBorders.Children.Clear();
+            TextStrokeEditBorders.Children.Clear();
+            ClearSelectionOverlay();
+        }
+
+        _viewModel = currentVm;
+        if (currentVm == null) return;
+        currentVm.RequestRefreshSelection += VisualizeSelection;
+        currentVm.RequestInvalidateSkiaCanvas += MainCanvas.InvalidateVisual;
+        currentVm.RequestInvalidateSkiaCanvas += MarkCanvasElementsForSelection;
+        currentVm.RequestInvalidateSkiaCanvas += MarkTextStrokesForEditing;
+        currentVm.UiStateViewModel.CenterZoomRequested += OnCenterZoomRequested;
+        currentVm.UiStateViewModel.ActiveToolChanged += OnActiveToolChanged;
+        if (_toolOwner != currentVm)
+        {
+            _toolOwner = currentVm;
+            foreach (var tool in _tools) currentVm.UiStateViewModel.AvailableTools.Add(tool);
+            currentVm.UiStateViewModel.ActivePointerTool = _tools[0];
+        }
+        else
+        {
+            // Resume the same editor and its selected tool after a visual detach.
+            OnActiveToolChanged(null, currentVm.UiStateViewModel.ActivePointerTool);
+        }
+
+        currentVm.Activate();
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (_viewModel == currentVm) FocusCanvas();
+        });
     }
 
     private bool CanExecuteKeyBinding()
     {
         var focusedElement = Utilities.GetTopLevel()?.FocusManager?.GetFocusedElement();
-        return focusedElement is not TextBox;
+        return _viewModel != null && focusedElement is not TextBox;
     }
 
-    private void OnAppStartUp(MainViewModel viewModel)
+    // Route each shortcut to the current editor when the user presses it.
+    private void RegisterShortcuts()
     {
-        LoadAllTools(viewModel);
-        // Ensure the canvas container gets focus so keybindings work immediately
-        Dispatcher.UIThread.Post(FocusCanvas);
-
         // Delegate keyboard input to the active tool (e.g. Esc/Enter to finalize polylines)
         CanvasContainer.KeyDown += (_, e) =>
         {
@@ -139,7 +200,7 @@ public partial class MainView : UserControl
         RootPanel.KeyBindings.Add(new KeyBinding
         {
             Gesture = new KeyGesture(Key.C, KeyModifiers.Control),
-            Command = new RelayCommand(() => viewModel.CopyCommand.Execute(null), CanExecuteKeyBinding)
+            Command = new RelayCommand(() => _viewModel?.CopyCommand.Execute(null), CanExecuteKeyBinding)
         });
 
         RootPanel.KeyBindings.Add(new KeyBinding
@@ -157,49 +218,39 @@ public partial class MainView : UserControl
                     pastePos = CameraState.ScreenToWorld(viewportCenter);
                 }
 
-                viewModel.PasteCommand.Execute(pastePos);
+                _viewModel?.PasteCommand.Execute(pastePos);
             }, CanExecuteKeyBinding)
         });
+        foreach (var tool in _tools)
+        {
+            if (tool.HotKey == null) continue;
+            KeyBindings.Add(new KeyBinding
+            {
+                Gesture = tool.HotKey,
+                Command = new RelayCommand(() => _viewModel?.UiStateViewModel.SwitchToolCommand.Execute(tool),
+                    CanExecuteKeyBinding)
+            });
+        }
     }
 
     // Return keyboard focus to the canvas and its shortcuts.
     internal void FocusCanvas() => CanvasContainer.Focus();
 
-    private void LoadAllTools(MainViewModel viewModel)
-    {
-        viewModel.UiStateViewModel.AvailableTools.Clear();
-        var tools = new List<PointerTool>
-        {
-            new PencilTool("PencilTool", _canvasStateService),
-            new EraseTool("EraseTool", _canvasStateService),
-            new PanningTool("PanningTool", _canvasStateService, MainCanvas.InvalidateVisual),
-            new LineTool("LineTool", _canvasStateService),
-            new ArrowTool("ArrowTool", _canvasStateService),
-            new EllipseTool("EllipseTool", _canvasStateService),
-            new RectangleTool("RectangleTool", _canvasStateService),
-            new DiamondTool("DiamondTool", _canvasStateService),
-            new TextTool("TextTool", _canvasStateService, CanvasContainer),
-            new SelectTool("SelectTool", _canvasStateService, CanvasContainer),
-            new ImageTool("ImageTool", _canvasStateService, _fileService, _dialogService),
-        };
-        foreach (var tool in tools)
-        {
-            viewModel.UiStateViewModel.AvailableTools.Add(tool);
-
-            // Map the tool's HotKey to trigger the SwitchToolCommand
-            if (tool.HotKey != null)
-            {
-                KeyBindings.Add(new KeyBinding
-                {
-                    Gesture = tool.HotKey,
-                    Command = new RelayCommand(() => viewModel.UiStateViewModel.SwitchToolCommand.Execute(tool),
-                        CanExecuteKeyBinding)
-                });
-            }
-        }
-
-        viewModel.UiStateViewModel.ActivePointerTool = tools.FirstOrDefault();
-    }
+    // Create the tools that operate on this view's canvas and overlays.
+    private List<PointerTool> CreateTools() =>
+    [
+        new PencilTool("PencilTool", _canvasStateService),
+        new EraseTool("EraseTool", _canvasStateService),
+        new PanningTool("PanningTool", _canvasStateService, MainCanvas.InvalidateVisual),
+        new LineTool("LineTool", _canvasStateService),
+        new ArrowTool("ArrowTool", _canvasStateService),
+        new EllipseTool("EllipseTool", _canvasStateService),
+        new RectangleTool("RectangleTool", _canvasStateService),
+        new DiamondTool("DiamondTool", _canvasStateService),
+        new TextTool("TextTool", _canvasStateService, CanvasContainer),
+        new SelectTool("SelectTool", _canvasStateService, CanvasContainer),
+        new ImageTool("ImageTool", _canvasStateService, _fileService, _dialogService),
+    ];
 
     /// <summary>
     /// Put an invisible Border control on all canvas elements that allows quick selection.

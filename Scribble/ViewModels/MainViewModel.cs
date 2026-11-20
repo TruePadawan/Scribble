@@ -51,21 +51,44 @@ public partial class MainViewModel : ViewModelBase
         MultiUserDrawingViewModel = multiUserDrawingViewModel;
         DocumentViewModel = documentViewModel;
         UiStateViewModel = uiStateViewModel;
+    }
 
-        // Wire service events to UI invalidation
-        CanvasStateService.CanvasInvalidated += () =>
-        {
-            CanvasElements = CanvasStateService.CanvasElements.ToList();
-            RequestInvalidateSkiaCanvas?.Invoke();
-        };
+    // Observe editor services while this model is presented by the view.
+    internal void Activate()
+    {
+        CanvasStateService.CanvasInvalidated += RefreshCanvas;
+        CanvasStateService.SelectionInvalidated += RefreshSelection;
+        CanvasStateService.UndoRedoStateChanged += RefreshUndoRedo;
+        UiStateViewModel.Activate();
+        RefreshCanvas();
+        RefreshSelection();
+        RefreshUndoRedo();
+    }
 
-        CanvasStateService.SelectionInvalidated += () => { RequestRefreshSelection?.Invoke(); };
+    // Release singleton subscriptions when the editor is unbound.
+    internal void Deactivate()
+    {
+        CanvasStateService.CanvasInvalidated -= RefreshCanvas;
+        CanvasStateService.SelectionInvalidated -= RefreshSelection;
+        CanvasStateService.UndoRedoStateChanged -= RefreshUndoRedo;
+        UiStateViewModel.Deactivate();
+    }
 
-        CanvasStateService.UndoRedoStateChanged += () =>
-        {
-            UndoCommand.NotifyCanExecuteChanged();
-            RedoCommand.NotifyCanExecuteChanged();
-        };
+    // Publish the current drawing to the canvas control.
+    private void RefreshCanvas()
+    {
+        CanvasElements = [.. CanvasStateService.CanvasElements];
+        RequestInvalidateSkiaCanvas?.Invoke();
+    }
+
+    // Refresh the selection overlay after the canvas changes.
+    private void RefreshSelection() => RequestRefreshSelection?.Invoke();
+
+    // Recheck commands after replay or attachment.
+    private void RefreshUndoRedo()
+    {
+        UndoCommand.NotifyCanExecuteChanged();
+        RedoCommand.NotifyCanExecuteChanged();
     }
 
     [RelayCommand(CanExecute = nameof(CanUndo))]
