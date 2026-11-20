@@ -437,27 +437,23 @@ public class CanvasStateServiceTests
         _canvasStateService.CanUndo.Should().BeFalse();
     }
 
+    // Verify that an empty erasure stays out of undo after checkpoint restoration.
     [Fact]
     public void ApplyEvent_EmptyErasureAcrossCheckpoint_DoesNotPolluteUndoStack()
     {
+        var canvas = new CanvasStateService(_multiUserDrawingService, checkpointInterval: 2);
         var actionId = Guid.NewGuid();
-        var strokeId = Guid.NewGuid();
+        var gestureId = Guid.NewGuid();
+        canvas.ApplyEvent(new StartEraseStrokeEvent(actionId, gestureId, SKPoint.Empty));
+        canvas.ApplyEvent(new EraseStrokeLineToEvent(actionId, gestureId, new SKPoint(1, 1)));
 
-        // Start Erase
-        _canvasStateService.ApplyEvent(new StartEraseStrokeEvent(actionId, strokeId, new SKPoint(0, 0)));
+        // Force a full replay and checkpoint with the gesture still in progress.
+        var boundary = new SetElementLayerEvent(Guid.NewGuid(), [], 0);
+        canvas.ApplyEvent(boundary, isLocalEvent: false);
+        canvas.ApplyEvent(new TriggerEraseEvent(actionId, gestureId));
 
-        // Add enough dummy events to force a checkpoint (CheckpointInterval = 50)
-        // We will just add EraseStrokeLineToEvent 60 times.
-        for (int i = 0; i < 60; i++)
-        {
-            _canvasStateService.ApplyEvent(new EraseStrokeLineToEvent(actionId, strokeId, new SKPoint(i, i)));
-        }
-
-        // Fire terminal event (empty erasure, as there are no strokes to hit)
-        _canvasStateService.ApplyEvent(new TriggerEraseEvent(actionId, strokeId));
-
-        // Assert: Since it hit nothing, it should be marked stale and NOT added to the Undo stack.
-        _canvasStateService.CanUndo.Should().BeFalse();
+        canvas.LastReplayCheckpointId.Should().Be(boundary.Id);
+        canvas.CanUndo.Should().BeFalse();
     }
 
 
@@ -657,26 +653,23 @@ public class CanvasStateServiceTests
         _canvasStateService.CanUndo.Should().BeFalse();
     }
 
+    // Verify that an empty selection stays out of undo after checkpoint restoration.
     [Fact]
     public void ApplyEvent_EmptySelectionAcrossCheckpoint_DoesNotPolluteUndoStack()
     {
+        var canvas = new CanvasStateService(_multiUserDrawingService, checkpointInterval: 2);
         var actionId = Guid.NewGuid();
-        var boundId = Guid.NewGuid();
+        var gestureId = Guid.NewGuid();
+        canvas.ApplyEvent(new CreateSelectionBoundEvent(actionId, gestureId, SKPoint.Empty));
+        canvas.ApplyEvent(new IncreaseSelectionBoundEvent(actionId, gestureId, new SKPoint(1, 1)));
 
-        // Create Selection Bound
-        _canvasStateService.ApplyEvent(new CreateSelectionBoundEvent(actionId, boundId, new SKPoint(0, 0)));
+        // Force a full replay and checkpoint with the gesture still in progress.
+        var boundary = new SetElementLayerEvent(Guid.NewGuid(), [], 0);
+        canvas.ApplyEvent(boundary, isLocalEvent: false);
+        canvas.ApplyEvent(new EndSelectionEvent(actionId, gestureId));
 
-        // Add enough dummy events to force a checkpoint
-        for (int i = 0; i < 60; i++)
-        {
-            _canvasStateService.ApplyEvent(new IncreaseSelectionBoundEvent(actionId, boundId, new SKPoint(i, i)));
-        }
-
-        // Fire terminal event (empty selection, as there are no elements)
-        _canvasStateService.ApplyEvent(new EndSelectionEvent(actionId, boundId));
-
-        // Assert: Since it selected nothing, it should be marked stale and NOT added to the Undo stack.
-        _canvasStateService.CanUndo.Should().BeFalse();
+        canvas.LastReplayCheckpointId.Should().Be(boundary.Id);
+        canvas.CanUndo.Should().BeFalse();
     }
 
     [Fact]

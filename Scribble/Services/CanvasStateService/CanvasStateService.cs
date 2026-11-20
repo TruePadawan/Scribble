@@ -17,7 +17,10 @@ public class CanvasStateService : ICanvasStateService
     private CanvasState CurrentState { get; set; } = new();
     private EventLog _eventLog = new();
     private CheckpointManager _checkpointManager = new();
-    private const int CheckpointInterval = 100;
+    private readonly int _checkpointInterval;
+
+    // Identifies the checkpoint used to replay the most recent event suffix.
+    internal Guid? LastReplayCheckpointId { get; private set; }
 
     public IReadOnlyList<CanvasElement> CanvasElements => CurrentState.ElementsWithLayers;
     public Queue<Event> CanvasEvents => new(_eventLog.Events);
@@ -47,8 +50,14 @@ public class CanvasStateService : ICanvasStateService
         BackgroundColorChanged?.Invoke();
     }
 
-    public CanvasStateService(IMultiUserDrawingService multiUserDrawingService)
+    public CanvasStateService(IMultiUserDrawingService multiUserDrawingService) : this(multiUserDrawingService, 100)
     {
+    }
+
+    // Allow short histories to exercise the production checkpoint path in tests.
+    internal CanvasStateService(IMultiUserDrawingService multiUserDrawingService, int checkpointInterval)
+    {
+        _checkpointInterval = checkpointInterval;
         _multiUserDrawingService = multiUserDrawingService;
 
         _multiUserDrawingService.EventReceived += OnNetworkEventReceived;
@@ -242,6 +251,7 @@ public class CanvasStateService : ICanvasStateService
     private void ReplayEvents()
     {
         _checkpointManager.TryGetValidCheckpoint(_eventLog.HiddenActionIds, out var bestState, out var lastEventId);
+        LastReplayCheckpointId = lastEventId;
         var activeEvents = _eventLog.GetActiveEventsSince(lastEventId);
         bestState.MyConnectionId =
             _multiUserDrawingService.Room?.Me.ConnectionId ?? _multiUserDrawingService.ConnectionId;
@@ -270,7 +280,7 @@ public class CanvasStateService : ICanvasStateService
 
         bestState.NormalizeLayers();
 
-        if (activeEvents.Count > CheckpointInterval && _eventLog.Events.Count > 0)
+        if (activeEvents.Count > _checkpointInterval && _eventLog.Events.Count > 0)
         {
             _checkpointManager.CaptureCheckpoint(bestState, _eventLog.Events[^1].Id, _eventLog.HiddenActionIds);
         }
