@@ -38,6 +38,28 @@ public class CanvasStateServiceTests
         return (actionId, strokeId);
     }
 
+    // Selection, duplicate delivery and ineffective edits must leave the file revision alone.
+    [Fact]
+    public void ApplyEvent_SelectionAndNoOpEdits_OnlyEffectiveColorChangeMarksContent()
+    {
+        var (_, id) = ApplyCompleteStroke(_canvasStateService, SKPoint.Empty, new SKPoint(8, 8));
+        var edits = 0;
+        IReadOnlyList<Guid> selected = [];
+        _canvasStateService.ContentChanged += () => edits++;
+        _canvasStateService.SelectionInvalidated += (ids, _) => selected = ids.ToArray();
+        _canvasStateService.ApplyEvent(new SelectByIdsEvent(Guid.NewGuid(), Guid.NewGuid(), [id]));
+        selected.Should().Equal(id);
+        _canvasStateService.Undo();
+        _canvasStateService.Redo();
+        edits.Should().Be(0);
+        var change = new UpdateStrokeColorEvent(Guid.NewGuid(), [id], SKColors.Blue);
+        _canvasStateService.ApplyEvent(change);
+        _canvasStateService.ApplyEvent(change);
+        _canvasStateService.ApplyEvent(new UpdateStrokeColorEvent(Guid.NewGuid(), [id], SKColors.Blue));
+        _canvasStateService.ApplyEvent(new UpdateStrokeColorEvent(Guid.NewGuid(), [Guid.NewGuid()], SKColors.Blue));
+        edits.Should().Be(1);
+    }
+
     // StartStrokeEvent
 
     [Fact]

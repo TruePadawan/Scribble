@@ -28,6 +28,7 @@ public class CanvasStateService : ICanvasStateService
     public IReadOnlyList<Guid> SelectedElementIds => CurrentState.SelectedElementIds;
     public SKColor BackgroundColor { get; private set; } = new(0, 0, 0, 162);
 
+    public bool IsRoomActive => _multiUserDrawingService.IsJoining || _multiUserDrawingService.Room != null;
     public bool HasEvents => _eventLog.Events.Count > 0;
 
     private readonly Stack<Guid> _undoStack = [];
@@ -39,7 +40,10 @@ public class CanvasStateService : ICanvasStateService
     private readonly EventReplayDispatcher _dispatcher;
 
     public event Action? CanvasInvalidated;
-    public event Action? SelectionInvalidated;
+
+    // Signals a change to the content written to a document.
+    public event Action? ContentChanged;
+    public event Action<IReadOnlyList<Guid>, bool>? SelectionInvalidated;
     public event Action? UndoRedoStateChanged;
     public event Action? BackgroundColorChanged;
 
@@ -47,6 +51,7 @@ public class CanvasStateService : ICanvasStateService
     {
         if (_multiUserDrawingService.IsJoining || BackgroundColor == color) return;
         BackgroundColor = color;
+        ContentChanged?.Invoke();
         BackgroundColorChanged?.Invoke();
     }
 
@@ -117,17 +122,6 @@ public class CanvasStateService : ICanvasStateService
         ApplyEvent(new RedoEvent(Guid.NewGuid(), actionId), isLocalEvent: true);
 
         UndoRedoStateChanged?.Invoke();
-    }
-
-    public Queue<Event> GetLocalCanvasEvents()
-    {
-        return new Queue<Event>(CanvasEvents.Where(IsLocalEvent).ToList());
-    }
-
-    public bool IsLocalEvent(Event @event)
-    {
-        var myConnectionId = _multiUserDrawingService.ConnectionId;
-        return @event.CreatorConnectionId == myConnectionId;
     }
 
     public void ClearSelection()
@@ -205,7 +199,18 @@ public class CanvasStateService : ICanvasStateService
             changed |= _eventLog.Append(ev);
         }
 
-        if (changed) ReplayEvents();
+        if (changed)
+        {
+            var previous = CurrentState;
+            ReplayEvents();
+            if (snapshot != null || !CanvasContent.Equals(previous.ElementsWithLayers, CanvasElements))
+            {
+                ContentChanged?.Invoke();
+            }
+
+            CanvasInvalidated?.Invoke();
+            SelectionInvalidated?.Invoke(SelectedElementIds, true);
+        }
     }
 
     /// <summary>
@@ -224,28 +229,58 @@ public class CanvasStateService : ICanvasStateService
     {
         if (!_eventLog.Append(@event)) return;
 
-        // Fast path: for events during active drawing, apply directly to the existing state
+        var previous = CurrentState;
+        var previousSelection = SelectedElementIds.ToArray();
+        var selectionEvent = @event is CreateSelectionBoundEvent or IncreaseSelectionBoundEvent
+            or EndSelectionEvent or ClearSelectionEvent or SelectByIdsEvent;
+        var transient = selectionEvent || @event is StartEraseStrokeEvent or EraseStrokeLineToEvent or EndStrokeEvent;
+
+        // Fast paths mutate live elements. Rebuilds can compare their old and new materialized boards.
+        var previousLine = @event is LineStrokeLineToEvent line &&
+                           previous.PaintableStrokes.TryGetValue(line.StrokeId, out var stroke)
+            ? stroke.Path
+            : null;
+        bool contentChanged;
         if (_dispatcher.TryFastPath(@event, CurrentState))
         {
-            switch (@event)
+            contentChanged = !transient && @event switch
             {
-                case ITerminalEvent when isLocalEvent && !CurrentState.StaleActionIds.Contains(@event.ActionId):
-                    TrackAction(@event.ActionId);
-                    break;
-            }
-
-            CanvasInvalidated?.Invoke();
-            SelectionInvalidated?.Invoke();
-            return;
+                MoveCanvasElementsEvent move => move.Delta != SKPoint.Empty && HasTargets(move.BoundId),
+                RotateCanvasElementsEvent rotate => rotate.DegreesRad != 0 && HasTargets(rotate.BoundId),
+                ScaleCanvasElementsEvent scale => scale.Scale != new SKPoint(1, 1) && HasTargets(scale.BoundId),
+                LineStrokeLineToEvent update when previousLine != null =>
+                    previousLine.ToSvgPathData() != CurrentState.PaintableStrokes[update.StrokeId].Path.ToSvgPathData(),
+                _ => true
+            };
+        }
+        else
+        {
+            ReplayEvents();
+            contentChanged = !transient && !CanvasContent.Equals(previous.ElementsWithLayers, CanvasElements);
         }
 
-        ReplayEvents();
+        if (contentChanged) ContentChanged?.Invoke();
+        if (!selectionEvent && @event is not EndStrokeEvent) CanvasInvalidated?.Invoke();
+        var selectionChanged = !previousSelection.SequenceEqual(SelectedElementIds);
+        var refreshOptions = selectionChanged || (isLocalEvent && @event is EndSelectionEvent or SelectByIdsEvent);
+        if (refreshOptions || (contentChanged && SelectedElementIds.Count > 0))
+        {
+            SelectionInvalidated?.Invoke(SelectedElementIds, refreshOptions || contentChanged);
+        }
 
         // Keep track of local non-stale actions for undo/redo functionality
         if (@event is ITerminalEvent && isLocalEvent && !CurrentState.StaleActionIds.Contains(@event.ActionId))
         {
             TrackAction(@event.ActionId);
         }
+    }
+
+    // Only transforms with surviving targets can change persistent content.
+    private bool HasTargets(Guid boundId)
+    {
+        return CurrentState.SelectionBounds.TryGetValue(boundId, out var bound) &&
+               bound.Targets.Any(id =>
+                   CurrentState.PaintableStrokes.ContainsKey(id) || CurrentState.CanvasImages.ContainsKey(id));
     }
 
     private void ReplayEvents()
@@ -286,8 +321,5 @@ public class CanvasStateService : ICanvasStateService
         }
 
         CurrentState = bestState;
-
-        CanvasInvalidated?.Invoke();
-        SelectionInvalidated?.Invoke();
     }
 }

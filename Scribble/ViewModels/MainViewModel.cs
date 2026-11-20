@@ -18,7 +18,7 @@ namespace Scribble.ViewModels;
 
 public partial class MainViewModel : ViewModelBase
 {
-    public event Action? RequestRefreshSelection;
+    public event Action<IReadOnlyList<Guid>, bool>? RequestRefreshSelection;
     public event Action? RequestInvalidateSkiaCanvas;
 
     [ObservableProperty] private List<CanvasElement> _canvasElements = [];
@@ -61,7 +61,7 @@ public partial class MainViewModel : ViewModelBase
         CanvasStateService.UndoRedoStateChanged += RefreshUndoRedo;
         UiStateViewModel.Activate();
         RefreshCanvas();
-        RefreshSelection();
+        RefreshSelection(CanvasStateService.SelectedElementIds, true);
         RefreshUndoRedo();
     }
 
@@ -82,7 +82,7 @@ public partial class MainViewModel : ViewModelBase
     }
 
     // Refresh the selection overlay after the canvas changes.
-    private void RefreshSelection() => RequestRefreshSelection?.Invoke();
+    private void RefreshSelection(IReadOnlyList<Guid> ids, bool refreshOptions) => RequestRefreshSelection?.Invoke(ids, refreshOptions);
 
     // Recheck commands after replay or attachment.
     private void RefreshUndoRedo()
@@ -123,7 +123,7 @@ public partial class MainViewModel : ViewModelBase
     [RelayCommand]
     private async Task ExitAsync()
     {
-        if (CanvasStateService.HasEvents)
+        if (DocumentViewModel.HasUnsavedChanges)
         {
             var confirmed = await _dialogService.ShowWarningConfirmationAsync("Warning",
                 "All unsaved work will be lost. Are you sure you want to proceed?");
@@ -141,14 +141,14 @@ public partial class MainViewModel : ViewModelBase
     {
         if (_multiUserDrawingService.Room != null || _multiUserDrawingService.IsJoining) return;
 
-        if (CanvasStateService.HasEvents)
+        if (DocumentViewModel.HasUnsavedChanges)
         {
             var confirmed = await _dialogService.ShowWarningConfirmationAsync("Warning",
                 "This will clear your current canvas. Are you sure you want to proceed?");
             if (!confirmed) return;
         }
 
-        CanvasStateService.LoadCanvas([]);
+        DocumentViewModel.ResetDocument();
     }
 
     [RelayCommand]

@@ -27,11 +27,23 @@ public class AutoSaveService : IDisposable
 
     private long _editRevision;
 
-    // Manual saves also advance this revision.
-    private long _savedRevision;
+    // Most recent revision covered by either kind of save.
+    private long CoveredRevision => Math.Max(_manualRevision, _recoveryRevision);
 
     // The revision currently stored in the recovery file.
     private long _recoveryRevision;
+    private long _manualRevision;
+    private bool _paused;
+
+    // A successful manual save covers only the revision captured for that write.
+    public bool HasUnsavedChanges
+    {
+        get
+        {
+            lock (_gate) return _editRevision > _manualRevision;
+        }
+    }
+
     private long _session;
     private long? _firstPendingAt;
     private long _lastEditAt;
@@ -64,9 +76,11 @@ public class AutoSaveService : IDisposable
         _debounceDelay = debounceDelay ?? TimeSpan.FromSeconds(2);
         _maxDelay = maxDelay ?? TimeSpan.FromSeconds(10);
 
+        _paused = _multiUserDrawingService.IsJoining || _multiUserDrawingService.Room != null;
         _timer = new Timer(_ => _ = SavePendingAsync());
-        _canvasStateService.CanvasInvalidated += OnDocumentChanged;
-        _canvasStateService.BackgroundColorChanged += OnDocumentChanged;
+        _canvasStateService.ContentChanged += OnDocumentChanged;
+        _documentService.DocumentOpened += OnDocumentOpened;
+        _multiUserDrawingService.JoiningChanged += RefreshRoomPhase;
         _multiUserDrawingService.RoomChanged += OnRoomChanged;
     }
 
@@ -79,6 +93,7 @@ public class AutoSaveService : IDisposable
         {
             await using var stream = File.OpenRead(_recoveryPath);
             await _documentService.LoadAsync(stream);
+            lock (_gate) _recoveryRevision = ++_editRevision;
         }
         catch (FileNotFoundException)
         {
@@ -99,14 +114,15 @@ public class AutoSaveService : IDisposable
         }
     }
 
-    // Record another local edit and refresh the autosave timer.
+    // Track edits in every session and schedule recovery only during solo editing.
     private void OnDocumentChanged()
     {
         lock (_gate)
         {
-            if (_disposed || _recovering || _multiUserDrawingService.Room != null) return;
+            if (_disposed || _recovering) return;
 
             _editRevision++;
+            if (_paused) return;
             _lastEditAt = Environment.TickCount64;
             // Keep the first edit's deadline even when later edits reset the quiet period.
             _firstPendingAt ??= _lastEditAt;
@@ -117,7 +133,7 @@ public class AutoSaveService : IDisposable
     // Arm the timer when there is work and the writer is idle.
     private void ScheduleWrite()
     {
-        if (_writeInProgress || _disposed || _firstPendingAt is null) return;
+        if (_paused || _writeInProgress || _disposed || _firstPendingAt is null) return;
 
         _timer.Change(TimeSpan.FromMilliseconds(Math.Max(0, GetDelayMilliseconds())), Timeout.InfiniteTimeSpan);
     }
@@ -174,7 +190,7 @@ public class AutoSaveService : IDisposable
                 lock (_gate)
                 {
                     // A room change or a completed save can make this temporary file obsolete.
-                    if (_disposed || session != _session || revision <= _savedRevision) return;
+                    if (_disposed || session != _session || revision <= CoveredRevision) return;
 
                     if (_preserveRecoveryFile)
                     {
@@ -185,7 +201,7 @@ public class AutoSaveService : IDisposable
 
                     File.Move(tempPath, _recoveryPath, overwrite: true);
                     tempPath = null;
-                    _savedRevision = _recoveryRevision = revision;
+                    _recoveryRevision = revision;
                     _saveErrorReported = false;
                 }
             }
@@ -217,7 +233,7 @@ public class AutoSaveService : IDisposable
             lock (_gate)
             {
                 _writeInProgress = false;
-                if (_editRevision > _savedRevision && _firstPendingAt is null)
+                if (!_paused && _editRevision > CoveredRevision && _firstPendingAt is null)
                 {
                     // Give a failed write the normal debounce interval before retrying.
                     _firstPendingAt = _lastEditAt = Environment.TickCount64;
@@ -233,7 +249,7 @@ public class AutoSaveService : IDisposable
     {
         lock (_gate)
         {
-            if (_disposed || session != _session || _editRevision <= _savedRevision) return default;
+            if (_disposed || _paused || session != _session || _editRevision <= CoveredRevision) return default;
             _firstPendingAt = null;
             // Pair the snapshot with the revision it represents.
             return (_documentService.CaptureSnapshot(), _editRevision);
@@ -264,9 +280,10 @@ public class AutoSaveService : IDisposable
         lock (_gate)
         {
             // Manual saves may clear recovery only for the solo session they captured.
-            if (_disposed || !wasSolo || session != _session || _multiUserDrawingService.Room != null) return;
+            if (_disposed || session != _session) return;
+            _manualRevision = Math.Max(_manualRevision, revision);
+            if (!wasSolo || _paused) return;
 
-            _savedRevision = Math.Max(_savedRevision, revision);
             // A newer autosave may have finished while the manual save was writing.
             if (_recoveryRevision <= revision && !_preserveRecoveryFile && File.Exists(_recoveryPath))
             {
@@ -281,7 +298,7 @@ public class AutoSaveService : IDisposable
             }
 
             // Cancel the timer only when the manual save covers every edit.
-            if (_savedRevision == _editRevision)
+            if (CoveredRevision == _editRevision)
             {
                 _firstPendingAt = null;
                 _timer.Change(Timeout.Infinite, Timeout.Infinite);
@@ -292,15 +309,46 @@ public class AutoSaveService : IDisposable
     // Pause local recovery writes when entering a live room.
     private void OnRoomChanged(MultiUserDrawingRoom? room)
     {
+        RefreshRoomPhase();
+    }
+
+    // Suspend publication during a join and resume uncovered edits on return to solo.
+    private void RefreshRoomPhase()
+    {
         lock (_gate)
         {
-            if (_disposed || room is null) return;
-
-            // Invalidate any autosave still writing when the room opens.
+            var paused = _multiUserDrawingService.IsJoining || _multiUserDrawingService.Room != null;
+            if (_disposed || paused == _paused) return;
+            _paused = paused;
             _session++;
-            _savedRevision = _editRevision;
             _firstPendingAt = null;
             _timer.Change(Timeout.Infinite, Timeout.Infinite);
+            if (!paused && _editRevision > CoveredRevision)
+            {
+                _firstPendingAt = _lastEditAt = Environment.TickCount64;
+                ScheduleWrite();
+            }
+        }
+    }
+
+    // Replace the manual baseline and invalidate pending writes from the old document.
+    internal void OnDocumentOpened()
+    {
+        lock (_gate)
+        {
+            if (_recovering || _disposed) return;
+            _session++;
+            _manualRevision = _editRevision;
+            _firstPendingAt = null;
+            _timer.Change(Timeout.Infinite, Timeout.Infinite);
+            try
+            {
+                if (!_preserveRecoveryFile && File.Exists(_recoveryPath)) File.Delete(_recoveryPath);
+            }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+            {
+                ReportError("Could not remove the previous autosave", exception);
+            }
         }
     }
 
@@ -310,7 +358,7 @@ public class AutoSaveService : IDisposable
         Trace.TraceError("{0}. {1}", title, exception);
         if (_dialogService is null) return;
 
-        Dispatcher.UIThread.Post(async () =>
+        Dispatcher.UIThread.Post(async void () =>
         {
             try
             {
@@ -335,8 +383,9 @@ public class AutoSaveService : IDisposable
             _timer.Dispose();
         }
 
-        _canvasStateService.CanvasInvalidated -= OnDocumentChanged;
-        _canvasStateService.BackgroundColorChanged -= OnDocumentChanged;
+        _canvasStateService.ContentChanged -= OnDocumentChanged;
+        _documentService.DocumentOpened -= OnDocumentOpened;
+        _multiUserDrawingService.JoiningChanged -= RefreshRoomPhase;
         _multiUserDrawingService.RoomChanged -= OnRoomChanged;
     }
 }

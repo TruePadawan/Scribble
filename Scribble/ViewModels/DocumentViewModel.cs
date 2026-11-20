@@ -23,6 +23,17 @@ public partial class DocumentViewModel : ViewModelBase
     private readonly IMultiUserDrawingService _multiUserDrawingService;
     private readonly AutoSaveService _autoSaveService;
 
+    // A recovery copy still leaves the document available for a manual save.
+    internal bool HasUnsavedChanges => _autoSaveService.HasUnsavedChanges;
+
+    // Start a clean document after the user confirms a reset.
+    internal void ResetDocument()
+    {
+        if (_canvasStateService.IsRoomActive) return;
+        _canvasStateService.LoadCanvas([]);
+        _autoSaveService.OnDocumentOpened();
+    }
+
     public DocumentViewModel(IFileService fileService, IDialogService dialogService,
         ICanvasStateService canvasStateService, IDocumentService documentService,
         IMultiUserDrawingService multiUserDrawingService, AutoSaveService autoSaveService)
@@ -66,7 +77,7 @@ public partial class DocumentViewModel : ViewModelBase
         var file = await _fileService.PickFileToOpenAsync(filePickerOptions);
         if (file == null) return;
 
-        if (_canvasStateService.HasEvents)
+        if (HasUnsavedChanges)
         {
             var confirmed = await _dialogService.ShowWarningConfirmationAsync("Warning",
                 "This will clear your current canvas. Are you sure you want to proceed?");

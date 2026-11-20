@@ -113,6 +113,8 @@ public class DocumentService : IDocumentService
         });
     }
 
+    public event Action? DocumentOpened;
+
     public async Task LoadAsync(Stream stream)
     {
         using var streamReader =
@@ -176,11 +178,13 @@ public class DocumentService : IDocumentService
         var bgColorString = canvasState["backgroundColor"]?.ToString();
         await Dispatcher.UIThread.InvokeAsync(() =>
         {
+            if (_canvasStateService.IsRoomActive) return;
             _canvasStateService.LoadCanvas(canvasElements);
             if (bgColorString != null && SKColor.TryParse(bgColorString, out var bgColor))
             {
                 _canvasStateService.SetBackgroundColor(bgColor);
             }
+            DocumentOpened?.Invoke();
         });
     }
 }

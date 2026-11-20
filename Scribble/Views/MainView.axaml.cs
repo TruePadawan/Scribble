@@ -125,7 +125,7 @@ public partial class MainView : UserControl
         // Teardown
         if (_viewModel is { } previous)
         {
-            previous.RequestRefreshSelection -= VisualizeSelection;
+            previous.RequestRefreshSelection -= RefreshSelectionControls;
             previous.RequestInvalidateSkiaCanvas -= MainCanvas.InvalidateVisual;
             previous.RequestInvalidateSkiaCanvas -= MarkCanvasElementsForSelection;
             previous.RequestInvalidateSkiaCanvas -= MarkTextStrokesForEditing;
@@ -141,7 +141,7 @@ public partial class MainView : UserControl
 
         _viewModel = currentVm;
         if (currentVm == null) return;
-        currentVm.RequestRefreshSelection += VisualizeSelection;
+        currentVm.RequestRefreshSelection += RefreshSelectionControls;
         currentVm.RequestInvalidateSkiaCanvas += MainCanvas.InvalidateVisual;
         currentVm.RequestInvalidateSkiaCanvas += MarkCanvasElementsForSelection;
         currentVm.RequestInvalidateSkiaCanvas += MarkTextStrokesForEditing;
@@ -574,18 +574,24 @@ public partial class MainView : UserControl
         VisualizeSelection();
     }
 
-    private void VisualizeSelection()
+    // Update text hit targets alongside the local selection overlay.
+    private void RefreshSelectionControls(IReadOnlyList<Guid> selectedElementIds, bool refreshOptions)
+    {
+        MarkTextStrokesForEditing();
+        VisualizeSelection(selectedElementIds, refreshOptions);
+    }
+
+    // Reposition handles after a viewport change.
+    private void VisualizeSelection() => VisualizeSelection(_canvasStateService.SelectedElementIds, false);
+
+    // Refresh geometry directly from the selection published by the canvas.
+    private void VisualizeSelection(IReadOnlyList<Guid> selectedElementIds, bool refreshOptions)
     {
         if (_viewModel == null) return;
 
-        var currentLocalEvent = _canvasStateService.GetLocalCanvasEvents().LastOrDefault();
-        var userIsSelecting = currentLocalEvent is EndSelectionEvent or SelectByIdsEvent;
-        var refreshOptions = currentLocalEvent?.CreatorConnectionId == _multiUserDrawingService.ConnectionId;
-        var selectedElementIds = _canvasStateService.SelectedElementIds;
-
-        if (selectedElementIds.Count == 0 && userIsSelecting)
+        if (selectedElementIds.Count == 0)
         {
-            ClearSelectionOverlay(true);
+            ClearSelectionOverlay(refreshOptions && _activePointerTool is SelectTool);
             return;
         }
 

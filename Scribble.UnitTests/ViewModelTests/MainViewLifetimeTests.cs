@@ -22,7 +22,6 @@ public class MainViewLifetimeTests
     public void RebindAndReattach_OnlyCurrentEditorReceivesShortcutsAndUpdates()
     {
         var canvas = Substitute.For<ICanvasStateService>();
-        canvas.GetLocalCanvasEvents().Returns(new Queue<Event>());
         canvas.GetSelectedElements().Returns([]);
         var room = Substitute.For<IMultiUserDrawingService>();
         var registrations = new ServiceCollection();
@@ -39,14 +38,14 @@ public class MainViewLifetimeTests
         {
             var firstRefreshes = 0;
             var secondRefreshes = 0;
-            first.RequestRefreshSelection += () => firstRefreshes++;
-            second.RequestRefreshSelection += () => secondRefreshes++;
+            first.RequestRefreshSelection += (_, _) => firstRefreshes++;
+            second.RequestRefreshSelection += (_, _) => secondRefreshes++;
             var shortcuts = view.KeyBindings.Count;
             view.DataContext = second;
             var initialRefreshes = secondRefreshes;
 
             // A service event reaches only the active model and a tool shortcut selects its tool.
-            canvas.SelectionInvalidated += Raise.Event<Action>();
+            canvas.SelectionInvalidated += Raise.Event<Action<IReadOnlyList<Guid>, bool>>(Array.Empty<Guid>(), false);
             firstRefreshes.Should().Be(0);
             secondRefreshes.Should().Be(initialRefreshes + 1);
             room.MessageReceived += Raise.Event<Action<Message>>(new Message("id", "sender", "Alice", "hello"));
@@ -66,7 +65,7 @@ public class MainViewLifetimeTests
             // Removing the view or clearing its context must silence the model.
             window.Content = null;
             var detachedRefreshes = secondRefreshes;
-            canvas.SelectionInvalidated += Raise.Event<Action>();
+            canvas.SelectionInvalidated += Raise.Event<Action<IReadOnlyList<Guid>, bool>>(Array.Empty<Guid>(), false);
             secondRefreshes.Should().Be(detachedRefreshes);
             room.MessageReceived += Raise.Event<Action<Message>>(new Message("id2", "sender", "Alice", "still here"));
             window.Content = view;
@@ -75,7 +74,7 @@ public class MainViewLifetimeTests
             second.UiStateViewModel.ActivePointerTool!.Name.Should().Be("SelectTool");
             view.DataContext = null;
             var clearedRefreshes = secondRefreshes;
-            canvas.SelectionInvalidated += Raise.Event<Action>();
+            canvas.SelectionInvalidated += Raise.Event<Action<IReadOnlyList<Guid>, bool>>(Array.Empty<Guid>(), false);
             secondRefreshes.Should().Be(clearedRefreshes);
 
             view.DataContext = second;

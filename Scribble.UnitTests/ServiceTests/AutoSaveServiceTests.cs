@@ -44,6 +44,65 @@ public class AutoSaveServiceTests : IDisposable
     private string AppDataPath => Path.Combine(_tempDir, "Scribble");
     private string AutoSavedStateFilePath => Path.Combine(AppDataPath, "autosave.scribble");
 
+    // A canceled join resumes the pending recovery without marking the document manually saved.
+    [Fact]
+    public async Task FailedJoin_ResumesPendingRecoveryUntilManualSave()
+    {
+        _canvasStateService.ContentChanged += Raise.Event<Action>();
+        _multiUserDrawingService.IsJoining.Returns(true);
+        _multiUserDrawingService.JoiningChanged += Raise.Event<Action>();
+        await Task.Delay(AfterDebounce, TestContext.Current.CancellationToken);
+        File.Exists(AutoSavedStateFilePath).Should().BeFalse();
+        _multiUserDrawingService.IsJoining.Returns(false);
+        _multiUserDrawingService.JoiningChanged += Raise.Event<Action>();
+        await WaitUntilAsync(() => File.Exists(AutoSavedStateFilePath));
+        _autoSaveService.HasUnsavedChanges.Should().BeTrue();
+        await _autoSaveService.SaveDocumentAsync(() => Task.FromResult<Stream>(new MemoryStream()));
+        _autoSaveService.HasUnsavedChanges.Should().BeFalse();
+    }
+
+    // Repainting an overlay does not schedule recovery or dirty a clean file.
+    [Fact]
+    public async Task CanvasInvalidated_WithoutContentChanges_DoesNotScheduleRecovery()
+    {
+        _canvasStateService.CanvasInvalidated += Raise.Event<Action>();
+        await Task.Delay(AfterDebounce, TestContext.Current.CancellationToken);
+        File.Exists(AutoSavedStateFilePath).Should().BeFalse();
+        _autoSaveService.HasUnsavedChanges.Should().BeFalse();
+    }
+
+    // A room save covers its captured revision even when the membership list changes during I/O.
+    [Fact]
+    public async Task RoomRosterChangesDuringManualSave_PreservesSavedBaselineOnLeave()
+    {
+        var room = new MultiUserDrawingRoom("room", "connection", "Alice");
+        _multiUserDrawingService.Room.Returns(room);
+        _multiUserDrawingService.RoomChanged += Raise.Event<Action<MultiUserDrawingRoom?>>(room);
+        _canvasStateService.ContentChanged += Raise.Event<Action>();
+        var streamReady = new TaskCompletionSource<Stream>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var save = _autoSaveService.SaveDocumentAsync(() => streamReady.Task);
+        _multiUserDrawingService.RoomChanged += Raise.Event<Action<MultiUserDrawingRoom?>>(room);
+        streamReady.SetResult(new MemoryStream());
+        await save;
+        _multiUserDrawingService.Room.Returns((MultiUserDrawingRoom?)null);
+        _multiUserDrawingService.RoomChanged += Raise.Event<Action<MultiUserDrawingRoom?>>((object?)null!);
+        _autoSaveService.HasUnsavedChanges.Should().BeFalse();
+    }
+
+    // A failed write preserves dirty state, while installing another file establishes a clean baseline.
+    [Fact]
+    public async Task ManualSaveFails_DocumentStaysDirtyUntilFileOpened()
+    {
+        _canvasStateService.ContentChanged += Raise.Event<Action>();
+        await Assert.ThrowsAsync<IOException>(() => _autoSaveService.SaveDocumentAsync(
+            () => Task.FromException<Stream>(new IOException("Simulated write failure"))));
+        _autoSaveService.HasUnsavedChanges.Should().BeTrue();
+        _documentService.DocumentOpened += Raise.Event<Action>();
+        _autoSaveService.HasUnsavedChanges.Should().BeFalse();
+        await Task.Delay(AfterDebounce, TestContext.Current.CancellationToken);
+        File.Exists(AutoSavedStateFilePath).Should().BeFalse();
+    }
+
     // Verify a manual save clears the recovery file it covers.
     [Fact]
     public async Task SaveDocumentAsync_FileExists_FileIsDeleted()
@@ -83,7 +142,7 @@ public class AutoSaveServiceTests : IDisposable
     [Fact]
     public async Task Dispose_WhileAutoSaveIsPending_CancelsAutoSave()
     {
-        _canvasStateService.CanvasInvalidated += Raise.Event<Action>();
+        _canvasStateService.ContentChanged += Raise.Event<Action>();
         _autoSaveService.Dispose();
 
         await Task.Delay(AfterDebounce, TestContext.Current.CancellationToken);
@@ -92,9 +151,9 @@ public class AutoSaveServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task CanvasIsInvalidated_TriggersAutoSave()
+    public async Task ContentChanged_TriggersAutoSave()
     {
-        _canvasStateService.CanvasInvalidated += Raise.Event<Action>();
+        _canvasStateService.ContentChanged += Raise.Event<Action>();
 
         await Task.Delay(AfterDebounce, TestContext.Current.CancellationToken);
 
@@ -103,14 +162,14 @@ public class AutoSaveServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task CanvasIsInvalidatedWhileInRoom_AutoSaveIsPaused()
+    public async Task ContentChangedWhileInRoom_AutoSaveIsPaused()
     {
         var room = new MultiUserDrawingRoom("room1", "conn-A", "Alice")
         {
             Clients = [new MultiUserDrawingClient("conn-A", "Alice")]
         };
 
-        _canvasStateService.CanvasInvalidated += Raise.Event<Action>();
+        _canvasStateService.ContentChanged += Raise.Event<Action>();
         _multiUserDrawingService.Room.Returns(room);
         _multiUserDrawingService.RoomChanged += Raise.Event<Action<MultiUserDrawingRoom?>>(room);
 
@@ -120,12 +179,12 @@ public class AutoSaveServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task RapidCanvasInvalidationsWithinDebounceWindow_OnlyOneSaveIsTriggered()
+    public async Task RapidContentChangesWithinDebounceWindow_OnlyOneSaveIsTriggered()
     {
         // Fire three invalidations back-to-back, each one cancels the previous debounce timer
-        _canvasStateService.CanvasInvalidated += Raise.Event<Action>();
-        _canvasStateService.CanvasInvalidated += Raise.Event<Action>();
-        _canvasStateService.CanvasInvalidated += Raise.Event<Action>();
+        _canvasStateService.ContentChanged += Raise.Event<Action>();
+        _canvasStateService.ContentChanged += Raise.Event<Action>();
+        _canvasStateService.ContentChanged += Raise.Event<Action>();
 
         // Wait for the debounce to settle after the final invalidation
         await Task.Delay(AfterDebounce, TestContext.Current.CancellationToken);
@@ -139,6 +198,7 @@ public class AutoSaveServiceTests : IDisposable
     {
         File.WriteAllText(AutoSavedStateFilePath, "original recovery");
         await _autoSaveService.RestoreAsync();
+        _autoSaveService.HasUnsavedChanges.Should().BeTrue();
         await _documentService.Received(1).LoadAsync(Arg.Any<Stream>());
         using (File.Open(AutoSavedStateFilePath, FileMode.Open, FileAccess.ReadWrite, FileShare.None))
         {
@@ -148,11 +208,11 @@ public class AutoSaveServiceTests : IDisposable
         var content = "replacement document";
         _documentService.SaveAsync(Arg.Any<Stream>(), Arg.Any<DocumentSnapshot>())
             .Returns(call => call.Arg<Stream>().WriteAsync(System.Text.Encoding.UTF8.GetBytes(content)).AsTask());
-        _canvasStateService.CanvasInvalidated += Raise.Event<Action>();
+        _canvasStateService.ContentChanged += Raise.Event<Action>();
         await WaitForRecoveryAsync(content);
 
         content = "short";
-        _canvasStateService.CanvasInvalidated += Raise.Event<Action>();
+        _canvasStateService.ContentChanged += Raise.Event<Action>();
         await WaitForRecoveryAsync(content);
     }
 
@@ -182,12 +242,12 @@ public class AutoSaveServiceTests : IDisposable
             await call.Arg<Stream>().WriteAsync(System.Text.Encoding.UTF8.GetBytes(color.ToString()), cancellationToken);
         });
 
-        _canvasStateService.CanvasInvalidated += Raise.Event<Action>();
+        _canvasStateService.ContentChanged += Raise.Event<Action>();
         try
         {
             await writing.Task.WaitAsync(TimeSpan.FromSeconds(3), cancellationToken);
             _canvasStateService.BackgroundColor.Returns(SKColors.Blue);
-            _canvasStateService.BackgroundColorChanged += Raise.Event<Action>();
+            _canvasStateService.ContentChanged += Raise.Event<Action>();
             release.SetResult();
             // Inspect the first published revision before allowing the second write to finish.
             await secondWrite.Task.WaitAsync(TimeSpan.FromSeconds(3), cancellationToken);
@@ -223,7 +283,7 @@ public class AutoSaveServiceTests : IDisposable
             await call.Arg<Stream>().WriteAsync("new revision"u8.ToArray(), cancellationToken);
         });
 
-        _canvasStateService.BackgroundColorChanged += Raise.Event<Action>();
+        _canvasStateService.ContentChanged += Raise.Event<Action>();
         try
         {
             await retryStarted.Task.WaitAsync(TimeSpan.FromSeconds(3), cancellationToken);
@@ -252,7 +312,7 @@ public class AutoSaveServiceTests : IDisposable
             await call.Arg<Stream>().WriteAsync("pending revision"u8.ToArray(), cancellationToken);
         });
 
-        _canvasStateService.CanvasInvalidated += Raise.Event<Action>();
+        _canvasStateService.ContentChanged += Raise.Event<Action>();
         try
         {
             await writing.Task.WaitAsync(TimeSpan.FromSeconds(3), cancellationToken);
@@ -294,10 +354,11 @@ public class AutoSaveServiceTests : IDisposable
         try
         {
             await manualWrite.Task.WaitAsync(TimeSpan.FromSeconds(3), cancellationToken);
-            _canvasStateService.CanvasInvalidated += Raise.Event<Action>();
+            _canvasStateService.ContentChanged += Raise.Event<Action>();
             await WaitForRecoveryAsync("newer revision");
             release.SetResult();
             await save;
+            _autoSaveService.HasUnsavedChanges.Should().BeTrue();
             File.ReadAllText(AutoSavedStateFilePath).Should().Be("newer revision");
         }
         finally
@@ -319,7 +380,7 @@ public class AutoSaveServiceTests : IDisposable
 
         _documentService.SaveAsync(Arg.Any<Stream>(), Arg.Any<DocumentSnapshot>())
             .Returns(call => call.Arg<Stream>().WriteAsync("usable recovery"u8.ToArray()).AsTask());
-        _canvasStateService.CanvasInvalidated += Raise.Event<Action>();
+        _canvasStateService.ContentChanged += Raise.Event<Action>();
         await WaitForRecoveryAsync("usable recovery");
 
         var backup = Directory.EnumerateFiles(AppDataPath, "*.bak").Should().ContainSingle().Which;

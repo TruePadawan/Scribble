@@ -14,13 +14,16 @@ public interface ICanvasStateService
     Guid? ActiveSelectionBoundId { get; }
     IReadOnlyList<Guid> SelectedElementIds { get; }
     SKColor BackgroundColor { get; }
+    bool IsRoomActive { get; }
     bool HasEvents { get; }
     bool CanUndo { get; }
     bool CanRedo { get; }
 
     // Events
     event Action? CanvasInvalidated;
-    event Action? SelectionInvalidated;
+    // Signals a change to the content written to a document.
+    event Action? ContentChanged;
+    event Action<IReadOnlyList<Guid>, bool>? SelectionInvalidated;
     event Action? UndoRedoStateChanged;
     event Action? BackgroundColorChanged;
 
@@ -32,6 +35,4 @@ public interface ICanvasStateService
     List<CanvasElement> GetSelectedElements();
     void LoadCanvas(List<CanvasElement> elements);
     void ApplyEvent(Event @event, bool isLocalEvent = true);
-    bool IsLocalEvent(Event @event);
-    Queue<Event> GetLocalCanvasEvents();
 }
