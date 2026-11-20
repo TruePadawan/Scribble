@@ -1,8 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Linq.Expressions;
-using System.Reflection;
 using Scribble.Services.CanvasStateService.Handlers;
 using Scribble.Services.CanvasStateService.State;
 using Scribble.Shared.Lib;
@@ -10,126 +7,74 @@ using Scribble.Shared.Lib.Events;
 
 namespace Scribble.Services.CanvasStateService;
 
-/// <summary>
-/// Builds a Type-to-handler lookup from event handler instances using reflections
-/// and provides Dispatch (for replay) and TryFastPath (for fast-path optimization).
-/// </summary>
-public class EventReplayDispatcher
+// Each event has one mutation. Registration also declares whether it can run on the live state.
+internal sealed class EventReplayDispatcher
 {
-    private readonly Dictionary<Type, Action<Event, CanvasState>> _replayHandlers = new();
-    private readonly Dictionary<Type, Func<Event, CanvasState, bool>> _fastPathHandlers = new();
+    private readonly Dictionary<Type, Func<Event, CanvasState, bool>> _incremental = new();
+    private readonly Dictionary<Type, Action<Event, CanvasState>> _rebuild = new();
 
-    public EventReplayDispatcher(params object[] handlerInstances)
+    // Register event families explicitly so dispatch requires no runtime code generation.
+    internal EventReplayDispatcher()
     {
-        foreach (var instance in handlerInstances)
+        Rebuild<LoadCanvasEvent>(CanvasLifecycleReplayHandler.Apply, changesLayers: true);
+        Rebuild<AddImageEvent>(CanvasLifecycleReplayHandler.Apply);
+        Rebuild<SetElementLayerEvent>(CanvasLifecycleReplayHandler.Apply, changesLayers: true);
+        Rebuild<NudgeElementLayerEvent>(CanvasLifecycleReplayHandler.Apply, changesLayers: true);
+        Rebuild<PasteCanvasElementsEvent>(CanvasLifecycleReplayHandler.Apply, changesLayers: true);
+        Rebuild<StartEraseStrokeEvent>(EraserReplayHandler.Apply);
+        Incremental<EraseStrokeLineToEvent>(EraserReplayHandler.Apply);
+        Rebuild<TriggerEraseEvent>(EraserReplayHandler.Apply, changesLayers: true);
+        Rebuild<EraseByIdsEvent>(EraserReplayHandler.Apply, changesLayers: true);
+        Rebuild<UpdateStrokeColorEvent>(PropertyReplayHandler.Apply);
+        Rebuild<UpdateStrokeThicknessEvent>(PropertyReplayHandler.Apply);
+        Rebuild<UpdateStrokeStyleEvent>(PropertyReplayHandler.Apply);
+        Rebuild<UpdateStrokeFillColorEvent>(PropertyReplayHandler.Apply);
+        Rebuild<UpdateStrokeEdgeTypeEvent>(PropertyReplayHandler.Apply);
+        Rebuild<CreateSelectionBoundEvent>(SelectionReplayHandler.Apply);
+        Incremental<IncreaseSelectionBoundEvent>(SelectionReplayHandler.Apply);
+        Rebuild<EndSelectionEvent>(SelectionReplayHandler.Apply);
+        Rebuild<ClearSelectionEvent>(SelectionReplayHandler.Apply);
+        Incremental<SelectByIdsEvent>(SelectionReplayHandler.Apply);
+        Incremental<StartStrokeEvent>(StrokeReplayHandler.Apply);
+        Incremental<PencilStrokeLineToEvent>(StrokeReplayHandler.Apply);
+        Incremental<LineStrokeLineToEvent>(StrokeReplayHandler.Apply);
+        Incremental<AddPolylineNodeEvent>(StrokeReplayHandler.Apply);
+        Incremental<MovePolylineNodeEvent>(StrokeReplayHandler.Apply);
+        Incremental<EndStrokeEvent>(StrokeReplayHandler.Apply);
+        Rebuild<AddTextEvent>(TextReplayHandler.Apply);
+        Rebuild<UpdateTextEvent>(TextReplayHandler.Apply);
+        Rebuild<UpdateFontSizeEvent>(TextReplayHandler.Apply);
+        Rebuild<UpdateFontCasingEvent>(TextReplayHandler.Apply);
+        Rebuild<UpdateFontStyleEvent>(TextReplayHandler.Apply);
+        Incremental<MoveCanvasElementsEvent>(TransformReplayHandler.Apply);
+        Incremental<RotateCanvasElementsEvent>(TransformReplayHandler.Apply);
+        Incremental<ScaleCanvasElementsEvent>(TransformReplayHandler.Apply);
+    }
+
+    // Bind an incremental operation for use by both incoming events and history replay.
+    private void Incremental<T>(Func<T, CanvasState, bool> apply) where T : Event =>
+        _incremental.Add(typeof(T), (ev, state) => apply((T)ev, state));
+
+    // Keep the ordered index current at each structural event, including during bulk replay.
+    private void Rebuild<T>(Action<T, CanvasState> apply, bool changesLayers = false) where T : Event =>
+        _rebuild.Add(typeof(T), (ev, state) =>
         {
-            RegisterHandlers(instance);
-        }
-    }
+            apply((T)ev, state);
+            if (changesLayers) state.NormalizeLayers();
+        });
 
-    /// <summary>
-    /// Dispatch a replay event to its registered handler.
-    /// Silently skips events with no registered handler (e.g. UndoEvent, RedoEvent).
-    /// </summary>
-    public void Dispatch(Event @event, CanvasState ctx)
+    // Rebuild when the operation or its missing target requires history resolution.
+    internal bool TryApplyIncrementally(Event ev, CanvasState state) =>
+        _incremental.TryGetValue(ev.GetType(), out var apply) && apply(ev, state);
+
+    // Replay the same operation against the state built from preceding visible events.
+    internal void Dispatch(Event ev, CanvasState state)
     {
-        if (_replayHandlers.TryGetValue(@event.GetType(), out var handler))
-        {
-            handler(@event, ctx);
-        }
+        if (_incremental.TryGetValue(ev.GetType(), out var apply)) apply(ev, state);
+        else _rebuild[ev.GetType()](ev, state);
     }
 
-    /// <summary>
-    /// Attempt to apply a fast-path optimization for the event.
-    /// Returns true if the fast-path was applied (skipping full replay).
-    /// </summary>
-    public bool TryFastPath(Event @event, CanvasState ctx)
-    {
-        if (_fastPathHandlers.TryGetValue(@event.GetType(), out var handler))
-        {
-            return handler(@event, ctx);
-        }
-
-        return false;
-    }
-
-    /// <summary>
-    /// Validates that every concrete Event subtype in the given assembly
-    /// has a registered replay handler. Throws if any are missing.
-    /// UndoEvent and RedoEvent are excluded as they are handled in the pre-pass.
-    /// </summary>
-    public void ValidateCompleteness(Assembly eventAssembly)
-    {
-        var allEventTypes = eventAssembly.GetTypes()
-            .Where(t => t.IsSubclassOf(typeof(Event)) && !t.IsAbstract)
-            .Where(t => t != typeof(UndoEvent) && t != typeof(RedoEvent))
-            .ToList();
-
-        var missing = allEventTypes
-            .Where(t => !_replayHandlers.ContainsKey(t))
-            .Select(t => t.Name)
-            .ToList();
-
-        if (missing.Count > 0)
-        {
-            throw new InvalidOperationException(
-                $"Missing replay handlers for: {string.Join(", ", missing)}");
-        }
-    }
-
-    private void RegisterHandlers(object instance)
-    {
-        var instanceType = instance.GetType();
-
-        foreach (var iface in instanceType.GetInterfaces())
-        {
-            if (!iface.IsGenericType) continue;
-
-            var genericDef = iface.GetGenericTypeDefinition();
-
-            if (genericDef == typeof(IEventReplayHandler<>))
-            {
-                var eventType = iface.GetGenericArguments()[0];
-                var method = iface.GetMethod("Replay")!;
-                var compiledDelegate = BuildReplayDelegate(instance, method, eventType);
-                _replayHandlers[eventType] = compiledDelegate;
-            }
-            else if (genericDef == typeof(IFastPathHandler<>))
-            {
-                var eventType = iface.GetGenericArguments()[0];
-                var method = iface.GetMethod("TryApplyFastPath")!;
-                var compiledDelegate = BuildFastPathDelegate(instance, method, eventType);
-                _fastPathHandlers[eventType] = compiledDelegate;
-            }
-        }
-    }
-
-    /// <summary>
-    /// Builds a compiled delegate that casts the Event to the concrete type
-    /// and calls the handler's Replay method, avoiding reflection on every dispatch.
-    /// </summary>
-    private static Action<Event, CanvasState> BuildReplayDelegate(
-        object instance, MethodInfo method, Type eventType)
-    {
-        var eventParam = Expression.Parameter(typeof(Event), "e");
-        var ctxParam = Expression.Parameter(typeof(CanvasState), "ctx");
-        var castEvent = Expression.Convert(eventParam, eventType);
-        var instanceConst = Expression.Constant(instance);
-        var call = Expression.Call(instanceConst, method, castEvent, ctxParam);
-        return Expression.Lambda<Action<Event, CanvasState>>(call, eventParam, ctxParam).Compile();
-    }
-
-    /// <summary>
-    /// Builds a compiled delegate for fast-path handlers.
-    /// </summary>
-    private static Func<Event, CanvasState, bool> BuildFastPathDelegate(
-        object instance, MethodInfo method, Type eventType)
-    {
-        var eventParam = Expression.Parameter(typeof(Event), "e");
-        var ctxParam = Expression.Parameter(typeof(CanvasState), "ctx");
-        var castEvent = Expression.Convert(eventParam, eventType);
-        var instanceConst = Expression.Constant(instance);
-        var call = Expression.Call(instanceConst, method, castEvent, ctxParam);
-        return Expression.Lambda<Func<Event, CanvasState, bool>>(call, eventParam, ctxParam).Compile();
-    }
+    // Undo and redo are consumed by EventLog before dispatch.
+    internal bool Handles(Type type) => type == typeof(UndoEvent) || type == typeof(RedoEvent) ||
+                                        _incremental.ContainsKey(type) || _rebuild.ContainsKey(type);
 }

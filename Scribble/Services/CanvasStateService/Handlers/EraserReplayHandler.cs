@@ -13,16 +13,10 @@ namespace Scribble.Services.CanvasStateService.Handlers;
 /// <summary>
 /// Handles replay and fast-path for eraser-related events
 /// </summary>
-public class EraserReplayHandler :
-    IEventReplayHandler<StartEraseStrokeEvent>,
-    IEventReplayHandler<EraseStrokeLineToEvent>,
-    IEventReplayHandler<TriggerEraseEvent>,
-    IFastPathHandler<EraseStrokeLineToEvent>,
-    IEventReplayHandler<EraseByIdsEvent>
+internal static class EraserReplayHandler
 {
-    // Replay handlers
-
-    public void Replay(StartEraseStrokeEvent ev, CanvasState ctx)
+    // Begin an eraser gesture and hit-test its starting point.
+    public static void Apply(StartEraseStrokeEvent ev, CanvasState ctx)
     {
         var eraserPath = new SKPathBuilder();
         eraserPath.MoveTo(ev.StartPoint);
@@ -41,35 +35,8 @@ public class EraserReplayHandler :
         ctx.EraserStrokes[ev.StrokeId] = newEraserStroke;
     }
 
-    public void Replay(EraseStrokeLineToEvent ev, CanvasState ctx)
-    {
-        if (ctx.EraserStrokes.TryGetValue(ev.StrokeId, out var currentEraserStroke))
-        {
-            // Use interpolation to find all targets for erasing
-            var start = currentEraserStroke.Path.LastPoint;
-            var end = ev.Point;
-            var distance = Math.Sqrt(Math.Pow(end.X - start.X, 2) + Math.Pow(end.Y - start.Y, 2));
-
-            var stepSize = 5.0;
-            var steps = (int)Math.Ceiling(distance / stepSize);
-            for (int s = 1; s <= steps; s++)
-            {
-                var completionPercentage = s / stepSize;
-                var checkX = start.X + (end.X - start.X) * completionPercentage;
-                var checkY = start.Y + (end.Y - start.Y) * completionPercentage;
-                CheckAndErase(new SKPoint((float)checkX, (float)checkY),
-                    [..ctx.PaintableStrokes.Values, ..ctx.CanvasImages.Values],
-                    currentEraserStroke,
-                    ownerFilter: currentEraserStroke.CreatorConnectionId);
-            }
-
-            var builder = new SKPathBuilder(currentEraserStroke.Path);
-            builder.LineTo(ev.Point);
-            currentEraserStroke.Path = builder.Snapshot();
-        }
-    }
-
-    public void Replay(TriggerEraseEvent ev, CanvasState ctx)
+    // Remove the hit elements and discard an empty gesture.
+    public static void Apply(TriggerEraseEvent ev, CanvasState ctx)
     {
         if (ctx.EraserStrokes.TryGetValue(ev.StrokeId, out var currentEraserStroke))
         {
@@ -90,9 +57,8 @@ public class EraserReplayHandler :
         }
     }
 
-    // Fast-path handler
-
-    public bool TryApplyFastPath(EraseStrokeLineToEvent ev, CanvasState ctx)
+    // Track targets along the next eraser segment.
+    public static bool Apply(EraseStrokeLineToEvent ev, CanvasState ctx)
     {
         if (ctx.EraserStrokes.TryGetValue(ev.StrokeId, out var currentEraserStroke))
         {
@@ -178,7 +144,8 @@ public class EraserReplayHandler :
         }
     }
 
-    public void Replay(EraseByIdsEvent @event, CanvasState ctx)
+    // Delete the supplied elements and clear their selection.
+    public static void Apply(EraseByIdsEvent @event, CanvasState ctx)
     {
         if (@event.ElementIds.Count == 0)
         {

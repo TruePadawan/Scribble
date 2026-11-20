@@ -11,21 +11,17 @@ namespace Scribble.Services.CanvasStateService.Handlers;
 /// Handles replay for text-related events:
 /// AddTextEvent, UpdateTextEvent, UpdateFontSizeEvent, UpdateFontCasingEvent, UpdateFontStyleEvent
 /// </summary>
-public class TextReplayHandler :
-    IEventReplayHandler<AddTextEvent>,
-    IEventReplayHandler<UpdateTextEvent>,
-    IEventReplayHandler<UpdateFontSizeEvent>,
-    IEventReplayHandler<UpdateFontCasingEvent>,
-    IEventReplayHandler<UpdateFontStyleEvent>
+internal static class TextReplayHandler
 {
-    public void Replay(AddTextEvent ev, CanvasState ctx)
+    // Build a text path at the supplied baseline.
+    public static void Apply(AddTextEvent ev, CanvasState ctx)
     {
         var textPath = new SKPathBuilder();
         textPath.MoveTo(ev.Position);
         using var builtPath = TextPathBuilder.Build(ev.Text, ev.Position.X, ev.Position.Y, ev.Paint.TextSize,
             StrokePaint.DefaultTypeFace);
         textPath.AddPath(builtPath);
-        ctx.PaintableStrokes[ev.StrokeId] = new TextStroke
+        ctx.AddOnTop(new TextStroke
         {
             Id = ev.StrokeId,
             Paint = ev.Paint.Clone(),
@@ -33,12 +29,12 @@ public class TextReplayHandler :
             ToolOptions = ev.ToolOptions,
             Text = ev.Text,
             Position = ev.Position,
-            CreatorConnectionId = ev.CreatorConnectionId,
-            LayerIndex = ctx.MaxLayerIndex
-        };
+            CreatorConnectionId = ev.CreatorConnectionId
+        }, ctx.PaintableStrokes);
     }
 
-    public void Replay(UpdateTextEvent ev, CanvasState ctx)
+    // Rebuild the text path with the new content.
+    public static void Apply(UpdateTextEvent ev, CanvasState ctx)
     {
         if (ctx.PaintableStrokes.TryGetValue(ev.TextStrokeId, out var existingStroke) &&
             existingStroke is TextStroke textStroke)
@@ -59,7 +55,8 @@ public class TextReplayHandler :
         }
     }
 
-    public void Replay(UpdateFontSizeEvent ev, CanvasState ctx)
+    // Resize the selected text and rebuild its glyph outlines.
+    public static void Apply(UpdateFontSizeEvent ev, CanvasState ctx)
     {
         foreach (var strokeId in ev.StrokeIds)
         {
@@ -79,7 +76,8 @@ public class TextReplayHandler :
         }
     }
 
-    public void Replay(UpdateFontCasingEvent ev, CanvasState ctx)
+    // Change the selected text casing and rebuild its geometry.
+    public static void Apply(UpdateFontCasingEvent ev, CanvasState ctx)
     {
         foreach (var strokeId in ev.TextStrokeIds)
         {
@@ -104,7 +102,8 @@ public class TextReplayHandler :
         }
     }
 
-    public void Replay(UpdateFontStyleEvent ev, CanvasState ctx)
+    // Update bold or italic styling and rebuild the text path.
+    public static void Apply(UpdateFontStyleEvent ev, CanvasState ctx)
     {
         foreach (var strokeId in ev.TextStrokeIds)
         {

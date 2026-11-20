@@ -12,106 +12,18 @@ namespace Scribble.Services.CanvasStateService.Handlers;
 /// Handles replay and fast-path for transform-related events:
 /// MoveCanvasElementsEvent, RotateCanvasElementsEvent, ScaleCanvasElementsEvent
 /// </summary>
-public class TransformReplayHandler :
-    IEventReplayHandler<MoveCanvasElementsEvent>,
-    IEventReplayHandler<RotateCanvasElementsEvent>,
-    IEventReplayHandler<ScaleCanvasElementsEvent>,
-    IFastPathHandler<MoveCanvasElementsEvent>,
-    IFastPathHandler<RotateCanvasElementsEvent>,
-    IFastPathHandler<ScaleCanvasElementsEvent>
+internal static class TransformReplayHandler
 {
-    // Replay handlers
-
-    public void Replay(MoveCanvasElementsEvent ev, CanvasState ctx)
+    // Translate the surviving selection targets.
+    public static bool Apply(MoveCanvasElementsEvent ev, CanvasState ctx)
     {
         if (ctx.SelectionBounds.TryGetValue(ev.BoundId, out var bound))
         {
-            List<CanvasElement> elements = [];
-            foreach (var boundTargetId in bound.Targets)
+            var translation = SKMatrix.CreateTranslation(ev.Delta.X, ev.Delta.Y);
+            foreach (var id in bound.Targets)
             {
-                if (ctx.PaintableStrokes.TryGetValue(boundTargetId, out var stroke))
-                {
-                    elements.Add(stroke);
-                }
-                else if (ctx.CanvasImages.TryGetValue(boundTargetId, out var image))
-                {
-                    elements.Add(image);
-                }
-            }
-
-            MoveElements(elements, ev.Delta);
-        }
-    }
-
-    public void Replay(RotateCanvasElementsEvent ev, CanvasState ctx)
-    {
-        if (ctx.SelectionBounds.TryGetValue(ev.BoundId, out var bound))
-        {
-            var rotationMatrix = SKMatrix.CreateRotation(ev.DegreesRad, ev.Center.X, ev.Center.Y);
-            foreach (var boundTargetId in bound.Targets)
-            {
-                if (ctx.PaintableStrokes.TryGetValue(boundTargetId, out var stroke))
-                {
-                    stroke.Rotation += ev.DegreesRad;
-                    stroke.Path.Transform(rotationMatrix);
-                    // Keep track of the transformations applied to the stroke
-                    stroke.TransformMatrix = stroke.TransformMatrix.PostConcat(rotationMatrix);
-                }
-                else if (ctx.CanvasImages.TryGetValue(boundTargetId, out var image))
-                {
-                    image.Rotation += ev.DegreesRad;
-                    // Rotate the bounds center around the rotation pivot
-                    var imgCenter = new SKPoint(image.Bounds.MidX, image.Bounds.MidY);
-                    var rotatedPoint = rotationMatrix.MapPoint(imgCenter);
-                    var bounds = image.Bounds;
-                    bounds.Offset(rotatedPoint.X - imgCenter.X, rotatedPoint.Y - imgCenter.Y);
-                    image.Bounds = bounds;
-                }
-            }
-        }
-    }
-
-    public void Replay(ScaleCanvasElementsEvent ev, CanvasState ctx)
-    {
-        if (ctx.SelectionBounds.TryGetValue(ev.BoundId, out var bound))
-        {
-            var scaleMatrix = BuildScaleMatrix(ev);
-            foreach (var boundTargetId in bound.Targets)
-            {
-                if (ctx.PaintableStrokes.TryGetValue(boundTargetId, out var stroke))
-                {
-                    stroke.Path.Transform(scaleMatrix);
-                    stroke.TransformMatrix = stroke.TransformMatrix.PostConcat(scaleMatrix);
-                }
-                else if (ctx.CanvasImages.TryGetValue(boundTargetId, out var image))
-                {
-                    ApplyScaleToImage(image, ev);
-                }
-            }
-        }
-    }
-
-    // Fast-path handlers
-
-    public bool TryApplyFastPath(MoveCanvasElementsEvent ev, CanvasState ctx)
-    {
-        if (ctx.SelectionBounds.TryGetValue(ev.BoundId, out var bound))
-        {
-            var translationMatrix = SKMatrix.CreateTranslation(ev.Delta.X, ev.Delta.Y);
-            foreach (var boundTargetId in bound.Targets)
-            {
-                if (ctx.PaintableStrokes.TryGetValue(boundTargetId, out var stroke))
-                {
-                    stroke.Path.Transform(translationMatrix);
-                    // Keep track of the transformations applied to the stroke
-                    stroke.TransformMatrix = stroke.TransformMatrix.PostConcat(translationMatrix);
-                }
-                else if (ctx.CanvasImages.TryGetValue(boundTargetId, out var image))
-                {
-                    var bounds = image.Bounds;
-                    bounds.Offset(ev.Delta);
-                    image.Bounds = bounds;
-                }
+                if (ctx.PaintableStrokes.TryGetValue(id, out var stroke)) MoveElement(stroke, ev.Delta, translation);
+                else if (ctx.CanvasImages.TryGetValue(id, out var image)) MoveElement(image, ev.Delta, translation);
             }
 
             return true;
@@ -120,7 +32,8 @@ public class TransformReplayHandler :
         return false;
     }
 
-    public bool TryApplyFastPath(RotateCanvasElementsEvent ev, CanvasState ctx)
+    // Rotate selected images and strokes around the gesture pivot.
+    public static bool Apply(RotateCanvasElementsEvent ev, CanvasState ctx)
     {
         if (ctx.SelectionBounds.TryGetValue(ev.BoundId, out var bound))
         {
@@ -151,7 +64,8 @@ public class TransformReplayHandler :
         return false;
     }
 
-    public bool TryApplyFastPath(ScaleCanvasElementsEvent ev, CanvasState ctx)
+    // Scale the selection along the gesture axes.
+    public static bool Apply(ScaleCanvasElementsEvent ev, CanvasState ctx)
     {
         if (ctx.SelectionBounds.TryGetValue(ev.BoundId, out var bound))
         {
@@ -183,23 +97,29 @@ public class TransformReplayHandler :
         var translationMatrix = SKMatrix.CreateTranslation(delta.X, delta.Y);
         foreach (var canvasElement in elements)
         {
-            switch (canvasElement)
+            MoveElement(canvasElement, delta, translationMatrix);
+        }
+    }
+
+    // Use the same translation for pasted and selected elements.
+    private static void MoveElement(CanvasElement canvasElement, SKPoint delta, SKMatrix translationMatrix)
+    {
+        switch (canvasElement)
+        {
+            case PaintableStroke stroke:
             {
-                case PaintableStroke stroke:
-                {
-                    stroke.Path.Transform(translationMatrix);
-                    // Keep track of the transformations applied to the stroke
-                    stroke.TransformMatrix = stroke.TransformMatrix.PostConcat(translationMatrix);
-                    break;
-                }
-                case CanvasImage image:
-                {
-                    // SKRect is a struct (value-type), so we need to create a new one to modify
-                    var bounds = image.Bounds;
-                    bounds.Offset(delta);
-                    image.Bounds = bounds;
-                    break;
-                }
+                stroke.Path.Transform(translationMatrix);
+                // Keep track of the transformations applied to the stroke
+                stroke.TransformMatrix = stroke.TransformMatrix.PostConcat(translationMatrix);
+                break;
+            }
+            case CanvasImage image:
+            {
+                // SKRect is a struct (value-type), so we need to create a new one to modify
+                var bounds = image.Bounds;
+                bounds.Offset(delta);
+                image.Bounds = bounds;
+                break;
             }
         }
     }

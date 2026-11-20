@@ -4,7 +4,6 @@ using Scribble.Services.CanvasStateService.State;
 using Scribble.Shared.Lib;
 using Scribble.Shared.Lib.CanvasElements.Strokes;
 using Scribble.Shared.Lib.Events;
-using Scribble.Tools.PointerTools.ArrowTool;
 using Scribble.Utils;
 using SkiaSharp;
 
@@ -15,14 +14,10 @@ namespace Scribble.Services.CanvasStateService.Handlers;
 /// UpdateStrokeColorEvent, UpdateStrokeThicknessEvent, UpdateStrokeStyleEvent,
 /// UpdateStrokeFillColorEvent, UpdateStrokeEdgeTypeEvent
 /// </summary>
-public class PropertyReplayHandler :
-    IEventReplayHandler<UpdateStrokeColorEvent>,
-    IEventReplayHandler<UpdateStrokeThicknessEvent>,
-    IEventReplayHandler<UpdateStrokeStyleEvent>,
-    IEventReplayHandler<UpdateStrokeFillColorEvent>,
-    IEventReplayHandler<UpdateStrokeEdgeTypeEvent>
+internal static class PropertyReplayHandler
 {
-    public void Replay(UpdateStrokeColorEvent ev, CanvasState ctx)
+    // Set the outline color on surviving strokes.
+    public static void Apply(UpdateStrokeColorEvent ev, CanvasState ctx)
     {
         foreach (var strokeId in ev.StrokeIds)
         {
@@ -31,7 +26,8 @@ public class PropertyReplayHandler :
         }
     }
 
-    public void Replay(UpdateStrokeThicknessEvent ev, CanvasState ctx)
+    // Set the outline width on surviving strokes.
+    public static void Apply(UpdateStrokeThicknessEvent ev, CanvasState ctx)
     {
         foreach (var strokeId in ev.StrokeIds)
         {
@@ -40,7 +36,8 @@ public class PropertyReplayHandler :
         }
     }
 
-    public void Replay(UpdateStrokeStyleEvent ev, CanvasState ctx)
+    // Update the dash pattern on surviving strokes.
+    public static void Apply(UpdateStrokeStyleEvent ev, CanvasState ctx)
     {
         foreach (var strokeId in ev.StrokeIds)
         {
@@ -49,7 +46,8 @@ public class PropertyReplayHandler :
         }
     }
 
-    public void Replay(UpdateStrokeFillColorEvent ev, CanvasState ctx)
+    // Set the fill color on surviving strokes.
+    public static void Apply(UpdateStrokeFillColorEvent ev, CanvasState ctx)
     {
         foreach (var strokeId in ev.StrokeIds)
         {
@@ -58,7 +56,8 @@ public class PropertyReplayHandler :
         }
     }
 
-    public void Replay(UpdateStrokeEdgeTypeEvent ev, CanvasState ctx)
+    // Update the join style and rebuild the affected shape.
+    public static void Apply(UpdateStrokeEdgeTypeEvent ev, CanvasState ctx)
     {
         foreach (var strokeId in ev.StrokeIds)
         {

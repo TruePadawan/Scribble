@@ -14,14 +14,10 @@ namespace Scribble.Services.CanvasStateService.Handlers;
 /// Handles replay for canvas lifecycle events:
 /// LoadCanvasEvent, AddImageEvent, SetElementLayerEvent, NudgeElementLayerEvent, PasteCanvasElementsEvent
 /// </summary>
-public class CanvasLifecycleReplayHandler :
-    IEventReplayHandler<LoadCanvasEvent>,
-    IEventReplayHandler<AddImageEvent>,
-    IEventReplayHandler<SetElementLayerEvent>,
-    IEventReplayHandler<NudgeElementLayerEvent>,
-    IEventReplayHandler<PasteCanvasElementsEvent>
+internal static class CanvasLifecycleReplayHandler
 {
-    public void Replay(LoadCanvasEvent ev, CanvasState ctx)
+    // Replace the board with detached copies of the supplied elements.
+    public static void Apply(LoadCanvasEvent ev, CanvasState ctx)
     {
         ctx.PaintableStrokes.Clear();
         ctx.CanvasImages.Clear();
@@ -37,79 +33,59 @@ public class CanvasLifecycleReplayHandler :
                 if (cloned is PaintableStroke paintable)
                 {
                     ctx.PaintableStrokes[paintable.Id] = paintable;
-                    ctx.MaxLayerIndex = Math.Max(ctx.MaxLayerIndex, paintable.LayerIndex);
                 }
                 else if (cloned is CanvasImage image)
                 {
                     ctx.CanvasImages[image.Id] = image;
-                    ctx.MaxLayerIndex = Math.Max(ctx.MaxLayerIndex, image.LayerIndex);
                 }
             }
         }
     }
 
-    public void Replay(AddImageEvent ev, CanvasState ctx)
+    // Place the image above the existing drawing.
+    public static void Apply(AddImageEvent ev, CanvasState ctx)
     {
         var imageBounds = SKRect.Create(ev.Position, ev.Size);
-        ctx.CanvasImages[ev.ImageId] = new CanvasImage
+        ctx.AddOnTop(new CanvasImage
         {
             Id = ev.ImageId,
             ImageBase64String = ev.ImageBase64String,
             Bounds = imageBounds,
-            CreatorConnectionId = ev.CreatorConnectionId,
-            LayerIndex = ctx.MaxLayerIndex
-        };
+            CreatorConnectionId = ev.CreatorConnectionId
+        }, ctx.CanvasImages);
     }
 
-    public void Replay(SetElementLayerEvent ev, CanvasState ctx)
+    // Assign the requested layer before normalizing drawing order.
+    public static void Apply(SetElementLayerEvent ev, CanvasState ctx)
     {
         foreach (var elementId in ev.TargetElementIds)
         {
             if (ctx.PaintableStrokes.TryGetValue(elementId, out var stroke))
             {
                 stroke.LayerIndex = ev.NewLayerIndex;
-                ctx.MaxLayerIndex = Math.Max(ctx.MaxLayerIndex, stroke.LayerIndex);
             }
             else if (ctx.CanvasImages.TryGetValue(elementId, out var image))
             {
                 image.LayerIndex = ev.NewLayerIndex;
-                ctx.MaxLayerIndex = Math.Max(ctx.MaxLayerIndex, image.LayerIndex);
             }
         }
 
-        ctx.MaxLayerIndex = Math.Max(ctx.MaxLayerIndex, ev.NewLayerIndex);
-        ctx.MinLayerIndex = Math.Min(ctx.MinLayerIndex, ev.NewLayerIndex);
     }
 
-    public void Replay(NudgeElementLayerEvent ev, CanvasState ctx)
+    // Move targets through the current drawing order.
+    public static void Apply(NudgeElementLayerEvent ev, CanvasState ctx)
     {
-        var newMinLayerIndex = 0;
-        var newMaxLayerIndex = 0;
-        foreach (var elementId in ev.TargetElementIds)
-        {
-            if (ctx.PaintableStrokes.TryGetValue(elementId, out var stroke))
-            {
-                var newLayer = stroke.LayerIndex + ev.Offset;
-
-                stroke.LayerIndex = newLayer;
-                newMaxLayerIndex = Math.Max(newMaxLayerIndex, newLayer);
-                newMinLayerIndex = Math.Min(newMinLayerIndex, newLayer);
-            }
-            else if (ctx.CanvasImages.TryGetValue(elementId, out var image))
-            {
-                var newLayer = image.LayerIndex + ev.Offset;
-
-                image.LayerIndex = newLayer;
-                newMaxLayerIndex = Math.Max(newMaxLayerIndex, newLayer);
-                newMinLayerIndex = Math.Min(newMinLayerIndex, newLayer);
-            }
-        }
-
-        ctx.MinLayerIndex = Math.Min(ctx.MinLayerIndex, newMinLayerIndex);
-        ctx.MaxLayerIndex = Math.Max(ctx.MaxLayerIndex, newMaxLayerIndex);
+        // When a moved element lands on a neighbor, cross that neighbor in the requested direction.
+        var targets = ev.TargetElementIds.ToHashSet();
+        var ordered = ctx.ElementsWithLayers
+            .OrderBy(element => (long)element.LayerIndex + (targets.Contains(element.Id) ? ev.Offset : 0))
+            .ThenByDescending(element => element.LayerIndex)
+            .ToArray();
+        for (var i = 0; i < ordered.Length; i++) ordered[i].LayerIndex = i;
     }
 
-    public void Replay(PasteCanvasElementsEvent ev, CanvasState ctx)
+    // Copy, position and select the pasted elements.
+    public static void Apply(PasteCanvasElementsEvent ev, CanvasState ctx)
     {
         List<CanvasElement> pastedElements = [];
         foreach (var element in ev.CopiedElements)

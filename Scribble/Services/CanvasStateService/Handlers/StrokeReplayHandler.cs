@@ -4,7 +4,6 @@ using Scribble.Services.CanvasStateService.State;
 using Scribble.Shared.Lib;
 using Scribble.Shared.Lib.CanvasElements.Strokes;
 using Scribble.Shared.Lib.Events;
-using Scribble.Tools.PointerTools.ArrowTool;
 using Scribble.Utils;
 using SkiaSharp;
 
@@ -13,96 +12,10 @@ namespace Scribble.Services.CanvasStateService.Handlers;
 /// <summary>
 /// Handles replay and fast-path for stroke-related events
 /// </summary>
-public class StrokeReplayHandler :
-    IEventReplayHandler<StartStrokeEvent>,
-    IEventReplayHandler<PencilStrokeLineToEvent>,
-    IEventReplayHandler<LineStrokeLineToEvent>,
-    IEventReplayHandler<AddPolylineNodeEvent>,
-    IEventReplayHandler<MovePolylineNodeEvent>,
-    IEventReplayHandler<EndStrokeEvent>,
-    IFastPathHandler<StartStrokeEvent>,
-    IFastPathHandler<EndStrokeEvent>,
-    IFastPathHandler<PencilStrokeLineToEvent>,
-    IFastPathHandler<LineStrokeLineToEvent>,
-    IFastPathHandler<AddPolylineNodeEvent>,
-    IFastPathHandler<MovePolylineNodeEvent>
+internal static class StrokeReplayHandler
 {
-    // Replay handlers
-
-    public void Replay(StartStrokeEvent ev, CanvasState ctx)
-    {
-        var newLinePath = new SKPathBuilder();
-        newLinePath.MoveTo(ev.StartPoint);
-        ctx.PaintableStrokes[ev.StrokeId] = new DrawStroke
-        {
-            Id = ev.StrokeId,
-            Paint = ev.StrokePaint.Clone(),
-            Path = newLinePath.Snapshot(),
-            RawPoints = [new StrokePoint(ev.StartPoint, ev.TimeStamp.Ticks / TimeSpan.TicksPerMillisecond)],
-            ToolType = ev.ToolType,
-            ToolOptions = ev.ToolOptions,
-            CreatorConnectionId = ev.CreatorConnectionId,
-            LayerIndex = ctx.MaxLayerIndex
-        };
-    }
-
-    public void Replay(PencilStrokeLineToEvent ev, CanvasState ctx)
-    {
-        if (ctx.PaintableStrokes.TryGetValue(ev.StrokeId, out var pStroke) && pStroke is DrawStroke dsPencil)
-        {
-            dsPencil.RawPoints.Add(new StrokePoint(ev.Point,
-                ev.TimeStamp.Ticks / TimeSpan.TicksPerMillisecond));
-            var stable = dsPencil.StablePath;
-            var newPath = new SKPathBuilder();
-            FreehandPathBuilder.AppendPoint(newPath, ref stable, dsPencil.RawPoints);
-            dsPencil.StablePath = stable;
-            dsPencil.Path = newPath.Snapshot();
-        }
-    }
-
-    public void Replay(LineStrokeLineToEvent ev, CanvasState ctx)
-    {
-        if (ctx.PaintableStrokes.TryGetValue(ev.StrokeId, out var paintableStroke) &&
-            paintableStroke is DrawStroke ds)
-        {
-            RebuildLinePath(ds, ev.EndPoint);
-        }
-    }
-
-    public void Replay(AddPolylineNodeEvent ev, CanvasState ctx)
-    {
-        if (ctx.PaintableStrokes.TryGetValue(ev.StrokeId, out var paintableStroke) &&
-            paintableStroke is DrawStroke ds)
-        {
-            ds.RawPoints.Add(new StrokePoint(ev.Point, ev.TimeStamp.Ticks / TimeSpan.TicksPerMillisecond));
-            // Rebuild the path from all raw points with the last point as the endpoint
-            RebuildLinePath(ds, ds.RawPoints[^1].Point);
-        }
-    }
-
-    public void Replay(MovePolylineNodeEvent ev, CanvasState ctx)
-    {
-        if (ctx.PaintableStrokes.TryGetValue(ev.StrokeId, out var paintableStroke) &&
-            paintableStroke is DrawStroke ds)
-        {
-            if (ev.NodeIndex >= 0 && ev.NodeIndex < ds.RawPoints.Count)
-            {
-                ds.RawPoints[ev.NodeIndex] =
-                    new StrokePoint(ev.NewPosition, ev.TimeStamp.Ticks / TimeSpan.TicksPerMillisecond);
-                RebuildLinePath(ds, ds.RawPoints[^1].Point);
-            }
-        }
-    }
-
-    public void Replay(EndStrokeEvent ev, CanvasState ctx)
-    {
-        // EndStrokeEvent has no replay effect on canvas state.
-        // It exists only as a terminal event marker for undo/redo tracking.
-    }
-
-    // Fast-path handlers
-
-    public bool TryApplyFastPath(PencilStrokeLineToEvent ev, CanvasState ctx)
+    // Extend the freehand path with one timed point.
+    public static bool Apply(PencilStrokeLineToEvent ev, CanvasState ctx)
     {
         if (ctx.PaintableStrokes.TryGetValue(ev.StrokeId, out var stroke) && stroke is DrawStroke ds)
         {
@@ -120,7 +33,8 @@ public class StrokeReplayHandler :
         return false;
     }
 
-    public bool TryApplyFastPath(LineStrokeLineToEvent ev, CanvasState ctx)
+    // Rebuild the preview up to the current pointer position.
+    public static bool Apply(LineStrokeLineToEvent ev, CanvasState ctx)
     {
         if (ctx.PaintableStrokes.TryGetValue(ev.StrokeId, out var stroke) && stroke is DrawStroke drawStroke)
         {
@@ -131,7 +45,8 @@ public class StrokeReplayHandler :
         return false;
     }
 
-    public bool TryApplyFastPath(StartStrokeEvent ev, CanvasState ctx)
+    // Insert the first stroke point above the existing drawing.
+    public static bool Apply(StartStrokeEvent ev, CanvasState ctx)
     {
         var newLinePath = new SKPathBuilder();
         newLinePath.MoveTo(ev.StartPoint);
@@ -143,22 +58,22 @@ public class StrokeReplayHandler :
             RawPoints = [new StrokePoint(ev.StartPoint, ev.TimeStamp.Ticks / TimeSpan.TicksPerMillisecond)],
             ToolType = ev.ToolType,
             ToolOptions = ev.ToolOptions,
-            CreatorConnectionId = ev.CreatorConnectionId,
-            LayerIndex = ctx.ElementsWithLayers.Count
+            CreatorConnectionId = ev.CreatorConnectionId
         };
 
-        ctx.PaintableStrokes[ev.StrokeId] = ds;
-        ctx.ElementsWithLayers.Add(ds);
+        ctx.AddOnTop(ds, ctx.PaintableStrokes);
 
         return true;
     }
 
-    public bool TryApplyFastPath(EndStrokeEvent ev, CanvasState ctx)
+    // A completed stroke already has its geometry and only needs an undo marker.
+    public static bool Apply(EndStrokeEvent ev, CanvasState ctx)
     {
         return true;
     }
 
-    public bool TryApplyFastPath(AddPolylineNodeEvent ev, CanvasState ctx)
+    // Commit a vertex and rebuild the polyline.
+    public static bool Apply(AddPolylineNodeEvent ev, CanvasState ctx)
     {
         if (ctx.PaintableStrokes.TryGetValue(ev.StrokeId, out var stroke) && stroke is DrawStroke ds)
         {
@@ -170,7 +85,8 @@ public class StrokeReplayHandler :
         return false;
     }
 
-    public bool TryApplyFastPath(MovePolylineNodeEvent ev, CanvasState ctx)
+    // Replace a vertex and rebuild the adjoining segments.
+    public static bool Apply(MovePolylineNodeEvent ev, CanvasState ctx)
     {
         if (ctx.PaintableStrokes.TryGetValue(ev.StrokeId, out var stroke) && stroke is DrawStroke ds)
         {

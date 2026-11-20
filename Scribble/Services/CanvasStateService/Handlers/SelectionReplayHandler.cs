@@ -15,18 +15,10 @@ namespace Scribble.Services.CanvasStateService.Handlers;
 /// CreateSelectionBoundEvent, IncreaseSelectionBoundEvent, EndSelectionEvent,
 /// ClearSelectionEvent, SelectByIdsEvent
 /// </summary>
-public class SelectionReplayHandler :
-    IEventReplayHandler<CreateSelectionBoundEvent>,
-    IEventReplayHandler<IncreaseSelectionBoundEvent>,
-    IEventReplayHandler<EndSelectionEvent>,
-    IEventReplayHandler<ClearSelectionEvent>,
-    IEventReplayHandler<SelectByIdsEvent>,
-    IFastPathHandler<IncreaseSelectionBoundEvent>,
-    IFastPathHandler<SelectByIdsEvent>
+internal static class SelectionReplayHandler
 {
-    // Replay handlers
-
-    public void Replay(CreateSelectionBoundEvent ev, CanvasState ctx)
+    // Start a marquee for the selecting client.
+    public static void Apply(CreateSelectionBoundEvent ev, CanvasState ctx)
     {
         var selectionPath = new SKPathBuilder();
         selectionPath.MoveTo(ev.StartPoint);
@@ -42,26 +34,8 @@ public class SelectionReplayHandler :
         ctx.SelectionBounds[ev.BoundId] = selectionBound;
     }
 
-    public void Replay(IncreaseSelectionBoundEvent ev, CanvasState ctx)
-    {
-        if (ctx.SelectionBounds.TryGetValue(ev.BoundId, out var bound))
-        {
-            var boundOrigin = bound.Path.Points[0];
-            var builder = new SKPathBuilder();
-            builder.MoveTo(boundOrigin);
-            builder.LineTo(ev.Point);
-            bound.Path = builder.Snapshot();
-
-            // Check for strokes that are within this bound
-            var top = Math.Min(boundOrigin.Y, ev.Point.Y);
-            var left = Math.Min(boundOrigin.X, ev.Point.X);
-            var boundRect = SKRect.Create(new SKPoint(left, top), Utilities.GetSize(boundOrigin, ev.Point));
-            CheckAndSelect(boundRect, bound, [..ctx.PaintableStrokes.Values, ..ctx.CanvasImages.Values],
-                ownerFilter: bound.CreatorConnectionId);
-        }
-    }
-
-    public void Replay(EndSelectionEvent ev, CanvasState ctx)
+    // Discard an empty selection gesture.
+    public static void Apply(EndSelectionEvent ev, CanvasState ctx)
     {
         if (ctx.SelectionBounds.TryGetValue(ev.BoundId, out var bound))
         {
@@ -74,7 +48,8 @@ public class SelectionReplayHandler :
         }
     }
 
-    public void Replay(ClearSelectionEvent ev, CanvasState ctx)
+    // Remove this client’s selection.
+    public static void Apply(ClearSelectionEvent ev, CanvasState ctx)
     {
         // Check if there are any selection bounds for this user.
         // If not, the clear selection action can be marked stale.
@@ -95,9 +70,8 @@ public class SelectionReplayHandler :
         }
     }
 
-    // Fast-path handler
-
-    public bool TryApplyFastPath(IncreaseSelectionBoundEvent ev, CanvasState ctx)
+    // Update the marquee and its enclosed targets.
+    public static bool Apply(IncreaseSelectionBoundEvent ev, CanvasState ctx)
     {
         if (ctx.SelectionBounds.TryGetValue(ev.BoundId, out var bound))
         {
@@ -169,42 +143,8 @@ public class SelectionReplayHandler :
         }
     }
 
-    public void Replay(SelectByIdsEvent ev, CanvasState ctx)
-    {
-        ctx.ClearSelectionBoundsForUser(ev.CreatorConnectionId);
-
-        var bound = new SelectionBound
-        {
-            Id = ev.BoundId,
-            Path = new SKPath(),
-            CreatorConnectionId = ev.CreatorConnectionId
-        };
-
-        // Only include IDs that still exist on the canvas (guards against undo
-        // having removed an element that was originally in the selection)
-        var validIds = ctx.PaintableStrokes.Keys
-            .Concat(ctx.CanvasImages.Keys)
-            .ToHashSet();
-
-        foreach (var id in ev.ElementIds)
-        {
-            if (validIds.Contains(id))
-            {
-                bound.Targets.Add(id);
-            }
-        }
-
-        // Mark stale if nothing survived, mirrors EndSelectionEvent behaviour
-        if (bound.Targets.Count == 0)
-        {
-            ctx.StaleActionIds.Add(ev.ActionId);
-            return;
-        }
-
-        ctx.SelectionBounds[ev.BoundId] = bound;
-    }
-
-    public bool TryApplyFastPath(SelectByIdsEvent ev, CanvasState ctx)
+    // Select surviving targets and refresh local selection state.
+    public static bool Apply(SelectByIdsEvent ev, CanvasState ctx)
     {
         ctx.ClearSelectionBoundsForUser(ev.CreatorConnectionId);
 
