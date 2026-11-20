@@ -1,0 +1,25 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="Scribble.Controls.SelectionOverlay"
+             IsVisible="False">
+    <StackPanel Name="OverlayContent" Spacing="6">
+        <Border Name="SelectionRotationBtn" CornerRadius="100" BorderThickness="2" BorderBrush="Gray"
+                Height="15" Width="15" Background="Gray" HorizontalAlignment="Center" />
+        <Grid Name="SelectionBoxContainer">
+            <Border Name="SelectionBorderControl" BorderThickness="2" BorderBrush="Gray"
+                    HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Background="Transparent" />
+            <Border Name="ScaleHandleTl" Width="10" Height="10" Background="White" BorderBrush="Gray"
+                    BorderThickness="1" CornerRadius="5" HorizontalAlignment="Left" VerticalAlignment="Top"
+                    Cursor="TopLeftCorner" Margin="-5,-5,0,0" />
+            <Border Name="ScaleHandleTr" Width="10" Height="10" Background="White" BorderBrush="Gray"
+                    BorderThickness="1" CornerRadius="5" HorizontalAlignment="Right" VerticalAlignment="Top"
+                    Cursor="TopRightCorner" Margin="0,-5,-5,0" />
+            <Border Name="ScaleHandleBl" Width="10" Height="10" Background="White" BorderBrush="Gray"
+                    BorderThickness="1" CornerRadius="5" HorizontalAlignment="Left" VerticalAlignment="Bottom"
+                    Cursor="BottomLeftCorner" Margin="-5,0,0,-5" />
+            <Border Name="ScaleHandleBr" Width="10" Height="10" Background="White" BorderBrush="Gray"
+                    BorderThickness="1" CornerRadius="5" HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                    Cursor="BottomRightCorner" Margin="0,0,-5,-5" />
+        </Grid>
+    </StackPanel>
+</UserControl>

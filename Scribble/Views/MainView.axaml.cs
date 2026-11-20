@@ -43,6 +43,7 @@ namespace Scribble.Views;
 
 public partial class MainView : UserControl
 {
+    private readonly CameraState _cameraState;
     private SKPoint _prevCoord;
     private SKPoint _lastWorldPointerPos;
     private PointerTool? _activePointerTool;
@@ -66,6 +67,7 @@ public partial class MainView : UserControl
     internal MainView(IServiceProvider services)
     {
         InitializeComponent();
+        _cameraState = MainCanvas.Camera;
         _prevCoord = SKPoint.Empty;
         _lastWorldPointerPos = SKPoint.Empty;
         _selection = new Selection();
@@ -73,8 +75,18 @@ public partial class MainView : UserControl
         var moveIconBitmap = Bitmap.DecodeToWidth(AssetLoader.Open(new Uri("avares://Scribble/Assets/move.png")), 36);
         var rotateIconBitmap =
             Bitmap.DecodeToWidth(AssetLoader.Open(new Uri("avares://Scribble/Assets/rotate.png")), 24);
-        SelectionBorder.Cursor = new Cursor(moveIconBitmap, new PixelPoint(18, 18));
-        SelectionRotationBtn.Cursor = new Cursor(rotateIconBitmap, new PixelPoint(12, 12));
+        SelectionOverlay.SelectionBorder.Cursor = new Cursor(moveIconBitmap, new PixelPoint(18, 18));
+        SelectionOverlay.SelectionRotationButton.Cursor = new Cursor(rotateIconBitmap, new PixelPoint(12, 12));
+        SelectionOverlay.MovePressed += SelectionBorder_OnPointerPressed;
+        SelectionOverlay.MoveMoved += SelectionBorder_OnPointerMoved;
+        SelectionOverlay.MoveReleased += SelectionBorder_OnPointerReleased;
+        SelectionOverlay.RotatePressed += SelectionRotationBtn_OnPointerPressed;
+        SelectionOverlay.RotateMoved += SelectionRotationBtn_OnPointerMoved;
+        SelectionOverlay.RotateReleased += SelectionRotationBtn_OnPointerReleased;
+        SelectionOverlay.ScalePressed += ScaleHandle_OnPointerPressed;
+        SelectionOverlay.ScaleMoved += ScaleHandle_OnPointerMoved;
+        SelectionOverlay.ScaleReleased += ScaleHandle_OnPointerReleased;
+        SelectionOverlay.GestureCaptureLost += SelectionOverlay_OnGestureCaptureLost;
 
         _canvasStateService = services.GetRequiredService<ICanvasStateService>();
         _dialogService = services.GetRequiredService<IDialogService>();
@@ -141,6 +153,7 @@ public partial class MainView : UserControl
 
         _viewModel = currentVm;
         if (currentVm == null) return;
+        _cameraState.SetZoom(currentVm.UiStateViewModel.ZoomLevel);
         currentVm.RequestRefreshSelection += RefreshSelectionControls;
         currentVm.RequestInvalidateSkiaCanvas += MainCanvas.InvalidateVisual;
         currentVm.RequestInvalidateSkiaCanvas += MarkCanvasElementsForSelection;
@@ -215,7 +228,7 @@ public partial class MainView : UserControl
                         (float)(MainCanvas.Bounds.Width / 2),
                         (float)(MainCanvas.Bounds.Height / 2)
                     );
-                    pastePos = CameraState.ScreenToWorld(viewportCenter);
+                    pastePos = _cameraState.ScreenToWorld(viewportCenter);
                 }
 
                 _viewModel?.PasteCommand.Execute(pastePos);
@@ -241,14 +254,14 @@ public partial class MainView : UserControl
     [
         new PencilTool("PencilTool", _canvasStateService),
         new EraseTool("EraseTool", _canvasStateService),
-        new PanningTool("PanningTool", _canvasStateService, MainCanvas.InvalidateVisual),
+        new PanningTool("PanningTool", _canvasStateService, _cameraState, MainCanvas.InvalidateVisual),
         new LineTool("LineTool", _canvasStateService),
         new ArrowTool("ArrowTool", _canvasStateService),
         new EllipseTool("EllipseTool", _canvasStateService),
         new RectangleTool("RectangleTool", _canvasStateService),
         new DiamondTool("DiamondTool", _canvasStateService),
-        new TextTool("TextTool", _canvasStateService, CanvasContainer),
-        new SelectTool("SelectTool", _canvasStateService, CanvasContainer),
+        new TextTool("TextTool", _canvasStateService, CanvasContainer, _cameraState),
+        new SelectTool("SelectTool", _canvasStateService, CanvasContainer, _cameraState),
         new ImageTool("ImageTool", _canvasStateService, _fileService, _dialogService),
     ];
 
@@ -314,8 +327,8 @@ public partial class MainView : UserControl
         {
             var border = (Border)children[i];
             var bounds = elements[i].Bounds;
-            var topLeftScreenPos = CameraState.WorldToScreen(new SKPoint(bounds.Left, bounds.Top));
-            var bottomRightScreenPos = CameraState.WorldToScreen(new SKPoint(bounds.Right, bounds.Bottom));
+            var topLeftScreenPos = _cameraState.WorldToScreen(new SKPoint(bounds.Left, bounds.Top));
+            var bottomRightScreenPos = _cameraState.WorldToScreen(new SKPoint(bounds.Right, bounds.Bottom));
 
             border.Width = bottomRightScreenPos.X - topLeftScreenPos.X;
             border.Height = bottomRightScreenPos.Y - topLeftScreenPos.Y;
@@ -338,8 +351,8 @@ public partial class MainView : UserControl
         foreach (var element in elements)
         {
             var bounds = element.Bounds;
-            var topLeftScreenPos = CameraState.WorldToScreen(new SKPoint(bounds.Left, bounds.Top));
-            var bottomRightScreenPos = CameraState.WorldToScreen(new SKPoint(bounds.Right, bounds.Bottom));
+            var topLeftScreenPos = _cameraState.WorldToScreen(new SKPoint(bounds.Left, bounds.Top));
+            var bottomRightScreenPos = _cameraState.WorldToScreen(new SKPoint(bounds.Right, bounds.Bottom));
 
             var border = new Border
             {
@@ -412,9 +425,9 @@ public partial class MainView : UserControl
             var strokeBounds = textStroke.Path.Bounds;
 
             // Convert world-space bounds to screen-space for overlay positioning
-            var topLeftScreenPos = CameraState.WorldToScreen(new SKPoint(strokeBounds.Left, strokeBounds.Top));
+            var topLeftScreenPos = _cameraState.WorldToScreen(new SKPoint(strokeBounds.Left, strokeBounds.Top));
             var bottomRightScreenPos =
-                CameraState.WorldToScreen(new SKPoint(strokeBounds.Right, strokeBounds.Bottom));
+                _cameraState.WorldToScreen(new SKPoint(strokeBounds.Right, strokeBounds.Bottom));
 
             var border = new Border
             {
@@ -490,26 +503,26 @@ public partial class MainView : UserControl
     }
 
     /// <summary>
-    /// Zoom-to-point: adjusts CameraState.Zoom while keeping the world point
+    /// Zoom-to-point: adjusts _cameraState.Zoom while keeping the world point
     /// under the pointer fixed on screen.
     /// </summary>
     private void PerformZoom(double zoomFactor, SKPoint screenPivot)
     {
         if (_viewModel == null) return;
 
-        var worldPosBeforeZoom = CameraState.ScreenToWorld(screenPivot);
-        var oldZoom = CameraState.Zoom;
+        var worldPosBeforeZoom = _cameraState.ScreenToWorld(screenPivot);
+        var oldZoom = _cameraState.Zoom;
         var newZoom = (float)(oldZoom * zoomFactor);
-        CameraState.SetZoom(newZoom);
-        newZoom = CameraState.Zoom; // re-read in case it was clamped
+        _cameraState.SetZoom(newZoom);
+        newZoom = _cameraState.Zoom; // re-read in case it was clamped
 
         if (Math.Abs(newZoom - oldZoom) < 0.0001f) return;
 
-        var worldPosAfterZoom = CameraState.ScreenToWorld(screenPivot);
+        var worldPosAfterZoom = _cameraState.ScreenToWorld(screenPivot);
 
         // Adjust the world offset so the world point under the pointer stays fixed.
-        CameraState.WorldOffSetX -= worldPosAfterZoom.X - worldPosBeforeZoom.X;
-        CameraState.WorldOffSetY -= worldPosAfterZoom.Y - worldPosBeforeZoom.Y;
+        _cameraState.WorldOffSetX -= worldPosAfterZoom.X - worldPosBeforeZoom.X;
+        _cameraState.WorldOffSetY -= worldPosAfterZoom.Y - worldPosBeforeZoom.Y;
 
         MainCanvas.InvalidateVisual();
 
@@ -561,12 +574,12 @@ public partial class MainView : UserControl
         // Add 10% padding so it looks nice
         targetZoom *= 0.9f;
 
-        CameraState.SetZoom(targetZoom);
-        float finalZoom = CameraState.Zoom;
+        _cameraState.SetZoom(targetZoom);
+        float finalZoom = _cameraState.Zoom;
 
         // Centre the viewport
-        CameraState.WorldOffSetX = globalBounds.MidX - (viewportWidth / 2f) / finalZoom;
-        CameraState.WorldOffSetY = globalBounds.MidY - (viewportHeight / 2f) / finalZoom;
+        _cameraState.WorldOffSetX = globalBounds.MidX - (viewportWidth / 2f) / finalZoom;
+        _cameraState.WorldOffSetY = globalBounds.MidY - (viewportHeight / 2f) / finalZoom;
 
         _viewModel.UiStateViewModel.UpdateZoomLevel(finalZoom);
         MainCanvas.InvalidateVisual();
@@ -681,46 +694,15 @@ public partial class MainView : UserControl
         float rotationAngleDegrees,
         SKPoint worldRotationCenter)
     {
-        // The rotation handle sits above the selection box (15 px width/height + 6 px gap)
-        const float rotationHandleOffset = 15 + 6;
-
-        // Convert world-space corners to screen-space
-        var topLeftScreen = CameraState.WorldToScreen(new SKPoint(worldBounds.Left, worldBounds.Top));
-        var bottomRightScreen = CameraState.WorldToScreen(new SKPoint(worldBounds.Right, worldBounds.Bottom));
-        var screenWidth = bottomRightScreen.X - topLeftScreen.X;
-        var screenHeight = bottomRightScreen.Y - topLeftScreen.Y;
-
-        Canvas.SetLeft(SelectionOverlay, topLeftScreen.X);
-        Canvas.SetTop(SelectionOverlay, topLeftScreen.Y - rotationHandleOffset);
-        SelectionBoxContainer.Width = screenWidth;
-        SelectionBoxContainer.Height = screenHeight;
-
-        var elementIsRotated = Math.Abs(rotationAngleDegrees) > 0.001f;
-        // Apply or clear rotation transform
-        if (selectedElements.Count == 1 && elementIsRotated)
-        {
-            var overlayLeft = topLeftScreen.X;
-            var overlayTop = topLeftScreen.Y - rotationHandleOffset;
-            var rotationCenterScreen = CameraState.WorldToScreen(worldRotationCenter);
-
-            // Express the rotation centre in overlay-local coordinates
-            var localCenterX = rotationCenterScreen.X - overlayLeft;
-            var localCenterY = rotationCenterScreen.Y - overlayTop;
-            var overlayHeight = screenHeight + rotationHandleOffset;
-
-            SelectionOverlay.RenderTransformOrigin = new RelativePoint(
-                localCenterX / screenWidth,
-                localCenterY / overlayHeight,
-                RelativeUnit.Relative);
-            SelectionOverlay.RenderTransform = new RotateTransform(rotationAngleDegrees);
-        }
-        else
-        {
-            SelectionOverlay.RenderTransform = null;
-        }
+        // Convert selection geometry to viewport coordinates for the overlay control.
+        var topLeftScreen = _cameraState.WorldToScreen(new SKPoint(worldBounds.Left, worldBounds.Top));
+        var bottomRightScreen = _cameraState.WorldToScreen(new SKPoint(worldBounds.Right, worldBounds.Bottom));
+        var screenBounds = new SKRect(topLeftScreen.X, topLeftScreen.Y, bottomRightScreen.X, bottomRightScreen.Y);
+        var rotationCenterScreen = _cameraState.WorldToScreen(worldRotationCenter);
 
         _selection.SelectionBounds = worldBounds;
-        SelectionOverlay.IsVisible = selectedElements.Count > 0 && double.IsNaN(_selection.SelectionRotationAngle);
+        SelectionOverlay.SetSelectionGeometry(screenBounds, rotationAngleDegrees, rotationCenterScreen,
+            selectedElements.Count > 0 && double.IsNaN(_selection.SelectionRotationAngle));
 
         if (selectedElements.Count == 1 && selectedElements[0] is DrawStroke ds &&
             ds.ToolType is ToolType.Line or ToolType.Arrow && ds.RawPoints.Count >= 2)
@@ -756,7 +738,7 @@ public partial class MainView : UserControl
             {
                 var rawPoint = ds.RawPoints[i].Point;
                 var worldPoint = ds.TransformMatrix.MapPoint(rawPoint);
-                var screenPoint = CameraState.WorldToScreen(worldPoint);
+                var screenPoint = _cameraState.WorldToScreen(worldPoint);
 
                 var handle = (Border)NodeHandlesOverlay.Children[i];
                 Canvas.SetLeft(handle, screenPoint.X - 5);
@@ -795,7 +777,7 @@ public partial class MainView : UserControl
 
         // For all other tools, convert screen pixels to world coordinates
         var screenPos = Utilities.ToSkPoint(e.GetPosition(MainCanvas));
-        return CameraState.ScreenToWorld(screenPos);
+        return _cameraState.ScreenToWorld(screenPos);
     }
 
     private void CloseExportImageWindow()
@@ -832,7 +814,7 @@ public partial class MainView : UserControl
     private void MainCanvas_OnPointerMoved(object? sender, PointerEventArgs e)
     {
         var screenPos = Utilities.ToSkPoint(e.GetPosition(MainCanvas));
-        _lastWorldPointerPos = CameraState.ScreenToWorld(screenPos);
+        _lastWorldPointerPos = _cameraState.ScreenToWorld(screenPos);
 
         var pointerCoordinates = GetPointerPosition(e);
 
@@ -869,7 +851,7 @@ public partial class MainView : UserControl
         Dispatcher.UIThread.Post(() => CanvasContainer.Focus());
 
         var screenPos = Utilities.ToSkPoint(e.GetPosition(MainCanvas));
-        _lastWorldPointerPos = CameraState.ScreenToWorld(screenPos);
+        _lastWorldPointerPos = _cameraState.ScreenToWorld(screenPos);
 
         var pointerCoordinates = GetPointerPosition(e);
         if (e.Properties.IsLeftButtonPressed)
@@ -932,8 +914,8 @@ public partial class MainView : UserControl
                 deltaY = 0;
             }
 
-            CameraState.WorldOffSetX -= (deltaX * panStep) / CameraState.Zoom;
-            CameraState.WorldOffSetY -= (deltaY * panStep) / CameraState.Zoom;
+            _cameraState.WorldOffSetX -= (deltaX * panStep) / _cameraState.Zoom;
+            _cameraState.WorldOffSetY -= (deltaY * panStep) / _cameraState.Zoom;
 
             MainCanvas.InvalidateVisual();
         }
@@ -1181,6 +1163,16 @@ public partial class MainView : UserControl
             VisualizeSelection();
             e.Handled = true;
         }
+    }
+
+    // Clear transient gesture state if the platform cancels pointer capture.
+    private void SelectionOverlay_OnGestureCaptureLost(object? sender, EventArgs e)
+    {
+        _selection.SelectionMoveCoord = SKPoint.Empty;
+        _selection.SelectionRotationAngle = double.NaN;
+        _selection.SelectionCenter = SKPoint.Empty;
+        _selection.ClearScaleState();
+        VisualizeSelection();
     }
 
     private void NodeHandle_OnPointerPressed(object? sender, PointerPressedEventArgs e)
