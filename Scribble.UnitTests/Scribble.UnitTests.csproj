@@ -10,7 +10,6 @@
     <ItemGroup>
         <ProjectReference Include="..\Scribble.Shared\Scribble.Shared.csproj"/>
         <ProjectReference Include="..\Scribble\Scribble.csproj"/>
-        <ProjectReference Include="..\Scribble.Server\Scribble.Server.csproj"/>
     </ItemGroup>
 
     <ItemGroup>
