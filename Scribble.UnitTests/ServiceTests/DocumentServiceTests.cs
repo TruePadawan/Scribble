@@ -197,6 +197,18 @@ public class DocumentServiceTests
         await act.Should().ThrowAsync<Exception>().WithMessage("*files*");
     }
 
+    // A malformed file is decoded fully before the active document is replaced.
+    [AvaloniaFact]
+    public async Task LoadAsync_MalformedDocument_LeavesCurrentCanvasUntouched()
+    {
+        using var stream = MakeStream("""{ "elements": { "strokes": [], "images": [] } }""");
+
+        await Assert.ThrowsAsync<Exception>(() => _documentService.LoadAsync(stream));
+
+        _canvasStateService.DidNotReceive().LoadCanvas(Arg.Any<List<CanvasElement>>());
+        _canvasStateService.DidNotReceive().SetBackgroundColor(Arg.Any<SKColor>());
+    }
+
     [AvaloniaFact]
     public async Task RoundTrip_SaveThenLoad_StrokeCountIsPreserved()
     {

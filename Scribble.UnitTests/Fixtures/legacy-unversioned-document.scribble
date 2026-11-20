@@ -1,0 +1,28 @@
+{
+  "elements": {
+    "strokes": [],
+    "images": [
+      {
+        "Id": "1eb49e11-6890-4c27-9d91-6c982a20b8b0",
+        "Width": 20,
+        "Height": 30,
+        "X": 5,
+        "Y": 7,
+        "LayerIndex": 2,
+        "FileId": "5aa52c81-0c9d-430d-b34a-a6fa19589b5d"
+      },
+      {
+        "Id": "a75d2609-e5a3-42a2-9497-60438f193b59",
+        "Width": 40,
+        "Height": 15,
+        "X": 50,
+        "Y": 60,
+        "LayerIndex": 4,
+        "FileId": "5aa52c81-0c9d-430d-b34a-a6fa19589b5d"
+      }
+    ]
+  },
+  "files": {
+    "5aa52c81-0c9d-430d-b34a-a6fa19589b5d": "RkFLRS1JTUFHRS1EQVRB"
+  }
+}
