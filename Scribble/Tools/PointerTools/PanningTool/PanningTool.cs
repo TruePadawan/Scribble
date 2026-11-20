@@ -10,11 +10,13 @@ namespace Scribble.Tools.PointerTools.PanningTool;
 public class PanningTool : PointerTool
 {
     private readonly Action _requestCanvasRedraw;
+    private readonly CameraState _camera;
 
-    public PanningTool(string name, ICanvasStateService canvasState, Action requestCanvasRedraw)
+    public PanningTool(string name, ICanvasStateService canvasState, CameraState camera, Action requestCanvasRedraw)
         : base(name, canvasState, LoadToolBitmap(typeof(PanningTool), "pan.png"))
     {
         _requestCanvasRedraw = requestCanvasRedraw;
+        _camera = camera;
         Cursor = new Cursor(ToolIcon, new PixelPoint(10, 10));
         HotKey = new KeyGesture(Key.H);
         ToolTip = "Panning Tool (H)";
@@ -30,8 +32,8 @@ public class PanningTool : PointerTool
         var screenDelta = currentScreenPos - prevScreenPos;
         // Convert screen-pixel delta to world-space delta
         // The camera is 'looking' at the direction opposite to where we're panning so we subtract
-        CameraState.WorldOffSetX -= screenDelta.X / CameraState.Zoom;
-        CameraState.WorldOffSetY -= screenDelta.Y / CameraState.Zoom;
+        _camera.WorldOffSetX -= screenDelta.X / _camera.Zoom;
+        _camera.WorldOffSetY -= screenDelta.Y / _camera.Zoom;
 
         _requestCanvasRedraw();
     }

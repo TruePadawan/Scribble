@@ -20,15 +20,17 @@ namespace Scribble.Tools.PointerTools.TextTool;
 public class TextTool : StrokeTool
 {
     private readonly Canvas _canvasContainer;
+    private readonly CameraState _camera;
     private TextBox? _currentTextBox;
     private TextStroke? _editingStroke;
     private Guid _actionId = Guid.NewGuid();
 
-    public TextTool(string name, ICanvasStateService canvasState, Canvas canvasContainer) : base(name, canvasState,
+    public TextTool(string name, ICanvasStateService canvasState, Canvas canvasContainer, CameraState camera) : base(name, canvasState,
         LoadToolBitmap(typeof(TextTool), "text.png"))
     {
         ToolOptions = [ToolOption.StrokeColor, ToolOption.FontSize, ToolOption.FontCasing, ToolOption.FontStyle];
         _canvasContainer = canvasContainer;
+        _camera = camera;
         _canvasContainer.Focusable = true;
         var plusBitmap = new Bitmap(AssetLoader.Open(new Uri("avares://Scribble/Assets/plus.png")));
         Cursor = new Cursor(plusBitmap, new PixelPoint(12, 12));
@@ -64,7 +66,7 @@ public class TextTool : StrokeTool
         _currentTextBox.AddHandler(Control.RequestBringIntoViewEvent, (sender, args) => { args.Handled = true; });
 
         // coord is in world-space, convert to screen-space for overlay positioning
-        var screenPos = CameraState.WorldToScreen(coord);
+        var screenPos = _camera.WorldToScreen(coord);
         Canvas.SetLeft(_currentTextBox, screenPos.X);
         Canvas.SetTop(_currentTextBox, screenPos.Y);
 
@@ -111,9 +113,9 @@ public class TextTool : StrokeTool
 
         var actualPosition = textStroke.TransformMatrix.MapPoint(textStroke.Position);
         // Convert world-space position to screen-space for overlay positioning
-        var screenPos = CameraState.WorldToScreen(actualPosition);
+        var screenPos = _camera.WorldToScreen(actualPosition);
         Canvas.SetLeft(_currentTextBox, screenPos.X);
-        Canvas.SetTop(_currentTextBox, screenPos.Y - textStroke.Paint.TextSize * CameraState.Zoom);
+        Canvas.SetTop(_currentTextBox, screenPos.Y - textStroke.Paint.TextSize * _camera.Zoom);
 
         // Intercept the key before the TextBox consumes it and adds a newline
         _currentTextBox.AddHandler(InputElement.KeyDownEvent, (sender, args) =>
@@ -158,7 +160,7 @@ public class TextTool : StrokeTool
                 // Convert screen-space TextBox position back to world-space for the event
                 var screenPos = new SKPoint((float)Canvas.GetLeft(_currentTextBox),
                     (float)Canvas.GetTop(_currentTextBox));
-                var textboxPos = CameraState.ScreenToWorld(screenPos);
+                var textboxPos = _camera.ScreenToWorld(screenPos);
                 textboxPos.Y += StrokePaint.TextSize;
                 var strokeId = Guid.NewGuid();
                 CanvasStateService.ApplyEvent(new AddTextEvent(_actionId, strokeId, textboxPos, text,

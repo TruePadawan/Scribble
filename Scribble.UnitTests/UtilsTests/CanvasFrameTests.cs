@@ -12,7 +12,7 @@ using SkiaSharp;
 
 namespace Scribble.UnitTests.UtilsTests;
 
-// Isolate tests that temporarily change the shared editor camera.
+// Keep Avalonia frame tests in one non-parallel collection.
 [CollectionDefinition(DisableParallelization = true)]
 public class CanvasFrameCollection;
 
@@ -24,9 +24,6 @@ public class CanvasFrameTests
     [AvaloniaFact]
     public void CaptureFrame_AfterEditingAndPanning_ReplaysOriginalExportPixels()
     {
-        var originalZoom = CameraState.Zoom;
-        var originalX = CameraState.WorldOffSetX;
-        var originalY = CameraState.WorldOffSetY;
         var image = CreateImage();
         using var builder = new SKPathBuilder();
         builder.AddRect(SKRect.Create(21, 21, 24, 17));
@@ -38,8 +35,8 @@ public class CanvasFrameTests
         };
         try
         {
-            CameraState.Reset();
             var view = new SkiaCanvas { CanvasBackground = Colors.Transparent, CanvasElements = [stroke, image] };
+            var camera = view.Camera;
             view.Arrange(new Rect(0, 0, 90, 80));
             using var recorded = view.CaptureFrame();
             var png = CanvasExportViewModel.GetImageData(view.CanvasElements, false, SKColors.Transparent, 1,
@@ -52,8 +49,8 @@ public class CanvasFrameTests
             image.Bounds = SKRect.Create(110, 100, 3, 3);
             image.GetBitmap();
             image.ReleaseCachedBitmap();
-            CameraState.SetZoom(2);
-            CameraState.WorldOffSetX = 100;
+            camera.SetZoom(2);
+            camera.WorldOffSetX = 100;
 
             using var screen = new SKBitmap(90, 80);
             using var canvas = new SKCanvas(screen);
@@ -72,9 +69,6 @@ public class CanvasFrameTests
         }
         finally
         {
-            CameraState.SetZoom(originalZoom);
-            CameraState.WorldOffSetX = originalX;
-            CameraState.WorldOffSetY = originalY;
             image.ReleaseCachedBitmap();
         }
     }

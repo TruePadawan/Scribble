@@ -6,10 +6,18 @@ namespace Scribble.UnitTests.StateTests;
 
 public class CameraStateTests
 {
-    public CameraStateTests()
+    private readonly CameraState _camera = new();
+
+    // Each viewport keeps an independent transform.
+    [Fact]
+    public void CameraState_TwoInstances_KeepIndependentZoomAndOffset()
     {
-        // Reset camera state before each test
-        CameraState.Reset();
+        var other = new CameraState();
+        _camera.SetZoom(2);
+        _camera.WorldOffSetX = 40;
+
+        other.Zoom.Should().Be(1);
+        other.WorldOffSetX.Should().Be(0);
     }
 
     // SetZoom
@@ -17,37 +25,37 @@ public class CameraStateTests
     public void SetZoom_ValueWithinRange_ZoomIsUpdated()
     {
         const float validZoom = 2.5f;
-        CameraState.SetZoom(validZoom);
+        _camera.SetZoom(validZoom);
 
-        CameraState.Zoom.Should().Be(validZoom);
+        _camera.Zoom.Should().Be(validZoom);
     }
 
     [Fact]
     public void SetZoom_ValueBelowRange_ZoomIsClampedToMinimum()
     {
         const float invalidZoom = 0.01f;
-        CameraState.SetZoom(invalidZoom);
+        _camera.SetZoom(invalidZoom);
 
-        CameraState.Zoom.Should().Be(CameraState.MinZoom);
+        _camera.Zoom.Should().Be(CameraState.MinZoom);
     }
 
     [Fact]
     public void SetZoom_ValueAboveRange_ZoomIsClampedToMaximum()
     {
         const float invalidZoom = 100f;
-        CameraState.SetZoom(invalidZoom);
+        _camera.SetZoom(invalidZoom);
 
-        CameraState.Zoom.Should().Be(CameraState.MaxZoom);
+        _camera.Zoom.Should().Be(CameraState.MaxZoom);
     }
 
     [Fact]
     public void Reset_ResetsZoomToDefault()
     {
-        CameraState.SetZoom(2.5f);
-        CameraState.Reset();
+        _camera.SetZoom(2.5f);
+        _camera.Reset();
 
         const float defaultZoom = 1.0f;
-        CameraState.Zoom.Should().Be(defaultZoom);
+        _camera.Zoom.Should().Be(defaultZoom);
     }
 
     // ScreenToWorld
@@ -56,26 +64,26 @@ public class CameraStateTests
     {
         var screenPos = new SKPoint(100, 100);
 
-        CameraState.ScreenToWorld(screenPos).Should().Be(screenPos);
+        _camera.ScreenToWorld(screenPos).Should().Be(screenPos);
     }
 
     [Fact]
     public void ScreenToWorld_2xZoomNoOffset_WorldPosShouldBeHalved()
     {
-        CameraState.SetZoom(2);
+        _camera.SetZoom(2);
         var screenPos = new SKPoint(100, 100);
-        CameraState.ScreenToWorld(screenPos).Should().Be(new SKPoint(screenPos.X / 2, screenPos.Y / 2));
+        _camera.ScreenToWorld(screenPos).Should().Be(new SKPoint(screenPos.X / 2, screenPos.Y / 2));
     }
 
     [Fact]
     public void ScreenToWorld_WithOffset_WorldPosShouldBeOffset()
     {
         var offset = new SKPoint(50, 75);
-        CameraState.WorldOffSetX = offset.X;
-        CameraState.WorldOffSetY = offset.Y;
+        _camera.WorldOffSetX = offset.X;
+        _camera.WorldOffSetY = offset.Y;
         var screenPos = new SKPoint(100, 100);
 
-        CameraState.ScreenToWorld(screenPos).Should().Be(screenPos + offset);
+        _camera.ScreenToWorld(screenPos).Should().Be(screenPos + offset);
     }
 
     // WorldToScreen
@@ -84,34 +92,34 @@ public class CameraStateTests
     {
         var worldPos = new SKPoint(100, 100);
 
-        CameraState.WorldToScreen(worldPos).Should().Be(worldPos);
+        _camera.WorldToScreen(worldPos).Should().Be(worldPos);
     }
 
     [Fact]
     public void WorldToScreen_2xZoomNoOffset_ScreenPosShouldBeDoubled()
     {
-        CameraState.SetZoom(2);
+        _camera.SetZoom(2);
         var worldPos = new SKPoint(100, 100);
 
-        CameraState.WorldToScreen(worldPos).Should().Be(new SKPoint(worldPos.X * 2, worldPos.Y * 2));
+        _camera.WorldToScreen(worldPos).Should().Be(new SKPoint(worldPos.X * 2, worldPos.Y * 2));
     }
 
     [Fact]
     public void WorldToScreen_WithOffset_ScreenPosShouldBeShiftedByOffset()
     {
         var offset = new SKPoint(50, 75);
-        CameraState.WorldOffSetX = offset.X;
-        CameraState.WorldOffSetY = offset.Y;
+        _camera.WorldOffSetX = offset.X;
+        _camera.WorldOffSetY = offset.Y;
         var worldPos = new SKPoint(100, 100);
 
-        CameraState.WorldToScreen(worldPos).Should().Be(worldPos - offset);
+        _camera.WorldToScreen(worldPos).Should().Be(worldPos - offset);
     }
 
     // GetViewMatrix
     [Fact]
     public void GetViewMatrix_DefaultState_ReturnsIdentityScaleAndZeroTranslation()
     {
-        var matrix = CameraState.GetViewMatrix();
+        var matrix = _camera.GetViewMatrix();
 
         matrix.ScaleX.Should().Be(1f);
         matrix.ScaleY.Should().Be(1f);
@@ -122,9 +130,9 @@ public class CameraStateTests
     [Fact]
     public void GetViewMatrix_2xZoomNoOffset_ScaleComponentsAreDoubled()
     {
-        CameraState.SetZoom(2f);
+        _camera.SetZoom(2f);
 
-        var matrix = CameraState.GetViewMatrix();
+        var matrix = _camera.GetViewMatrix();
 
         matrix.ScaleX.Should().Be(2f);
         matrix.ScaleY.Should().Be(2f);
@@ -133,9 +141,9 @@ public class CameraStateTests
     [Fact]
     public void GetViewMatrix_2xZoomNoOffset_TranslationRemainsZero()
     {
-        CameraState.SetZoom(2f);
+        _camera.SetZoom(2f);
 
-        var matrix = CameraState.GetViewMatrix();
+        var matrix = _camera.GetViewMatrix();
 
         matrix.TransX.Should().Be(0f);
         matrix.TransY.Should().Be(0f);
@@ -144,10 +152,10 @@ public class CameraStateTests
     [Fact]
     public void GetViewMatrix_WithOffsetNoZoom_ScaleRemainsIdentity()
     {
-        CameraState.WorldOffSetX = 50f;
-        CameraState.WorldOffSetY = 75f;
+        _camera.WorldOffSetX = 50f;
+        _camera.WorldOffSetY = 75f;
 
-        var matrix = CameraState.GetViewMatrix();
+        var matrix = _camera.GetViewMatrix();
 
         matrix.ScaleX.Should().Be(1f);
         matrix.ScaleY.Should().Be(1f);
@@ -156,10 +164,10 @@ public class CameraStateTests
     [Fact]
     public void GetViewMatrix_WithOffsetNoZoom_TranslationIsNegatedOffset()
     {
-        CameraState.WorldOffSetX = 50f;
-        CameraState.WorldOffSetY = 75f;
+        _camera.WorldOffSetX = 50f;
+        _camera.WorldOffSetY = 75f;
 
-        var matrix = CameraState.GetViewMatrix();
+        var matrix = _camera.GetViewMatrix();
 
         matrix.TransX.Should().Be(-50f);
         matrix.TransY.Should().Be(-75f);
@@ -168,11 +176,11 @@ public class CameraStateTests
     [Fact]
     public void GetViewMatrix_2xZoomWithOffset_TranslationIsNegatedAndOffsetScaledByZoom()
     {
-        CameraState.SetZoom(2f);
-        CameraState.WorldOffSetX = 50f;
-        CameraState.WorldOffSetY = 75f;
+        _camera.SetZoom(2f);
+        _camera.WorldOffSetX = 50f;
+        _camera.WorldOffSetY = 75f;
 
-        var matrix = CameraState.GetViewMatrix();
+        var matrix = _camera.GetViewMatrix();
 
         matrix.TransX.Should().Be(-100f);
         matrix.TransY.Should().Be(-150f);

@@ -19,16 +19,18 @@ class SelectTool : PointerTool
 {
     private Border? _selectionBorder;
     private readonly Canvas _canvasContainer;
+    private readonly CameraState _camera;
     private SKPoint _startPoint;
     private Guid _boundId = Guid.NewGuid();
     private Guid _actionId = Guid.NewGuid();
 
-    public SelectTool(string name, ICanvasStateService canvasStateService, Canvas canvasContainer) : base(name,
+    public SelectTool(string name, ICanvasStateService canvasStateService, Canvas canvasContainer, CameraState camera) : base(name,
         canvasStateService,
         LoadToolBitmap(typeof(SelectTool), "cursor.png"))
     {
         Cursor = Cursor.Default;
         _canvasContainer = canvasContainer;
+        _camera = camera;
         HotKey = new KeyGesture(Key.V);
         ToolTip = "Select Tool (V)";
     }
@@ -36,7 +38,7 @@ class SelectTool : PointerTool
     public override void HandlePointerClick(SKPoint coord)
     {
         // coord is in world-space, convert to screen-space for positioning the visual border
-        _startPoint = CameraState.WorldToScreen(coord);
+        _startPoint = _camera.WorldToScreen(coord);
 
         _selectionBorder = new Border
         {
@@ -64,7 +66,7 @@ class SelectTool : PointerTool
         if (_selectionBorder == null) return;
 
         // currentCoord is in world-space, convert to screen-space for visual border
-        var screenPos = CameraState.WorldToScreen(currentCoord);
+        var screenPos = _camera.WorldToScreen(currentCoord);
 
         _selectionBorder.Width = Math.Abs(screenPos.X - _startPoint.X);
         _selectionBorder.Height = Math.Abs(screenPos.Y - _startPoint.Y);

@@ -21,6 +21,8 @@ namespace Scribble.Controls;
 /// </summary>
 public class SkiaCanvas : Control
 {
+    /// <summary>Camera transform owned by this viewport.</summary>
+    public CameraState Camera { get; } = new();
     public static readonly StyledProperty<List<CanvasElement>> CanvasElementsProperty =
         AvaloniaProperty.Register<SkiaCanvas, List<CanvasElement>>(nameof(CanvasElements));
 
@@ -89,17 +91,17 @@ public class SkiaCanvas : Control
         // Save the existing canvas state (Avalonia's DPI/layout matrix) so we can restore it later
         canvas.Save();
 
-        var viewMatrix = CameraState.GetViewMatrix();
+        var viewMatrix = Camera.GetViewMatrix();
         canvas.Concat(in viewMatrix);
 
         // Compute the visible world-space rectangle for culling unnecessary strokes
         var viewportWidth = (float)Bounds.Width;
         var viewportHeight = (float)Bounds.Height;
         var visibleWorldRect = new SKRect(
-            CameraState.WorldOffSetX,
-            CameraState.WorldOffSetY,
-            CameraState.WorldOffSetX + viewportWidth / CameraState.Zoom,
-            CameraState.WorldOffSetY + viewportHeight / CameraState.Zoom
+            Camera.WorldOffSetX,
+            Camera.WorldOffSetY,
+            Camera.WorldOffSetX + viewportWidth / Camera.Zoom,
+            Camera.WorldOffSetY + viewportHeight / Camera.Zoom
         );
 
         // CanvasStateService already publishes layer order. Sort only callers that supply unordered elements.
@@ -143,7 +145,7 @@ public class SkiaCanvas : Control
         canvas.Clear(Utilities.ToSkColor(bgColor));
 
         // Draw dot grid in screen space
-        var zoom = CameraState.Zoom;
+        var zoom = Camera.Zoom;
         // Base spacing is 60 world units
         var gridSpacing = 60f * zoom;
 
@@ -153,8 +155,8 @@ public class SkiaCanvas : Control
             // Modulo function that correctly handles negative numbers
             float Mod(float a, float n) => (a % n + n) % n;
 
-            var gridOffsetX = Mod(CameraState.WorldOffSetX * zoom, gridSpacing);
-            var gridOffsetY = Mod(CameraState.WorldOffSetY * zoom, gridSpacing);
+            var gridOffsetX = Mod(Camera.WorldOffSetX * zoom, gridSpacing);
+            var gridOffsetY = Mod(Camera.WorldOffSetY * zoom, gridSpacing);
 
             // Determine if background is dark or light to pick dot color
             var isDarkBg = bgColor.R * 0.299 + bgColor.G * 0.587 + bgColor.B * 0.114 < 128;
