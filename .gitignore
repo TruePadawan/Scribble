@@ -488,7 +488,6 @@ out
 
 Directory.Build.props
 
-docs
 .vscode
 
 Scribble.Android/
