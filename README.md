@@ -1,7 +1,9 @@
 ## Scribble
+
 A cross-platform (windows/linux) infinite whiteboard
 
 ### Tech Stack
+
 - [C#/.NET](https://dotnet.microsoft.com/en-us/): Core (.NET 10)
 - [Avalonia UI](https://avaloniaui.net): For consistent cross-platform user interface (v12)
 - [Icons8](https://icons8.com): Icons
@@ -18,6 +20,7 @@ A cross-platform (windows/linux) infinite whiteboard
 ## Local Setup
 
 ### Prerequisites
+
 * [.NET SDK](https://dotnet.microsoft.com/download) (Version 10.0 required)
 
 ### Running the Application
@@ -35,18 +38,31 @@ To run Scribble locally, you will need to start both the backend server and the 
    cd Scribble.Desktop
    dotnet run
    ```
-3. If you want to use multi-user drawing, you have to run the Scribble.Server project first (can just set up multi project launch on whatever IDE you're using)
+3. If you want to use multi-user drawing, you have to run the Scribble.Server project first (can just set up multi
+   project launch on whatever IDE you're using)
    ```bash
    cd Scribble.Server
    dotnet run
    ```
 
 ### Running Tests
+
 To execute the automated test suite locally via the new Microsoft Testing Platform:
+
 ```bash
 dotnet test Scribble.slnx
 ```
 
 ### Drawing room deployment
 
-Run a single Scribble.Server instance for clients that share rooms. Each host keeps room history in memory and allows participants to reclaim their strokes for ten minutes after leaving. Deploy the v2 desktop client and server together. See the [drawing room protocol](docs/room-protocol.md) for concurrent editing behavior and snapshot measurements.
+Run a single Scribble.Server instance for clients that share rooms. Each host keeps room history in memory and allows
+participants to reclaim their strokes for ten minutes after leaving. Deploy the v2 desktop client and server together.
+See the [drawing room protocol](docs/room-protocol.md) for concurrent editing behavior and snapshot measurements.
+
+### Offline use and room configuration
+
+The Windows and Linux desktop builds require the .NET 10 SDK.
+
+The desktop app reads the settings beside its executable when you join a room. Set `ServerUrl` in `appsettings.json` to
+the full HTTP or HTTPS drawing hub URL. Debug builds also read the optional `appsettings.Development.json` override.
+Local drawing, opening, saving, and recovery work without either file.
