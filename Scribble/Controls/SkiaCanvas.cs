@@ -63,7 +63,7 @@ public class SkiaCanvas : Control
                 elementBounds.Inflate(margin, margin);
                 break;
             case CanvasImage image:
-                elementBounds = CanvasGeometry.GetImageWorldBounds(image);
+                elementBounds = CanvasGeometryUtilities.GetImageWorldBounds(image);
                 break;
             default:
                 // Unknown element type, draw it to be safe

@@ -1,6 +1,6 @@
 using FluentAssertions;
 using Scribble.Shared.Lib.CanvasElements.Strokes;
-using Scribble.Utils;
+using Scribble.Shared.Utils;
 using SkiaSharp;
 
 namespace Scribble.UnitTests.UtilsTests;

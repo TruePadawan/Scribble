@@ -1,10 +1,7 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using Scribble.Shared.Lib.CanvasElements;
 using Scribble.Shared.Lib.CanvasElements.Strokes;
 
-namespace Scribble.Services.CanvasStateService.State;
+namespace Scribble.Shared.State;
 
 public class CanvasState
 {

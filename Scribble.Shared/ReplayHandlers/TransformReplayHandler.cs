@@ -1,12 +1,10 @@
-using System;
-using System.Collections.Generic;
-using Scribble.Services.CanvasStateService.State;
 using Scribble.Shared.Lib.CanvasElements;
 using Scribble.Shared.Lib.CanvasElements.Strokes;
 using Scribble.Shared.Lib.Events;
+using Scribble.Shared.State;
 using SkiaSharp;
 
-namespace Scribble.Services.CanvasStateService.Handlers;
+namespace Scribble.Shared.ReplayHandlers;
 
 /// <summary>
 /// Handles replay and fast-path for transform-related events:

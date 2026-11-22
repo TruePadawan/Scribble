@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using Scribble.Shared.Converters;
 using SkiaSharp;
 
 namespace Scribble.Shared.Lib.CanvasElements;
@@ -7,6 +8,7 @@ public class CanvasImage : CanvasElement, IClonable, ISelectable
 {
     public required string ImageBase64String { get; init; }
 
+    [JsonConverter(typeof(SKRectJsonConverter))]
     public required SKRect Bounds { get; set; }
 
     public float Rotation { get; set; }

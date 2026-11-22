@@ -1,8 +1,6 @@
-using System;
-using System.Collections.Generic;
 using SkiaSharp;
 
-namespace Scribble.Utils;
+namespace Scribble.Shared.Utils;
 
 /// <summary>
 /// Contains utility methods for building SKPaths for various canvas shapes.
@@ -85,7 +83,7 @@ public static class PathUtilities
         path.MoveTo(startPoint);
         var left = Math.Min(startPoint.X, endPoint.X);
         var top = Math.Min(startPoint.Y, endPoint.Y);
-        var rect = SKRect.Create(new SKPoint(left, top), Utilities.GetSize(startPoint, endPoint));
+        var rect = SKRect.Create(new SKPoint(left, top), CanvasGeometryUtilities.GetSize(startPoint, endPoint));
 
         if (isCurved)
         {
@@ -105,7 +103,7 @@ public static class PathUtilities
         path.MoveTo(startPoint);
         var left = Math.Min(startPoint.X, endPoint.X);
         var top = Math.Min(startPoint.Y, endPoint.Y);
-        var rect = SKRect.Create(new SKPoint(left, top), Utilities.GetSize(startPoint, endPoint));
+        var rect = SKRect.Create(new SKPoint(left, top), CanvasGeometryUtilities.GetSize(startPoint, endPoint));
         path.AddOval(rect);
     }
 

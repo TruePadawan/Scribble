@@ -21,6 +21,7 @@ using Scribble.Shared.Lib;
 using Scribble.Shared.Lib.CanvasElements;
 using Scribble.Shared.Lib.CanvasElements.Strokes;
 using Scribble.Shared.Lib.Events;
+using Scribble.Shared.Utils;
 using Scribble.State;
 using Scribble.Tools.PointerTools;
 using Scribble.Tools.PointerTools.ArrowTool;
@@ -151,6 +152,7 @@ public partial class MainView : UserControl
             previous.RequestInvalidateSkiaCanvas -= MarkTextStrokesForEditing;
             previous.UiStateViewModel.CenterZoomRequested -= OnCenterZoomRequested;
             previous.UiStateViewModel.ActiveToolChanged -= OnActiveToolChanged;
+            _multiUserDrawingService.CaptureViewport = null;
             previous.Deactivate();
             _activePointerTool = null;
             _quickSelectMoveActive = false;
@@ -180,6 +182,7 @@ public partial class MainView : UserControl
             OnActiveToolChanged(null, currentVm.UiStateViewModel.ActivePointerTool);
         }
 
+        _multiUserDrawingService.CaptureViewport = () => MainCanvas.VisibleWorldRect;
         currentVm.Activate();
         Dispatcher.UIThread.Post(() =>
         {
@@ -702,7 +705,7 @@ public partial class MainView : UserControl
     private static (SKRect Bounds, float RotationDegrees, SKPoint RotationCenter)
         ComputeMultiElementGeometry(IEnumerable<ISelectable> elements)
     {
-        var combinedBounds = Utilities.GetElementsBounds(elements.Cast<CanvasElement>().ToList());
+        var combinedBounds = CanvasGeometryUtilities.GetElementsBounds(elements.Cast<CanvasElement>().ToList());
 
         // Multi-element selections are never rotated as a group
         return (combinedBounds, 0f, SKPoint.Empty);

@@ -1,14 +1,12 @@
-using System;
-using System.Collections.Generic;
-using Scribble.Services.CanvasStateService.State;
 using Scribble.Shared.Lib;
 using Scribble.Shared.Lib.CanvasElements;
 using Scribble.Shared.Lib.CanvasElements.Strokes;
 using Scribble.Shared.Lib.Events;
-using Scribble.Utils;
+using Scribble.Shared.State;
+using Scribble.Shared.Utils;
 using SkiaSharp;
 
-namespace Scribble.Services.CanvasStateService.Handlers;
+namespace Scribble.Shared.ReplayHandlers;
 
 /// <summary>
 /// Handles replay and fast-path for eraser-related events
@@ -31,7 +29,7 @@ internal static class EraserReplayHandler
 
 
         // Find all targets for erasing
-        CheckAndErase(ev.StartPoint, [..ctx.PaintableStrokes.Values, ..ctx.CanvasImages.Values], newEraserStroke,
+        CheckAndErase(ev.StartPoint, [.. ctx.PaintableStrokes.Values, .. ctx.CanvasImages.Values], newEraserStroke,
             ownerFilter: ev.CreatorConnectionId);
 
         ctx.EraserStrokes[ev.StrokeId] = newEraserStroke;
@@ -117,7 +115,7 @@ internal static class EraserReplayHandler
                     var isLineLike = stroke is DrawStroke { ToolType: ToolType.Line or ToolType.Arrow };
                     if (isLineLike)
                     {
-                        if (Utilities.IsPointNearLine(eraserPoint, endPoints, 10.0f))
+                        if (CanvasGeometryUtilities.IsPointNearLine(eraserPoint, endPoints, 10.0f))
                         {
                             stroke.IsToBeErased = true;
                             eraserStroke.Targets.Add(strokeId);
@@ -127,7 +125,7 @@ internal static class EraserReplayHandler
                     {
                         if (stroke.Path.Contains(eraserPoint.X, eraserPoint.Y) ||
                             // For handling very small/short pencil strokes
-                            Utilities.IsPointNearLine(eraserPoint, endPoints, 10.0f))
+                            CanvasGeometryUtilities.IsPointNearLine(eraserPoint, endPoints, 10.0f))
                         {
                             stroke.IsToBeErased = true;
                             eraserStroke.Targets.Add(strokeId);

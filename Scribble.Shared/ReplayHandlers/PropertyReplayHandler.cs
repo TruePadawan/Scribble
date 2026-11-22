@@ -1,13 +1,11 @@
-using System;
-using System.Collections.Generic;
-using Scribble.Services.CanvasStateService.State;
 using Scribble.Shared.Lib;
 using Scribble.Shared.Lib.CanvasElements.Strokes;
 using Scribble.Shared.Lib.Events;
-using Scribble.Utils;
+using Scribble.Shared.State;
+using Scribble.Shared.Utils;
 using SkiaSharp;
 
-namespace Scribble.Services.CanvasStateService.Handlers;
+namespace Scribble.Shared.ReplayHandlers;
 
 /// <summary>
 /// Handles replay for stroke property update events:
@@ -113,6 +111,7 @@ internal static class PropertyReplayHandler
                         builder.MoveTo(lastSegEnd);
                         builder.LineTo(p2);
                     }
+
                     ds.Path = builder.Snapshot();
                 }
             }
@@ -151,7 +150,8 @@ internal static class PropertyReplayHandler
                 }
                 else
                 {
-                    PathUtilities.BuildRectangleShape(builder, lineStartPoint, lineEndPoint, stroke.Paint.StrokeJoin == SKStrokeJoin.Round);
+                    PathUtilities.BuildRectangleShape(builder, lineStartPoint, lineEndPoint,
+                        stroke.Paint.StrokeJoin == SKStrokeJoin.Round);
                 }
 
                 var finalPath = builder.Snapshot();
@@ -161,6 +161,7 @@ internal static class PropertyReplayHandler
                     finalPath.Transform(
                         SKMatrix.CreateRotation(rotationAngle, center.X, center.Y));
                 }
+
                 stroke.Path = finalPath;
             }
         }
