@@ -12,7 +12,10 @@ namespace Scribble.Services.MultiUserDrawing;
 public class MultiUserDrawingRoom(string roomId, string connectionId, string displayName, string? participantId = null)
 {
     public string RoomId { get; } = roomId;
-    public MultiUserDrawingClient Me { get; } = new(connectionId, displayName) { ParticipantId = participantId ?? connectionId };
+
+    public MultiUserDrawingClient Me { get; } = new(connectionId, displayName)
+        { ParticipantId = participantId ?? connectionId };
+
     public bool IsHost => Clients.Count >= 1 && Clients[0].ConnectionId == Me.ConnectionId;
     public List<MultiUserDrawingClient> Clients { get; init; } = [];
 }

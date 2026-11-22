@@ -1,13 +1,13 @@
 <Solution>
-  <Folder Name="/Solution Items/">
-    <File Path="deploy_linux.sh" />
-    <File Path="deploy_windows.sh" />
-    <File Path="Directory.Packages.props" />
-  </Folder>
-  <Project Path="Scribble.Desktop/Scribble.Desktop.csproj" />
-  <Project Path="Scribble.IntegrationTests/Scribble.IntegrationTests.csproj" />
-  <Project Path="Scribble.Server/Scribble.Server.csproj" />
-  <Project Path="Scribble.Shared/Scribble.Shared.csproj" />
-  <Project Path="Scribble.UnitTests/Scribble.UnitTests.csproj" />
-  <Project Path="Scribble/Scribble.csproj" />
+    <Folder Name="/Solution Items/">
+        <File Path="deploy_linux.sh"/>
+        <File Path="deploy_windows.sh"/>
+        <File Path="Directory.Packages.props"/>
+    </Folder>
+    <Project Path="Scribble.Desktop/Scribble.Desktop.csproj"/>
+    <Project Path="Scribble.IntegrationTests/Scribble.IntegrationTests.csproj"/>
+    <Project Path="Scribble.Server/Scribble.Server.csproj"/>
+    <Project Path="Scribble.Shared/Scribble.Shared.csproj"/>
+    <Project Path="Scribble.UnitTests/Scribble.UnitTests.csproj"/>
+    <Project Path="Scribble/Scribble.csproj"/>
 </Solution>

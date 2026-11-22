@@ -1,23 +1,20 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using Scribble.Services.CanvasStateService.State;
 using Scribble.Shared.Lib.CanvasElements;
 using Scribble.Shared.Lib.CanvasElements.Strokes;
 using Scribble.Shared.Lib.Events;
-using Scribble.Utils;
+using Scribble.Shared.State;
+using Scribble.Shared.Utils;
 using SkiaSharp;
 
-namespace Scribble.Services.CanvasStateService.Handlers;
+namespace Scribble.Shared.ReplayHandlers;
 
 /// <summary>
-/// Handles replay for canvas lifecycle events:
-/// LoadCanvasEvent, AddImageEvent, SetElementLayerEvent, NudgeElementLayerEvent, PasteCanvasElementsEvent
+///     Handles replay for canvas lifecycle events:
+///     LoadCanvasEvent, AddImageEvent, SetElementLayerEvent, NudgeElementLayerEvent, PasteCanvasElementsEvent
 /// </summary>
 internal static class CanvasLifecycleReplayHandler
 {
     /// <summary>
-    /// Replace the board with detached copies of the supplied elements.
+    ///     Replace the board with detached copies of the supplied elements.
     /// </summary>
     public static void Apply(LoadCanvasEvent ev, CanvasState ctx)
     {
@@ -28,25 +25,18 @@ internal static class CanvasLifecycleReplayHandler
         ctx.SelectionBounds.Clear();
 
         foreach (var element in ev.CanvasElements)
-        {
             if (element is IClonable copyable)
             {
-                var cloned = copyable.Clone(preserveId: true);
+                var cloned = copyable.Clone(true);
                 if (ev.CreatorConnectionId != null) cloned.CreatorConnectionId = ev.CreatorConnectionId;
                 if (cloned is PaintableStroke paintable)
-                {
                     ctx.PaintableStrokes[paintable.Id] = paintable;
-                }
-                else if (cloned is CanvasImage image)
-                {
-                    ctx.CanvasImages[image.Id] = image;
-                }
+                else if (cloned is CanvasImage image) ctx.CanvasImages[image.Id] = image;
             }
-        }
     }
 
     /// <summary>
-    /// Place the image above the existing drawing.
+    ///     Place the image above the existing drawing.
     /// </summary>
     public static void Apply(AddImageEvent ev, CanvasState ctx)
     {
@@ -61,26 +51,18 @@ internal static class CanvasLifecycleReplayHandler
     }
 
     /// <summary>
-    /// Assign the requested layer before normalizing drawing order.
+    ///     Assign the requested layer before normalizing drawing order.
     /// </summary>
     public static void Apply(SetElementLayerEvent ev, CanvasState ctx)
     {
         foreach (var elementId in ev.TargetElementIds)
-        {
             if (ctx.PaintableStrokes.TryGetValue(elementId, out var stroke))
-            {
                 stroke.LayerIndex = ev.NewLayerIndex;
-            }
-            else if (ctx.CanvasImages.TryGetValue(elementId, out var image))
-            {
-                image.LayerIndex = ev.NewLayerIndex;
-            }
-        }
-
+            else if (ctx.CanvasImages.TryGetValue(elementId, out var image)) image.LayerIndex = ev.NewLayerIndex;
     }
 
     /// <summary>
-    /// Move targets through the current drawing order.
+    ///     Move targets through the current drawing order.
     /// </summary>
     public static void Apply(NudgeElementLayerEvent ev, CanvasState ctx)
     {
@@ -94,20 +76,16 @@ internal static class CanvasLifecycleReplayHandler
     }
 
     /// <summary>
-    /// Copy, position and select the pasted elements.
+    ///     Copy, position and select the pasted elements.
     /// </summary>
     public static void Apply(PasteCanvasElementsEvent ev, CanvasState ctx)
     {
         List<CanvasElement> pastedElements = [];
         foreach (var element in ev.CopiedElements)
-        {
             if (element is IClonable copyable)
-            {
-                pastedElements.Add(copyable.Clone(preserveId: true));
-            }
-        }
+                pastedElements.Add(copyable.Clone(true));
 
-        var copiedElementsBounds = Utilities.GetElementsBounds(pastedElements);
+        var copiedElementsBounds = CanvasGeometryUtilities.GetElementsBounds(pastedElements);
         var boundsMiddlePos = new SKPoint(copiedElementsBounds.MidX, copiedElementsBounds.MidY);
         var delta = ev.Position - boundsMiddlePos;
         // Translate all elements such that the middle of the total bound is at the pointer position
@@ -129,7 +107,7 @@ internal static class CanvasLifecycleReplayHandler
         // Automatically select the pasted elements
         ctx.ClearSelectionBoundsForUser(ev.CreatorConnectionId);
         var pasteSelectionPath = new SKPathBuilder();
-        var selectionRect = Utilities.GetElementsBounds(pastedElements);
+        var selectionRect = CanvasGeometryUtilities.GetElementsBounds(pastedElements);
         pasteSelectionPath.AddRect(selectionRect);
 
         var pasteSelectionBound = new SelectionBound
@@ -137,7 +115,7 @@ internal static class CanvasLifecycleReplayHandler
             Id = ev.SelectionBoundId,
             Path = pasteSelectionPath.Snapshot(),
             CreatorConnectionId = ev.CreatorConnectionId,
-            Targets = [..pastedElements.Select(e => e.Id)]
+            Targets = [.. pastedElements.Select(e => e.Id)]
         };
         ctx.SelectionBounds[ev.SelectionBoundId] = pasteSelectionBound;
     }

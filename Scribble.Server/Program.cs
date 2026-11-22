@@ -1,4 +1,5 @@
 using Scribble.Server.Hubs;
+using Scribble.Shared.Lib;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -8,7 +9,7 @@ builder.Services.AddSingleton<RoomRegistry>();
 builder.Services.AddSignalR(options =>
 {
     options.EnableDetailedErrors = true;
-    options.MaximumReceiveMessageSize = Scribble.Shared.Lib.RoomProtocol.EnvelopeBytes;
+    options.MaximumReceiveMessageSize = RoomProtocol.EnvelopeBytes;
 });
 
 builder.Services.AddCors(options =>

@@ -5,11 +5,11 @@ using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media;
-using Avalonia.Platform;
 using Avalonia.Rendering.SceneGraph;
 using Avalonia.Skia;
 using Scribble.Shared.Lib.CanvasElements;
 using Scribble.Shared.Lib.CanvasElements.Strokes;
+using Scribble.Shared.Utils;
 using Scribble.State;
 using Scribble.Utils;
 using SkiaSharp;
@@ -23,6 +23,7 @@ public class SkiaCanvas : Control
 {
     /// <summary>Camera transform owned by this viewport.</summary>
     public CameraState Camera { get; } = new();
+
     public static readonly StyledProperty<List<CanvasElement>> CanvasElementsProperty =
         AvaloniaProperty.Register<SkiaCanvas, List<CanvasElement>>(nameof(CanvasElements));
 
@@ -62,7 +63,7 @@ public class SkiaCanvas : Control
                 elementBounds.Inflate(margin, margin);
                 break;
             case CanvasImage image:
-                elementBounds = Utilities.GetImageWorldBounds(image);
+                elementBounds = CanvasGeometryUtilities.GetImageWorldBounds(image);
                 break;
             default:
                 // Unknown element type, draw it to be safe
@@ -98,15 +99,7 @@ public class SkiaCanvas : Control
         var viewMatrix = Camera.GetViewMatrix();
         canvas.Concat(in viewMatrix);
 
-        // Compute the visible world-space rectangle for culling unnecessary strokes
-        var viewportWidth = (float)Bounds.Width;
-        var viewportHeight = (float)Bounds.Height;
-        var visibleWorldRect = new SKRect(
-            Camera.WorldOffSetX,
-            Camera.WorldOffSetY,
-            Camera.WorldOffSetX + viewportWidth / Camera.Zoom,
-            Camera.WorldOffSetY + viewportHeight / Camera.Zoom
-        );
+        var visibleWorldRect = VisibleWorldRect;
 
         // CanvasStateService already publishes layer order. Sort only callers that supply unordered elements.
         if (CanvasElements is { Count: > 0 } elements)
@@ -128,6 +121,10 @@ public class SkiaCanvas : Control
         // The picture retains recorded paths, paints and immutable pixels until the operation retires.
         return recorder.EndRecording();
     }
+
+    /// <summary>Returns the world-space viewport used for culling and room image priority.</summary>
+    internal SKRect VisibleWorldRect => SKRect.Create(Camera.WorldOffSetX, Camera.WorldOffSetY,
+        (float)Bounds.Width / Camera.Zoom, (float)Bounds.Height / Camera.Zoom);
 
     /// <summary>
     /// Check the paint order without allocating a sorted copy on each pointer move.

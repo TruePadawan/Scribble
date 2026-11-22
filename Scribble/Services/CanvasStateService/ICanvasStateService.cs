@@ -21,6 +21,7 @@ public interface ICanvasStateService
 
     // Events
     event Action? CanvasInvalidated;
+
     // Signals a change to the content written to a document.
     event Action? ContentChanged;
     event Action<IReadOnlyList<Guid>, bool>? SelectionInvalidated;

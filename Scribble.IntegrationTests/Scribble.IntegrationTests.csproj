@@ -16,8 +16,8 @@
     <ItemGroup>
         <PackageReference Include="Avalonia.Headless.XUnit"/>
         <PackageReference Include="coverlet.collector">
-          <PrivateAssets>all</PrivateAssets>
-          <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
         <PackageReference Include="FluentAssertions"/>
         <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing"/>
@@ -28,13 +28,13 @@
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
         <PackageReference Include="xunit.runner.visualstudio">
-          <PrivateAssets>all</PrivateAssets>
-          <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
         <PackageReference Include="xunit.v3"/>
-        <PackageReference Include="SkiaSharp.NativeAssets.Linux" />
-        <PackageReference Include="SkiaSharp.NativeAssets.macOS" />
-        <PackageReference Include="SkiaSharp.NativeAssets.Win32" />
+        <PackageReference Include="SkiaSharp.NativeAssets.Linux"/>
+        <PackageReference Include="SkiaSharp.NativeAssets.macOS"/>
+        <PackageReference Include="SkiaSharp.NativeAssets.Win32"/>
     </ItemGroup>
 
     <ItemGroup>

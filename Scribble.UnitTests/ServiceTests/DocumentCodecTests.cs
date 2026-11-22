@@ -1,9 +1,10 @@
+using System.Text.Json;
+using FluentAssertions;
 using Scribble.Services.DocumentService;
 using Scribble.Shared.Lib;
 using Scribble.Shared.Lib.CanvasElements;
 using Scribble.Shared.Lib.CanvasElements.Strokes;
 using SkiaSharp;
-using FluentAssertions;
 
 namespace Scribble.UnitTests.ServiceTests;
 
@@ -80,7 +81,7 @@ public class DocumentCodecTests
         await DocumentCodec.WriteAsync(stream, snapshot);
 
         stream.Position = 0;
-        using var json = await System.Text.Json.JsonDocument.ParseAsync(stream,
+        using var json = await JsonDocument.ParseAsync(stream,
             cancellationToken: TestContext.Current.CancellationToken);
         json.RootElement.GetProperty("files").EnumerateObject().Count().Should().Be(1);
         stream.Position = 0;

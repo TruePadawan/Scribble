@@ -18,7 +18,7 @@ public class SelectionBound : Stroke
         {
             Id = preserveId ? Id : Guid.NewGuid(),
             Path = new SKPath(Path),
-            Targets = [..Targets],
+            Targets = [.. Targets],
             LayerIndex = LayerIndex,
             CreatorConnectionId = CreatorConnectionId
         };

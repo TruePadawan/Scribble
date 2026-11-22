@@ -4,6 +4,7 @@ using FluentAssertions;
 using Scribble.Shared.Lib;
 using Scribble.Shared.Lib.CanvasElements;
 using Scribble.Shared.Lib.CanvasElements.Strokes;
+using Scribble.Shared.Utils;
 using Scribble.Utils;
 using SkiaSharp;
 
@@ -88,7 +89,7 @@ public class UtilitiesTests
         var start = new SKPoint(10f, 20f);
         var end = new SKPoint(40f, 60f);
 
-        var actual = Utilities.GetSize(start, end);
+        var actual = CanvasGeometryUtilities.GetSize(start, end);
 
         actual.Should().Be(new SKSize(30f, 40f));
     }
@@ -100,7 +101,7 @@ public class UtilitiesTests
         var start = new SKPoint(40f, 60f);
         var end = new SKPoint(10f, 20f);
 
-        var actual = Utilities.GetSize(start, end);
+        var actual = CanvasGeometryUtilities.GetSize(start, end);
 
         actual.Should().Be(new SKSize(30f, 40f));
     }
@@ -110,7 +111,7 @@ public class UtilitiesTests
     {
         var point = new SKPoint(15f, 25f);
 
-        var actual = Utilities.GetSize(point, point);
+        var actual = CanvasGeometryUtilities.GetSize(point, point);
 
         actual.Should().Be(new SKSize(0f, 0f));
     }
@@ -216,7 +217,7 @@ public class UtilitiesTests
         var end = new SKPoint(10f, 0f);
         var point = new SKPoint(5f, 0f); // exactly on the midpoint
 
-        var actual = Utilities.IsPointNearLine(point, [start, end], tolerance: 1f);
+        var actual = CanvasGeometryUtilities.IsPointNearLine(point, [start, end], tolerance: 1f);
 
         actual.Should().BeTrue();
     }
@@ -228,7 +229,7 @@ public class UtilitiesTests
         var end = new SKPoint(10f, 0f);
         var point = new SKPoint(5f, 0.8f); // 0.8 units above midpoint, tolerance is 1
 
-        var actual = Utilities.IsPointNearLine(point, [start, end], tolerance: 1f);
+        var actual = CanvasGeometryUtilities.IsPointNearLine(point, [start, end], tolerance: 1f);
 
         actual.Should().BeTrue();
     }
@@ -240,7 +241,7 @@ public class UtilitiesTests
         var end = new SKPoint(10f, 0f);
         var point = new SKPoint(5f, 5f); // 5 units above, far outside tolerance
 
-        var actual = Utilities.IsPointNearLine(point, [start, end], tolerance: 1f);
+        var actual = CanvasGeometryUtilities.IsPointNearLine(point, [start, end], tolerance: 1f);
 
         actual.Should().BeFalse();
     }
@@ -253,7 +254,7 @@ public class UtilitiesTests
         var end = new SKPoint(10f, 0f);
         var point = new SKPoint(12f, 0f); // 2 units past the end
 
-        var actual = Utilities.IsPointNearLine(point, [start, end], tolerance: 3f);
+        var actual = CanvasGeometryUtilities.IsPointNearLine(point, [start, end], tolerance: 3f);
 
         actual.Should().BeTrue();
     }
@@ -264,7 +265,7 @@ public class UtilitiesTests
         var start = new SKPoint(5f, 5f);
         var point = new SKPoint(5f, 5.5f); // 0.5 units from the start point
 
-        var actual = Utilities.IsPointNearLine(point, [start, start], tolerance: 1f);
+        var actual = CanvasGeometryUtilities.IsPointNearLine(point, [start, start], tolerance: 1f);
 
         actual.Should().BeTrue();
     }
@@ -275,7 +276,7 @@ public class UtilitiesTests
         var start = new SKPoint(5f, 5f);
         var point = new SKPoint(5f, 10f); // 5 units away
 
-        var actual = Utilities.IsPointNearLine(point, [start, start], tolerance: 1f);
+        var actual = CanvasGeometryUtilities.IsPointNearLine(point, [start, start], tolerance: 1f);
 
         actual.Should().BeFalse();
     }
@@ -286,7 +287,7 @@ public class UtilitiesTests
     {
         var elements = new List<CanvasElement>();
 
-        var actual = Utilities.GetElementsBounds(elements);
+        var actual = CanvasGeometryUtilities.GetElementsBounds(elements);
 
         actual.Should().Be(SKRect.Empty);
     }
@@ -308,7 +309,7 @@ public class UtilitiesTests
             ToolOptions = []
         };
 
-        var actual = Utilities.GetElementsBounds([stroke]);
+        var actual = CanvasGeometryUtilities.GetElementsBounds([stroke]);
         var expected = SKRect.Inflate(path.Bounds, 2f, 2f);
 
         actual.Should().Be(expected);
@@ -324,7 +325,7 @@ public class UtilitiesTests
             ImageBase64String = "BASE64"
         };
 
-        var actual = Utilities.GetElementsBounds([image]);
+        var actual = CanvasGeometryUtilities.GetElementsBounds([image]);
 
         actual.Should().Be(image.Bounds);
     }
@@ -353,7 +354,7 @@ public class UtilitiesTests
             ImageBase64String = "BASE64"
         };
 
-        var actual = Utilities.GetElementsBounds([stroke, image]);
+        var actual = CanvasGeometryUtilities.GetElementsBounds([stroke, image]);
 
         // stroke bounds inflated: (8, 8, 52, 52)
         // image bounds: (20, 20, 100, 100)

@@ -4,7 +4,7 @@ using Scribble.Controls;
 using Scribble.Services.CanvasStateService;
 using Scribble.Services.FileService;
 using Scribble.Shared.Lib.CanvasElements;
-using Scribble.Utils;
+using Scribble.Shared.Utils;
 using Scribble.ViewModels;
 using SkiaSharp;
 
@@ -25,7 +25,7 @@ public class RotatedImageBoundsTests
     {
         var image = CreateImage(degrees);
 
-        var bounds = Utilities.GetElementsBounds([image]);
+        var bounds = CanvasGeometryUtilities.GetElementsBounds([image]);
 
         bounds.Width.Should().BeApproximately(expectedWidth, 0.001f);
         bounds.Height.Should().BeApproximately(expectedHeight, 0.001f);

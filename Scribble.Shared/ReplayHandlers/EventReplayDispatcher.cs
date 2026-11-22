@@ -1,11 +1,8 @@
-using System;
-using System.Collections.Generic;
-using Scribble.Services.CanvasStateService.Handlers;
-using Scribble.Services.CanvasStateService.State;
 using Scribble.Shared.Lib;
 using Scribble.Shared.Lib.Events;
+using Scribble.Shared.State;
 
-namespace Scribble.Services.CanvasStateService;
+namespace Scribble.Shared.ReplayHandlers;
 
 /// <summary>
 /// Each event has one mutation. Registration also declares whether it can run on the live state.

@@ -5,6 +5,7 @@ using Scribble.Services.MultiUserDrawing;
 using Scribble.Shared.Lib;
 using Scribble.Shared.Lib.CanvasElements.Strokes;
 using Scribble.Shared.Lib.Events;
+using Scribble.Shared.ReplayHandlers;
 using SkiaSharp;
 
 namespace Scribble.UnitTests.ServiceTests;
@@ -101,6 +102,7 @@ public class CanvasReplayParityTests
                 var expected = live.CanvasElements.OfType<DrawStroke>().Single();
                 other.CanvasElements.OfType<DrawStroke>().Single().RawPoints.Should().Equal(expected.RawPoints);
             }
+
             joined.CanUndo.Should().BeFalse();
             checkpointed.CanUndo.Should().Be(live.CanUndo);
             checkpointed.CanRedo.Should().Be(live.CanRedo);

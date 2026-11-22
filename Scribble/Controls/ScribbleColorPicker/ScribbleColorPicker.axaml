@@ -54,7 +54,8 @@
                     </ListBox>
 
                     <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
-                        <TextBlock Text="#" VerticalAlignment="Center" Foreground="{DynamicResource SecondaryTextBrush}" FontWeight="Bold" />
+                        <TextBlock Text="#" VerticalAlignment="Center"
+                                   Foreground="{DynamicResource SecondaryTextBrush}" FontWeight="Bold" />
                         <TextBox Name="HexTextBox"
                                  Width="120"
                                  PlaceholderText="FFFFFF"

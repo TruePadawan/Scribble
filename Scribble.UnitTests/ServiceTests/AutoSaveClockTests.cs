@@ -1,10 +1,10 @@
+using FluentAssertions;
 using NSubstitute;
 using Scribble.Services.AutoSaveService;
 using Scribble.Services.CanvasStateService;
 using Scribble.Services.DocumentService;
 using Scribble.Services.MultiUserDrawing;
 using SkiaSharp;
-using FluentAssertions;
 
 namespace Scribble.UnitTests.ServiceTests;
 
@@ -113,8 +113,13 @@ public class AutoSaveClockTests
     }
 
     /// <summary>Owns the service substitutes and temporary recovery folder used by one test.</summary>
-    private sealed class Fixture(AutoSaveService service, ICanvasStateService canvas, IDocumentService document,
-        ManualAutoSaveClock clock, TaskCompletionSource saveStarted, string directory) : IDisposable
+    private sealed class Fixture(
+        AutoSaveService service,
+        ICanvasStateService canvas,
+        IDocumentService document,
+        ManualAutoSaveClock clock,
+        TaskCompletionSource saveStarted,
+        string directory) : IDisposable
     {
         public AutoSaveService Service { get; } = service;
         public ICanvasStateService Canvas { get; } = canvas;

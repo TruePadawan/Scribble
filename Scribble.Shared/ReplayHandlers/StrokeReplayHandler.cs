@@ -1,13 +1,11 @@
-using System;
-using System.Linq;
-using Scribble.Services.CanvasStateService.State;
 using Scribble.Shared.Lib;
 using Scribble.Shared.Lib.CanvasElements.Strokes;
 using Scribble.Shared.Lib.Events;
-using Scribble.Utils;
+using Scribble.Shared.State;
+using Scribble.Shared.Utils;
 using SkiaSharp;
 
-namespace Scribble.Services.CanvasStateService.Handlers;
+namespace Scribble.Shared.ReplayHandlers;
 
 /// <summary>
 /// Handles replay and fast-path for stroke-related events
@@ -24,10 +22,13 @@ internal static class StrokeReplayHandler
             ds.RawPoints.Add(new StrokePoint(ev.Point,
                 ev.TimeStamp.Ticks / TimeSpan.TicksPerMillisecond));
             var stable = ds.StablePath;
-            var newPath = new SKPathBuilder();
+            using var newPath = new SKPathBuilder();
             FreehandPathBuilder.AppendPoint(newPath, ref stable, ds.RawPoints);
             ds.StablePath = stable;
+            // Replaying long strokes otherwise retains a native path for every intermediate point.
+            var previous = ds.Path;
             ds.Path = newPath.Snapshot();
+            previous.Dispose();
 
             return true;
         }

@@ -1,8 +1,7 @@
-using System.Collections.Generic;
 using Scribble.Shared.Lib.CanvasElements.Strokes;
 using SkiaSharp;
 
-namespace Scribble.Utils;
+namespace Scribble.Shared.Utils;
 
 /// <summary>
 /// Builds a smooth path from a list of raw stroke points

@@ -16,6 +16,7 @@ using Scribble.Services.DocumentService;
 using Scribble.Services.FileService;
 using Scribble.Shared.Lib.CanvasElements;
 using Scribble.Shared.Lib.CanvasElements.Strokes;
+using Scribble.Shared.Utils;
 using Scribble.Utils;
 using SkiaSharp;
 
@@ -120,7 +121,7 @@ public partial class CanvasExportViewModel : ViewModelBase
     {
         if (_snapshot is not { Elements.Count: > 0 } snapshot) return;
 
-        var bounds = Utilities.GetElementsBounds(snapshot.Elements);
+        var bounds = CanvasGeometryUtilities.GetElementsBounds(snapshot.Elements);
         var (width, height) = GetPaddedSize(bounds);
         var outputWidth = Math.Ceiling(width * ImageScale);
         var outputHeight = Math.Ceiling(height * ImageScale);
@@ -338,7 +339,7 @@ public partial class CanvasExportViewModel : ViewModelBase
     {
         if (elements.Count == 0) return null;
 
-        var bounds = Utilities.GetElementsBounds(elements);
+        var bounds = CanvasGeometryUtilities.GetElementsBounds(elements);
         var (width, height) = GetPaddedSize(bounds);
         var size = ValidateOutputSize(width * scale, height * scale);
         return size is { } outputSize

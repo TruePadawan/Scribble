@@ -53,7 +53,7 @@ public class TextStroke : PaintableStroke, IClonable
             Text = Text,
             Position = Position,
             Path = new SKPath(Path),
-            ToolOptions = [..ToolOptions],
+            ToolOptions = [.. ToolOptions],
             Paint = Paint.Clone(),
             TransformMatrix = TransformMatrix,
             IsBold = IsBold,

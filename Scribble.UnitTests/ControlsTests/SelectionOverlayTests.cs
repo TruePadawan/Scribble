@@ -1,5 +1,5 @@
-using Avalonia.Headless.XUnit;
 using Avalonia.Controls;
+using Avalonia.Headless.XUnit;
 using FluentAssertions;
 using Scribble.Controls;
 using SkiaSharp;

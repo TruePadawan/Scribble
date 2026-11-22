@@ -1,3 +1,4 @@
+using System;
 using Scribble.Shared.Lib.CanvasElements;
 using Scribble.Shared.Lib.CanvasElements.Strokes;
 using SkiaSharp;
@@ -62,14 +63,23 @@ internal static class CanvasElementRenderer
     /// </summary>
     private static void DrawImage(SKCanvas canvas, CanvasImage image, bool erasePreview)
     {
-        var bitmap = image.GetBitmap();
         var bounds = image.Bounds;
         canvas.Save();
         canvas.RotateRadians(image.Rotation, bounds.MidX, bounds.MidY);
         if (image.FlipX || image.FlipY)
             canvas.Scale(image.FlipX ? -1 : 1, image.FlipY ? -1 : 1, bounds.MidX, bounds.MidY);
-        canvas.DrawBitmap(bitmap, bounds, new SKSamplingOptions(SKFilterMode.Linear),
-            erasePreview ? EraserImagePaint : null);
+        if (image.ImageBase64String.StartsWith("sha256:", StringComparison.Ordinal))
+        {
+            using var placeholder = new SKPaint();
+            placeholder.Color = SKColors.LightGray;
+            canvas.DrawRect(bounds, placeholder);
+        }
+        else
+        {
+            canvas.DrawBitmap(image.GetBitmap(), bounds, new SKSamplingOptions(SKFilterMode.Linear),
+                erasePreview ? EraserImagePaint : null);
+        }
+
         canvas.Restore();
     }
 }

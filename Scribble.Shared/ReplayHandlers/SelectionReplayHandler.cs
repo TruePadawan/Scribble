@@ -1,14 +1,11 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using Scribble.Services.CanvasStateService.State;
 using Scribble.Shared.Lib.CanvasElements;
 using Scribble.Shared.Lib.CanvasElements.Strokes;
 using Scribble.Shared.Lib.Events;
-using Scribble.Utils;
+using Scribble.Shared.State;
+using Scribble.Shared.Utils;
 using SkiaSharp;
 
-namespace Scribble.Services.CanvasStateService.Handlers;
+namespace Scribble.Shared.ReplayHandlers;
 
 /// <summary>
 /// Handles replay and fast-path for selection-related events:
@@ -92,7 +89,7 @@ internal static class SelectionReplayHandler
             var top = Math.Min(boundOrigin.Y, ev.Point.Y);
             var left = Math.Min(boundOrigin.X, ev.Point.X);
             var boundRect = SKRect.Create(new SKPoint(left, top),
-                Utilities.GetSize(boundOrigin, ev.Point));
+                CanvasGeometryUtilities.GetSize(boundOrigin, ev.Point));
             CheckAndSelect(boundRect, bound, ctx.ElementsWithLayers,
                 ownerFilter: bound.CreatorConnectionId);
 

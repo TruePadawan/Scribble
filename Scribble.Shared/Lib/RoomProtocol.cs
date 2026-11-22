@@ -6,11 +6,22 @@ namespace Scribble.Shared.Lib;
 public static class RoomProtocol
 {
     public const int SnapshotBytes = 8 * 1024 * 1024;
-    public const int EnvelopeBytes = SnapshotBytes * 2 + 65536;
+    public const int AssetBytes = 32 * 1024 * 1024;
+    public const int ChunkBytes = 128 * 1024;
+    public const int EnvelopeBytes = 2 * ChunkBytes + 65536;
+    public const int Version = 3;
 }
 
 /// <summary>Contains room admission details and the joining participant's private token.</summary>
-public sealed record RoomAdmission(string ParticipantId, string Token, string Snapshot, bool Seeded);
+public sealed record RoomAdmission(
+    string ParticipantId,
+    string Token,
+    int HistoryBytes,
+    int BoardBytes,
+    long Sequence,
+    int ManifestBytes,
+    int AssetBytes,
+    bool Seeded);
 
 /// <summary>Checks drawing targets against their recorded room owners.</summary>
 public sealed class RoomOwnership

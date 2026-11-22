@@ -64,7 +64,8 @@
             <controls:SelectionOverlay Name="SelectionOverlay" />
 
             <!-- NODE HANDLES FOR POLYLINES (Outside SelectionOverlay to avoid rotation) -->
-            <Canvas Name="NodeHandlesOverlay" IsHitTestVisible="True" ClipToBounds="False" IsVisible="False" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+            <Canvas Name="NodeHandlesOverlay" IsHitTestVisible="True" ClipToBounds="False" IsVisible="False"
+                    HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
             </Canvas>
 
 
@@ -107,7 +108,8 @@
                 </Button>
 
                 <!-- Menu Options -->
-                <Border Name="MenuOptions" Background="{DynamicResource PanelBackgroundBrush}" HorizontalAlignment="Left" CornerRadius="6" Padding="8"
+                <Border Name="MenuOptions" Background="{DynamicResource PanelBackgroundBrush}"
+                        HorizontalAlignment="Left" CornerRadius="6" Padding="8"
                         IsVisible="False">
                     <StackPanel Spacing="4">
                         <Button Name="OpenFileMenuOption" HorizontalAlignment="Stretch"
@@ -778,12 +780,16 @@
                     Padding="18"
                     CornerRadius="12">
                 <StackPanel MinWidth="400" Spacing="12">
-                    <TextBlock HorizontalAlignment="Center" Foreground="{DynamicResource SecondaryTextBrush}" Margin="0, 0, 0, 12">Multi-User Drawing (DEMO)</TextBlock>
+                    <TextBlock HorizontalAlignment="Center" Foreground="{DynamicResource SecondaryTextBrush}"
+                               Margin="0, 0, 0, 12">
+                        Multi-User Drawing (DEMO)
+                    </TextBlock>
                     <StackPanel Orientation="Vertical" Spacing="8">
                         <TextBlock FontSize="12" TextWrapping="Wrap" Foreground="{DynamicResource PrimaryTextBrush}">
                             If the room id doesn't belong to any active room, the room is automatically created
                         </TextBlock>
-                        <TextBlock FontSize="12" TextWrapping="Wrap" Foreground="{DynamicResource PrimaryTextBrush}" FontStyle="Italic">
+                        <TextBlock FontSize="12" TextWrapping="Wrap" Foreground="{DynamicResource PrimaryTextBrush}"
+                                   FontStyle="Italic">
                             Note: It might take a minute for the initial connection to be established
                         </TextBlock>
                     </StackPanel>
@@ -815,7 +821,12 @@
                         </Button>
                     </Grid>
 
-                    <Button Name="EnterRoomButton" HorizontalAlignment="Stretch" Foreground="{DynamicResource PrimaryTextBrush}" Padding="8"
+                    <TextBlock IsVisible="{Binding !MultiUserDrawingViewModel.CanEditCanvas}"
+                               Text="{Binding MultiUserDrawingViewModel.DownloadStatus}" />
+                    <Button IsVisible="{Binding !MultiUserDrawingViewModel.CanEditCanvas}" Content="Cancel join"
+                            Command="{Binding MultiUserDrawingViewModel.CancelJoinCommand}" />
+                    <Button Name="EnterRoomButton" HorizontalAlignment="Stretch"
+                            Foreground="{DynamicResource PrimaryTextBrush}" Padding="8"
                             HorizontalContentAlignment="Center"
                             Content="{Binding MultiUserDrawingViewModel.RoomButtonText}"
                             Command="{Binding MultiUserDrawingViewModel.ToggleRoomConnectionCommand}" />
@@ -835,16 +846,21 @@
                     Padding="18"
                     CornerRadius="12">
                 <StackPanel MaxWidth="600" Spacing="12">
-                    <TextBlock HorizontalAlignment="Center" Foreground="{DynamicResource SecondaryTextBrush}" Margin="0, 0, 0, 12">About Scribble</TextBlock>
+                    <TextBlock HorizontalAlignment="Center" Foreground="{DynamicResource SecondaryTextBrush}"
+                               Margin="0, 0, 0, 12">
+                        About Scribble
+                    </TextBlock>
                     <StackPanel Orientation="Vertical" Spacing="12">
                         <StackPanel Orientation="Vertical" Spacing="4">
-                            <TextBlock TextWrapping="Wrap" FontWeight="ExtraLight" Foreground="{DynamicResource PrimaryTextBrush}">
+                            <TextBlock TextWrapping="Wrap" FontWeight="ExtraLight"
+                                       Foreground="{DynamicResource PrimaryTextBrush}">
                                 Scribble is a cross-platform digital whiteboard program built with C#/.NET, AvaloniaUI, SignalR, SkiaSharp.
                             </TextBlock>
                         </StackPanel>
                         <StackPanel Orientation="Vertical" Spacing="4">
                             <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                <TextBlock Text="Scribble by " Foreground="{DynamicResource PrimaryTextBrush}" VerticalAlignment="Center" />
+                                <TextBlock Text="Scribble by " Foreground="{DynamicResource PrimaryTextBrush}"
+                                           VerticalAlignment="Center" />
                                 <HyperlinkButton Content="Hermes"
                                                  Padding="0"
                                                  Margin="0"

@@ -5,6 +5,8 @@ using Scribble.Services.CanvasStateService.State;
 using Scribble.Shared.Lib;
 using Scribble.Shared.Lib.CanvasElements;
 using Scribble.Shared.Lib.Events;
+using Scribble.Shared.ReplayHandlers;
+using Scribble.Shared.State;
 using SkiaSharp;
 
 namespace Scribble.Services.CanvasStateService;

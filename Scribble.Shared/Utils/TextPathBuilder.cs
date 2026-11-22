@@ -1,6 +1,6 @@
 using SkiaSharp;
 
-namespace Scribble.Utils;
+namespace Scribble.Shared.Utils;
 
 /// <summary>
 /// Builds an SKPath from text that may contain special characters like \n and \t.
