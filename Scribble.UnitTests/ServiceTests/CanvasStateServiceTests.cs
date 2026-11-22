@@ -81,6 +81,22 @@ public class CanvasStateServiceTests
         _canvasStateService.CanvasElements.Should().BeEmpty();
     }
 
+    // Solo history can deduplicate a received edit and undo only the local action.
+    [Fact]
+    public void CanvasHistory_SoloUndo_PreservesReceivedStroke()
+    {
+        var history = new CanvasHistory();
+        var action = Guid.NewGuid();
+        var start = new StartStrokeEvent(action, Guid.NewGuid(), SKPoint.Empty, DefaultPaint(), ToolType.Pencil, []);
+        history.ApplyLocal(start);
+        history.ApplyLocal(new EndStrokeEvent(action));
+        var remote = new StartStrokeEvent(Guid.NewGuid(), Guid.NewGuid(), SKPoint.Empty, DefaultPaint(), ToolType.Pencil, []);
+        history.ApplyIncoming(remote).Should().BeTrue();
+        history.ApplyIncoming(remote).Should().BeFalse();
+        history.ApplyLocal(history.TakeUndo());
+        history.CanvasElements.Should().ContainSingle().Which.Id.Should().Be(remote.StrokeId);
+    }
+
     // StartStrokeEvent
 
     [Fact]

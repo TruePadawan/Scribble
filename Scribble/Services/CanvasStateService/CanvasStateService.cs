@@ -1,8 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
-using Scribble.Services.CanvasStateService.State;
 using Scribble.Services.MultiUserDrawing;
 using Scribble.Shared.Lib;
 using Scribble.Shared.Lib.CanvasElements;
@@ -13,30 +11,18 @@ namespace Scribble.Services.CanvasStateService;
 
 public class CanvasStateService : ICanvasStateService
 {
-    private CanvasState CurrentState { get; set; } = new();
-    private EventLog _eventLog = new();
-    private CheckpointManager _checkpointManager = new();
-    private readonly int _checkpointInterval;
-
-    // Identifies the checkpoint used to replay the most recent event suffix.
-    internal Guid? LastReplayCheckpointId { get; private set; }
-
-    public IReadOnlyList<CanvasElement> CanvasElements => CurrentState.ElementsWithLayers;
-    public Queue<Event> CanvasEvents => new(_eventLog.Events);
-    public Guid? ActiveSelectionBoundId => CurrentState.ActiveSelectionBoundId;
-    public IReadOnlyList<Guid> SelectedElementIds => CurrentState.SelectedElementIds;
-    public SKColor BackgroundColor { get; private set; } = new(0, 0, 0, 162);
-
-    public bool IsRoomActive => _multiUserDrawingService.IsJoining || _multiUserDrawingService.Room != null;
-    public bool HasEvents => _eventLog.Events.Count > 0;
-
-    private readonly Stack<Guid> _undoStack = [];
-    private readonly Stack<Guid> _redoStack = [];
-    public bool CanUndo => !_multiUserDrawingService.IsJoining && _undoStack.Count > 0;
-    public bool CanRedo => !_multiUserDrawingService.IsJoining && _redoStack.Count > 0;
-
+    private readonly CanvasHistory _history;
     private readonly IMultiUserDrawingService _multiUserDrawingService;
-    private readonly EventReplayDispatcher _dispatcher;
+    internal Guid? LastReplayCheckpointId => _history.LastReplayCheckpointId;
+    public IReadOnlyList<CanvasElement> CanvasElements => _history.CanvasElements;
+    public Queue<Event> CanvasEvents => _history.CanvasEvents;
+    public Guid? ActiveSelectionBoundId => _history.ActiveSelectionBoundId;
+    public IReadOnlyList<Guid> SelectedElementIds => _history.SelectedElementIds;
+    public SKColor BackgroundColor => _history.BackgroundColor;
+    public bool HasEvents => _history.HasEvents;
+    public bool IsRoomActive => _multiUserDrawingService.IsJoining || _multiUserDrawingService.Room != null;
+    public bool CanUndo => !_multiUserDrawingService.IsJoining && _history.CanUndo;
+    public bool CanRedo => !_multiUserDrawingService.IsJoining && _history.CanRedo;
 
     public event Action? CanvasInvalidated;
 
@@ -48,10 +34,7 @@ public class CanvasStateService : ICanvasStateService
 
     public void SetBackgroundColor(SKColor color)
     {
-        if (_multiUserDrawingService.IsJoining || BackgroundColor == color) return;
-        BackgroundColor = color;
-        ContentChanged?.Invoke();
-        BackgroundColorChanged?.Invoke();
+        if (!_multiUserDrawingService.IsJoining) _history.SetBackgroundColor(color);
     }
 
     public CanvasStateService(IMultiUserDrawingService multiUserDrawingService) : this(multiUserDrawingService, 100)
@@ -61,11 +44,16 @@ public class CanvasStateService : ICanvasStateService
     // Allow short histories to exercise the production checkpoint path in tests.
     internal CanvasStateService(IMultiUserDrawingService multiUserDrawingService, int checkpointInterval)
     {
-        _checkpointInterval = checkpointInterval;
+        _history = new CanvasHistory(checkpointInterval);
+        _history.ContentChanged += () => ContentChanged?.Invoke();
+        _history.CanvasInvalidated += () => CanvasInvalidated?.Invoke();
+        _history.SelectionInvalidated += (ids, options) => SelectionInvalidated?.Invoke(ids, options);
+        _history.BackgroundColorChanged += () => BackgroundColorChanged?.Invoke();
+        _history.UndoRedoStateChanged += () => UndoRedoStateChanged?.Invoke();
         _multiUserDrawingService = multiUserDrawingService;
 
-        _multiUserDrawingService.EventReceived += OnNetworkEventReceived;
-        _multiUserDrawingService.RoomCanvasReady += OnRoomCanvasReady;
+        _multiUserDrawingService.EventReceived += edit => _history.ApplyIncoming(edit);
+        _multiUserDrawingService.RoomCanvasReady += _history.InstallConfirmedHistory;
         _multiUserDrawingService.JoiningChanged += () => UndoRedoStateChanged?.Invoke();
         _multiUserDrawingService.CanvasStateRequested += async (clientId) =>
         {
@@ -81,33 +69,26 @@ public class CanvasStateService : ICanvasStateService
         };
         _multiUserDrawingService.ConnectionStarted += () =>
         {
-            CurrentState.MyConnectionId = _multiUserDrawingService.ConnectionId;
+            _history.CreatorId = _multiUserDrawingService.Room?.Me.ConnectionId ??
+                                 _multiUserDrawingService.ConnectionId;
         };
 
-        _multiUserDrawingService.ConnectionStopped += () => CurrentState.MyConnectionId = null;
+        _multiUserDrawingService.ConnectionStopped += () => _history.CreatorId = null;
 
-        _dispatcher = new EventReplayDispatcher();
+        _history.CreatorId = multiUserDrawingService.Room?.Me.ConnectionId ?? multiUserDrawingService.ConnectionId;
     }
 
     public void Undo()
     {
         if (!CanUndo) return;
-        var actionId = _undoStack.Pop();
-
-        _redoStack.Push(actionId);
-        ApplyEvent(new UndoEvent(Guid.NewGuid(), actionId), isLocalEvent: true);
-
+        ApplyEvent(_history.TakeUndo());
         UndoRedoStateChanged?.Invoke();
     }
 
     public void Redo()
     {
         if (!CanRedo) return;
-        var actionId = _redoStack.Pop();
-
-        _undoStack.Push(actionId);
-        ApplyEvent(new RedoEvent(Guid.NewGuid(), actionId), isLocalEvent: true);
-
+        ApplyEvent(_history.TakeRedo());
         UndoRedoStateChanged?.Invoke();
     }
 
@@ -117,24 +98,13 @@ public class CanvasStateService : ICanvasStateService
     }
 
     public List<CanvasElement> GetSelectedElements()
-    {
-        if (ActiveSelectionBoundId == null) return [];
-        return CanvasElements
-            .Where(e => SelectedElementIds.Contains(e.Id))
-            .ToList();
-    }
+        => _history.GetSelectedElements();
 
     public void LoadCanvas(List<CanvasElement> elements)
     {
         if (_multiUserDrawingService.IsJoining) return;
 
-        _undoStack.Clear();
-        _redoStack.Clear();
-
-        // Prevent cross-room state pollution by resetting completely
-        _eventLog = new EventLog();
-        _checkpointManager = new CheckpointManager();
-
+        _history.ResetHistory();
         ApplyEvent(new LoadCanvasEvent(Guid.NewGuid(), elements), isLocalEvent: false);
 
         UndoRedoStateChanged?.Invoke();
@@ -152,155 +122,10 @@ public class CanvasStateService : ICanvasStateService
             @event = @event with { CreatorConnectionId = _multiUserDrawingService.Room.Me.ConnectionId };
         }
 
-        ProcessEvent(@event, isLocalEvent);
-
-        if (_multiUserDrawingService.Room != null)
+        var accepted = isLocalEvent ? _history.ApplyLocal(@event) : _history.ApplyIncoming(@event);
+        if (accepted && isLocalEvent && _multiUserDrawingService.Room != null)
         {
-            // If the client is in a room, it broadcasts the event to other clients in the room
-            _ = _multiUserDrawingService.BroadcastEventAsync(@event);
+            _multiUserDrawingService.BroadcastEventAsync(@event);
         }
-    }
-
-    // Event handler for when another client in the room draws something
-    private void OnNetworkEventReceived(Event @event)
-    {
-        ProcessEvent(@event);
-    }
-
-    // Install the confirmed room history and merge updates received during the join.
-    private void OnRoomCanvasReady(Queue<Event>? snapshot, IReadOnlyList<Event> bufferedEvents)
-    {
-        if (snapshot != null)
-        {
-            _eventLog = new EventLog();
-            _checkpointManager = new CheckpointManager();
-            _undoStack.Clear();
-            _redoStack.Clear();
-            foreach (var ev in snapshot) _eventLog.Append(ev);
-        }
-
-        // The first member keeps the existing canvas and its local undo history.
-        var changed = snapshot != null;
-        foreach (var ev in bufferedEvents)
-        {
-            changed |= _eventLog.Append(ev);
-        }
-
-        if (changed)
-        {
-            var previous = CurrentState;
-            ReplayEvents();
-            if (snapshot != null || !CanvasContent.Equals(previous.ElementsWithLayers, CanvasElements))
-            {
-                ContentChanged?.Invoke();
-            }
-
-            CanvasInvalidated?.Invoke();
-            SelectionInvalidated?.Invoke(SelectedElementIds, true);
-        }
-    }
-
-    /// <summary>
-    /// Pushes an action unto the undo stack
-    /// </summary>
-    /// <param name="actionId"></param>
-    private void TrackAction(Guid actionId)
-    {
-        _undoStack.Push(actionId);
-        _redoStack.Clear();
-
-        UndoRedoStateChanged?.Invoke();
-    }
-
-    private void ProcessEvent(Event @event, bool isLocalEvent = false)
-    {
-        if (!_eventLog.Append(@event)) return;
-
-        var previousSelection = SelectedElementIds.ToArray();
-        var selectionEvent = @event is CreateSelectionBoundEvent or IncreaseSelectionBoundEvent
-            or EndSelectionEvent or ClearSelectionEvent or SelectByIdsEvent;
-        var transient = selectionEvent || @event is StartEraseStrokeEvent or EraseStrokeLineToEvent or EndStrokeEvent;
-
-        var contentChanged = ApplyToCanvas(@event, transient);
-        if (contentChanged) ContentChanged?.Invoke();
-        if (!selectionEvent && @event is not EndStrokeEvent) CanvasInvalidated?.Invoke();
-        var selectionChanged = !previousSelection.SequenceEqual(SelectedElementIds);
-        var refreshOptions = selectionChanged || (isLocalEvent && @event is EndSelectionEvent or SelectByIdsEvent);
-        if (refreshOptions || (contentChanged && SelectedElementIds.Count > 0))
-        {
-            SelectionInvalidated?.Invoke(SelectedElementIds, refreshOptions || contentChanged);
-        }
-
-        // Keep track of local non-stale actions for undo/redo functionality
-        if (@event is ITerminalEvent && isLocalEvent && !CurrentState.StaleActionIds.Contains(@event.ActionId))
-        {
-            TrackAction(@event.ActionId);
-        }
-    }
-
-    // Apply an appended event and report whether the saved drawing changed.
-    private bool ApplyToCanvas(Event @event, bool transient)
-    {
-        // Fast paths mutate live elements. Rebuilds can compare their old and new materialized boards.
-        var previousLine = @event is LineStrokeLineToEvent line &&
-                           CurrentState.PaintableStrokes.TryGetValue(line.StrokeId, out var stroke)
-            ? stroke.Path
-            : null;
-        if (_dispatcher.TryApplyIncrementally(@event, CurrentState))
-        {
-            return !transient && @event switch
-            {
-                MoveCanvasElementsEvent move => move.Delta != SKPoint.Empty && HasTargets(move.BoundId),
-                RotateCanvasElementsEvent rotate => rotate.DegreesRad != 0 && HasTargets(rotate.BoundId),
-                ScaleCanvasElementsEvent scale => scale.Scale != new SKPoint(1, 1) && HasTargets(scale.BoundId),
-                LineStrokeLineToEvent update when previousLine != null =>
-                    previousLine.ToSvgPathData() != CurrentState.PaintableStrokes[update.StrokeId].Path.ToSvgPathData(),
-                _ => true
-            };
-        }
-
-        var previous = CurrentState;
-        ReplayEvents();
-        return !transient && !CanvasContent.Equals(previous.ElementsWithLayers, CanvasElements);
-    }
-
-    // Only transforms with surviving targets can change persistent content.
-    private bool HasTargets(Guid boundId)
-    {
-        return CurrentState.SelectionBounds.TryGetValue(boundId, out var bound) &&
-               bound.Targets.Any(id =>
-                   CurrentState.PaintableStrokes.ContainsKey(id) || CurrentState.CanvasImages.ContainsKey(id));
-    }
-
-    private void ReplayEvents()
-    {
-        _checkpointManager.TryGetValidCheckpoint(_eventLog.HiddenActionIds, out var bestState, out var lastEventId);
-        LastReplayCheckpointId = lastEventId;
-        var activeEvents = _eventLog.GetActiveEventsSince(lastEventId);
-        bestState.MyConnectionId =
-            _multiUserDrawingService.Room?.Me.ConnectionId ?? _multiUserDrawingService.ConnectionId;
-
-        foreach (var ev in activeEvents)
-        {
-            _dispatcher.Dispatch(ev, bestState);
-        }
-
-        // Show the selection only on the client that is doing the selection
-        var myConnectionId = bestState.MyConnectionId;
-        var mySelectionBound = bestState.SelectionBounds.Values
-            .FirstOrDefault(b => b.CreatorConnectionId == myConnectionId);
-        bestState.ActiveSelectionBoundId = mySelectionBound?.Id;
-        bestState.SelectedElementIds.Clear();
-        if (mySelectionBound != null)
-        {
-            bestState.SelectedElementIds.AddRange(mySelectionBound.Targets);
-        }
-
-        if (activeEvents.Count > _checkpointInterval && _eventLog.Events.Count > 0)
-        {
-            _checkpointManager.CaptureCheckpoint(bestState, _eventLog.Events[^1].Id, _eventLog.HiddenActionIds);
-        }
-
-        CurrentState = bestState;
     }
 }
