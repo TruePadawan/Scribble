@@ -869,5 +869,10 @@
                 <Setter Property="Opacity" Value="0.5" />
             </Style>
         </Panel.Styles>
+        <Border IsVisible="{Binding MultiUserDrawingViewModel.DrawingSyncFailed}"
+                HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="12" Padding="10"
+                Background="DarkRed" CornerRadius="6">
+            <TextBlock Foreground="White" Text="Drawing sync interrupted. Save a local copy of this board." />
+        </Border>
     </Panel>
 </UserControl>

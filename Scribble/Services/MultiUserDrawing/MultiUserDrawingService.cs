@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -14,7 +15,13 @@ public class MultiUserDrawingService : IMultiUserDrawingService
 {
     private readonly Func<HubConnection> _createConnection;
     private readonly Dispatcher? _dispatcher;
+
     private readonly Lock _gate = new();
+
+    // Each send waits for the previous invocation on this connection.
+    private Task _lastSend = Task.CompletedTask;
+    private bool _deliveryFailed;
+    private bool _leaving;
     private volatile HubConnection? _connection;
     private volatile MultiUserDrawingRoom? _room;
     private volatile PendingJoin? _pendingJoin;
@@ -27,6 +34,13 @@ public class MultiUserDrawingService : IMultiUserDrawingService
     public string? ConnectionId => _connection?.ConnectionId;
 
     public event Action<MultiUserDrawingRoom?>? RoomChanged;
+
+    // Membership updates within the same session.
+    public event Action<MultiUserDrawingRoom?>? RosterChanged;
+
+    // Raised when delivery of a local edit could not be confirmed.
+    public event Action? DrawingSyncFailed;
+
     public event Action? ConnectionStarted;
     public event Action? ConnectionStopped;
     public event Action<Event>? EventReceived;
@@ -55,7 +69,7 @@ public class MultiUserDrawingService : IMultiUserDrawingService
     }
 
     // Recheck the session when queued UI work actually runs.
-    private async Task ForSessionAsync(HubConnection connection, Action action)
+    internal async Task ForSessionAsync(HubConnection connection, Action action)
     {
         void Run()
         {
@@ -137,7 +151,7 @@ public class MultiUserDrawingService : IMultiUserDrawingService
         if (_room is not { } room) return;
         _room = new MultiUserDrawingRoom(room.RoomId, room.Me.ConnectionId, room.Me.Name) { Clients = clients };
         notify?.Invoke(client, clients);
-        RoomChanged?.Invoke(_room);
+        RosterChanged?.Invoke(_room);
     }
 
     // Close, failed join, and explicit leave can all finish the same session.
@@ -147,6 +161,10 @@ public class MultiUserDrawingService : IMultiUserDrawingService
         await ForSessionAsync(connection, () =>
         {
             ownsCleanup = true;
+            if (!_lastSend.IsCompleted && !_deliveryFailed) DrawingSyncFailed?.Invoke();
+            _lastSend = Task.CompletedTask;
+            _deliveryFailed = false;
+            _leaving = false;
             _connection = null;
             var pending = _pendingJoin;
             _pendingJoin = null;
@@ -224,7 +242,8 @@ public class MultiUserDrawingService : IMultiUserDrawingService
         MultiUserDrawingRoom? joinedRoom;
         lock (_gate)
         {
-            if (_connection is null) return;
+            if (_connection is null || _leaving) return;
+            _leaving = true;
             connection = _connection;
             // Closing the transport cancels a join still waiting on the host.
             joinedRoom = IsJoining ? null : _room;
@@ -249,11 +268,40 @@ public class MultiUserDrawingService : IMultiUserDrawingService
 
     public Task BroadcastEventAsync(Event evt)
     {
-        var connection = _connection;
-        var room = Room;
-        return room != null && connection?.ConnectionId == room.Me.ConnectionId
-            ? connection.InvokeAsync("SendEvent", room.RoomId, evt)
-            : Task.CompletedTask;
+        lock (_gate)
+        {
+            if (_connection is not { } connection || _room is not { } room || IsJoining)
+                return Task.CompletedTask;
+            _lastSend = SendInOrderAsync(_lastSend, connection, room.RoomId, evt);
+            return _lastSend;
+        }
+    }
+
+    // Serialize drawing sends and retire queued edits with the connection that owns them.
+    private async Task SendInOrderAsync(Task previous, HubConnection connection, string roomId, Event edit)
+    {
+        await previous.ConfigureAwait(false);
+        try
+        {
+            Task send;
+            lock (_gate)
+            {
+                if (_connection != connection || _deliveryFailed) return;
+                if (_leaving) throw new InvalidOperationException("Room session is closing.");
+                send = connection.InvokeAsync("SendEvent", roomId, edit);
+            }
+
+            await send.ConfigureAwait(false);
+        }
+        catch (Exception exception)
+        {
+            Trace.TraceError("Room drawing send failed. {0}", exception);
+            await ForSessionAsync(connection, () =>
+            {
+                _deliveryFailed = true;
+                DrawingSyncFailed?.Invoke();
+            });
+        }
     }
 
     // Hold incoming room data until joining succeeds or the transport closes.

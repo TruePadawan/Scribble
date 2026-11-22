@@ -28,6 +28,11 @@ public interface IMultiUserDrawingService
     event Action<Message>? MessageReceived;
     event Action<string>? MessageSent;
     event Action<MultiUserDrawingRoom?>? RoomChanged;
+    // Membership updates within the same session.
+    event Action<MultiUserDrawingRoom?>? RosterChanged;
+    // Raised when delivery of a local edit could not be confirmed.
+    event Action? DrawingSyncFailed;
+
 
     // Methods
     Task JoinRoomAsync(string roomId, string displayName);

@@ -23,6 +23,9 @@ public partial class MultiUserDrawingViewModel : ViewModelBase, IDisposable
     private readonly IDialogService _dialogService;
     private readonly ICanvasStateService _canvasStateService;
 
+    // Keep the warning visible after a disconnect so the retained canvas can be saved.
+    [ObservableProperty] public partial bool DrawingSyncFailed { get; set; }
+
     // Observable properties
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CanResetCanvas))]
@@ -79,6 +82,8 @@ public partial class MultiUserDrawingViewModel : ViewModelBase, IDisposable
         // Chat and delivery updates follow the room even while the editor view is detached.
         _multiUserDrawingService.JoiningChanged += RefreshJoining;
         _multiUserDrawingService.RoomChanged += RefreshRoom;
+        _multiUserDrawingService.RosterChanged += RefreshRoom;
+        _multiUserDrawingService.DrawingSyncFailed += MarkDrawingSyncFailed;
         _multiUserDrawingService.MessageReceived += ReceiveMessage;
         _multiUserDrawingService.MessageSent += ConfirmMessage;
         RefreshRoom(_multiUserDrawingService.Room);
@@ -90,6 +95,8 @@ public partial class MultiUserDrawingViewModel : ViewModelBase, IDisposable
     {
         _multiUserDrawingService.JoiningChanged -= RefreshJoining;
         _multiUserDrawingService.RoomChanged -= RefreshRoom;
+        _multiUserDrawingService.RosterChanged -= RefreshRoom;
+        _multiUserDrawingService.DrawingSyncFailed -= MarkDrawingSyncFailed;
         _multiUserDrawingService.MessageReceived -= ReceiveMessage;
         _multiUserDrawingService.MessageSent -= ConfirmMessage;
     }
@@ -107,8 +114,12 @@ public partial class MultiUserDrawingViewModel : ViewModelBase, IDisposable
     private void RefreshRoom(MultiUserDrawingRoom? room)
     {
         if (room == null || Room?.Me.ConnectionId != room.Me.ConnectionId) Messages.Clear();
+        if (room != null && Room?.Me.ConnectionId != room.Me.ConnectionId) DrawingSyncFailed = false;
         Room = room;
     }
+
+    // Show the delivery warning while keeping all locally applied edits.
+    private void MarkDrawingSyncFailed() => DrawingSyncFailed = true;
 
     // Append a received chat message to the conversation.
     private void ReceiveMessage(Message message) => Messages.Add(new ChatMessage(message));
