@@ -9,7 +9,6 @@ using Scribble.Services.CanvasStateService;
 using Scribble.Shared.Lib.CanvasElements;
 using Scribble.Shared.Lib.Events;
 using Scribble.State;
-using Scribble.Utils;
 using SkiaSharp;
 using ISelectable = Scribble.Shared.Lib.CanvasElements.ISelectable;
 
@@ -24,7 +23,8 @@ class SelectTool : PointerTool
     private Guid _boundId = Guid.NewGuid();
     private Guid _actionId = Guid.NewGuid();
 
-    public SelectTool(string name, ICanvasStateService canvasStateService, Canvas canvasContainer, CameraState camera) : base(name,
+    public SelectTool(string name, ICanvasStateService canvasStateService, Canvas canvasContainer,
+        CameraState camera) : base(name,
         canvasStateService,
         LoadToolBitmap(typeof(SelectTool), "cursor.png"))
     {

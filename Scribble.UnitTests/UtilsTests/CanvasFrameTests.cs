@@ -6,7 +6,6 @@ using Scribble.Controls;
 using Scribble.Shared.Lib;
 using Scribble.Shared.Lib.CanvasElements;
 using Scribble.Shared.Lib.CanvasElements.Strokes;
-using Scribble.State;
 using Scribble.ViewModels;
 using SkiaSharp;
 

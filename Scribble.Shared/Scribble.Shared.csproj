@@ -7,6 +7,9 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <InternalsVisibleTo Include="Scribble"/>
+        <InternalsVisibleTo Include="Scribble.Server"/>
+        <InternalsVisibleTo Include="Scribble.UnitTests"/>
         <PackageReference Include="SkiaSharp"/>
     </ItemGroup>
 

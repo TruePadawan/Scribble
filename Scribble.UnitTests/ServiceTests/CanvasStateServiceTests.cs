@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Avalonia.Headless.XUnit;
 using FluentAssertions;
 using NSubstitute;
@@ -74,7 +75,7 @@ public class CanvasStateServiceTests
                """u8
         ]);
 
-        await Assert.ThrowsAsync<System.Text.Json.JsonException>(() => document.LoadAsync(stream));
+        await Assert.ThrowsAsync<JsonException>(() => document.LoadAsync(stream));
 
         _canvasStateService.CanvasElements.Should().ContainSingle().Which.Id.Should().Be(id);
         _canvasStateService.Undo();
@@ -90,7 +91,8 @@ public class CanvasStateServiceTests
         var start = new StartStrokeEvent(action, Guid.NewGuid(), SKPoint.Empty, DefaultPaint(), ToolType.Pencil, []);
         history.ApplyLocal(start);
         history.ApplyLocal(new EndStrokeEvent(action));
-        var remote = new StartStrokeEvent(Guid.NewGuid(), Guid.NewGuid(), SKPoint.Empty, DefaultPaint(), ToolType.Pencil, []);
+        var remote = new StartStrokeEvent(Guid.NewGuid(), Guid.NewGuid(), SKPoint.Empty, DefaultPaint(),
+            ToolType.Pencil, []);
         history.ApplyIncoming(remote).Should().BeTrue();
         history.ApplyIncoming(remote).Should().BeFalse();
         history.ApplyLocal(history.TakeUndo());
@@ -800,7 +802,6 @@ public class CanvasStateServiceTests
     /// These all go through the fast-path and require a bound + stroke already tracked
     /// in _selectionBoundLookup. ApplySelectionBound sets that up.
     /// </summary>
-
     private static SKPoint GetStrokeMidpoint(CanvasStateService canvasStateService, Guid strokeId)
     {
         var stroke = (DrawStroke)canvasStateService.CanvasElements.First(e => e.Id == strokeId);
@@ -1129,7 +1130,6 @@ public class CanvasStateServiceTests
     /// Network Integration
     /// ApplyEvent stamps CreatorConnectionId and calls BroadcastEventAsync when Room is non-null.
     /// </summary>
-
     private static MultiUserDrawingRoom MakeRoom(string connectionId = "conn-1") =>
         new MultiUserDrawingRoom("room-1", connectionId, "Alice")
         {

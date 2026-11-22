@@ -1,8 +1,9 @@
+using System.Text.Json;
 using Avalonia.Headless.XUnit;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
-using Scribble.Server.Hubs;
 using Scribble.Extensions;
+using Scribble.Server.Hubs;
 using Scribble.Services.CanvasStateService;
 using Scribble.Services.DocumentService;
 using Scribble.Services.MultiUserDrawing;
@@ -79,7 +80,7 @@ public class DesktopConfigurationTests
         {
             var url = server.Urls.Single() + "/drawingHub";
             await File.WriteAllTextAsync(Path.Combine(install.FullName, "appsettings.json"),
-                System.Text.Json.JsonSerializer.Serialize(new { ServerUrl = url }));
+                JsonSerializer.Serialize(new { ServerUrl = url }));
             var services = new ServiceCollection();
             services.AddCommonServices(install.FullName);
 

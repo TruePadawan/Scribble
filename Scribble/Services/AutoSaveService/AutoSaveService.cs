@@ -79,7 +79,8 @@ public class AutoSaveService : IDisposable
         _maxDelay = maxDelay ?? TimeSpan.FromSeconds(10);
 
         _paused = _multiUserDrawingService.IsJoining || _multiUserDrawingService.Room != null;
-        _timer = _clock.CreateTimer(state => _ = SavePendingAsync(), null, Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
+        _timer = _clock.CreateTimer(state => _ = SavePendingAsync(), null, Timeout.InfiniteTimeSpan,
+            Timeout.InfiniteTimeSpan);
         _canvasStateService.ContentChanged += OnDocumentChanged;
         _documentService.DocumentOpened += OnDocumentOpened;
         _multiUserDrawingService.JoiningChanged += RefreshRoomPhase;

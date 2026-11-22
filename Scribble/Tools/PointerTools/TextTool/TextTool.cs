@@ -6,6 +6,7 @@ using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
+using Avalonia.Threading;
 using Scribble.Services.CanvasStateService;
 using Scribble.Shared.Lib;
 using Scribble.Shared.Lib.CanvasElements.Strokes;
@@ -13,7 +14,6 @@ using Scribble.Shared.Lib.Events;
 using Scribble.State;
 using Scribble.Utils;
 using SkiaSharp;
-using Avalonia.Threading;
 
 namespace Scribble.Tools.PointerTools.TextTool;
 
@@ -25,7 +25,8 @@ public class TextTool : StrokeTool
     private TextStroke? _editingStroke;
     private Guid _actionId = Guid.NewGuid();
 
-    public TextTool(string name, ICanvasStateService canvasState, Canvas canvasContainer, CameraState camera) : base(name, canvasState,
+    public TextTool(string name, ICanvasStateService canvasState, Canvas canvasContainer, CameraState camera) : base(
+        name, canvasState,
         LoadToolBitmap(typeof(TextTool), "text.png"))
     {
         ToolOptions = [ToolOption.StrokeColor, ToolOption.FontSize, ToolOption.FontCasing, ToolOption.FontStyle];

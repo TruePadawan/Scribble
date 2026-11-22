@@ -247,11 +247,13 @@ public class CanvasExportViewModelTests
     [AvaloniaFact]
     public void OpenExport_RenderFails_ShowsErrorAndDisablesOutput()
     {
-        _canvas.CanvasElements.Returns([new CanvasImage
-        {
-            Bounds = SKRect.Create(0, 0, 30, 30),
-            ImageBase64String = "invalid base64!",
-        }]);
+        _canvas.CanvasElements.Returns([
+            new CanvasImage
+            {
+                Bounds = SKRect.Create(0, 0, 30, 30),
+                ImageBase64String = "invalid base64!",
+            }
+        ]);
         _export.OpenExport();
         try
         {

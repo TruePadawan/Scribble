@@ -261,17 +261,17 @@ public class DocumentServiceTests
     public async Task LoadAsync_LegacyImageDefaultsToUntransformed()
     {
         using var stream = MakeStream("""
-            {
-                "elements": {
-                    "strokes": [],
-                    "images": [{
-                        "Width": 100, "Height": 50,
-                        "FileId": "4efe31af-a08b-4123-82fd-cb8c3b12252a"
-                    }]
-                },
-                "files": { "4efe31af-a08b-4123-82fd-cb8c3b12252a": "IMAGE" }
-            }
-            """);
+                                      {
+                                          "elements": {
+                                              "strokes": [],
+                                              "images": [{
+                                                  "Width": 100, "Height": 50,
+                                                  "FileId": "4efe31af-a08b-4123-82fd-cb8c3b12252a"
+                                              }]
+                                          },
+                                          "files": { "4efe31af-a08b-4123-82fd-cb8c3b12252a": "IMAGE" }
+                                      }
+                                      """);
         List<CanvasElement> loaded = [];
         _canvasStateService.When(state => state.LoadCanvas(Arg.Any<List<CanvasElement>>()))
             .Do(call => loaded = call.Arg<List<CanvasElement>>());

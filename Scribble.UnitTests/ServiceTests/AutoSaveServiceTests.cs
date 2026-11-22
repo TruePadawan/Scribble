@@ -1,3 +1,4 @@
+using System.Text;
 using FluentAssertions;
 using NSubstitute;
 using Scribble.Services.AutoSaveService;
@@ -94,8 +95,9 @@ public class AutoSaveServiceTests : IDisposable
     public async Task ManualSaveFails_DocumentStaysDirtyUntilFileOpened()
     {
         _canvasStateService.ContentChanged += Raise.Event<Action>();
-        await Assert.ThrowsAsync<IOException>(() => _autoSaveService.SaveDocumentAsync(
-            () => Task.FromException<Stream>(new IOException("Simulated write failure"))));
+        await Assert.ThrowsAsync<IOException>(() =>
+            _autoSaveService.SaveDocumentAsync(() =>
+                Task.FromException<Stream>(new IOException("Simulated write failure"))));
         _autoSaveService.HasUnsavedChanges.Should().BeTrue();
         _documentService.DocumentOpened += Raise.Event<Action>();
         _autoSaveService.HasUnsavedChanges.Should().BeFalse();
@@ -207,7 +209,7 @@ public class AutoSaveServiceTests : IDisposable
 
         var content = "replacement document";
         _documentService.SaveAsync(Arg.Any<Stream>(), Arg.Any<DocumentSnapshot>())
-            .Returns(call => call.Arg<Stream>().WriteAsync(System.Text.Encoding.UTF8.GetBytes(content)).AsTask());
+            .Returns(call => call.Arg<Stream>().WriteAsync(Encoding.UTF8.GetBytes(content)).AsTask());
         _canvasStateService.ContentChanged += Raise.Event<Action>();
         await WaitForRecoveryAsync(content);
 
@@ -239,7 +241,8 @@ public class AutoSaveServiceTests : IDisposable
                 secondWrite.TrySetResult();
                 await releaseSecond.Task.WaitAsync(cancellationToken);
             }
-            await call.Arg<Stream>().WriteAsync(System.Text.Encoding.UTF8.GetBytes(color.ToString()), cancellationToken);
+
+            await call.Arg<Stream>().WriteAsync(Encoding.UTF8.GetBytes(color.ToString()), cancellationToken);
         });
 
         _canvasStateService.ContentChanged += Raise.Event<Action>();
@@ -278,6 +281,7 @@ public class AutoSaveServiceTests : IDisposable
                 await call.Arg<Stream>().WriteAsync("partial write"u8.ToArray(), cancellationToken);
                 throw new IOException("Simulated write failure");
             }
+
             retryStarted.TrySetResult();
             await release.Task.WaitAsync(cancellationToken);
             await call.Arg<Stream>().WriteAsync("new revision"u8.ToArray(), cancellationToken);
