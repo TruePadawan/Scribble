@@ -1,12 +1,12 @@
 using System.Text;
 using System.Text.Json;
-using Microsoft.AspNetCore.SignalR;
-using SkiaSharp;
 using FluentAssertions;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.AspNetCore.SignalR.Client;
 using Scribble.Shared.Dtos;
 using Scribble.Shared.Lib;
 using Scribble.Shared.Lib.Events;
+using SkiaSharp;
 
 namespace Scribble.IntegrationTests.Hub;
 
@@ -45,9 +45,10 @@ public class MultiUserDrawingHubTests(HubServerFixture fixture) : IClassFixture<
         other.On<MultiUserDrawingClient, List<MultiUserDrawingClient>>("ClientJoined",
             (_, members) => roster.SetResult(members));
         var room = Guid.NewGuid().ToString();
-        await _aliceConnection.InvokeAsync<RoomAdmission>("JoinRoom", room, "Alice", null, "[]", token);
+        await _aliceConnection.InvokeAsync<RoomAdmission>("JoinRoom", room, "Alice", null, "[]", RoomProtocol.Version,
+            token);
         await other.StartAsync(token);
-        await other.InvokeAsync<RoomAdmission>("JoinRoom", room, "Bob", null, "[]", token);
+        await other.InvokeAsync<RoomAdmission>("JoinRoom", room, "Bob", null, "[]", RoomProtocol.Version, token);
         (await roster.Task.WaitAsync(TimeSpan.FromSeconds(5), token)).Should().ContainSingle(m => m.Name == "Bob");
     }
 
@@ -57,10 +58,13 @@ public class MultiUserDrawingHubTests(HubServerFixture fixture) : IClassFixture<
     {
         var ct = TestContext.Current.CancellationToken;
         var room = Guid.NewGuid().ToString();
-        var alice = await _aliceConnection.InvokeAsync<RoomAdmission>("JoinRoom", room, "Alice", null, "[]", ct);
-        var bob = await _bobConnection.InvokeAsync<RoomAdmission>("JoinRoom", room, "Alice", null, null, ct);
+        var alice = await _aliceConnection.InvokeAsync<RoomAdmission>("JoinRoom", room, "Alice", null, "[]",
+            RoomProtocol.Version, ct);
+        var bob = await _bobConnection.InvokeAsync<RoomAdmission>("JoinRoom", room, "Alice", null, null,
+            RoomProtocol.Version, ct);
         Assert.NotEqual(alice.ParticipantId, bob.ParticipantId);
-        var stroke = new StartStrokeEvent(Guid.NewGuid(), Guid.NewGuid(), SKPoint.Empty, new StrokePaint(), ToolType.Pencil, []);
+        var stroke = new StartStrokeEvent(Guid.NewGuid(), Guid.NewGuid(), SKPoint.Empty, new StrokePaint(),
+            ToolType.Pencil, []);
         var other = stroke with { StrokeId = Guid.NewGuid(), ActionId = Guid.NewGuid(), Id = Guid.NewGuid() };
         await _aliceConnection.InvokeAsync("SendEvent", room, stroke, ct);
         await _bobConnection.InvokeAsync("SendEvent", room, other, ct);
@@ -71,10 +75,14 @@ public class MultiUserDrawingHubTests(HubServerFixture fixture) : IClassFixture<
 
         await using var replacement = fixture.CreateHubConnection();
         await replacement.StartAsync(ct);
-        var resumed = await replacement.InvokeAsync<RoomAdmission>("JoinRoom", room, "Alice", alice.Token, null, ct);
+        var resumed = await replacement.InvokeAsync<RoomAdmission>("JoinRoom", room, "Alice", alice.Token, null,
+            RoomProtocol.Version, ct);
         Assert.Equal(alice.ParticipantId, resumed.ParticipantId);
-        Assert.Equal(2, JsonSerializer.Deserialize<List<Event>>(resumed.Snapshot!)!.Count);
-        await Assert.ThrowsAsync<HubException>(() => _aliceConnection.InvokeAsync("SendEvent", room, new EndStrokeEvent(stroke.ActionId), ct));
+        Assert.Equal(2,
+            JsonSerializer.Deserialize<List<Event>>(
+                await replacement.InvokeAsync<byte[]>("ReadChunk", "history", 0, ct))!.Count);
+        await Assert.ThrowsAsync<HubException>(() =>
+            _aliceConnection.InvokeAsync("SendEvent", room, new EndStrokeEvent(stroke.ActionId), ct));
         await replacement.InvokeAsync("SendEvent", room, new EraseByIdsEvent(Guid.NewGuid(), [stroke.StrokeId]), ct);
     }
 
@@ -88,11 +96,13 @@ public class MultiUserDrawingHubTests(HubServerFixture fixture) : IClassFixture<
         var ct = TestContext.Current.CancellationToken;
         await first.StartAsync(ct);
         await next.StartAsync(ct);
-        var initial = await first.InvokeAsync<RoomAdmission>("JoinRoom", "room", "Alice", null, "[]", ct);
+        var initial =
+            await first.InvokeAsync<RoomAdmission>("JoinRoom", "room", "Alice", null, "[]", RoomProtocol.Version, ct);
         await first.InvokeAsync("LeaveRoom", "room", "Alice", ct);
         host.Clock.Offset = TimeSpan.FromMinutes(11);
         Assert.True(await next.InvokeAsync<bool>("NeedsSeed", "room", ct));
-        var fresh = await next.InvokeAsync<RoomAdmission>("JoinRoom", "room", "Alice", initial.Token, "[]", ct);
+        var fresh = await next.InvokeAsync<RoomAdmission>("JoinRoom", "room", "Alice", initial.Token, "[]",
+            RoomProtocol.Version, ct);
         Assert.NotEqual(initial.ParticipantId, fresh.ParticipantId);
         Assert.NotEqual(initial.Token, fresh.Token);
     }
@@ -108,12 +118,91 @@ public class MultiUserDrawingHubTests(HubServerFixture fixture) : IClassFixture<
         var empty = new AddTextEvent(Guid.NewGuid(), Guid.NewGuid(), SKPoint.Empty, "", new StrokePaint(), [])
             { RoomSequence = 1, CreatorConnectionId = new string('0', 32) };
         var overhead = Encoding.UTF8.GetByteCount(JsonSerializer.Serialize<Event[]>([empty]));
-        var seed = JsonSerializer.Serialize<Event[]>([empty with { Text = new string('x', RoomProtocol.SnapshotBytes - overhead + extraBytes) }]);
-        var join = _aliceConnection.InvokeAsync<RoomAdmission>("JoinRoom", room, "Alice", null, seed, ct);
+        var seed = JsonSerializer.Serialize<Event[]>([
+            empty with { Text = new string(' ', RoomProtocol.SnapshotBytes - overhead + extraBytes) }
+        ]);
+        var bytes = Encoding.UTF8.GetBytes(seed);
+        if (extraBytes > 0)
+        {
+            bytes = bytes[..^extraBytes];
+        }
+
+        for (var offset = 0; offset < bytes.Length; offset += RoomProtocol.ChunkBytes)
+        {
+            var chunk = bytes.AsSpan(offset, Math.Min(RoomProtocol.ChunkBytes, bytes.Length - offset)).ToArray();
+            await _aliceConnection.InvokeAsync("UploadChunk", "seed", offset, chunk,
+                extraBytes == 0 && offset + chunk.Length == bytes.Length, ct);
+        }
+
         if (extraBytes == 0)
-            Assert.Equal(RoomProtocol.SnapshotBytes, Encoding.UTF8.GetByteCount((await join).Snapshot!));
+        {
+            var admission = await _aliceConnection.InvokeAsync<RoomAdmission>("JoinRoom", room, "Alice", null, null,
+                RoomProtocol.Version, ct);
+            Assert.Equal(RoomProtocol.SnapshotBytes, admission.HistoryBytes);
+        }
         else
-            Assert.Contains("8 MiB", (await Assert.ThrowsAsync<HubException>(() => join)).Message);
+        {
+            await Assert.ThrowsAsync<HubException>(() => _aliceConnection.InvokeAsync("UploadChunk", "seed",
+                bytes.Length, new byte[1], true, ct));
+        }
+    }
+
+    /// <summary>Stores an image at the exact room quota and rejects one additional distinct byte.</summary>
+    [Fact]
+    public async Task SendEvent_AtAssetQuota_DeduplicatesAndRejectsAdditionalImage()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var room = Guid.NewGuid().ToString();
+        await _aliceConnection.InvokeAsync<RoomAdmission>("JoinRoom", room, "Alice", null, "[]", RoomProtocol.Version,
+            ct);
+        var bytes = new byte[RoomProtocol.AssetBytes];
+        var key = RoomAssets.Key(bytes);
+        var chunk = new byte[RoomProtocol.ChunkBytes];
+        for (var offset = 0; offset < bytes.Length; offset += chunk.Length)
+        {
+            await _aliceConnection.InvokeAsync("UploadChunk", key, offset, chunk, offset + chunk.Length == bytes.Length,
+                ct);
+        }
+
+        var placement = new AddImageEvent(Guid.NewGuid(), Guid.NewGuid(), key, SKPoint.Empty, new SKSize(12, 12));
+        await _aliceConnection.InvokeAsync("SendEvent", room, placement, ct);
+        await _aliceConnection.InvokeAsync("SendEvent", room, placement with
+        {
+            Id = Guid.NewGuid(), ActionId = Guid.NewGuid(), ImageId = Guid.NewGuid()
+        }, ct);
+
+        var extra = RoomAssets.Key([1]);
+        await _aliceConnection.InvokeAsync("UploadChunk", extra, 0, new byte[] { 1 }, true, ct);
+        var rejected = placement with
+        {
+            Id = Guid.NewGuid(), ActionId = Guid.NewGuid(), ImageId = Guid.NewGuid(), ImageBase64String = extra
+        };
+        var error = await Assert.ThrowsAsync<HubException>(() =>
+            _aliceConnection.InvokeAsync("SendEvent", room, rejected, ct));
+        Assert.Contains("32 MiB", error.Message);
+        var admission =
+            await _bobConnection.InvokeAsync<RoomAdmission>("JoinRoom", room, "Bob", null, null, RoomProtocol.Version,
+                ct);
+        Assert.Equal(2, admission.Sequence);
+        Assert.Equal(bytes.Length, admission.AssetBytes);
+        var manifest = await _bobConnection.InvokeAsync<byte[]>("ReadChunk", "manifest", 0, ct);
+        Assert.Equal(key, Assert.Single(JsonSerializer.Deserialize<Dictionary<string, int>>(manifest)!).Key);
+    }
+
+    /// <summary>Rejects incompatible admission, invalid offsets, and content that fails its hash check.</summary>
+    [Fact]
+    public async Task JoinRoom_InvalidVersionOrImage_LeavesRoomAvailable()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var room = Guid.NewGuid().ToString();
+        await Assert.ThrowsAsync<HubException>(() => _aliceConnection.InvokeAsync("JoinRoom", room, "Alice",
+            null, "[]", RoomProtocol.Version - 1, ct));
+        var key = RoomAssets.Key([1]);
+        await Assert.ThrowsAsync<HubException>(() =>
+            _aliceConnection.InvokeAsync("UploadChunk", key, 1, new byte[] { 1 }, true, ct));
+        await Assert.ThrowsAsync<HubException>(() =>
+            _aliceConnection.InvokeAsync("UploadChunk", key, 0, new byte[] { 2 }, true, ct));
+        Assert.True(await _aliceConnection.InvokeAsync<bool>("NeedsSeed", room, ct));
     }
 
     // -- Room Join --
@@ -129,7 +218,7 @@ public class MultiUserDrawingHubTests(HubServerFixture fixture) : IClassFixture<
             if (user.Name == "Alice") tcs.TrySetResult((user, users));
         });
 
-        await _aliceConnection.InvokeAsync<RoomAdmission>("JoinRoom", roomId, "Alice", null, "[]",
+        await _aliceConnection.InvokeAsync<RoomAdmission>("JoinRoom", roomId, "Alice", null, "[]", RoomProtocol.Version,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var result = await tcs.Task.WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken);
@@ -141,7 +230,7 @@ public class MultiUserDrawingHubTests(HubServerFixture fixture) : IClassFixture<
     public async Task JoinRoom_TwoClients_BothClientsReceiveClientJoinedWithUpdatedList()
     {
         var roomId = Guid.NewGuid().ToString();
-        await _aliceConnection.InvokeAsync<RoomAdmission>("JoinRoom", roomId, "Alice", null, "[]",
+        await _aliceConnection.InvokeAsync<RoomAdmission>("JoinRoom", roomId, "Alice", null, "[]", RoomProtocol.Version,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var aliceTcs = new TaskCompletionSource<List<MultiUserDrawingClient>>();
@@ -157,7 +246,7 @@ public class MultiUserDrawingHubTests(HubServerFixture fixture) : IClassFixture<
             if (user.Name == "Bob") bobTcs.TrySetResult(users);
         });
 
-        await _bobConnection.InvokeAsync<RoomAdmission>("JoinRoom", roomId, "Bob", null, "[]",
+        await _bobConnection.InvokeAsync<RoomAdmission>("JoinRoom", roomId, "Bob", null, "[]", RoomProtocol.Version,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var aliceUsers = await aliceTcs.Task.WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken);
@@ -171,9 +260,9 @@ public class MultiUserDrawingHubTests(HubServerFixture fixture) : IClassFixture<
     public async Task Disconnect_AfterJoiningRoom_RemainingClientReceivesClientLeftEvent()
     {
         var roomId = Guid.NewGuid().ToString();
-        await _aliceConnection.InvokeAsync<RoomAdmission>("JoinRoom", roomId, "Alice", null, "[]",
+        await _aliceConnection.InvokeAsync<RoomAdmission>("JoinRoom", roomId, "Alice", null, "[]", RoomProtocol.Version,
             cancellationToken: TestContext.Current.CancellationToken);
-        await _bobConnection.InvokeAsync<RoomAdmission>("JoinRoom", roomId, "Bob", null, "[]",
+        await _bobConnection.InvokeAsync<RoomAdmission>("JoinRoom", roomId, "Bob", null, "[]", RoomProtocol.Version,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var aliceTcs = new TaskCompletionSource<MultiUserDrawingClient>();
@@ -191,9 +280,9 @@ public class MultiUserDrawingHubTests(HubServerFixture fixture) : IClassFixture<
     public async Task LeaveRoom_ClientLeaves_OtherClientReceivesClientLeftEvent()
     {
         var roomId = Guid.NewGuid().ToString();
-        await _aliceConnection.InvokeAsync<RoomAdmission>("JoinRoom", roomId, "Alice", null, "[]",
+        await _aliceConnection.InvokeAsync<RoomAdmission>("JoinRoom", roomId, "Alice", null, "[]", RoomProtocol.Version,
             cancellationToken: TestContext.Current.CancellationToken);
-        await _bobConnection.InvokeAsync<RoomAdmission>("JoinRoom", roomId, "Bob", null, "[]",
+        await _bobConnection.InvokeAsync<RoomAdmission>("JoinRoom", roomId, "Bob", null, "[]", RoomProtocol.Version,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var aliceTcs = new TaskCompletionSource<MultiUserDrawingClient>();
@@ -213,9 +302,9 @@ public class MultiUserDrawingHubTests(HubServerFixture fixture) : IClassFixture<
     public async Task SendEvent_ToRoom_OtherClientReceivesEvent()
     {
         var roomId = Guid.NewGuid().ToString();
-        await _aliceConnection.InvokeAsync<RoomAdmission>("JoinRoom", roomId, "Alice", null, "[]",
+        await _aliceConnection.InvokeAsync<RoomAdmission>("JoinRoom", roomId, "Alice", null, "[]", RoomProtocol.Version,
             cancellationToken: TestContext.Current.CancellationToken);
-        await _bobConnection.InvokeAsync<RoomAdmission>("JoinRoom", roomId, "Bob", null, "[]",
+        await _bobConnection.InvokeAsync<RoomAdmission>("JoinRoom", roomId, "Bob", null, "[]", RoomProtocol.Version,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var bobEventTcs = new TaskCompletionSource<Event>();
@@ -238,8 +327,9 @@ public class MultiUserDrawingHubTests(HubServerFixture fixture) : IClassFixture<
     {
         var roomId = Guid.NewGuid().ToString();
         var alice = await _aliceConnection.InvokeAsync<RoomAdmission>("JoinRoom", roomId, "Alice", null, "[]",
+            RoomProtocol.Version,
             cancellationToken: TestContext.Current.CancellationToken);
-        await _bobConnection.InvokeAsync<RoomAdmission>("JoinRoom", roomId, "Bob", null, "[]",
+        await _bobConnection.InvokeAsync<RoomAdmission>("JoinRoom", roomId, "Bob", null, "[]", RoomProtocol.Version,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var bobEventTcs = new TaskCompletionSource<Event>();
@@ -264,17 +354,22 @@ public class MultiUserDrawingHubTests(HubServerFixture fixture) : IClassFixture<
     {
         var cancellationToken = TestContext.Current.CancellationToken;
         var roomId = Guid.NewGuid().ToString();
-        var alice = await _aliceConnection.InvokeAsync<RoomAdmission>("JoinRoom", roomId, "Alice", null, "[]", cancellationToken);
-        await _bobConnection.InvokeAsync<RoomAdmission>("JoinRoom", roomId, "Bob", null, "[]", cancellationToken);
+        var alice = await _aliceConnection.InvokeAsync<RoomAdmission>("JoinRoom", roomId, "Alice", null, "[]",
+            RoomProtocol.Version, cancellationToken);
+        await _bobConnection.InvokeAsync<RoomAdmission>("JoinRoom", roomId, "Bob", null, "[]", RoomProtocol.Version,
+            cancellationToken);
         await using var otherRoomConnection = fixture.CreateHubConnection();
         await otherRoomConnection.StartAsync(cancellationToken);
-        await otherRoomConnection.InvokeAsync<RoomAdmission>("JoinRoom", Guid.NewGuid().ToString(), "Charlie", null, "[]", cancellationToken);
+        await otherRoomConnection.InvokeAsync<RoomAdmission>("JoinRoom", Guid.NewGuid().ToString(), "Charlie", null,
+            "[]", RoomProtocol.Version, cancellationToken);
 
         var delivered = new TaskCompletionSource<Event>(TaskCreationOptions.RunContinuationsAsynchronously);
         using var receiver =
             _bobConnection.On<Event>("ReceiveEvent", incoming => { delivered.TrySetResult(incoming); });
         var authorized = new EndStrokeEvent(Guid.NewGuid());
-        await Assert.ThrowsAsync<HubException>(() => otherRoomConnection.InvokeAsync("SendEvent", roomId, new EndStrokeEvent(Guid.NewGuid()), cancellationToken));
+        await Assert.ThrowsAsync<HubException>(() =>
+            otherRoomConnection.InvokeAsync("SendEvent", roomId, new EndStrokeEvent(Guid.NewGuid()),
+                cancellationToken));
         await _aliceConnection.InvokeAsync("SendEvent", roomId, authorized, cancellationToken);
 
         var result = await delivered.Task.WaitAsync(TimeSpan.FromSeconds(2), cancellationToken);
@@ -286,9 +381,9 @@ public class MultiUserDrawingHubTests(HubServerFixture fixture) : IClassFixture<
     public async Task SendMessage_ValidContent_OtherClientReceivesMessage()
     {
         var roomId = Guid.NewGuid().ToString();
-        await _aliceConnection.InvokeAsync<RoomAdmission>("JoinRoom", roomId, "Alice", null, "[]",
+        await _aliceConnection.InvokeAsync<RoomAdmission>("JoinRoom", roomId, "Alice", null, "[]", RoomProtocol.Version,
             cancellationToken: TestContext.Current.CancellationToken);
-        await _bobConnection.InvokeAsync<RoomAdmission>("JoinRoom", roomId, "Bob", null, "[]",
+        await _bobConnection.InvokeAsync<RoomAdmission>("JoinRoom", roomId, "Bob", null, "[]", RoomProtocol.Version,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var bobMsgTcs = new TaskCompletionSource<Message>();
@@ -309,9 +404,9 @@ public class MultiUserDrawingHubTests(HubServerFixture fixture) : IClassFixture<
     public async Task SendMessage_OwnClient_ReceivesMessageSentAcknowledgement()
     {
         var roomId = Guid.NewGuid().ToString();
-        await _aliceConnection.InvokeAsync<RoomAdmission>("JoinRoom", roomId, "Alice", null, "[]",
+        await _aliceConnection.InvokeAsync<RoomAdmission>("JoinRoom", roomId, "Alice", null, "[]", RoomProtocol.Version,
             cancellationToken: TestContext.Current.CancellationToken);
-        await _bobConnection.InvokeAsync<RoomAdmission>("JoinRoom", roomId, "Bob", null, "[]",
+        await _bobConnection.InvokeAsync<RoomAdmission>("JoinRoom", roomId, "Bob", null, "[]", RoomProtocol.Version,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var ackTcs = new TaskCompletionSource<string>();
@@ -329,9 +424,9 @@ public class MultiUserDrawingHubTests(HubServerFixture fixture) : IClassFixture<
     public async Task SendMessage_EmptyContent_IsDropped()
     {
         var roomId = Guid.NewGuid().ToString();
-        await _aliceConnection.InvokeAsync<RoomAdmission>("JoinRoom", roomId, "Alice", null, "[]",
+        await _aliceConnection.InvokeAsync<RoomAdmission>("JoinRoom", roomId, "Alice", null, "[]", RoomProtocol.Version,
             cancellationToken: TestContext.Current.CancellationToken);
-        await _bobConnection.InvokeAsync<RoomAdmission>("JoinRoom", roomId, "Bob", null, "[]",
+        await _bobConnection.InvokeAsync<RoomAdmission>("JoinRoom", roomId, "Bob", null, "[]", RoomProtocol.Version,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var bobMsgTcs = new TaskCompletionSource<Message>();
@@ -353,7 +448,7 @@ public class MultiUserDrawingHubTests(HubServerFixture fixture) : IClassFixture<
     {
         var roomId = Guid.NewGuid().ToString();
         // Alice joins, Bob does NOT join
-        await _aliceConnection.InvokeAsync<RoomAdmission>("JoinRoom", roomId, "Alice", null, "[]",
+        await _aliceConnection.InvokeAsync<RoomAdmission>("JoinRoom", roomId, "Alice", null, "[]", RoomProtocol.Version,
             cancellationToken: TestContext.Current.CancellationToken);
 
         var aliceMsgTcs = new TaskCompletionSource<Message>();
@@ -364,7 +459,8 @@ public class MultiUserDrawingHubTests(HubServerFixture fixture) : IClassFixture<
 
         // Bob tries to send without joining
         var dto = new MessageDto("msg4", "Bob", "Intruder!");
-        await Assert.ThrowsAsync<HubException>(() => _bobConnection.InvokeAsync("SendMessage", roomId, dto, TestContext.Current.CancellationToken));
+        await Assert.ThrowsAsync<HubException>(() =>
+            _bobConnection.InvokeAsync("SendMessage", roomId, dto, TestContext.Current.CancellationToken));
 
         var task = aliceMsgTcs.Task.WaitAsync(TimeSpan.FromMilliseconds(500), TestContext.Current.CancellationToken);
         await Assert.ThrowsAsync<TimeoutException>(() => task);

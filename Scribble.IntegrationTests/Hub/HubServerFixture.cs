@@ -40,36 +40,6 @@ public class HubServerFixture : WebApplicationFactory<Program>
     }
 
     /// <summary>
-    /// Exercise concurrent joins with a repeatable 40 ms round trip and 10 Mbit/s downstream.
-    /// </summary>
-    public HubConnection CreateDelayedConnection() => new HubConnectionBuilder()
-        .WithUrl("http://localhost/drawingHub", options =>
-        {
-            options.Transports = Microsoft.AspNetCore.Http.Connections.HttpTransportType.LongPolling;
-            options.HttpMessageHandlerFactory = _ => new DelayedResponse(Server.CreateHandler());
-        }).Build();
-
-    /// <summary>
-    /// Delay delivery of the buffered HTTP response in proportion to its actual payload.
-    /// </summary>
-    private sealed class DelayedResponse(HttpMessageHandler inner) : DelegatingHandler(inner)
-    {
-        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request,
-            CancellationToken token)
-        {
-            await Task.Delay(40, token);
-            var response = await base.SendAsync(request, token);
-            if (request.Method == HttpMethod.Get)
-            {
-                var body = await response.Content.ReadAsByteArrayAsync(token);
-                await Task.Delay(TimeSpan.FromSeconds(body.Length / 1_250_000d), token);
-            }
-
-            return response;
-        }
-    }
-
-    /// <summary>
     /// Interrupt real server connections without exposing a production hub method.
     /// </summary>
     public sealed class ConnectionFaults : IHubFilter
@@ -90,6 +60,19 @@ public class HubServerFixture : WebApplicationFactory<Program>
         }
 
         private TaskCompletionSource<string>? _pendingJoin;
+        private (TaskCompletionSource Started, Task Release)? _imageRead;
+        private readonly ConcurrentDictionary<string, int> _imageDownloads = new();
+
+        /// <summary>Pauses the next image download after its first chunk has arrived.</summary>
+        public Task HoldImageRead(Task release)
+        {
+            var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            _imageRead = (started, release);
+            return started.Task;
+        }
+
+        /// <summary>Counts image downloads started on this transport.</summary>
+        public int Downloads(string connection) => _imageDownloads.GetValueOrDefault(connection);
 
         /// <summary>
         /// Hold admission until the joining connection is closed.
@@ -120,6 +103,21 @@ public class HubServerFixture : WebApplicationFactory<Program>
         public async ValueTask<object?> InvokeMethodAsync(HubInvocationContext context,
             Func<HubInvocationContext, ValueTask<object?>> next)
         {
+            if (context.HubMethodName == "ReadChunk" && context.HubMethodArguments[0] is string key &&
+                key.StartsWith("sha256:", StringComparison.Ordinal))
+            {
+                if (context.HubMethodArguments[1] is 0)
+                {
+                    _imageDownloads.AddOrUpdate(context.Context.ConnectionId, 1, (_, count) => count + 1);
+                }
+                else if (_imageRead is { } read)
+                {
+                    _imageRead = null;
+                    read.Started.SetResult();
+                    await read.Release.WaitAsync(context.Context.ConnectionAborted);
+                }
+            }
+
             if (context.HubMethodName == "JoinRoom" && Interlocked.Exchange(ref _pendingJoin, null) is { } pending)
             {
                 pending.SetResult(context.Context.ConnectionId);
