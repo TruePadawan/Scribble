@@ -46,3 +46,7 @@ To execute the automated test suite locally via the new Microsoft Testing Platfo
 ```bash
 dotnet test Scribble.slnx
 ```
+
+### Drawing room deployment
+
+Run a single Scribble.Server instance for clients that share rooms. Each host keeps room history in memory and allows participants to reclaim their strokes for ten minutes after leaving. Deploy the v2 desktop client and server together. See the [drawing room protocol](docs/room-protocol.md) for concurrent editing behavior and snapshot measurements.
