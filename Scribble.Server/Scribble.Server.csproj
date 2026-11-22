@@ -7,6 +7,8 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <!-- SignalR reads native Skia paths when relaying pasted strokes on Linux. -->
+        <PackageReference Include="SkiaSharp.NativeAssets.Linux"/>
         <ProjectReference Include="..\Scribble.Shared\Scribble.Shared.csproj"/>
     </ItemGroup>
 
