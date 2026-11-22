@@ -19,9 +19,9 @@ Use the .NET 10 SDK. Run solution commands from the repository root.
 
 ## Coding Style
 
-Use four spaces, file-scoped namespaces, and braces on separate lines in C#. Use PascalCase for types and members, camelCase for locals and parameters, and `_camelCase` for private fields. Follow neighboring code and the checked-in `Scribble.sln.DotSettings` when formatting. Keep Avalonia control access on the UI thread and preserve compatibility when changing shared drawing events or document serialization.
+Use four spaces, file-scoped namespaces, and braces on separate lines in C#. Always use opening and closing braces around control flow bodies that allow them, including `if`, `else`, and loops, even when the body contains a single statement. Use PascalCase for types and members, camelCase for locals and parameters, and `_camelCase` for private fields. Follow neighboring code and the checked-in `Scribble.sln.DotSettings` when formatting. Keep Avalonia control access on the UI thread and preserve compatibility when changing shared drawing events or document serialization.
 
-Add a brief comment above each new class, method, function, or similar declaration explaining its purpose. Inside methods and functions, add short comments where a section's purpose or behavior needs clarification.
+Use a brief C# XML documentation comment (`/// <summary>`) above each new class, method, function, or similar declaration to explain its purpose. Inside methods and functions, add short comments where a section's purpose or behavior needs clarification.
 
 ## Testing
 
