@@ -1,7 +1,8 @@
-# Drawing room protocol v2
+# Drawing room protocol v3
 
-Deploy the desktop client and server together. The versioned join methods reject a legacy client before it can join a
-room. Run one server instance. It keeps accepted room history and credentials in memory. A server restart ends every
+Deploy the desktop client and server together.~~~~ Run one server instance. It keeps accepted room history and
+credentials in memory. A
+server restart ends every
 room instance.
 
 ## Editing and ownership
@@ -35,9 +36,49 @@ The server retains the accepted board even when the last member leaves. Solo edi
 on rejoin. An expired credential grants a new identity, including when the room code has been reused. Closing the app
 discards its tokens. The desktop explains when a saved credential can no longer reclaim ownership.
 
-## Transfer limits and measurements
+## Joining an image-heavy board
 
-The application caps the canonical UTF-8 history at **8 MiB**. Seed admission and live edits enforce the same limit so
-all accepted boards remain joinable. SignalR allows twice the application size plus 64 KiB for escaped JSON and envelope
-fields. A failed join preserves the solo board. A failed live send retains the local edit and surfaces the existing
-synchronization warning.
+Admission freezes a board, its event history, and an image manifest at one confirmed sequence. Concurrent joins can
+share the same cut. The desktop displays the ordered placements with placeholders, then requests images intersecting its
+viewport, other placed images, and finally images needed only for undo. It resolves each distinct file once per
+connection. A byte counter includes locally available data. Cancel discards the preview and preserves the solo document
+and undo stack.
+
+Drawing continues during a download. The joining client drains edits newer than its cut in sequence before enabling
+input. The full history restores selection targets and the participant’s undo stack. The preview alone never becomes an
+editable document.
+
+## Storage and retention
+
+| Resource                            | Limit or lifetime                               |
+|-------------------------------------|-------------------------------------------------|
+| Confirmed event metadata            | 8 MiB of canonical UTF-8 JSON per room          |
+| Image files                         | 32 MiB of distinct encoded image bytes per room |
+| Transfer chunk                      | 128 KiB before SignalR's JSON/base64 encoding   |
+| Undo, deleted images and reconnects | Full accepted history until room expiry         |
+
+Uploads use SHA-256 of the original file bytes. Each placement has its own ID, owner, layer, bounds and rotation. The
+registry validates the completed hash, ownership and both quotas before charging for a new file. Deletion retains the
+file for undo. Staging ends with the connection or submission. The room and its retained files expire when its last
+reclaim credential expires. These limits cover stored payloads. Rendering, buffers, and active connections consume
+additional memory.
+
+## Concurrent join measurements
+
+Linux Release build, one isolated Kestrel process per case. Two clients joined together over long polling with a
+simulated 40 ms round trip and 10 Mbit/s downstream per connection. The image cases reuse a noisy 256 × 256 PNG.
+Response bytes are the measured GET bodies for one joining client, including SignalR framing. Peak RSS includes seeding
+and both joins. Times are observations from one run.
+
+| Protocol and workload                | Response bytes | Server peak RSS | First preview |  Both joins editable | Client replay |
+|--------------------------------------|---------------:|----------------:|--------------:|---------------------:|--------------:|
+| v2, 8 MiB inline cap, 24 placements  |      8,154,500 |         291 MiB |             — |               6.99 s |        0.2 ms |
+| v2, 32 MiB inline cap, 96 placements |     32,610,803 |         801 MiB |             — | Failed after 26.97 s |             — |
+| v3, 24 placements                    |        337,556 |          91 MiB |        0.34 s |               0.73 s |        0.1 ms |
+| v3, 96 placements                    |        419,897 |          93 MiB |        0.38 s |               0.81 s |        0.2 ms |
+| v3, one 5,000-point pencil stroke    |      2,659,626 |         124 MiB |        0.44 s |               3.37 s |      243.5 ms |
+
+The larger inline trial ended without a connected reader. The v3 asset allowance is an enforced storage budget. Repeated
+placements cost metadata, while distinct files consume their encoded size. Stroke-heavy boards still pay for replay when
+populating a fresh snapshot. To repeat the v3 benchmark, run
+`dotnet test --solution Scribble.slnx -c Release --filter-method '*JoinRoom_LargeHistory_InstallsCompleteSnapshot'`.
