@@ -1,8 +1,9 @@
-using Avalonia.Skia;
+using Avalonia.Headless.XUnit;
 using FluentAssertions;
 using NSubstitute;
 using NSubstitute.ReturnsExtensions;
 using Scribble.Services.CanvasStateService;
+using Scribble.Services.DocumentService;
 using Scribble.Services.MultiUserDrawing;
 using Scribble.Shared.Lib;
 using Scribble.Shared.Lib.CanvasElements;
@@ -58,6 +59,26 @@ public class CanvasStateServiceTests
         _canvasStateService.ApplyEvent(new UpdateStrokeColorEvent(Guid.NewGuid(), [id], SKColors.Blue));
         _canvasStateService.ApplyEvent(new UpdateStrokeColorEvent(Guid.NewGuid(), [Guid.NewGuid()], SKColors.Blue));
         edits.Should().Be(1);
+    }
+
+    // Invalid stroke data must leave both the drawn board and its undo action available.
+    [AvaloniaFact]
+    public async Task LoadAsync_NullToolOptions_PreservesBoardAndUndo()
+    {
+        var (_, id) = ApplyCompleteStroke(_canvasStateService, SKPoint.Empty, new SKPoint(8, 8));
+        var document = new DocumentService(_canvasStateService);
+        using var stream = new MemoryStream([
+            .. """
+               {"elements":{"strokes":[{"$type":"DrawStroke","ToolType":"pencil","Path":"M0 0L1 1",
+               "Paint":{},"ToolOptions":null}],"images":[]},"files":{}}
+               """u8
+        ]);
+
+        await Assert.ThrowsAsync<System.Text.Json.JsonException>(() => document.LoadAsync(stream));
+
+        _canvasStateService.CanvasElements.Should().ContainSingle().Which.Id.Should().Be(id);
+        _canvasStateService.Undo();
+        _canvasStateService.CanvasElements.Should().BeEmpty();
     }
 
     // StartStrokeEvent
