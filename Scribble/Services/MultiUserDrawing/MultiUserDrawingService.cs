@@ -173,13 +173,25 @@ public class MultiUserDrawingService : IMultiUserDrawingService
     {
         HubConnection connection;
         var pending = new PendingJoin();
-        lock (_gate)
+        try
         {
-            if (_connection != null) return;
-            connection = _createConnection();
-            RegisterEventHandlers(connection);
-            _connection = connection;
-            _pendingJoin = pending;
+            lock (_gate)
+            {
+                if (_connection != null)
+                {
+                    return;
+                }
+
+                connection = _createConnection();
+                RegisterEventHandlers(connection);
+                _connection = connection;
+                _pendingJoin = pending;
+            }
+        }
+        catch (Exception error)
+        {
+            JoinFailed?.Invoke(error.Message);
+            return;
         }
 
         try

@@ -35,10 +35,10 @@
     </ItemGroup>
 
     <ItemGroup>
-        <None Update="appsettings.json">
+        <None Update="appsettings.json" ExcludeFromSingleFile="true" CopyToPublishDirectory="PreserveNewest">
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </None>
-        <None Update="appsettings.Development.json">
+        <None Update="appsettings.Development.json" CopyToPublishDirectory="Never">
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </None>
     </ItemGroup>
