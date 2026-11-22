@@ -227,6 +227,93 @@ public class MultiUserDrawingServiceIntegrationTests(HubServerFixture fixture)
         _aliceService.Room.Should().NotBeNull();
     }
 
+    // An interrupted send and its queued successor stay local after disconnect and rejoin.
+    [Fact]
+    public async Task DisconnectDuringSend_RetainsEditsAndRetiresPendingSends()
+    {
+        var canvas = new CanvasStateService(_aliceService);
+        var room = Guid.NewGuid().ToString();
+        await _aliceService.JoinRoomAsync(room, "Alice");
+        var connection = _aliceService.ConnectionId!;
+        var held = fixture.Faults.HoldNextSend(connection);
+        var failed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var stopped = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        _aliceService.DrawingSyncFailed += () => failed.TrySetResult();
+        _aliceService.ConnectionStopped += () => stopped.TrySetResult();
+        var action = Guid.NewGuid();
+        var id = Guid.NewGuid();
+        canvas.ApplyEvent(new StartStrokeEvent(action, id, SKPoint.Empty, new StrokePaint(), ToolType.Pencil, []));
+        await held.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        canvas.ApplyEvent(new EndStrokeEvent(action));
+        fixture.Faults.Abort(connection);
+        await Task.WhenAll(failed.Task, stopped.Task)
+            .WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        canvas.CanvasElements.Should().ContainSingle().Which.Id.Should().Be(id);
+        await _aliceService.JoinRoomAsync(Guid.NewGuid().ToString(), "Alice");
+        canvas.CanUndo.Should().BeTrue();
+    }
+
+    // A delayed callback from the old transport cannot mutate the newly joined board.
+    [Fact]
+    public async Task Rejoin_DelayedOldConnectionCallback_IsIgnored()
+    {
+        HubConnection? transport = null;
+        var service = new MultiUserDrawingService(() => transport = fixture.CreateHubConnection());
+        var canvas = new CanvasStateService(service);
+        try
+        {
+            await service.JoinRoomAsync(Guid.NewGuid().ToString(), "Alice");
+            var old = transport!;
+            await service.LeaveRoomAsync("Alice");
+            await service.JoinRoomAsync(Guid.NewGuid().ToString(), "Alice");
+            service.IsConnected.Should().BeTrue();
+            await service.ForSessionAsync(old, () => AddLocalStroke(canvas));
+            canvas.HasEvents.Should().BeFalse();
+        }
+        finally
+        {
+            await service.LeaveRoomAsync("Alice");
+        }
+    }
+
+    // A failed real join releases the pending solo revision for recovery.
+    [AvaloniaFact]
+    public async Task FailedJoin_ResumesRecoveryOfSoloBoard()
+    {
+        var directory = Directory.CreateTempSubdirectory("scribble-failed-join-");
+        var token = TestContext.Current.CancellationToken;
+        var service = new MultiUserDrawingService(fixture.CreateHubConnection, Dispatcher.UIThread);
+        var canvas = new CanvasStateService(service);
+        var room = Guid.NewGuid().ToString();
+        _aliceService.CanvasStateRequested -= _answerAliceSnapshotRequests;
+        var requested = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
+        _aliceService.CanvasStateRequested += id => requested.TrySetResult(id);
+        await _aliceService.JoinRoomAsync(room, "Alice");
+        try
+        {
+            using var autosave = new AutoSaveService(canvas, new DocumentService(canvas), service,
+                directory.FullName, TimeSpan.FromMilliseconds(50), dispatcher: Dispatcher.UIThread);
+            var stroke = AddLocalStroke(canvas);
+            var join = service.JoinRoomAsync(room, "Bob");
+            var id = await requested.Task.WaitAsync(TimeSpan.FromSeconds(5), token);
+            fixture.Faults.Abort(id);
+            await join.WaitAsync(TimeSpan.FromSeconds(5), token);
+            var path = Path.Combine(directory.FullName, "Scribble", "autosave.scribble");
+            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(token);
+            timeout.CancelAfter(TimeSpan.FromSeconds(5));
+            while (!File.Exists(path)) await Task.Delay(10, timeout.Token);
+            using var file = JsonDocument.Parse(await File.ReadAllTextAsync(path, token));
+            file.RootElement.GetProperty("elements").GetProperty("strokes")[0].GetProperty("Id")
+                .GetGuid().Should().Be(stroke);
+            autosave.HasUnsavedChanges.Should().BeTrue();
+        }
+        finally
+        {
+            await service.LeaveRoomAsync("Bob");
+            directory.Delete(true);
+        }
+    }
+
     // -- Event Relay --
 
     [Fact]

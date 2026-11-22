@@ -30,6 +30,16 @@ public class HubServerFixture : WebApplicationFactory<Program>
         private readonly ConcurrentDictionary<string, HubCallerContext> _clients = new();
         private readonly ConcurrentDictionary<string, bool> _abortOnLeave = new();
 
+        private readonly ConcurrentDictionary<string, TaskCompletionSource> _heldSends = new();
+
+        // Signal when the next drawing send reaches the hub and hold it until disconnect.
+        public Task HoldNextSend(string id)
+        {
+            var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            _heldSends[id] = started;
+            return started.Task;
+        }
+
         public void Abort(string id) => _clients[id].Abort();
         public void AbortOnLeave(string id) => _abortOnLeave[id] = true;
 
@@ -47,12 +57,22 @@ public class HubServerFixture : WebApplicationFactory<Program>
             return next(context, exception);
         }
 
-        public ValueTask<object?> InvokeMethodAsync(HubInvocationContext context,
+        public async ValueTask<object?> InvokeMethodAsync(HubInvocationContext context,
             Func<HubInvocationContext, ValueTask<object?>> next)
         {
             if (context.HubMethodName == "LeaveRoom" && _abortOnLeave.TryRemove(context.Context.ConnectionId, out _))
+            {
                 context.Context.Abort();
-            return next(context);
+            }
+
+            if (context.HubMethodName == "SendEvent" &&
+                _heldSends.TryRemove(context.Context.ConnectionId, out var held))
+            {
+                held.SetResult();
+                await Task.Delay(Timeout.Infinite, context.Context.ConnectionAborted);
+            }
+
+            return await next(context);
         }
     }
 }
