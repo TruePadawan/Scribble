@@ -30,6 +30,7 @@ internal static class CanvasLifecycleReplayHandler
             if (element is IClonable copyable)
             {
                 var cloned = copyable.Clone(preserveId: true);
+                if (ev.CreatorConnectionId != null) cloned.CreatorConnectionId = ev.CreatorConnectionId;
                 if (cloned is PaintableStroke paintable)
                 {
                     ctx.PaintableStrokes[paintable.Id] = paintable;
@@ -103,6 +104,7 @@ internal static class CanvasLifecycleReplayHandler
         TransformReplayHandler.MoveElements(pastedElements, delta);
         foreach (var copiedElement in pastedElements)
         {
+            copiedElement.CreatorConnectionId = ev.CreatorConnectionId;
             switch (copiedElement)
             {
                 case PaintableStroke stroke:

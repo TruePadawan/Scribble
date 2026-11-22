@@ -284,7 +284,10 @@ public partial class MainView : UserControl
             return;
         }
 
-        var selectableElements = _canvasStateService.CanvasElements.OfType<ISelectable>().ToList();
+        var selectableElements = _canvasStateService.CanvasElements
+            .Where(e => _multiUserDrawingService.Room == null ||
+                        e.CreatorConnectionId == _multiUserDrawingService.Room.Me.ParticipantId)
+            .OfType<ISelectable>().ToList();
 
         if (QuickSelectBorderSetMatches(selectableElements))
         {
@@ -415,8 +418,8 @@ public partial class MainView : UserControl
         var textStrokes = _canvasStateService.CanvasElements
             .Where(canvasEl => canvasEl is TextStroke)
             // Only allow editing for text strokes created by the current user
-            .Where(canvasEl => canvasEl.CreatorConnectionId == null ||
-                               canvasEl.CreatorConnectionId == _multiUserDrawingService.ConnectionId)
+            .Where(canvasEl => _multiUserDrawingService.Room == null ||
+                               canvasEl.CreatorConnectionId == _multiUserDrawingService.Room.Me.ParticipantId)
             .Cast<TextStroke>()
             .ToList();
         var borders = new List<Border>();

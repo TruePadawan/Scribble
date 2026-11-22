@@ -45,10 +45,15 @@ public abstract record Event(Guid ActionId)
 {
     // Preserve this identity when an event travels through SignalR or a room snapshot.
     public Guid Id { get; init; } = Guid.NewGuid();
+
+    // Assigned by the server when it accepts this room edit.
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public long? RoomSequence { get; init; }
+
     public DateTime TimeStamp { get; init; } = DateTime.UtcNow;
 
     /// <summary>
-    /// The SignalR ConnectionId of the client that originally produced this event.
+    /// The room participant ID of the client that originally produced this event.
     /// Null for events created in solo mode (no active room).
     /// </summary>
     public string? CreatorConnectionId { get; init; }

@@ -45,7 +45,12 @@ public class MultiUserDrawingService : IMultiUserDrawingService
     public event Action? ConnectionStopped;
     public event Action<Event>? EventReceived;
 
-    public event Action<string>? CanvasStateRequested;
+    // Tokens belong to this service's server endpoint and live only in memory.
+    private readonly Dictionary<string, string> _tokens = [];
+    public Func<Queue<Event>>? CaptureSeed { get; set; }
+    public bool SeededRoom { get; private set; }
+    public event Action<string>? JoinFailed;
+    public event Action? IdentityRenewed;
 
     // Deliver the snapshot and queued drawing updates in one UI callback.
     public event Action<Queue<Event>?, IReadOnlyList<Event>>? RoomCanvasReady;
@@ -93,28 +98,21 @@ public class MultiUserDrawingService : IMultiUserDrawingService
                 else EventReceived?.Invoke(evt);
             }));
 
-        connection.On<string>("RequestCanvasState", target =>
-            ForSessionAsync(connection, () =>
-            {
-                // A new host must install its own room canvas before sharing it.
-                if (_pendingJoin is { } pending) pending.SnapshotRequests.Add(target);
-                else CanvasStateRequested?.Invoke(target);
-            }));
-
-        connection.On<string>("ReceiveCanvasState", serialized => StageSnapshotAsync(connection, serialized));
+        connection.On("SessionReplaced", () => { _ = EndSessionAsync(connection); });
 
         connection.On<MultiUserDrawingClient, List<MultiUserDrawingClient>>("ClientJoined", (client, clients) =>
             ForSessionAsync(connection, () =>
             {
-                UpdateRoster(client, clients, ClientJoinedRoom);
-                if (_pendingJoin is { } pending && client.ConnectionId == _room?.Me.ConnectionId)
-                {
-                    pending.Announced.TrySetResult(clients.Count > 0 && clients[0].ConnectionId == client.ConnectionId);
-                }
+                if (_pendingJoin is { } pending) pending.Roster = clients;
+                else UpdateRoster(client, clients, ClientJoinedRoom);
             }));
 
         connection.On<MultiUserDrawingClient, List<MultiUserDrawingClient>>("ClientLeft", (client, clients) =>
-            ForSessionAsync(connection, () => UpdateRoster(client, clients, ClientLeftRoom)));
+            ForSessionAsync(connection, () =>
+            {
+                if (_pendingJoin is { } pending) pending.Roster = clients;
+                else UpdateRoster(client, clients, ClientLeftRoom);
+            }));
 
         connection.On<Message>("ReceiveMessage", message =>
             ForSessionAsync(connection, () => MessageReceived?.Invoke(message)));
@@ -123,33 +121,13 @@ public class MultiUserDrawingService : IMultiUserDrawingService
             ForSessionAsync(connection, () => MessageSent?.Invoke(id)));
     }
 
-    // Deserialize off the UI thread and stage the snapshot for this join only.
-    private Task StageSnapshotAsync(HubConnection connection, string serialized)
-    {
-        Queue<Event>? snapshot;
-        try
-        {
-            snapshot = JsonSerializer.Deserialize<Queue<Event>>(serialized);
-        }
-        catch (JsonException)
-        {
-            snapshot = null;
-        }
-
-        return ForSessionAsync(connection, () =>
-        {
-            if (_pendingJoin is not { } pending) return;
-            pending.SnapshotReceived = true;
-            pending.Snapshot = snapshot;
-        });
-    }
-
     // Replace the room's member list and notify listeners of the join or leave.
     private void UpdateRoster(MultiUserDrawingClient client, List<MultiUserDrawingClient> clients,
         Action<MultiUserDrawingClient, List<MultiUserDrawingClient>>? notify)
     {
         if (_room is not { } room) return;
-        _room = new MultiUserDrawingRoom(room.RoomId, room.Me.ConnectionId, room.Me.Name) { Clients = clients };
+        _room = new MultiUserDrawingRoom(room.RoomId, room.Me.ConnectionId, room.Me.Name, room.Me.ParticipantId)
+            { Clients = clients };
         notify?.Invoke(client, clients);
         RosterChanged?.Invoke(_room);
     }
@@ -178,7 +156,6 @@ public class MultiUserDrawingService : IMultiUserDrawingService
 
             if (pending != null)
             {
-                pending.Announced.TrySetCanceled();
                 JoiningChanged?.Invoke();
             }
         });
@@ -203,49 +180,56 @@ public class MultiUserDrawingService : IMultiUserDrawingService
         {
             await ForSessionAsync(connection, () => JoiningChanged?.Invoke());
             await connection.StartAsync();
+            var needsSeed = await connection.InvokeAsync<bool>("NeedsSeed", roomId);
+            string? seed = null;
+            string? token = null;
+            await ForSessionAsync(connection, () =>
+            {
+                _tokens.TryGetValue(roomId, out token);
+                if (needsSeed) seed = JsonSerializer.Serialize(CaptureSeed?.Invoke() ?? new Queue<Event>());
+            });
+            if (seed != null && System.Text.Encoding.UTF8.GetByteCount(seed) > RoomProtocol.SnapshotBytes)
+                throw new InvalidOperationException("Room history exceeds 8 MiB. Use a smaller board.");
+
+            var admission = await connection.InvokeAsync<RoomAdmission>("JoinRoom", roomId, displayName, token, seed);
+            var snapshot = JsonSerializer.Deserialize<Queue<Event>>(admission.Snapshot)
+                           ?? throw new InvalidOperationException("Invalid room snapshot.");
+
             await ForSessionAsync(connection, () =>
             {
                 var id = connection.ConnectionId ?? throw new InvalidOperationException("Room connection closed.");
-                _room = new MultiUserDrawingRoom(roomId, id, displayName);
+                var newIdentity = token != null && token != admission.Token;
+                _tokens[roomId] = admission.Token;
+                _room = new MultiUserDrawingRoom(roomId, id, displayName, admission.ParticipantId)
+                    { Clients = pending.Roster };
+                SeededRoom = admission.Seeded;
                 ConnectionStarted?.Invoke();
+                RoomCanvasReady?.Invoke(snapshot, pending.Events);
+                _pendingJoin = null;
                 RoomChanged?.Invoke(_room);
+                JoiningChanged?.Invoke();
+                if (newIdentity) IdentityRenewed?.Invoke();
             });
-            await connection.InvokeAsync("JoinRoom", roomId, displayName);
-            // The hub invocation can finish before its incoming notifications are dispatched.
-            var firstMember = await pending.Announced.Task.WaitAsync(TimeSpan.FromSeconds(5));
-            await ForSessionAsync(connection, () => CompleteJoin(pending, firstMember));
         }
         catch (Exception e)
         {
-            Console.WriteLine($"Failed to join room - {e.Message}");
+            await ForSessionAsync(connection, () => JoinFailed?.Invoke(e.Message));
             await EndSessionAsync(connection);
         }
-    }
-
-    // Install the room canvas only after the server confirms the join.
-    private void CompleteJoin(PendingJoin pending, bool firstMember)
-    {
-        if (pending.Snapshot == null && (pending.SnapshotReceived || !firstMember))
-        {
-            throw new InvalidOperationException("The room joined without a valid canvas snapshot.");
-        }
-
-        RoomCanvasReady?.Invoke(pending.Snapshot, pending.Events);
-        _pendingJoin = null;
-        JoiningChanged?.Invoke();
-        foreach (var target in pending.SnapshotRequests) CanvasStateRequested?.Invoke(target);
     }
 
     public async Task LeaveRoomAsync(string displayName)
     {
         HubConnection connection;
         MultiUserDrawingRoom? joinedRoom;
+        Task queuedEdits;
         lock (_gate)
         {
             if (_connection is null || _leaving) return;
             _leaving = true;
             connection = _connection;
-            // Closing the transport cancels a join still waiting on the host.
+            // Drain edits queued before Leave. Closing a pending join simply cancels admission.
+            queuedEdits = _lastSend;
             joinedRoom = IsJoining ? null : _room;
         }
 
@@ -253,6 +237,7 @@ public class MultiUserDrawingService : IMultiUserDrawingService
         {
             if (joinedRoom != null && connection.State == HubConnectionState.Connected)
             {
+                await queuedEdits.WaitAsync(TimeSpan.FromSeconds(5));
                 await connection.InvokeAsync("LeaveRoom", joinedRoom.RoomId, displayName);
             }
         }
@@ -270,7 +255,7 @@ public class MultiUserDrawingService : IMultiUserDrawingService
     {
         lock (_gate)
         {
-            if (_connection is not { } connection || _room is not { } room || IsJoining)
+            if (_connection is not { } connection || _room is not { } room || IsJoining || _leaving)
                 return Task.CompletedTask;
             _lastSend = SendInOrderAsync(_lastSend, connection, room.RoomId, evt);
             return _lastSend;
@@ -283,15 +268,20 @@ public class MultiUserDrawingService : IMultiUserDrawingService
         await previous.ConfigureAwait(false);
         try
         {
-            Task send;
+            Task<long?> send;
             lock (_gate)
             {
                 if (_connection != connection || _deliveryFailed) return;
-                if (_leaving) throw new InvalidOperationException("Room session is closing.");
-                send = connection.InvokeAsync("SendEvent", roomId, edit);
+                send = connection.InvokeAsync<long?>("SendEvent", roomId, edit);
             }
 
-            await send.ConfigureAwait(false);
+            var confirmed = await send.ConfigureAwait(false);
+            if (confirmed != null)
+                await ForSessionAsync(connection, () =>
+                    EventReceived?.Invoke(edit with
+                    {
+                        RoomSequence = confirmed, CreatorConnectionId = _room!.Me.ParticipantId
+                    }));
         }
         catch (Exception exception)
         {
@@ -308,21 +298,7 @@ public class MultiUserDrawingService : IMultiUserDrawingService
     private sealed class PendingJoin
     {
         public List<Event> Events { get; } = [];
-        public List<string> SnapshotRequests { get; } = [];
-        public Queue<Event>? Snapshot { get; set; }
-
-        public bool SnapshotReceived { get; set; }
-
-        // The client's own roster announcement follows any host snapshot on the wire.
-        public TaskCompletionSource<bool> Announced { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
-    }
-
-    public Task SendCanvasStateToClientAsync(string targetId, Queue<Event> events)
-    {
-        var connection = _connection;
-        return connection?.State == HubConnectionState.Connected
-            ? connection.InvokeAsync("SendCanvasStateToClient", targetId, JsonSerializer.Serialize(events))
-            : Task.CompletedTask;
+        public List<MultiUserDrawingClient> Roster { get; set; } = [];
     }
 
     public Task BroadcastMessageAsync(MessageDto message)

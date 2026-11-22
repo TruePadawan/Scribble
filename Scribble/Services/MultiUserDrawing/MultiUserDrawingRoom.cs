@@ -9,10 +9,10 @@ namespace Scribble.Services.MultiUserDrawing;
 /// <param name="roomId">The unique ID of the room</param>
 /// <param name="connectionId">The client's connection ID from SignalR</param>
 /// <param name="displayName">The client's display name</param>
-public class MultiUserDrawingRoom(string roomId, string connectionId, string displayName)
+public class MultiUserDrawingRoom(string roomId, string connectionId, string displayName, string? participantId = null)
 {
     public string RoomId { get; } = roomId;
-    public MultiUserDrawingClient Me { get; } = new(connectionId, displayName);
+    public MultiUserDrawingClient Me { get; } = new(connectionId, displayName) { ParticipantId = participantId ?? connectionId };
     public bool IsHost => Clients.Count >= 1 && Clients[0].ConnectionId == Me.ConnectionId;
     public List<MultiUserDrawingClient> Clients { get; init; } = [];
 }

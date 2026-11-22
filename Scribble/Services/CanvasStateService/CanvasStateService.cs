@@ -1,6 +1,6 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
+using System.Linq;
 using Scribble.Services.MultiUserDrawing;
 using Scribble.Shared.Lib;
 using Scribble.Shared.Lib.CanvasElements;
@@ -11,6 +11,7 @@ namespace Scribble.Services.CanvasStateService;
 
 public class CanvasStateService : ICanvasStateService
 {
+    private RoomOwnership? _owners;
     private readonly CanvasHistory _history;
     private readonly IMultiUserDrawingService _multiUserDrawingService;
     internal Guid? LastReplayCheckpointId => _history.LastReplayCheckpointId;
@@ -52,30 +53,60 @@ public class CanvasStateService : ICanvasStateService
         _history.UndoRedoStateChanged += () => UndoRedoStateChanged?.Invoke();
         _multiUserDrawingService = multiUserDrawingService;
 
-        _multiUserDrawingService.EventReceived += edit => _history.ApplyIncoming(edit);
-        _multiUserDrawingService.RoomCanvasReady += _history.InstallConfirmedHistory;
+        _multiUserDrawingService.CaptureSeed = CaptureSeed;
+        _multiUserDrawingService.EventReceived += edit =>
+        {
+            if (edit.CreatorConnectionId is { } owner) _owners?.Accept(edit, owner);
+            _history.ApplyIncoming(edit);
+        };
+        _multiUserDrawingService.RoomCanvasReady += (snapshot, buffered) =>
+        {
+            _owners = new RoomOwnership();
+            if (snapshot != null)
+            {
+                foreach (var edit in snapshot)
+                {
+                    if (edit.CreatorConnectionId is { } owner)
+                    {
+                        _owners.Accept(edit, owner, true);
+                    }
+                }
+            }
+
+            foreach (var edit in buffered)
+            {
+                if (edit.CreatorConnectionId is { } owner)
+                {
+                    _owners.Accept(edit, owner);
+                }
+            }
+
+            _history.InstallConfirmedHistory(snapshot, buffered,
+                _multiUserDrawingService.SeededRoom && !_seedIsBaseline);
+        };
         _multiUserDrawingService.JoiningChanged += () => UndoRedoStateChanged?.Invoke();
-        _multiUserDrawingService.CanvasStateRequested += async (clientId) =>
-        {
-            try
-            {
-                // Network notifications arrive on the UI thread, which owns the event log.
-                await _multiUserDrawingService.SendCanvasStateToClientAsync(clientId, CanvasEvents);
-            }
-            catch (Exception exception)
-            {
-                Trace.TraceError("Could not send the room canvas. {0}", exception);
-            }
-        };
         _multiUserDrawingService.ConnectionStarted += () =>
+            _history.CreatorId =
+                _multiUserDrawingService.Room?.Me.ParticipantId ?? _multiUserDrawingService.ConnectionId;
+        _multiUserDrawingService.ConnectionStopped += () =>
         {
-            _history.CreatorId = _multiUserDrawingService.Room?.Me.ConnectionId ??
-                                 _multiUserDrawingService.ConnectionId;
+            _owners = null;
+            _history.CreatorId = null;
         };
+        _history.CreatorId = multiUserDrawingService.Room?.Me.ParticipantId ?? multiUserDrawingService.ConnectionId;
+    }
 
-        _multiUserDrawingService.ConnectionStopped += () => _history.CreatorId = null;
+    private bool _seedIsBaseline;
 
-        _history.CreatorId = multiUserDrawingService.Room?.Me.ConnectionId ?? multiUserDrawingService.ConnectionId;
+    // Multiple previous authors can have overlapping selections. Preserve the visible board
+    // when bringing it into a fresh room instead of reinterpreting those gestures as one owner.
+    private Queue<Event> CaptureSeed()
+    {
+        var history = CanvasEvents;
+        _seedIsBaseline = history.Select(e => e.CreatorConnectionId).Distinct().Skip(1).Any();
+        return _seedIsBaseline
+            ? new Queue<Event>([new LoadCanvasEvent(Guid.NewGuid(), [.. CanvasElements])])
+            : history;
     }
 
     public void Undo()
@@ -102,7 +133,7 @@ public class CanvasStateService : ICanvasStateService
 
     public void LoadCanvas(List<CanvasElement> elements)
     {
-        if (_multiUserDrawingService.IsJoining) return;
+        if (IsRoomActive) return;
 
         _history.ResetHistory();
         ApplyEvent(new LoadCanvasEvent(Guid.NewGuid(), elements), isLocalEvent: false);
@@ -119,8 +150,11 @@ public class CanvasStateService : ICanvasStateService
         // Remote events arrive pre-stamped by their originating client.
         if (isLocalEvent && _multiUserDrawingService.Room != null)
         {
-            @event = @event with { CreatorConnectionId = _multiUserDrawingService.Room.Me.ConnectionId };
+            @event = @event with { CreatorConnectionId = _multiUserDrawingService.Room.Me.ParticipantId };
         }
+
+        if (isLocalEvent && _owners != null &&
+            !_owners.Accept(@event, _multiUserDrawingService.Room!.Me.ParticipantId)) return;
 
         var accepted = isLocalEvent ? _history.ApplyLocal(@event) : _history.ApplyIncoming(@event);
         if (accepted && isLocalEvent && _multiUserDrawingService.Room != null)

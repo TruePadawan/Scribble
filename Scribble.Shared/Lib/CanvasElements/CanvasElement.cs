@@ -17,7 +17,7 @@ public abstract class CanvasElement
     public int LayerIndex { get; set; }
 
     /// <summary>
-    /// The SignalR ConnectionId of the client that created this element.
+    /// The room participant ID of the client that created this element.
     /// Null when the element was created in solo mode or loaded from a saved file.
     /// </summary>
     public string? CreatorConnectionId { get; set; }

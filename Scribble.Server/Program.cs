@@ -2,10 +2,13 @@ using Scribble.Server.Hubs;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddSingleton<RoomRegistry>();
+
 builder.Services.AddSignalR(options =>
 {
     options.EnableDetailedErrors = true;
-    options.MaximumReceiveMessageSize = null;
+    options.MaximumReceiveMessageSize = Scribble.Shared.Lib.RoomProtocol.EnvelopeBytes;
 });
 
 builder.Services.AddCors(options =>

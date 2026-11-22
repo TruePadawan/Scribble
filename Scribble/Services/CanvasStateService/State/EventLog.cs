@@ -8,19 +8,55 @@ namespace Scribble.Services.CanvasStateService.State;
 public class EventLog
 {
     private readonly List<Event> _events = [];
-    private readonly HashSet<Guid> _eventIds = [];
+    private readonly Dictionary<Guid, int> _positions = [];
+    private int _confirmed;
     private readonly HashSet<Guid> _hiddenActionIds = [];
 
     public IReadOnlyList<Event> Events => _events;
-    public HashSet<Guid> HiddenActionIds => [.._hiddenActionIds];
+    public HashSet<Guid> HiddenActionIds => [.. _hiddenActionIds];
 
     // Ignore events already present in the host snapshot or live history.
     public bool Append(Event ev)
     {
-        if (!_eventIds.Add(ev.Id)) return false;
+        if (!_positions.TryAdd(ev.Id, _events.Count)) return false;
+        if (ev.RoomSequence.HasValue) _confirmed++;
 
         _events.Add(ev);
         ProcessEventVisibility(ev);
+        return true;
+    }
+
+    // Insert confirmations in room order, ahead of any optimistic local edits.
+    public bool Confirm(Event edit, out bool rebuild)
+    {
+        var position = _events.BinarySearch(0, _confirmed, edit,
+            Comparer<Event>.Create((left, right) => Nullable.Compare(left.RoomSequence, right.RoomSequence)));
+        rebuild = false;
+        if (position >= 0) return false;
+        position = ~position;
+        if (_positions.TryGetValue(edit.Id, out var previous))
+        {
+            if (previous == position)
+            {
+                _events[position] = edit;
+                _confirmed++;
+                return false;
+            }
+
+            _events.RemoveAt(previous);
+        }
+
+        rebuild = position < _events.Count;
+        _events.Insert(position, edit);
+        _confirmed++;
+        for (var i = position; i < _events.Count; i++) _positions[_events[i].Id] = i;
+        if (rebuild)
+        {
+            _hiddenActionIds.Clear();
+            foreach (var ev in _events) ProcessEventVisibility(ev);
+        }
+        else ProcessEventVisibility(edit);
+
         return true;
     }
 

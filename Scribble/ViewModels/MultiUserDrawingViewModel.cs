@@ -83,6 +83,8 @@ public partial class MultiUserDrawingViewModel : ViewModelBase, IDisposable
         _multiUserDrawingService.JoiningChanged += RefreshJoining;
         _multiUserDrawingService.RoomChanged += RefreshRoom;
         _multiUserDrawingService.RosterChanged += RefreshRoom;
+        _multiUserDrawingService.IdentityRenewed += ShowNewIdentity;
+        _multiUserDrawingService.JoinFailed += ShowJoinFailure;
         _multiUserDrawingService.DrawingSyncFailed += MarkDrawingSyncFailed;
         _multiUserDrawingService.MessageReceived += ReceiveMessage;
         _multiUserDrawingService.MessageSent += ConfirmMessage;
@@ -96,6 +98,8 @@ public partial class MultiUserDrawingViewModel : ViewModelBase, IDisposable
         _multiUserDrawingService.JoiningChanged -= RefreshJoining;
         _multiUserDrawingService.RoomChanged -= RefreshRoom;
         _multiUserDrawingService.RosterChanged -= RefreshRoom;
+        _multiUserDrawingService.IdentityRenewed -= ShowNewIdentity;
+        _multiUserDrawingService.JoinFailed -= ShowJoinFailure;
         _multiUserDrawingService.DrawingSyncFailed -= MarkDrawingSyncFailed;
         _multiUserDrawingService.MessageReceived -= ReceiveMessage;
         _multiUserDrawingService.MessageSent -= ConfirmMessage;
@@ -119,6 +123,13 @@ public partial class MultiUserDrawingViewModel : ViewModelBase, IDisposable
     }
 
     // Show the delivery warning while keeping all locally applied edits.
+    // Explain why previously owned strokes may no longer be editable.
+    private void ShowNewIdentity() => _ = _dialogService.ShowInfoAsync("Joined as a new participant",
+        "The previous room or reconnect window ended, so you have a new drawing identity.");
+
+    // Surface room admission failures while the solo board is still intact.
+    private void ShowJoinFailure(string reason) => _ = _dialogService.ShowInfoAsync("Could not join room", reason);
+
     private void MarkDrawingSyncFailed() => DrawingSyncFailed = true;
 
     // Append a received chat message to the conversation.

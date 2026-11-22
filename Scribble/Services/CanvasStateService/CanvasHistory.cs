@@ -78,9 +78,11 @@ internal sealed class CanvasHistory(int checkpointInterval = 100)
     public List<CanvasElement> GetSelectedElements()
     {
         if (ActiveSelectionBoundId == null) return [];
-        return CanvasElements
-            .Where(e => SelectedElementIds.Contains(e.Id))
-            .ToList();
+        return
+        [
+            .. CanvasElements
+                .Where(e => SelectedElementIds.Contains(e.Id))
+        ];
     }
 
     // Discard the previous document’s log, checkpoints and undo stacks.
@@ -101,39 +103,82 @@ internal sealed class CanvasHistory(int checkpointInterval = 100)
     public bool ApplyIncoming(Event edit) => ProcessEvent(edit, false);
 
     // Install the confirmed room history and merge updates received during the join.
-    public void InstallConfirmedHistory(Queue<Event>? snapshot, IReadOnlyList<Event> bufferedEvents)
+    public void InstallConfirmedHistory(Queue<Event>? snapshot, IReadOnlyList<Event> bufferedEvents,
+        bool keepUndo = false)
     {
+        var previousLog = _eventLog;
+        var previousCheckpoints = _checkpointManager;
+        var previousBoard = CurrentState;
+        var previousCheckpointId = LastReplayCheckpointId;
         if (snapshot != null)
         {
-            ResetHistory();
-            foreach (var ev in snapshot) _eventLog.Append(ev);
+            _eventLog = new EventLog();
+            _checkpointManager = new CheckpointManager();
+            foreach (var edit in snapshot) _eventLog.Append(edit);
         }
 
-        // The first member keeps the existing canvas and its local undo history.
         var changed = snapshot != null;
-        foreach (var ev in bufferedEvents)
+        foreach (var edit in bufferedEvents.OrderBy(e => e.RoomSequence))
         {
-            changed |= _eventLog.Append(ev);
+            changed |= _eventLog.Append(edit);
         }
 
-        if (changed)
-        {
-            var previous = CurrentState;
-            ReplayEvents();
-            if (snapshot != null || !CanvasContent.Equals(previous.ElementsWithLayers, CanvasElements))
-            {
-                ContentChanged?.Invoke();
-            }
+        if (!changed) return;
 
-            CanvasInvalidated?.Invoke();
-            SelectionInvalidated?.Invoke(SelectedElementIds, true);
+        try
+        {
+            ReplayEvents();
+        }
+        catch when (snapshot != null)
+        {
+            // A snapshot that cannot be replayed must leave the solo board and undo history intact.
+            _eventLog = previousLog;
+            _checkpointManager = previousCheckpoints;
+            CurrentState = previousBoard;
+            LastReplayCheckpointId = previousCheckpointId;
+            throw;
+        }
+
+        if (snapshot != null && !keepUndo)
+        {
+            _undoStack.Clear();
+            _redoStack.Clear();
+            if (CreatorId != null) RestoreUndoHistory();
+        }
+
+        if (snapshot != null || !CanvasContent.Equals(previousBoard.ElementsWithLayers, CanvasElements))
+        {
+            ContentChanged?.Invoke();
+        }
+
+        CanvasInvalidated?.Invoke();
+        SelectionInvalidated?.Invoke(SelectedElementIds, true);
+    }
+
+    // Reconnects recover only this participant's undoable actions and visibility changes.
+    private void RestoreUndoHistory()
+    {
+        foreach (var edit in _eventLog.Events.Where(e => e.CreatorConnectionId == CreatorId))
+        {
+            switch (edit)
+            {
+                case UndoEvent undo when _undoStack.TryPeek(out var last) && last == undo.TargetActionId:
+                    _redoStack.Push(_undoStack.Pop());
+                    break;
+                case RedoEvent redo when _redoStack.TryPeek(out var next) && next == redo.TargetActionId:
+                    _undoStack.Push(_redoStack.Pop());
+                    break;
+                case ITerminalEvent when !CurrentState.StaleActionIds.Contains(edit.ActionId):
+                    _undoStack.Push(edit.ActionId);
+                    _redoStack.Clear();
+                    break;
+            }
         }
     }
 
     /// <summary>
     /// Pushes an action unto the undo stack
     /// </summary>
-    /// <param name="actionId"></param>
     private void TrackAction(Guid actionId)
     {
         _undoStack.Push(actionId);
@@ -145,7 +190,20 @@ internal sealed class CanvasHistory(int checkpointInterval = 100)
     // Apply each ID once and publish the resulting content and selection changes.
     private bool ProcessEvent(Event @event, bool isLocalEvent)
     {
-        if (!_eventLog.Append(@event)) return false;
+        if (!isLocalEvent && @event.RoomSequence.HasValue)
+        {
+            if (!_eventLog.Confirm(@event, out var rebuild)) return false;
+            if (rebuild)
+            {
+                _checkpointManager = new CheckpointManager();
+                ReplayEvents();
+                ContentChanged?.Invoke();
+                CanvasInvalidated?.Invoke();
+                SelectionInvalidated?.Invoke(SelectedElementIds, true);
+                return true;
+            }
+        }
+        else if (!_eventLog.Append(@event)) return false;
 
         var previousSelection = SelectedElementIds.ToArray();
         var selectionEvent = @event is CreateSelectionBoundEvent or IncreaseSelectionBoundEvent

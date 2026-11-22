@@ -18,7 +18,11 @@ public interface IMultiUserDrawingService
     event Action? ConnectionStarted;
     event Action? ConnectionStopped;
     event Action<Event>? EventReceived;
-    event Action<string>? CanvasStateRequested;
+    // Capture the solo history only when creating a fresh room.
+    Func<Queue<Event>>? CaptureSeed { get; set; }
+    event Action<string>? JoinFailed;
+    event Action? IdentityRenewed;
+    bool SeededRoom { get; }
     // Commit the optional host snapshot and buffered live events together.
     event Action<Queue<Event>?, IReadOnlyList<Event>>? RoomCanvasReady;
     // Notify the desktop when editing needs to pause or resume.
@@ -38,6 +42,5 @@ public interface IMultiUserDrawingService
     Task JoinRoomAsync(string roomId, string displayName);
     Task LeaveRoomAsync(string displayName);
     Task BroadcastEventAsync(Event evt);
-    Task SendCanvasStateToClientAsync(string targetId, Queue<Event> events);
     Task BroadcastMessageAsync(MessageDto message);
 }

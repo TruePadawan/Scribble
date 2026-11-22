@@ -155,7 +155,9 @@ internal static class SelectionReplayHandler
             CreatorConnectionId = ev.CreatorConnectionId
         };
 
-        var validIds = ctx.ElementsWithLayers.Select(e => e.Id).ToHashSet();
+        var validIds = ctx.ElementsWithLayers
+            .Where(e => ev.CreatorConnectionId == null || e.CreatorConnectionId == ev.CreatorConnectionId)
+            .Select(e => e.Id).ToHashSet();
 
         foreach (var id in ev.ElementIds)
         {
@@ -173,6 +175,7 @@ internal static class SelectionReplayHandler
                 ctx.ActiveSelectionBoundId = null;
                 ctx.SelectedElementIds.Clear();
             }
+
             return true;
         }
 
