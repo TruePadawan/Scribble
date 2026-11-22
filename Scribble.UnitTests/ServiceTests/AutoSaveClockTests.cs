@@ -131,22 +131,26 @@ public class AutoSaveClockTests
 }
 
 /// <summary>Moves monotonic time forward and fires timers whose deadlines have arrived.</summary>
-internal sealed class ManualAutoSaveClock : IAutoSaveClock
+internal sealed class ManualAutoSaveClock : TimeProvider
 {
     private readonly object _gate = new();
     private readonly List<ManualAutoSaveTimer> _timers = [];
     private long _now;
 
     /// <summary>Returns the test clock's current timestamp in milliseconds.</summary>
-    public long GetTimestampMilliseconds()
+    public override long TimestampFrequency => 1000;
+
+    // Read the current manual timestamp.
+    public override long GetTimestamp()
     {
         lock (_gate) return _now;
     }
 
     /// <summary>Creates an inactive timer controlled by this clock.</summary>
-    public IAutoSaveTimer CreateTimer(Action callback)
+    public override ITimer CreateTimer(TimerCallback callback, object? state, TimeSpan dueTime, TimeSpan period)
     {
-        var timer = new ManualAutoSaveTimer(this, callback);
+        var timer = new ManualAutoSaveTimer(this, () => callback(state));
+        timer.Change(dueTime, period);
         lock (_gate) _timers.Add(timer);
         return timer;
     }
@@ -191,13 +195,25 @@ internal sealed class ManualAutoSaveClock : IAutoSaveClock
     }
 
     /// <summary>Represents one timer owned by a manual clock.</summary>
-    private sealed class ManualAutoSaveTimer(ManualAutoSaveClock clock, Action callback) : IAutoSaveTimer
+    private sealed class ManualAutoSaveTimer(ManualAutoSaveClock clock, Action callback) : ITimer
     {
         public Action Callback { get; } = callback;
         public long? DueAt { get; set; }
 
         /// <summary>Updates this timer's due timestamp.</summary>
-        public void Change(TimeSpan dueTime) => clock.Change(this, dueTime);
+        public bool Change(TimeSpan dueTime, TimeSpan period)
+        {
+            if (period != Timeout.InfiniteTimeSpan) throw new NotSupportedException();
+            clock.Change(this, dueTime);
+            return true;
+        }
+
+        // Manual callbacks require no asynchronous teardown.
+        public ValueTask DisposeAsync()
+        {
+            Dispose();
+            return ValueTask.CompletedTask;
+        }
 
         /// <summary>Removes this timer from its clock.</summary>
         public void Dispose() => clock.Remove(this);
