@@ -138,6 +138,8 @@ internal sealed class DocumentCodec
     /// <summary>Creates serializer settings shared by the document writer and reader.</summary>
     private static JsonSerializerOptions CreateSerializerOptions(bool writeIndented) => new()
     {
+        // Reject null required stroke data before handing the document to the canvas.
+        RespectNullableAnnotations = true,
         WriteIndented = writeIndented,
         Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) }
     };
