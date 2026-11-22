@@ -2,7 +2,9 @@ using SkiaSharp;
 
 namespace Scribble.Shared.Lib.Events;
 
-// IMAGE TOOL
+/// <summary>
+/// IMAGE TOOL
+/// </summary>
 public record AddImageEvent(
     Guid ActionId,
     Guid ImageId,

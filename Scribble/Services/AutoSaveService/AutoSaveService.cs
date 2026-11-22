@@ -86,7 +86,9 @@ public class AutoSaveService : IDisposable
         _multiUserDrawingService.RoomChanged += OnRoomChanged;
     }
 
-    // Load startup recovery while autosave is paused.
+    /// <summary>
+    /// Load startup recovery while autosave is paused.
+    /// </summary>
     public async Task RestoreAsync()
     {
         // Loading the file raises the same change events as editing the canvas.
@@ -116,7 +118,9 @@ public class AutoSaveService : IDisposable
         }
     }
 
-    // Track edits in every session and schedule recovery only during solo editing.
+    /// <summary>
+    /// Track edits in every session and schedule recovery only during solo editing.
+    /// </summary>
     private void OnDocumentChanged()
     {
         lock (_gate)
@@ -132,7 +136,9 @@ public class AutoSaveService : IDisposable
         }
     }
 
-    // Arm the timer when there is work and the writer is idle.
+    /// <summary>
+    /// Arm the timer when there is work and the writer is idle.
+    /// </summary>
     private void ScheduleWrite()
     {
         if (_paused || _writeInProgress || _disposed || _firstPendingAt is null) return;
@@ -141,7 +147,9 @@ public class AutoSaveService : IDisposable
         _timer.Change(delay > TimeSpan.Zero ? delay : TimeSpan.Zero, Timeout.InfiniteTimeSpan);
     }
 
-    // Use the earlier of the quiet period and the maximum wait.
+    /// <summary>
+    /// Use the earlier of the quiet period and the maximum wait.
+    /// </summary>
     private TimeSpan GetDelay()
     {
         var now = _clock.GetTimestamp();
@@ -150,7 +158,9 @@ public class AutoSaveService : IDisposable
         return quiet < maximum ? quiet : maximum;
     }
 
-    // Write one snapshot and publish it if its revision is still needed.
+    /// <summary>
+    /// Write one snapshot and publish it if its revision is still needed.
+    /// </summary>
     private async Task SavePendingAsync()
     {
         long session;
@@ -260,7 +270,9 @@ public class AutoSaveService : IDisposable
         }
     }
 
-    // Save a manual snapshot and clear recovery data covered by that revision.
+    /// <summary>
+    /// Save a manual snapshot and clear recovery data covered by that revision.
+    /// </summary>
     public async Task SaveDocumentAsync(Func<Task<Stream>> openStream)
     {
         DocumentSnapshot snapshot;
@@ -310,13 +322,17 @@ public class AutoSaveService : IDisposable
         }
     }
 
-    // Pause local recovery writes when entering a live room.
+    /// <summary>
+    /// Pause local recovery writes when entering a live room.
+    /// </summary>
     private void OnRoomChanged(MultiUserDrawingRoom? room)
     {
         RefreshRoomPhase();
     }
 
-    // Suspend publication during a join and resume uncovered edits on return to solo.
+    /// <summary>
+    /// Suspend publication during a join and resume uncovered edits on return to solo.
+    /// </summary>
     private void RefreshRoomPhase()
     {
         lock (_gate)
@@ -335,7 +351,9 @@ public class AutoSaveService : IDisposable
         }
     }
 
-    // Replace the manual baseline and invalidate pending writes from the old document.
+    /// <summary>
+    /// Replace the manual baseline and invalidate pending writes from the old document.
+    /// </summary>
     internal void OnDocumentOpened()
     {
         lock (_gate)
@@ -356,7 +374,9 @@ public class AutoSaveService : IDisposable
         }
     }
 
-    // Log the failure and display it on the UI thread.
+    /// <summary>
+    /// Log the failure and display it on the UI thread.
+    /// </summary>
     private void ReportError(string title, Exception exception)
     {
         Trace.TraceError("{0}. {1}", title, exception);
@@ -375,7 +395,9 @@ public class AutoSaveService : IDisposable
         });
     }
 
-    // Stop scheduling writes and unsubscribe from canvas and room events.
+    /// <summary>
+    /// Stop scheduling writes and unsubscribe from canvas and room events.
+    /// </summary>
     public void Dispose()
     {
         lock (_gate)

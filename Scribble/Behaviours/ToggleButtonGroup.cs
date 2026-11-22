@@ -22,7 +22,9 @@ public class ToggleButtonGroup
         GroupNameProperty.Changed.AddClassHandler<ToggleButton>(OnGroupNameChanged);
     }
 
-    // Event subscription manager
+    /// <summary>
+    /// Event subscription manager
+    /// </summary>
     private static void OnGroupNameChanged(ToggleButton toggleButton, AvaloniaPropertyChangedEventArgs args)
     {
         toggleButton.IsCheckedChanged -= ToggleButton_Checked;
@@ -32,7 +34,9 @@ public class ToggleButtonGroup
         }
     }
 
-    // Uncheck all other ToggleButton in the group
+    /// <summary>
+    /// Uncheck all other ToggleButton in the group
+    /// </summary>
     private static void ToggleButton_Checked(object? sender, RoutedEventArgs e)
     {
         if (sender is ToggleButton checkedButton)

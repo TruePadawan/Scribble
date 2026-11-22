@@ -387,7 +387,9 @@ public class AutoSaveServiceTests : IDisposable
         File.ReadAllText(backup).Should().Be("invalid document");
     }
 
-    // Wait for the published recovery to contain the expected content.
+    /// <summary>
+    /// Wait for the published recovery to contain the expected content.
+    /// </summary>
     private Task WaitForRecoveryAsync(string content)
     {
         return WaitUntilAsync(() =>
@@ -401,7 +403,9 @@ public class AutoSaveServiceTests : IDisposable
         });
     }
 
-    // Bound the wait for a background file operation.
+    /// <summary>
+    /// Bound the wait for a background file operation.
+    /// </summary>
     private static async Task WaitUntilAsync(Func<bool> condition)
     {
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);

@@ -15,7 +15,9 @@ namespace Scribble.Services.CanvasStateService.Handlers;
 /// </summary>
 internal static class EraserReplayHandler
 {
-    // Begin an eraser gesture and hit-test its starting point.
+    /// <summary>
+    /// Begin an eraser gesture and hit-test its starting point.
+    /// </summary>
     public static void Apply(StartEraseStrokeEvent ev, CanvasState ctx)
     {
         var eraserPath = new SKPathBuilder();
@@ -35,7 +37,9 @@ internal static class EraserReplayHandler
         ctx.EraserStrokes[ev.StrokeId] = newEraserStroke;
     }
 
-    // Remove the hit elements and discard an empty gesture.
+    /// <summary>
+    /// Remove the hit elements and discard an empty gesture.
+    /// </summary>
     public static void Apply(TriggerEraseEvent ev, CanvasState ctx)
     {
         if (ctx.EraserStrokes.TryGetValue(ev.StrokeId, out var currentEraserStroke))
@@ -57,7 +61,9 @@ internal static class EraserReplayHandler
         }
     }
 
-    // Track targets along the next eraser segment.
+    /// <summary>
+    /// Track targets along the next eraser segment.
+    /// </summary>
     public static bool Apply(EraseStrokeLineToEvent ev, CanvasState ctx)
     {
         if (ctx.EraserStrokes.TryGetValue(ev.StrokeId, out var currentEraserStroke))
@@ -144,7 +150,9 @@ internal static class EraserReplayHandler
         }
     }
 
-    // Delete the supplied elements and clear their selection.
+    /// <summary>
+    /// Delete the supplied elements and clear their selection.
+    /// </summary>
     public static void Apply(EraseByIdsEvent @event, CanvasState ctx)
     {
         if (@event.ElementIds.Count == 0)

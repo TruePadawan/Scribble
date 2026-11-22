@@ -73,7 +73,9 @@ public class MultiUserDrawingService : IMultiUserDrawingService
         _dispatcher = dispatcher;
     }
 
-    // Recheck the session when queued UI work actually runs.
+    /// <summary>
+    /// Recheck the session when queued UI work actually runs.
+    /// </summary>
     internal async Task ForSessionAsync(HubConnection connection, Action action)
     {
         void Run()
@@ -121,7 +123,9 @@ public class MultiUserDrawingService : IMultiUserDrawingService
             ForSessionAsync(connection, () => MessageSent?.Invoke(id)));
     }
 
-    // Replace the room's member list and notify listeners of the join or leave.
+    /// <summary>
+    /// Replace the room's member list and notify listeners of the join or leave.
+    /// </summary>
     private void UpdateRoster(MultiUserDrawingClient client, List<MultiUserDrawingClient> clients,
         Action<MultiUserDrawingClient, List<MultiUserDrawingClient>>? notify)
     {
@@ -132,7 +136,9 @@ public class MultiUserDrawingService : IMultiUserDrawingService
         RosterChanged?.Invoke(_room);
     }
 
-    // Close, failed join, and explicit leave can all finish the same session.
+    /// <summary>
+    /// Close, failed join, and explicit leave can all finish the same session.
+    /// </summary>
     private async Task EndSessionAsync(HubConnection connection)
     {
         var ownsCleanup = false;
@@ -262,7 +268,9 @@ public class MultiUserDrawingService : IMultiUserDrawingService
         }
     }
 
-    // Serialize drawing sends and retire queued edits with the connection that owns them.
+    /// <summary>
+    /// Serialize drawing sends and retire queued edits with the connection that owns them.
+    /// </summary>
     private async Task SendInOrderAsync(Task previous, HubConnection connection, string roomId, Event edit)
     {
         await previous.ConfigureAwait(false);
@@ -294,7 +302,9 @@ public class MultiUserDrawingService : IMultiUserDrawingService
         }
     }
 
-    // Hold incoming room data until joining succeeds or the transport closes.
+    /// <summary>
+    /// Hold incoming room data until joining succeeds or the transport closes.
+    /// </summary>
     private sealed class PendingJoin
     {
         public List<Event> Events { get; } = [];

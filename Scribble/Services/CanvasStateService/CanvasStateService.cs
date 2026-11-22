@@ -98,8 +98,10 @@ public class CanvasStateService : ICanvasStateService
 
     private bool _seedIsBaseline;
 
-    // Multiple previous authors can have overlapping selections. Preserve the visible board
-    // when bringing it into a fresh room instead of reinterpreting those gestures as one owner.
+    /// <summary>
+    /// Multiple previous authors can have overlapping selections. Preserve the visible board
+    /// when bringing it into a fresh room instead of reinterpreting those gestures as one owner.
+    /// </summary>
     private Queue<Event> CaptureSeed()
     {
         var history = CanvasEvents;

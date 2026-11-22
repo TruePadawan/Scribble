@@ -20,7 +20,9 @@ public class HubServerFixture : WebApplicationFactory<Program>
         });
     }
 
-    // Tests can advance credential expiry without waiting for the production ten-minute window.
+    /// <summary>
+    /// Tests can advance credential expiry without waiting for the production ten-minute window.
+    /// </summary>
     public sealed class RoomClock : TimeProvider
     {
         public TimeSpan Offset { get; set; }
@@ -37,7 +39,9 @@ public class HubServerFixture : WebApplicationFactory<Program>
             .Build();
     }
 
-    // Exercise concurrent joins with a repeatable 40 ms round trip and 10 Mbit/s downstream.
+    /// <summary>
+    /// Exercise concurrent joins with a repeatable 40 ms round trip and 10 Mbit/s downstream.
+    /// </summary>
     public HubConnection CreateDelayedConnection() => new HubConnectionBuilder()
         .WithUrl("http://localhost/drawingHub", options =>
         {
@@ -45,7 +49,9 @@ public class HubServerFixture : WebApplicationFactory<Program>
             options.HttpMessageHandlerFactory = _ => new DelayedResponse(Server.CreateHandler());
         }).Build();
 
-    // Delay delivery of the buffered HTTP response in proportion to its actual payload.
+    /// <summary>
+    /// Delay delivery of the buffered HTTP response in proportion to its actual payload.
+    /// </summary>
     private sealed class DelayedResponse(HttpMessageHandler inner) : DelegatingHandler(inner)
     {
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request,
@@ -63,7 +69,9 @@ public class HubServerFixture : WebApplicationFactory<Program>
         }
     }
 
-    // Interrupt real server connections without exposing a production hub method.
+    /// <summary>
+    /// Interrupt real server connections without exposing a production hub method.
+    /// </summary>
     public sealed class ConnectionFaults : IHubFilter
     {
         private readonly ConcurrentDictionary<string, HubCallerContext> _clients = new();
@@ -71,7 +79,9 @@ public class HubServerFixture : WebApplicationFactory<Program>
 
         private readonly ConcurrentDictionary<string, (TaskCompletionSource Started, Task? Release)> _heldSends = new();
 
-        // Signal when the next drawing send reaches the hub and hold it until disconnect.
+        /// <summary>
+        /// Signal when the next drawing send reaches the hub and hold it until disconnect.
+        /// </summary>
         public Task HoldNextSend(string id, Task? release = null)
         {
             var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -81,7 +91,9 @@ public class HubServerFixture : WebApplicationFactory<Program>
 
         private TaskCompletionSource<string>? _pendingJoin;
 
-        // Hold admission until the joining connection is closed.
+        /// <summary>
+        /// Hold admission until the joining connection is closed.
+        /// </summary>
         public Task<string> HoldNextJoin()
         {
             _pendingJoin = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);

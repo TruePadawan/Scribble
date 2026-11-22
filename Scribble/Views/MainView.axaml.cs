@@ -96,21 +96,27 @@ public partial class MainView : UserControl
         RegisterShortcuts();
     }
 
-    // Bind only while the view belongs to a visual tree.
+    /// <summary>
+    /// Bind only while the view belongs to a visual tree.
+    /// </summary>
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
     {
         base.OnAttachedToVisualTree(e);
         BindEditor(DataContext as MainViewModel);
     }
 
-    // Release view and model subscriptions even if the context is retained.
+    /// <summary>
+    /// Release view and model subscriptions even if the context is retained.
+    /// </summary>
     protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
     {
         BindEditor(null);
         base.OnDetachedFromVisualTree(e);
     }
 
-    // Replace the editor when an attached view receives a different context.
+    /// <summary>
+    /// Replace the editor when an attached view receives a different context.
+    /// </summary>
     protected override void OnDataContextChanged(EventArgs e)
     {
         base.OnDataContextChanged(e);
@@ -129,7 +135,9 @@ public partial class MainView : UserControl
         if (VisualRoot != null) BindEditor(currentVm);
     }
 
-    // Transfer subscriptions and tools to the model currently shown.
+    /// <summary>
+    /// Transfer subscriptions and tools to the model currently shown.
+    /// </summary>
     private void BindEditor(MainViewModel? currentVm)
     {
         if (_viewModel == currentVm) return;
@@ -185,7 +193,9 @@ public partial class MainView : UserControl
         return _viewModel != null && focusedElement is not TextBox;
     }
 
-    // Route each shortcut to the current editor when the user presses it.
+    /// <summary>
+    /// Route each shortcut to the current editor when the user presses it.
+    /// </summary>
     private void RegisterShortcuts()
     {
         // Delegate keyboard input to the active tool (e.g. Esc/Enter to finalize polylines)
@@ -246,10 +256,14 @@ public partial class MainView : UserControl
         }
     }
 
-    // Return keyboard focus to the canvas and its shortcuts.
+    /// <summary>
+    /// Return keyboard focus to the canvas and its shortcuts.
+    /// </summary>
     internal void FocusCanvas() => CanvasContainer.Focus();
 
-    // Create the tools that operate on this view's canvas and overlays.
+    /// <summary>
+    /// Create the tools that operate on this view's canvas and overlays.
+    /// </summary>
     private List<PointerTool> CreateTools() =>
     [
         new PencilTool("PencilTool", _canvasStateService),
@@ -460,7 +474,9 @@ public partial class MainView : UserControl
         }
     }
 
-    // If the active tool is a stroke tool, show its options else clear up and hide the tool options UI
+    /// <summary>
+    /// If the active tool is a stroke tool, show its options else clear up and hide the tool options UI
+    /// </summary>
     private void OnActiveToolChanged(PointerTool? formerTool, PointerTool? currentTool)
     {
         _activePointerTool = currentTool;
@@ -590,17 +606,23 @@ public partial class MainView : UserControl
         VisualizeSelection();
     }
 
-    // Update text hit targets alongside the local selection overlay.
+    /// <summary>
+    /// Update text hit targets alongside the local selection overlay.
+    /// </summary>
     private void RefreshSelectionControls(IReadOnlyList<Guid> selectedElementIds, bool refreshOptions)
     {
         MarkTextStrokesForEditing();
         VisualizeSelection(selectedElementIds, refreshOptions);
     }
 
-    // Reposition handles after a viewport change.
+    /// <summary>
+    /// Reposition handles after a viewport change.
+    /// </summary>
     private void VisualizeSelection() => VisualizeSelection(_canvasStateService.SelectedElementIds, false);
 
-    // Refresh geometry directly from the selection published by the canvas.
+    /// <summary>
+    /// Refresh geometry directly from the selection published by the canvas.
+    /// </summary>
     private void VisualizeSelection(IReadOnlyList<Guid> selectedElementIds, bool refreshOptions)
     {
         if (_viewModel == null) return;
@@ -1168,7 +1190,9 @@ public partial class MainView : UserControl
         }
     }
 
-    // Clear transient gesture state if the platform cancels pointer capture.
+    /// <summary>
+    /// Clear transient gesture state if the platform cancels pointer capture.
+    /// </summary>
     private void SelectionOverlay_OnGestureCaptureLost(object? sender, EventArgs e)
     {
         _selection.SelectionMoveCoord = SKPoint.Empty;

@@ -9,7 +9,9 @@ using SkiaSharp;
 
 namespace Scribble.Services.CanvasStateService;
 
-// Owns the materialized board, replay checkpoints and local undo history.
+/// <summary>
+/// Owns the materialized board, replay checkpoints and local undo history.
+/// </summary>
 internal sealed class CanvasHistory(int checkpointInterval = 100)
 {
     private CanvasState CurrentState { get; set; } = new();
@@ -42,7 +44,9 @@ internal sealed class CanvasHistory(int checkpointInterval = 100)
     public event Action? UndoRedoStateChanged;
     public event Action? BackgroundColorChanged;
 
-    // Notify document and display listeners when the background changes.
+    /// <summary>
+    /// Notify document and display listeners when the background changes.
+    /// </summary>
     public void SetBackgroundColor(SKColor color)
     {
         if (BackgroundColor == color) return;
@@ -58,7 +62,9 @@ internal sealed class CanvasHistory(int checkpointInterval = 100)
         set => CurrentState.MyConnectionId = value;
     }
 
-    // Move a local action between stacks before recording its visibility event.
+    /// <summary>
+    /// Move a local action between stacks before recording its visibility event.
+    /// </summary>
     public Event TakeUndo()
     {
         var action = _undoStack.Pop();
@@ -66,7 +72,9 @@ internal sealed class CanvasHistory(int checkpointInterval = 100)
         return new UndoEvent(Guid.NewGuid(), action);
     }
 
-    // Restore the most recently undone local action.
+    /// <summary>
+    /// Restore the most recently undone local action.
+    /// </summary>
     public Event TakeRedo()
     {
         var action = _redoStack.Pop();
@@ -74,7 +82,9 @@ internal sealed class CanvasHistory(int checkpointInterval = 100)
         return new RedoEvent(Guid.NewGuid(), action);
     }
 
-    // Resolve the selected IDs against the current board.
+    /// <summary>
+    /// Resolve the selected IDs against the current board.
+    /// </summary>
     public List<CanvasElement> GetSelectedElements()
     {
         if (ActiveSelectionBoundId == null) return [];
@@ -85,7 +95,9 @@ internal sealed class CanvasHistory(int checkpointInterval = 100)
         ];
     }
 
-    // Discard the previous document’s log, checkpoints and undo stacks.
+    /// <summary>
+    /// Discard the previous document’s log, checkpoints and undo stacks.
+    /// </summary>
     public void ResetHistory()
     {
         _undoStack.Clear();
@@ -96,13 +108,19 @@ internal sealed class CanvasHistory(int checkpointInterval = 100)
         _checkpointManager = new CheckpointManager();
     }
 
-    // Track undo ownership for edits made by this editor.
+    /// <summary>
+    /// Track undo ownership for edits made by this editor.
+    /// </summary>
     public bool ApplyLocal(Event edit) => ProcessEvent(edit, true);
 
-    // Apply a received edit without adding to local undo.
+    /// <summary>
+    /// Apply a received edit without adding to local undo.
+    /// </summary>
     public bool ApplyIncoming(Event edit) => ProcessEvent(edit, false);
 
-    // Install the confirmed room history and merge updates received during the join.
+    /// <summary>
+    /// Install the confirmed room history and merge updates received during the join.
+    /// </summary>
     public void InstallConfirmedHistory(Queue<Event>? snapshot, IReadOnlyList<Event> bufferedEvents,
         bool keepUndo = false)
     {
@@ -155,7 +173,9 @@ internal sealed class CanvasHistory(int checkpointInterval = 100)
         SelectionInvalidated?.Invoke(SelectedElementIds, true);
     }
 
-    // Reconnects recover only this participant's undoable actions and visibility changes.
+    /// <summary>
+    /// Reconnects recover only this participant's undoable actions and visibility changes.
+    /// </summary>
     private void RestoreUndoHistory()
     {
         foreach (var edit in _eventLog.Events.Where(e => e.CreatorConnectionId == CreatorId))
@@ -187,7 +207,9 @@ internal sealed class CanvasHistory(int checkpointInterval = 100)
         UndoRedoStateChanged?.Invoke();
     }
 
-    // Apply each ID once and publish the resulting content and selection changes.
+    /// <summary>
+    /// Apply each ID once and publish the resulting content and selection changes.
+    /// </summary>
     private bool ProcessEvent(Event @event, bool isLocalEvent)
     {
         if (!isLocalEvent && @event.RoomSequence.HasValue)
@@ -229,7 +251,9 @@ internal sealed class CanvasHistory(int checkpointInterval = 100)
         return true;
     }
 
-    // Apply an appended event and report whether the saved drawing changed.
+    /// <summary>
+    /// Apply an appended event and report whether the saved drawing changed.
+    /// </summary>
     private bool ApplyToCanvas(Event @event, bool transient)
     {
         // Fast paths mutate live elements. Rebuilds can compare their old and new materialized boards.
@@ -255,7 +279,9 @@ internal sealed class CanvasHistory(int checkpointInterval = 100)
         return !transient && !CanvasContent.Equals(previous.ElementsWithLayers, CanvasElements);
     }
 
-    // Only transforms with surviving targets can change persistent content.
+    /// <summary>
+    /// Only transforms with surviving targets can change persistent content.
+    /// </summary>
     private bool HasTargets(Guid boundId)
     {
         return CurrentState.SelectionBounds.TryGetValue(boundId, out var bound) &&
@@ -263,7 +289,9 @@ internal sealed class CanvasHistory(int checkpointInterval = 100)
                    CurrentState.PaintableStrokes.ContainsKey(id) || CurrentState.CanvasImages.ContainsKey(id));
     }
 
-    // Rebuild visible elements and local selection from the latest usable checkpoint.
+    /// <summary>
+    /// Rebuild visible elements and local selection from the latest usable checkpoint.
+    /// </summary>
     private void ReplayEvents()
     {
         _checkpointManager.TryGetValidCheckpoint(_eventLog.HiddenActionIds, out var bestState, out var lastEventId);

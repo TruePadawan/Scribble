@@ -18,7 +18,9 @@ public class CanvasImage : CanvasElement, IClonable, ISelectable
 
     private SKSizeI _sourceSize;
 
-    // Each placement has an immutable encoded source. Reuse its pixels while the decode size matches.
+    /// <summary>
+    /// Each placement has an immutable encoded source. Reuse its pixels while the decode size matches.
+    /// </summary>
     public SKBitmap GetBitmap()
     {
         var size = GetDecodeSize(_sourceSize);
@@ -45,7 +47,9 @@ public class CanvasImage : CanvasElement, IClonable, ISelectable
         return decoded;
     }
 
-    // Cap the cached resolution at the original dimensions.
+    /// <summary>
+    /// Cap the cached resolution at the original dimensions.
+    /// </summary>
     private SKSizeI GetDecodeSize(SKSizeI source)
     {
         var width = (int)Bounds.Width;
@@ -54,7 +58,9 @@ public class CanvasImage : CanvasElement, IClonable, ISelectable
         return new SKSizeI(Math.Min(source.Width, width), Math.Min(source.Height, height));
     }
 
-    // Release the decoded bitmap owned by a detached snapshot.
+    /// <summary>
+    /// Release the decoded bitmap owned by a detached snapshot.
+    /// </summary>
     public void ReleaseCachedBitmap()
     {
         _cachedBitmap?.Dispose();

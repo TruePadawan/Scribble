@@ -61,7 +61,9 @@ public class CanvasState
         return clone;
     }
 
-    // Append new drawing elements above the current board and keep their lookup in sync.
+    /// <summary>
+    /// Append new drawing elements above the current board and keep their lookup in sync.
+    /// </summary>
     internal void AddOnTop<T>(T element, Dictionary<Guid, T> lookup) where T : CanvasElement
     {
         if (lookup.TryGetValue(element.Id, out var previous)) ElementsWithLayers.Remove(previous);

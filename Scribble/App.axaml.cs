@@ -61,7 +61,9 @@ public partial class App : Application
         if (surface is not null) Dispatcher.UIThread.Post(() => _ = RestoreCanvasAsync(autoSave, surface));
     }
 
-    // Restore the previous canvas before enabling input and focusing it.
+    /// <summary>
+    /// Restore the previous canvas before enabling input and focusing it.
+    /// </summary>
     private static async Task RestoreCanvasAsync(AutoSaveService autoSave, Control surface)
     {
         await autoSave.RestoreAsync();

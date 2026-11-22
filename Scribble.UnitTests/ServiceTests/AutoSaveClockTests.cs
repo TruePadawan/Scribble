@@ -8,7 +8,9 @@ using FluentAssertions;
 
 namespace Scribble.UnitTests.ServiceTests;
 
-// Check autosave deadlines by advancing a manual clock instead of sleeping.
+/// <summary>
+/// Check autosave deadlines by advancing a manual clock instead of sleeping.
+/// </summary>
 public class AutoSaveClockTests
 {
     private static readonly TimeSpan Debounce = TimeSpan.FromMilliseconds(100);
@@ -140,7 +142,9 @@ internal sealed class ManualAutoSaveClock : TimeProvider
     /// <summary>Returns the test clock's current timestamp in milliseconds.</summary>
     public override long TimestampFrequency => 1000;
 
-    // Read the current manual timestamp.
+    /// <summary>
+    /// Read the current manual timestamp.
+    /// </summary>
     public override long GetTimestamp()
     {
         lock (_gate) return _now;
@@ -208,7 +212,9 @@ internal sealed class ManualAutoSaveClock : TimeProvider
             return true;
         }
 
-        // Manual callbacks require no asynchronous teardown.
+        /// <summary>
+        /// Manual callbacks require no asynchronous teardown.
+        /// </summary>
         public ValueTask DisposeAsync()
         {
             Dispose();

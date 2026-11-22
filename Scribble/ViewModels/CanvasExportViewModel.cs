@@ -56,10 +56,14 @@ public partial class CanvasExportViewModel : ViewModelBase
     // Show an inline error when rendering or validation fails.
     public bool HasExportError => ExportError is not null;
 
-    // Refresh the current snapshot when the background option changes.
+    /// <summary>
+    /// Refresh the current snapshot when the background option changes.
+    /// </summary>
     partial void OnIncludeBackgroundChanged(bool value) => UpdateCanvasPreview();
 
-    // Refresh the current snapshot when the scale changes.
+    /// <summary>
+    /// Refresh the current snapshot when the scale changes.
+    /// </summary>
     partial void OnImageScaleChanged(int value) => UpdateCanvasPreview();
 
     public CanvasExportViewModel(IFileService fileService, ICanvasStateService canvasStateService)
@@ -76,7 +80,9 @@ public partial class CanvasExportViewModel : ViewModelBase
         if (int.TryParse(value, out var scale)) ImageScale = scale;
     }
 
-    // Capture the elements shown in the export dialog and keep their visible layer order.
+    /// <summary>
+    /// Capture the elements shown in the export dialog and keep their visible layer order.
+    /// </summary>
     public void OpenExport()
     {
         CloseExport();
@@ -89,7 +95,9 @@ public partial class CanvasExportViewModel : ViewModelBase
         UpdateCanvasPreview();
     }
 
-    // Free the dialog's snapshot and preview when it closes.
+    /// <summary>
+    /// Free the dialog's snapshot and preview when it closes.
+    /// </summary>
     public void CloseExport()
     {
         _snapshot?.Dispose();
@@ -100,10 +108,14 @@ public partial class CanvasExportViewModel : ViewModelBase
         SetPreview(null);
     }
 
-    // Limit the snapshot to elements that the export renderer can draw.
+    /// <summary>
+    /// Limit the snapshot to elements that the export renderer can draw.
+    /// </summary>
     private static bool IsExportable(CanvasElement element) => element is PaintableStroke or CanvasImage;
 
-    // Fit the complete canvas in a small preview and validate the requested output separately.
+    /// <summary>
+    /// Fit the complete canvas in a small preview and validate the requested output separately.
+    /// </summary>
     private void UpdateCanvasPreview()
     {
         if (_snapshot is not { Elements.Count: > 0 } snapshot) return;
@@ -145,7 +157,9 @@ public partial class CanvasExportViewModel : ViewModelBase
         SetPreview(bitmap);
     }
 
-    // Replace the preview and release its previous native bitmap.
+    /// <summary>
+    /// Replace the preview and release its previous native bitmap.
+    /// </summary>
     private void SetPreview(Bitmap? bitmap)
     {
         var previous = PreviewImage;
@@ -156,23 +170,31 @@ public partial class CanvasExportViewModel : ViewModelBase
         CopyCanvasToClipboardCommand.NotifyCanExecuteChanged();
     }
 
-    // Enable output only when the requested dimensions fit and a preview is available.
+    /// <summary>
+    /// Enable output only when the requested dimensions fit and a preview is available.
+    /// </summary>
     private bool CanExport() => _outputFits && PreviewImage is not null;
 
-    // Decode the PNG for display or clipboard use.
+    /// <summary>
+    /// Decode the PNG for display or clipboard use.
+    /// </summary>
     private static Bitmap DecodeBitmap(byte[] encoded)
     {
         using var stream = new MemoryStream(encoded, writable: false);
         return new Bitmap(stream);
     }
 
-    // Use the same inline feedback for preview and output render failures.
+    /// <summary>
+    /// Use the same inline feedback for preview and output render failures.
+    /// </summary>
     private void ReportRenderError()
     {
         ExportError ??= "Could not render the image. Try a smaller selection or lower scale.";
     }
 
-    // Encode at the selected output scale, independently of the preview.
+    /// <summary>
+    /// Encode at the selected output scale, independently of the preview.
+    /// </summary>
     private byte[]? RenderOutput(SKEncodedImageFormat format)
     {
         if (_snapshot is not { } snapshot || !CanExport()) return null;
@@ -207,7 +229,9 @@ public partial class CanvasExportViewModel : ViewModelBase
         return encoded is null ? Task.CompletedTask : SaveImageAsync(encoded, "JPEG", ".jpeg");
     }
 
-    // Hold the encoded bytes across the file picker so closing the dialog is safe.
+    /// <summary>
+    /// Hold the encoded bytes across the file picker so closing the dialog is safe.
+    /// </summary>
     private async Task SaveImageAsync(byte[] encoded, string format, string extension)
     {
         var file = await _fileService.PickFileToSaveAsync(new FilePickerSaveOptions
@@ -229,7 +253,9 @@ public partial class CanvasExportViewModel : ViewModelBase
         return clipboard is null ? Task.CompletedTask : CopyToClipboardAsync(clipboard);
     }
 
-    // Give the clipboard a bitmap it can keep after the export dialog closes.
+    /// <summary>
+    /// Give the clipboard a bitmap it can keep after the export dialog closes.
+    /// </summary>
     internal async Task CopyToClipboardAsync(IClipboard clipboard)
     {
         if (RenderOutput(SKEncodedImageFormat.Png) is not { } encoded) return;
@@ -257,7 +283,9 @@ public partial class CanvasExportViewModel : ViewModelBase
         }
     }
 
-    // Own the copied bitmap until the platform releases the clipboard data.
+    /// <summary>
+    /// Own the copied bitmap until the platform releases the clipboard data.
+    /// </summary>
     private sealed class ExportClipboardImage(Bitmap bitmap) : IDataTransfer, IAsyncDataTransfer
     {
         private readonly DataTransferItem _item = DataTransferItem.Create(DataFormat.Bitmap, bitmap);
@@ -265,7 +293,9 @@ public partial class CanvasExportViewModel : ViewModelBase
         IReadOnlyList<IDataTransferItem> IDataTransfer.Items => [_item];
         IReadOnlyList<IAsyncDataTransferItem> IAsyncDataTransfer.Items => [_item];
 
-        // Release the bitmap once the clipboard no longer needs it.
+        /// <summary>
+        /// Release the bitmap once the clipboard no longer needs it.
+        /// </summary>
         public void Dispose() => bitmap.Dispose();
     }
 
@@ -276,11 +306,15 @@ public partial class CanvasExportViewModel : ViewModelBase
             (double)bounds.Bottom - bounds.Top + 2 * Padding);
     }
 
-    // Reject empty or non-finite dimensions before any conversion to integers.
+    /// <summary>
+    /// Reject empty or non-finite dimensions before any conversion to integers.
+    /// </summary>
     private static bool IsPositiveSize(double width, double height) =>
         double.IsFinite(width) && double.IsFinite(height) && width > 0 && height > 0;
 
-    // Round up and validate output dimensions before allocating a native surface.
+    /// <summary>
+    /// Round up and validate output dimensions before allocating a native surface.
+    /// </summary>
     internal static SKSizeI? ValidateOutputSize(double width, double height)
     {
         width = Math.Ceiling(width);
@@ -292,7 +326,9 @@ public partial class CanvasExportViewModel : ViewModelBase
         return checked((long)size.Width * size.Height) <= OutputMaxPixels ? size : null;
     }
 
-    // Render the requested elements at full resolution if they fit the output limits.
+    /// <summary>
+    /// Render the requested elements at full resolution if they fit the output limits.
+    /// </summary>
     internal static byte[]? GetImageData(
         IReadOnlyList<CanvasElement> elements,
         bool includeBackground,
@@ -310,7 +346,9 @@ public partial class CanvasExportViewModel : ViewModelBase
             : null;
     }
 
-    // Draw either the bounded preview or a validated full-resolution image.
+    /// <summary>
+    /// Draw either the bounded preview or a validated full-resolution image.
+    /// </summary>
     private static byte[]? RenderImage(
         IReadOnlyList<CanvasElement> elements,
         SKRect bounds,

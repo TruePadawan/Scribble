@@ -6,7 +6,9 @@ using SkiaSharp;
 
 namespace Scribble.UnitTests.ControlsTests;
 
-// Verify the selection view owns the viewport geometry it displays.
+/// <summary>
+/// Verify the selection view owns the viewport geometry it displays.
+/// </summary>
 public class SelectionOverlayTests
 {
     // Screen-space selection bounds determine the control's size and position.

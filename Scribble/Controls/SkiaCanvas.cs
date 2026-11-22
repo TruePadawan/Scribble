@@ -47,7 +47,9 @@ public class SkiaCanvas : Control
     private static readonly SKPaint DarkGridPaint = new()
         { Color = SKColors.White.WithAlpha(60), IsAntialias = true, Style = SKPaintStyle.Fill };
 
-    // Cull elements using their visible bounds in world coordinates.
+    /// <summary>
+    /// Cull elements using their visible bounds in world coordinates.
+    /// </summary>
     internal static bool IsCanvasElementVisible(CanvasElement element, SKRect visibleWorldRect)
     {
         SKRect elementBounds;
@@ -80,7 +82,9 @@ public class SkiaCanvas : Control
         context.Custom(new SkiaDrawOperation(bounds, CaptureFrame()));
     }
 
-    // Record the visible board on the UI thread while the camera and live elements are stable.
+    /// <summary>
+    /// Record the visible board on the UI thread while the camera and live elements are stable.
+    /// </summary>
     internal SKPicture CaptureFrame()
     {
         using var recorder = new SKPictureRecorder();
@@ -125,7 +129,9 @@ public class SkiaCanvas : Control
         return recorder.EndRecording();
     }
 
-    // Check the paint order without allocating a sorted copy on each pointer move.
+    /// <summary>
+    /// Check the paint order without allocating a sorted copy on each pointer move.
+    /// </summary>
     private static bool InDrawingOrder(List<CanvasElement> elements)
     {
         for (var i = 1; i < elements.Count; i++)
@@ -196,8 +202,10 @@ public class SkiaCanvas : Control
         }
     }
 
-    // runs when an element is added/removed from the canvas elements collection
-    // it disposes bitmaps and SKPaint objects
+    /// <summary>
+    /// runs when an element is added/removed from the canvas elements collection
+    /// it disposes bitmaps and SKPaint objects
+    /// </summary>
     private void OnCanvasElementsCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
         if (e.OldItems != null)
@@ -215,14 +223,18 @@ public class SkiaCanvas : Control
     }
 }
 
-// Own the recorded frame for its entire scene-graph lifetime.
+/// <summary>
+/// Own the recorded frame for its entire scene-graph lifetime.
+/// </summary>
 internal sealed class SkiaDrawOperation(Rect bounds, SKPicture picture) : ICustomDrawOperation
 {
     public Rect Bounds { get; } = bounds;
 
     public bool Equals(ICustomDrawOperation? other) => false;
 
-    // Release the native drawing commands when Avalonia retires the frame.
+    /// <summary>
+    /// Release the native drawing commands when Avalonia retires the frame.
+    /// </summary>
     public void Dispose() => picture.Dispose();
 
     public bool HitTest(Point p) => false;

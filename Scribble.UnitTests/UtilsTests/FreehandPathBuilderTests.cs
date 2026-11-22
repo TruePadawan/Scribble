@@ -7,7 +7,9 @@ namespace Scribble.UnitTests.UtilsTests;
 
 public class FreehandPathBuilderTests
 {
-    // helpers
+    /// <summary>
+    /// helpers
+    /// </summary>
     private static StrokePoint Pt(float x, float y) =>
         new StrokePoint { Point = new SKPoint(x, y) };
 

@@ -50,17 +50,23 @@ public partial class UiStateViewModel : ViewModelBase
         _backgroundColor = Utilities.FromSkColor(canvasStateService.BackgroundColor);
     }
 
-    // Subscribe and refresh the background when the editor becomes active.
+    /// <summary>
+    /// Subscribe and refresh the background when the editor becomes active.
+    /// </summary>
     internal void Activate()
     {
         _canvasStateService.BackgroundColorChanged += RefreshBackground;
         RefreshBackground();
     }
 
-    // Release the canvas subscription for an inactive editor.
+    /// <summary>
+    /// Release the canvas subscription for an inactive editor.
+    /// </summary>
     internal void Deactivate() => _canvasStateService.BackgroundColorChanged -= RefreshBackground;
 
-    // Mirror the current canvas background in the color picker.
+    /// <summary>
+    /// Mirror the current canvas background in the color picker.
+    /// </summary>
     private void RefreshBackground() => BackgroundColor = Utilities.FromSkColor(_canvasStateService.BackgroundColor);
 
     partial void OnBackgroundColorChanged(Color value)

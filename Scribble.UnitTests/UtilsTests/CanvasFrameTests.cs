@@ -97,7 +97,9 @@ public class CanvasFrameTests
         }
     }
 
-    // Use distinct left and right halves to expose rotation or flip mismatches.
+    /// <summary>
+    /// Use distinct left and right halves to expose rotation or flip mismatches.
+    /// </summary>
     private static CanvasImage CreateImage()
     {
         using var source = new SKBitmap(10, 18);

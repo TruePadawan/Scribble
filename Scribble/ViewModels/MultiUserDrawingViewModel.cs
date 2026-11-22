@@ -92,7 +92,9 @@ public partial class MultiUserDrawingViewModel : ViewModelBase, IDisposable
         RefreshJoining();
     }
 
-    // Release subscriptions when the application closes its room service owner.
+    /// <summary>
+    /// Release subscriptions when the application closes its room service owner.
+    /// </summary>
     public void Dispose()
     {
         _multiUserDrawingService.JoiningChanged -= RefreshJoining;
@@ -105,7 +107,9 @@ public partial class MultiUserDrawingViewModel : ViewModelBase, IDisposable
         _multiUserDrawingService.MessageSent -= ConfirmMessage;
     }
 
-    // Refresh controls affected by the join gate.
+    /// <summary>
+    /// Refresh controls affected by the join gate.
+    /// </summary>
     private void RefreshJoining()
     {
         OnPropertyChanged(nameof(CanEditCanvas));
@@ -114,7 +118,9 @@ public partial class MultiUserDrawingViewModel : ViewModelBase, IDisposable
         GenerateRoomIdCommand.NotifyCanExecuteChanged();
     }
 
-    // Keep chat history only for the same room session.
+    /// <summary>
+    /// Keep chat history only for the same room session.
+    /// </summary>
     private void RefreshRoom(MultiUserDrawingRoom? room)
     {
         if (room == null || Room?.Me.ConnectionId != room.Me.ConnectionId) Messages.Clear();
@@ -122,20 +128,28 @@ public partial class MultiUserDrawingViewModel : ViewModelBase, IDisposable
         Room = room;
     }
 
-    // Show the delivery warning while keeping all locally applied edits.
-    // Explain why previously owned strokes may no longer be editable.
+    /// <summary>
+    /// Show the delivery warning while keeping all locally applied edits.
+    /// Explain why previously owned strokes may no longer be editable.
+    /// </summary>
     private void ShowNewIdentity() => _ = _dialogService.ShowInfoAsync("Joined as a new participant",
         "The previous room or reconnect window ended, so you have a new drawing identity.");
 
-    // Surface room admission failures while the solo board is still intact.
+    /// <summary>
+    /// Surface room admission failures while the solo board is still intact.
+    /// </summary>
     private void ShowJoinFailure(string reason) => _ = _dialogService.ShowInfoAsync("Could not join room", reason);
 
     private void MarkDrawingSyncFailed() => DrawingSyncFailed = true;
 
-    // Append a received chat message to the conversation.
+    /// <summary>
+    /// Append a received chat message to the conversation.
+    /// </summary>
     private void ReceiveMessage(Message message) => Messages.Add(new ChatMessage(message));
 
-    // Mark the optimistic message as delivered.
+    /// <summary>
+    /// Mark the optimistic message as delivered.
+    /// </summary>
     private void ConfirmMessage(string messageId)
     {
         var message = Messages.FirstOrDefault(item => item.Id == messageId);

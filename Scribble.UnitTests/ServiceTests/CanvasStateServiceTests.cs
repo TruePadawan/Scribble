@@ -795,9 +795,11 @@ public class CanvasStateServiceTests
     }
 
 
-    // Selection: Transform operations
-    // These all go through the fast-path and require a bound + stroke already tracked
-    // in _selectionBoundLookup. ApplySelectionBound sets that up.
+    /// <summary>
+    /// Selection: Transform operations
+    /// These all go through the fast-path and require a bound + stroke already tracked
+    /// in _selectionBoundLookup. ApplySelectionBound sets that up.
+    /// </summary>
 
     private static SKPoint GetStrokeMidpoint(CanvasStateService canvasStateService, Guid strokeId)
     {
@@ -1123,8 +1125,10 @@ public class CanvasStateServiceTests
         fired.Should().BeTrue();
     }
 
-    // Network Integration
-    // ApplyEvent stamps CreatorConnectionId and calls BroadcastEventAsync when Room is non-null.
+    /// <summary>
+    /// Network Integration
+    /// ApplyEvent stamps CreatorConnectionId and calls BroadcastEventAsync when Room is non-null.
+    /// </summary>
 
     private static MultiUserDrawingRoom MakeRoom(string connectionId = "conn-1") =>
         new MultiUserDrawingRoom("room-1", connectionId, "Alice")

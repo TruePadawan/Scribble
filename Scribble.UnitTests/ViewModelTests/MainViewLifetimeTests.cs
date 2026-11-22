@@ -14,7 +14,9 @@ using Scribble.Views;
 
 namespace Scribble.UnitTests.ViewModelTests;
 
-// Exercise shortcut routing and service subscriptions through the editor's actual lifecycle.
+/// <summary>
+/// Exercise shortcut routing and service subscriptions through the editor's actual lifecycle.
+/// </summary>
 public class MainViewLifetimeTests
 {
     // Replacing, clearing, and reattaching the context must leave just one active editor.

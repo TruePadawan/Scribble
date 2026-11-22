@@ -17,7 +17,9 @@ namespace Scribble.Services.CanvasStateService.Handlers;
 /// </summary>
 internal static class SelectionReplayHandler
 {
-    // Start a marquee for the selecting client.
+    /// <summary>
+    /// Start a marquee for the selecting client.
+    /// </summary>
     public static void Apply(CreateSelectionBoundEvent ev, CanvasState ctx)
     {
         var selectionPath = new SKPathBuilder();
@@ -34,7 +36,9 @@ internal static class SelectionReplayHandler
         ctx.SelectionBounds[ev.BoundId] = selectionBound;
     }
 
-    // Discard an empty selection gesture.
+    /// <summary>
+    /// Discard an empty selection gesture.
+    /// </summary>
     public static void Apply(EndSelectionEvent ev, CanvasState ctx)
     {
         if (ctx.SelectionBounds.TryGetValue(ev.BoundId, out var bound))
@@ -48,7 +52,9 @@ internal static class SelectionReplayHandler
         }
     }
 
-    // Remove this client’s selection.
+    /// <summary>
+    /// Remove this client’s selection.
+    /// </summary>
     public static void Apply(ClearSelectionEvent ev, CanvasState ctx)
     {
         // Check if there are any selection bounds for this user.
@@ -70,7 +76,9 @@ internal static class SelectionReplayHandler
         }
     }
 
-    // Update the marquee and its enclosed targets.
+    /// <summary>
+    /// Update the marquee and its enclosed targets.
+    /// </summary>
     public static bool Apply(IncreaseSelectionBoundEvent ev, CanvasState ctx)
     {
         if (ctx.SelectionBounds.TryGetValue(ev.BoundId, out var bound))
@@ -143,7 +151,9 @@ internal static class SelectionReplayHandler
         }
     }
 
-    // Select surviving targets and refresh local selection state.
+    /// <summary>
+    /// Select surviving targets and refresh local selection state.
+    /// </summary>
     public static bool Apply(SelectByIdsEvent ev, CanvasState ctx)
     {
         ctx.ClearSelectionBoundsForUser(ev.CreatorConnectionId);

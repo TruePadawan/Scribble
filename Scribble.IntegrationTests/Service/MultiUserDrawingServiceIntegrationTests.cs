@@ -355,7 +355,9 @@ public class MultiUserDrawingServiceIntegrationTests(HubServerFixture fixture)
         canvas.CanvasElements.Should().BeEmpty();
     }
 
-    // Build a complete local stroke so the canvas has an undoable action.
+    /// <summary>
+    /// Build a complete local stroke so the canvas has an undoable action.
+    /// </summary>
     private static Guid AddLocalStroke(CanvasStateService canvas)
     {
         var action = Guid.NewGuid();

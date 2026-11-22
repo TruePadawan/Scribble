@@ -6,10 +6,14 @@ using Scribble.Shared.Lib.CanvasElements.Strokes;
 
 namespace Scribble.Services.CanvasStateService;
 
-// Compare document fields after replay, ignoring transient selection, caches and clone timestamps.
+/// <summary>
+/// Compare document fields after replay, ignoring transient selection, caches and clone timestamps.
+/// </summary>
 internal static class CanvasContent
 {
-    // Compare elements in their materialized drawing order.
+    /// <summary>
+    /// Compare elements in their materialized drawing order.
+    /// </summary>
     internal static bool Equals(IReadOnlyList<CanvasElement> before, IReadOnlyList<CanvasElement> after)
     {
         if (before.Count != after.Count) return false;
@@ -21,7 +25,9 @@ internal static class CanvasContent
         return true;
     }
 
-    // Match image placement or stroke geometry and styling as saved by DocumentService.
+    /// <summary>
+    /// Match image placement or stroke geometry and styling as saved by DocumentService.
+    /// </summary>
     private static bool SameElement(CanvasElement a, CanvasElement b)
     {
         if (a.Id != b.Id || a.LayerIndex != b.LayerIndex) return false;
@@ -43,7 +49,9 @@ internal static class CanvasContent
         };
     }
 
-    // Compare persistent paint values independently of cached Skia objects.
+    /// <summary>
+    /// Compare persistent paint values independently of cached Skia objects.
+    /// </summary>
     private static bool SamePaint(StrokePaint a, StrokePaint b) =>
         a.Color == b.Color && a.FillColor == b.FillColor && a.StrokeWidth == b.StrokeWidth &&
         a.TextSize == b.TextSize && a.StrokeJoin == b.StrokeJoin && a.StrokeCap == b.StrokeCap &&

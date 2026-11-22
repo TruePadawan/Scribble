@@ -16,7 +16,9 @@ namespace Scribble.Services.CanvasStateService.Handlers;
 /// </summary>
 internal static class CanvasLifecycleReplayHandler
 {
-    // Replace the board with detached copies of the supplied elements.
+    /// <summary>
+    /// Replace the board with detached copies of the supplied elements.
+    /// </summary>
     public static void Apply(LoadCanvasEvent ev, CanvasState ctx)
     {
         ctx.PaintableStrokes.Clear();
@@ -43,7 +45,9 @@ internal static class CanvasLifecycleReplayHandler
         }
     }
 
-    // Place the image above the existing drawing.
+    /// <summary>
+    /// Place the image above the existing drawing.
+    /// </summary>
     public static void Apply(AddImageEvent ev, CanvasState ctx)
     {
         var imageBounds = SKRect.Create(ev.Position, ev.Size);
@@ -56,7 +60,9 @@ internal static class CanvasLifecycleReplayHandler
         }, ctx.CanvasImages);
     }
 
-    // Assign the requested layer before normalizing drawing order.
+    /// <summary>
+    /// Assign the requested layer before normalizing drawing order.
+    /// </summary>
     public static void Apply(SetElementLayerEvent ev, CanvasState ctx)
     {
         foreach (var elementId in ev.TargetElementIds)
@@ -73,7 +79,9 @@ internal static class CanvasLifecycleReplayHandler
 
     }
 
-    // Move targets through the current drawing order.
+    /// <summary>
+    /// Move targets through the current drawing order.
+    /// </summary>
     public static void Apply(NudgeElementLayerEvent ev, CanvasState ctx)
     {
         // When a moved element lands on a neighbor, cross that neighbor in the requested direction.
@@ -85,7 +93,9 @@ internal static class CanvasLifecycleReplayHandler
         for (var i = 0; i < ordered.Length; i++) ordered[i].LayerIndex = i;
     }
 
-    // Copy, position and select the pasted elements.
+    /// <summary>
+    /// Copy, position and select the pasted elements.
+    /// </summary>
     public static void Apply(PasteCanvasElementsEvent ev, CanvasState ctx)
     {
         List<CanvasElement> pastedElements = [];

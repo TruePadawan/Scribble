@@ -10,7 +10,9 @@ using SkiaSharp;
 
 namespace Scribble.UnitTests.UtilsTests;
 
-// Cover the same rotated image geometry in bounds, viewport culling, and export.
+/// <summary>
+/// Cover the same rotated image geometry in bounds, viewport culling, and export.
+/// </summary>
 public class RotatedImageBoundsTests
 {
     // Centered flips preserve the footprint of a rotated image at negative coordinates.
@@ -63,7 +65,9 @@ public class RotatedImageBoundsTests
         output.GetPixel(output.Width - 22, output.Height / 2).Should().Be(SKColors.Red);
     }
 
-    // Create a tall flipped image whose center is outside the positive quadrant.
+    /// <summary>
+    /// Create a tall flipped image whose center is outside the positive quadrant.
+    /// </summary>
     private static CanvasImage CreateImage(int degrees, string imageData = "")
     {
         return new CanvasImage

@@ -7,7 +7,9 @@ using FluentAssertions;
 
 namespace Scribble.UnitTests.ServiceTests;
 
-// Exercise file encoding without creating an Avalonia dispatcher or canvas service.
+/// <summary>
+/// Exercise file encoding without creating an Avalonia dispatcher or canvas service.
+/// </summary>
 public class DocumentCodecTests
 {
     private readonly DocumentCodec _codec = new();

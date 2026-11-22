@@ -16,7 +16,9 @@ namespace Scribble.Services.CanvasStateService.Handlers;
 /// </summary>
 internal static class PropertyReplayHandler
 {
-    // Set the outline color on surviving strokes.
+    /// <summary>
+    /// Set the outline color on surviving strokes.
+    /// </summary>
     public static void Apply(UpdateStrokeColorEvent ev, CanvasState ctx)
     {
         foreach (var strokeId in ev.StrokeIds)
@@ -26,7 +28,9 @@ internal static class PropertyReplayHandler
         }
     }
 
-    // Set the outline width on surviving strokes.
+    /// <summary>
+    /// Set the outline width on surviving strokes.
+    /// </summary>
     public static void Apply(UpdateStrokeThicknessEvent ev, CanvasState ctx)
     {
         foreach (var strokeId in ev.StrokeIds)
@@ -36,7 +40,9 @@ internal static class PropertyReplayHandler
         }
     }
 
-    // Update the dash pattern on surviving strokes.
+    /// <summary>
+    /// Update the dash pattern on surviving strokes.
+    /// </summary>
     public static void Apply(UpdateStrokeStyleEvent ev, CanvasState ctx)
     {
         foreach (var strokeId in ev.StrokeIds)
@@ -46,7 +52,9 @@ internal static class PropertyReplayHandler
         }
     }
 
-    // Set the fill color on surviving strokes.
+    /// <summary>
+    /// Set the fill color on surviving strokes.
+    /// </summary>
     public static void Apply(UpdateStrokeFillColorEvent ev, CanvasState ctx)
     {
         foreach (var strokeId in ev.StrokeIds)
@@ -56,7 +64,9 @@ internal static class PropertyReplayHandler
         }
     }
 
-    // Update the join style and rebuild the affected shape.
+    /// <summary>
+    /// Update the join style and rebuild the affected shape.
+    /// </summary>
     public static void Apply(UpdateStrokeEdgeTypeEvent ev, CanvasState ctx)
     {
         foreach (var strokeId in ev.StrokeIds)

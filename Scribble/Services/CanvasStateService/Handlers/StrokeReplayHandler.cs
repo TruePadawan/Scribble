@@ -14,7 +14,9 @@ namespace Scribble.Services.CanvasStateService.Handlers;
 /// </summary>
 internal static class StrokeReplayHandler
 {
-    // Extend the freehand path with one timed point.
+    /// <summary>
+    /// Extend the freehand path with one timed point.
+    /// </summary>
     public static bool Apply(PencilStrokeLineToEvent ev, CanvasState ctx)
     {
         if (ctx.PaintableStrokes.TryGetValue(ev.StrokeId, out var stroke) && stroke is DrawStroke ds)
@@ -33,7 +35,9 @@ internal static class StrokeReplayHandler
         return false;
     }
 
-    // Rebuild the preview up to the current pointer position.
+    /// <summary>
+    /// Rebuild the preview up to the current pointer position.
+    /// </summary>
     public static bool Apply(LineStrokeLineToEvent ev, CanvasState ctx)
     {
         if (ctx.PaintableStrokes.TryGetValue(ev.StrokeId, out var stroke) && stroke is DrawStroke drawStroke)
@@ -45,7 +49,9 @@ internal static class StrokeReplayHandler
         return false;
     }
 
-    // Insert the first stroke point above the existing drawing.
+    /// <summary>
+    /// Insert the first stroke point above the existing drawing.
+    /// </summary>
     public static bool Apply(StartStrokeEvent ev, CanvasState ctx)
     {
         var newLinePath = new SKPathBuilder();
@@ -66,13 +72,17 @@ internal static class StrokeReplayHandler
         return true;
     }
 
-    // A completed stroke already has its geometry and only needs an undo marker.
+    /// <summary>
+    /// A completed stroke already has its geometry and only needs an undo marker.
+    /// </summary>
     public static bool Apply(EndStrokeEvent ev, CanvasState ctx)
     {
         return true;
     }
 
-    // Commit a vertex and rebuild the polyline.
+    /// <summary>
+    /// Commit a vertex and rebuild the polyline.
+    /// </summary>
     public static bool Apply(AddPolylineNodeEvent ev, CanvasState ctx)
     {
         if (ctx.PaintableStrokes.TryGetValue(ev.StrokeId, out var stroke) && stroke is DrawStroke ds)
@@ -85,7 +95,9 @@ internal static class StrokeReplayHandler
         return false;
     }
 
-    // Replace a vertex and rebuild the adjoining segments.
+    /// <summary>
+    /// Replace a vertex and rebuild the adjoining segments.
+    /// </summary>
     public static bool Apply(MovePolylineNodeEvent ev, CanvasState ctx)
     {
         if (ctx.PaintableStrokes.TryGetValue(ev.StrokeId, out var stroke) && stroke is DrawStroke ds)

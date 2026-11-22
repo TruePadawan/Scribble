@@ -6,13 +6,17 @@ using SkiaSharp;
 
 namespace Scribble.Services.DocumentService;
 
-// Owns a detached copy of the canvas for saving or exporting.
+/// <summary>
+/// Owns a detached copy of the canvas for saving or exporting.
+/// </summary>
 public sealed class DocumentSnapshot(IReadOnlyList<CanvasElement> elements, SKColor backgroundColor) : IDisposable
 {
     internal IReadOnlyList<CanvasElement> Elements { get; } = elements;
     internal SKColor BackgroundColor { get; } = backgroundColor;
 
-    // Release the Skia resources owned by this snapshot.
+    /// <summary>
+    /// Release the Skia resources owned by this snapshot.
+    /// </summary>
     public void Dispose()
     {
         foreach (var element in Elements)

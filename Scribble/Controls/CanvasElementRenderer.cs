@@ -11,7 +11,9 @@ internal static class CanvasElementRenderer
 {
     private static readonly SKPaint EraserImagePaint = new() { Color = SKColors.Black.WithAlpha(80) };
 
-    // The screen caller can request erase feedback for an individual element.
+    /// <summary>
+    /// The screen caller can request erase feedback for an individual element.
+    /// </summary>
     internal static void Draw(SKCanvas canvas, CanvasElement element, bool erasePreview = false)
     {
         switch (element)
@@ -25,7 +27,9 @@ internal static class CanvasElementRenderer
         }
     }
 
-    // Draw a single point or a filled path followed by its outline.
+    /// <summary>
+    /// Draw a single point or a filled path followed by its outline.
+    /// </summary>
     private static void DrawStroke(SKCanvas canvas, PaintableStroke stroke, bool erasePreview)
     {
         var fill = stroke.Paint.FillColor;
@@ -53,7 +57,9 @@ internal static class CanvasElementRenderer
         canvas.DrawPath(stroke.Path, paint);
     }
 
-    // Rotate and flip around the placement center, restoring the caller's transform afterward.
+    /// <summary>
+    /// Rotate and flip around the placement center, restoring the caller's transform afterward.
+    /// </summary>
     private static void DrawImage(SKCanvas canvas, CanvasImage image, bool erasePreview)
     {
         var bitmap = image.GetBitmap();

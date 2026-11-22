@@ -26,7 +26,9 @@ public partial class DocumentViewModel : ViewModelBase
     // A recovery copy still leaves the document available for a manual save.
     internal bool HasUnsavedChanges => _autoSaveService.HasUnsavedChanges;
 
-    // Start a clean document after the user confirms a reset.
+    /// <summary>
+    /// Start a clean document after the user confirms a reset.
+    /// </summary>
     internal void ResetDocument()
     {
         if (_canvasStateService.IsRoomActive) return;

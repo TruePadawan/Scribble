@@ -14,7 +14,9 @@ using SkiaSharp;
 
 namespace Scribble.UnitTests.ViewModelTests;
 
-// Exercise the same export commands bound to the desktop dialog.
+/// <summary>
+/// Exercise the same export commands bound to the desktop dialog.
+/// </summary>
 public class CanvasExportViewModelTests
 {
     private readonly ICanvasStateService _canvas = Substitute.For<ICanvasStateService>();
@@ -263,7 +265,9 @@ public class CanvasExportViewModelTests
         }
     }
 
-    // Save through the regular command and decode the bytes written to the file.
+    /// <summary>
+    /// Save through the regular command and decode the bytes written to the file.
+    /// </summary>
     private async Task<SKBitmap> SaveAndDecodeAsync(bool jpeg)
     {
         using var output = new MemoryStream();
@@ -276,7 +280,9 @@ public class CanvasExportViewModelTests
         return SKBitmap.Decode(output.ToArray());
     }
 
-    // Create a solid image with predictable pixels for export assertions.
+    /// <summary>
+    /// Create a solid image with predictable pixels for export assertions.
+    /// </summary>
     private static CanvasImage CreateImage(float x, float y)
     {
         using var bitmap = new SKBitmap(30, 30);
@@ -289,7 +295,9 @@ public class CanvasExportViewModelTests
         };
     }
 
-    // Create a filled stroke that overlaps the test image.
+    /// <summary>
+    /// Create a filled stroke that overlaps the test image.
+    /// </summary>
     private static DrawStroke CreateStroke(float x)
     {
         using var path = new SKPathBuilder();
@@ -303,7 +311,9 @@ public class CanvasExportViewModelTests
         };
     }
 
-    // Allow for channel rounding during JPEG compression.
+    /// <summary>
+    /// Allow for channel rounding during JPEG compression.
+    /// </summary>
     private static void AssertColorNear(SKColor actual, SKColor expected)
     {
         ((int)actual.Red).Should().BeCloseTo(expected.Red, 5);

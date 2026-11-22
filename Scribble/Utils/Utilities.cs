@@ -121,7 +121,9 @@ public static class Utilities
         return SKPoint.Distance(point, closest) < tolerance;
     }
 
-    // Return the axis-aligned world bounds of an image as drawn.
+    /// <summary>
+    /// Return the axis-aligned world bounds of an image as drawn.
+    /// </summary>
     internal static SKRect GetImageWorldBounds(CanvasImage image)
     {
         var bounds = image.Bounds;

@@ -13,13 +13,19 @@ public record StartStrokeEvent(
 
 public record EndStrokeEvent(Guid ActionId) : Event(ActionId), ITerminalEvent;
 
-// PENCIL TOOL
+/// <summary>
+/// PENCIL TOOL
+/// </summary>
 public record PencilStrokeLineToEvent(Guid ActionId, Guid StrokeId, SKPoint Point) : Event(ActionId);
 
-// LINE + ARROW + RECTANGLE TOOL
+/// <summary>
+/// LINE + ARROW + RECTANGLE TOOL
+/// </summary>
 public record LineStrokeLineToEvent(Guid ActionId, Guid StrokeId, SKPoint EndPoint) : Event(ActionId);
 
-// POLYLINE NODE (LINE + ARROW multi-click mode)
+/// <summary>
+/// POLYLINE NODE (LINE + ARROW multi-click mode)
+/// </summary>
 public record AddPolylineNodeEvent(Guid ActionId, Guid StrokeId, SKPoint Point) : Event(ActionId);
 
 public record MovePolylineNodeEvent(
@@ -29,7 +35,9 @@ public record MovePolylineNodeEvent(
     SKPoint NewPosition
 ) : Event(ActionId);
 
-// TEXT TOOL
+/// <summary>
+/// TEXT TOOL
+/// </summary>
 public record AddTextEvent(
     Guid ActionId,
     Guid StrokeId,

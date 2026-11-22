@@ -9,7 +9,9 @@ using SkiaSharp;
 
 namespace Scribble.UnitTests.ServiceTests;
 
-// Compare live editing, snapshot installation and checkpoint replay using identical event identities.
+/// <summary>
+/// Compare live editing, snapshot installation and checkpoint replay using identical event identities.
+/// </summary>
 public class CanvasReplayParityTests
 {
     // Every concrete wire event needs a canvas mutation or a history visibility rule.

@@ -13,7 +13,9 @@ namespace Scribble.Services.CanvasStateService.Handlers;
 /// </summary>
 internal static class TextReplayHandler
 {
-    // Build a text path at the supplied baseline.
+    /// <summary>
+    /// Build a text path at the supplied baseline.
+    /// </summary>
     public static void Apply(AddTextEvent ev, CanvasState ctx)
     {
         var textPath = new SKPathBuilder();
@@ -33,7 +35,9 @@ internal static class TextReplayHandler
         }, ctx.PaintableStrokes);
     }
 
-    // Rebuild the text path with the new content.
+    /// <summary>
+    /// Rebuild the text path with the new content.
+    /// </summary>
     public static void Apply(UpdateTextEvent ev, CanvasState ctx)
     {
         if (ctx.PaintableStrokes.TryGetValue(ev.TextStrokeId, out var existingStroke) &&
@@ -55,7 +59,9 @@ internal static class TextReplayHandler
         }
     }
 
-    // Resize the selected text and rebuild its glyph outlines.
+    /// <summary>
+    /// Resize the selected text and rebuild its glyph outlines.
+    /// </summary>
     public static void Apply(UpdateFontSizeEvent ev, CanvasState ctx)
     {
         foreach (var strokeId in ev.StrokeIds)
@@ -76,7 +82,9 @@ internal static class TextReplayHandler
         }
     }
 
-    // Change the selected text casing and rebuild its geometry.
+    /// <summary>
+    /// Change the selected text casing and rebuild its geometry.
+    /// </summary>
     public static void Apply(UpdateFontCasingEvent ev, CanvasState ctx)
     {
         foreach (var strokeId in ev.TextStrokeIds)
@@ -102,7 +110,9 @@ internal static class TextReplayHandler
         }
     }
 
-    // Update bold or italic styling and rebuild the text path.
+    /// <summary>
+    /// Update bold or italic styling and rebuild the text path.
+    /// </summary>
     public static void Apply(UpdateFontStyleEvent ev, CanvasState ctx)
     {
         foreach (var strokeId in ev.TextStrokeIds)

@@ -14,7 +14,9 @@ namespace Scribble.Services.CanvasStateService.Handlers;
 /// </summary>
 internal static class TransformReplayHandler
 {
-    // Translate the surviving selection targets.
+    /// <summary>
+    /// Translate the surviving selection targets.
+    /// </summary>
     public static bool Apply(MoveCanvasElementsEvent ev, CanvasState ctx)
     {
         if (ctx.SelectionBounds.TryGetValue(ev.BoundId, out var bound))
@@ -32,7 +34,9 @@ internal static class TransformReplayHandler
         return false;
     }
 
-    // Rotate selected images and strokes around the gesture pivot.
+    /// <summary>
+    /// Rotate selected images and strokes around the gesture pivot.
+    /// </summary>
     public static bool Apply(RotateCanvasElementsEvent ev, CanvasState ctx)
     {
         if (ctx.SelectionBounds.TryGetValue(ev.BoundId, out var bound))
@@ -64,7 +68,9 @@ internal static class TransformReplayHandler
         return false;
     }
 
-    // Scale the selection along the gesture axes.
+    /// <summary>
+    /// Scale the selection along the gesture axes.
+    /// </summary>
     public static bool Apply(ScaleCanvasElementsEvent ev, CanvasState ctx)
     {
         if (ctx.SelectionBounds.TryGetValue(ev.BoundId, out var bound))
@@ -101,7 +107,9 @@ internal static class TransformReplayHandler
         }
     }
 
-    // Use the same translation for pasted and selected elements.
+    /// <summary>
+    /// Use the same translation for pasted and selected elements.
+    /// </summary>
     private static void MoveElement(CanvasElement canvasElement, SKPoint delta, SKMatrix translationMatrix)
     {
         switch (canvasElement)

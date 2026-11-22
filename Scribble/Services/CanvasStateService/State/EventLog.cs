@@ -15,7 +15,9 @@ public class EventLog
     public IReadOnlyList<Event> Events => _events;
     public HashSet<Guid> HiddenActionIds => [.. _hiddenActionIds];
 
-    // Ignore events already present in the host snapshot or live history.
+    /// <summary>
+    /// Ignore events already present in the host snapshot or live history.
+    /// </summary>
     public bool Append(Event ev)
     {
         if (!_positions.TryAdd(ev.Id, _events.Count)) return false;
@@ -26,7 +28,9 @@ public class EventLog
         return true;
     }
 
-    // Insert confirmations in room order, ahead of any optimistic local edits.
+    /// <summary>
+    /// Insert confirmations in room order, ahead of any optimistic local edits.
+    /// </summary>
     public bool Confirm(Event edit, out bool rebuild)
     {
         var position = _events.BinarySearch(0, _confirmed, edit,

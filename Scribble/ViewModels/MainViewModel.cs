@@ -53,7 +53,9 @@ public partial class MainViewModel : ViewModelBase
         UiStateViewModel = uiStateViewModel;
     }
 
-    // Observe editor services while this model is presented by the view.
+    /// <summary>
+    /// Observe editor services while this model is presented by the view.
+    /// </summary>
     internal void Activate()
     {
         CanvasStateService.CanvasInvalidated += RefreshCanvas;
@@ -65,7 +67,9 @@ public partial class MainViewModel : ViewModelBase
         RefreshUndoRedo();
     }
 
-    // Release singleton subscriptions when the editor is unbound.
+    /// <summary>
+    /// Release singleton subscriptions when the editor is unbound.
+    /// </summary>
     internal void Deactivate()
     {
         CanvasStateService.CanvasInvalidated -= RefreshCanvas;
@@ -74,17 +78,23 @@ public partial class MainViewModel : ViewModelBase
         UiStateViewModel.Deactivate();
     }
 
-    // Publish the current drawing to the canvas control.
+    /// <summary>
+    /// Publish the current drawing to the canvas control.
+    /// </summary>
     private void RefreshCanvas()
     {
         CanvasElements = [.. CanvasStateService.CanvasElements];
         RequestInvalidateSkiaCanvas?.Invoke();
     }
 
-    // Refresh the selection overlay after the canvas changes.
+    /// <summary>
+    /// Refresh the selection overlay after the canvas changes.
+    /// </summary>
     private void RefreshSelection(IReadOnlyList<Guid> ids, bool refreshOptions) => RequestRefreshSelection?.Invoke(ids, refreshOptions);
 
-    // Recheck commands after replay or attachment.
+    /// <summary>
+    /// Recheck commands after replay or attachment.
+    /// </summary>
     private void RefreshUndoRedo()
     {
         UndoCommand.NotifyCanExecuteChanged();

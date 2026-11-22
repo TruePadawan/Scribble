@@ -19,7 +19,9 @@ public class DocumentService : IDocumentService
         _canvasStateService = canvasStateService;
     }
 
-    // Capture an independent copy of the document on the UI thread.
+    /// <summary>
+    /// Capture an independent copy of the document on the UI thread.
+    /// </summary>
     public DocumentSnapshot CaptureSnapshot()
     {
         Dispatcher.UIThread.VerifyAccess();
@@ -36,7 +38,9 @@ public class DocumentService : IDocumentService
         await SaveAsync(stream, snapshot);
     }
 
-    // Encode a detached snapshot away from the UI thread.
+    /// <summary>
+    /// Encode a detached snapshot away from the UI thread.
+    /// </summary>
     public Task SaveAsync(Stream stream, DocumentSnapshot snapshot) =>
         Task.Run(() => DocumentCodec.WriteAsync(stream, snapshot));
 

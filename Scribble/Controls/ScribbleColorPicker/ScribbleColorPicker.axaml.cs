@@ -68,7 +68,9 @@ public partial class ScribbleColorPicker : UserControl
         InitializeComponent();
     }
 
-    // Update the textbox to show the hex code of the currently selected color
+    /// <summary>
+    /// Update the textbox to show the hex code of the currently selected color
+    /// </summary>
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
         base.OnPropertyChanged(change);
@@ -87,7 +89,9 @@ public partial class ScribbleColorPicker : UserControl
         _isUpdatingHex = false;
     }
 
-    // Update the selected color when the inputted text is a valid hex code
+    /// <summary>
+    /// Update the selected color when the inputted text is a valid hex code
+    /// </summary>
     private void HexTextBox_OnTextChanged(object? sender, TextChangedEventArgs e)
     {
         if (_isUpdatingHex) return;
@@ -105,7 +109,9 @@ public partial class ScribbleColorPicker : UserControl
         }
     }
 
-    // Close the flyout when a color is selected
+    /// <summary>
+    /// Close the flyout when a color is selected
+    /// </summary>
     private void ColorListBox_OnSelectionChanged(object? sender, SelectionChangedEventArgs e)
     {
         if (e.AddedItems.Count > 0)
