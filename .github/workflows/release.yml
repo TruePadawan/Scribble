@@ -38,6 +38,45 @@ jobs:
         # This will fail the job if any test in the solution fails
         run: dotnet test --solution Scribble.slnx --verbosity normal
 
+      - name: Publish desktop smoke build
+        shell: pwsh
+        run: |
+          $rid = if ($IsWindows) { 'win-x64' } else { 'linux-x64' }
+          dotnet publish Scribble.Desktop -c Release -r $rid --self-contained true -p:PublishSingleFile=true -o "$env:RUNNER_TEMP/desktop"
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          if (!(Test-Path "$env:RUNNER_TEMP/desktop/appsettings.json")) { throw 'Missing published settings' }
+          Move-Item "$env:RUNNER_TEMP/desktop/appsettings.json" "$env:RUNNER_TEMP/published-settings.json"
+
+      - name: Open the published Linux editor offline
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y xvfb xdotool
+          cd "$RUNNER_TEMP"
+          xvfb-run -a bash -ec '
+            "$RUNNER_TEMP/desktop/Scribble.Desktop" &
+            editor=$!
+            trap "kill $editor 2>/dev/null || true" EXIT
+            timeout 30 xdotool search --sync --onlyvisible --name "^Scribble$"
+          '
+
+      - name: Open the published Windows editor offline
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $editor = Start-Process "$env:RUNNER_TEMP/desktop/Scribble.Desktop.exe" -WorkingDirectory $env:RUNNER_TEMP -PassThru
+          try {
+            foreach ($attempt in 1..60) {
+              $editor.Refresh()
+              if ($editor.HasExited) { throw 'Editor exited before showing a window' }
+              if ($editor.MainWindowHandle -ne 0) { return }
+              Start-Sleep -Milliseconds 500
+            }
+            throw 'Editor window did not open'
+          } finally {
+            if (!$editor.HasExited) { $editor.Kill() }
+          }
+
   build-and-release:
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
     needs: test
