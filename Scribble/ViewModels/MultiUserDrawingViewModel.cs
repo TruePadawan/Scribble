@@ -54,6 +54,8 @@ public partial class MultiUserDrawingViewModel : ViewModelBase, IDisposable
     public string ChatToggleText => IsChatVisible ? "Collapse Chatbox" : "Expand Chatbox";
     public int ClientCount => Room?.Clients.Count ?? 0;
 
+    [ObservableProperty] public partial string DownloadStatus { get; set; } = string.Empty;
+
     public bool CanResetCanvas => Room == null && CanEditCanvas;
 
     // Pause canvas input while the connection prepares the shared board.
@@ -80,6 +82,7 @@ public partial class MultiUserDrawingViewModel : ViewModelBase, IDisposable
         _canvasStateService = canvasStateService;
 
         // Chat and delivery updates follow the room even while the editor view is detached.
+        _multiUserDrawingService.DownloadProgress += UpdateProgress;
         _multiUserDrawingService.JoiningChanged += RefreshJoining;
         _multiUserDrawingService.RoomChanged += RefreshRoom;
         _multiUserDrawingService.RosterChanged += RefreshRoom;
@@ -97,6 +100,7 @@ public partial class MultiUserDrawingViewModel : ViewModelBase, IDisposable
     /// </summary>
     public void Dispose()
     {
+        _multiUserDrawingService.DownloadProgress -= UpdateProgress;
         _multiUserDrawingService.JoiningChanged -= RefreshJoining;
         _multiUserDrawingService.RoomChanged -= RefreshRoom;
         _multiUserDrawingService.RosterChanged -= RefreshRoom;
@@ -112,6 +116,7 @@ public partial class MultiUserDrawingViewModel : ViewModelBase, IDisposable
     /// </summary>
     private void RefreshJoining()
     {
+        DownloadStatus = string.Empty;
         OnPropertyChanged(nameof(CanEditCanvas));
         OnPropertyChanged(nameof(CanResetCanvas));
         OnPropertyChanged(nameof(RoomButtonText));
@@ -155,6 +160,14 @@ public partial class MultiUserDrawingViewModel : ViewModelBase, IDisposable
         var message = Messages.FirstOrDefault(item => item.Id == messageId);
         message?.IsSent = true;
     }
+
+    /// <summary>Displays snapshot and image bytes available on this device.</summary>
+    private void UpdateProgress(long received, long total) =>
+        DownloadStatus = $"{received:N0} / {total:N0} bytes ready";
+
+    /// <summary>Closes the pending transfer and restores the solo canvas.</summary>
+    [RelayCommand]
+    private Task CancelJoinAsync() => _multiUserDrawingService.LeaveRoomAsync(ClientDisplayName);
 
     [RelayCommand(CanExecute = nameof(CanToggleRoomConnection))]
     private async Task ToggleRoomConnectionAsync()

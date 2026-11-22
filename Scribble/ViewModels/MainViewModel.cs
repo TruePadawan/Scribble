@@ -58,6 +58,7 @@ public partial class MainViewModel : ViewModelBase
     /// </summary>
     internal void Activate()
     {
+        _multiUserDrawingService.BoardPreview += PreviewBoard;
         CanvasStateService.CanvasInvalidated += RefreshCanvas;
         CanvasStateService.SelectionInvalidated += RefreshSelection;
         CanvasStateService.UndoRedoStateChanged += RefreshUndoRedo;
@@ -72,6 +73,7 @@ public partial class MainViewModel : ViewModelBase
     /// </summary>
     internal void Deactivate()
     {
+        _multiUserDrawingService.BoardPreview -= PreviewBoard;
         CanvasStateService.CanvasInvalidated -= RefreshCanvas;
         CanvasStateService.SelectionInvalidated -= RefreshSelection;
         CanvasStateService.UndoRedoStateChanged -= RefreshUndoRedo;
@@ -81,16 +83,20 @@ public partial class MainViewModel : ViewModelBase
     /// <summary>
     /// Publish the current drawing to the canvas control.
     /// </summary>
-    private void RefreshCanvas()
+    private void RefreshCanvas() => PreviewBoard(null);
+
+    /// <summary>Displays staged placements without modifying the editable document.</summary>
+    private void PreviewBoard(List<CanvasElement>? board)
     {
-        CanvasElements = [.. CanvasStateService.CanvasElements];
+        CanvasElements = board ?? [.. CanvasStateService.CanvasElements];
         RequestInvalidateSkiaCanvas?.Invoke();
     }
 
     /// <summary>
     /// Refresh the selection overlay after the canvas changes.
     /// </summary>
-    private void RefreshSelection(IReadOnlyList<Guid> ids, bool refreshOptions) => RequestRefreshSelection?.Invoke(ids, refreshOptions);
+    private void RefreshSelection(IReadOnlyList<Guid> ids, bool refreshOptions) =>
+        RequestRefreshSelection?.Invoke(ids, refreshOptions);
 
     /// <summary>
     /// Recheck commands after replay or attachment.
