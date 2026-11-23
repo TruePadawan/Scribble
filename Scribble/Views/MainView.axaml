@@ -140,7 +140,7 @@
                         <Button Name="ResetCanvasMenuOption" Margin="0"
                                 Command="{Binding ResetCanvasCommand}"
                                 IsVisible="{Binding MultiUserDrawingViewModel.CanResetCanvas}"
-                                HorizontalAlignment="Stretch" ToolTip.Tip="Ctrl+R">
+                                HorizontalAlignment="Stretch" ToolTip.Tip="Ctrl+Shift+N">
                             <StackPanel Orientation="Horizontal" Spacing="4">
                                 <Image Source="avares://Scribble/Assets/bin.png" Width="18" Height="18" />
                                 <Label FontSize="12">Reset canvas</Label>
@@ -155,7 +155,7 @@
                         </Button>
                         <Button Name="ExitOption" Margin="0" Command="{Binding ExitCommand}"
                                 HorizontalAlignment="Stretch"
-                                ToolTip.Tip="Ctrl+X">
+                                ToolTip.Tip="Ctrl+Q">
                             <StackPanel Orientation="Horizontal" Spacing="4">
                                 <Image Source="avares://Scribble/Assets/exit.png" Width="18" Height="18" />
                                 <Label FontSize="12">Exit</Label>
