@@ -7,6 +7,25 @@ namespace Scribble.Shared.Utils;
 /// <summary>Computes drawing geometry for both desktop and server replay.</summary>
 public static class CanvasGeometryUtilities
 {
+    /// <summary>Finds owned strokes and images fully enclosed by a world-space marquee.</summary>
+    public static IEnumerable<Guid> GetEnclosedElementIds(SKRect bounds, IEnumerable<CanvasElement> elements,
+        string? owner)
+    {
+        foreach (var element in elements)
+        {
+            if (owner != null && element.CreatorConnectionId != owner)
+            {
+                continue;
+            }
+
+            if (element is PaintableStroke stroke && bounds.Contains(stroke.Path.TightBounds) ||
+                element is CanvasImage image && bounds.Contains(image.Bounds))
+            {
+                yield return element.Id;
+            }
+        }
+    }
+
     /// <summary>
     /// Returns the size of the rectangle formed by the two points
     /// </summary>

@@ -33,6 +33,9 @@ public interface ICanvasStateService
     void Undo();
     void Redo();
     void ClearSelection();
+
+    /// <summary>Returns selectable elements enclosed by a world-space marquee.</summary>
+    List<Guid> GetEnclosedElementIds(SKRect bounds);
     List<CanvasElement> GetSelectedElements();
     void LoadCanvas(List<CanvasElement> elements);
     void ApplyEvent(Event @event, bool isLocalEvent = true);

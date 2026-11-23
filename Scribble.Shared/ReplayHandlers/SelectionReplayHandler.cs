@@ -90,8 +90,9 @@ internal static class SelectionReplayHandler
             var left = Math.Min(boundOrigin.X, ev.Point.X);
             var boundRect = SKRect.Create(new SKPoint(left, top),
                 CanvasGeometryUtilities.GetSize(boundOrigin, ev.Point));
-            CheckAndSelect(boundRect, bound, ctx.ElementsWithLayers,
-                ownerFilter: bound.CreatorConnectionId);
+            bound.Targets.Clear();
+            bound.Targets.UnionWith(CanvasGeometryUtilities.GetEnclosedElementIds(
+                boundRect, ctx.ElementsWithLayers, bound.CreatorConnectionId));
 
             if (bound.CreatorConnectionId == ctx.MyConnectionId)
             {
@@ -104,48 +105,6 @@ internal static class SelectionReplayHandler
         }
 
         return false;
-    }
-
-    /// <summary>
-    /// Finds all strokes that are within the selection boundary
-    /// </summary>
-    /// <param name="boundRect">The selection bound's SKRect</param>
-    /// <param name="bound">The selection bound</param>
-    /// <param name="canvasElements">Collection of all current elements on the canvas</param>
-    /// <param name="ownerFilter">SignalR connection id for the current client</param>
-    private static void CheckAndSelect(SKRect boundRect, SelectionBound bound,
-        IEnumerable<CanvasElement> canvasElements, string? ownerFilter = null)
-    {
-        bound.Targets.Clear();
-        foreach (var element in canvasElements)
-        {
-            // In multi-user mode, only select elements the selector's creator owns.
-            if (ownerFilter != null && element.CreatorConnectionId != ownerFilter)
-                continue;
-
-            switch (element)
-            {
-                case PaintableStroke stroke:
-                {
-                    var strokeBounds = stroke.Path.TightBounds;
-                    if (boundRect.Contains(strokeBounds))
-                    {
-                        bound.Targets.Add(stroke.Id);
-                    }
-
-                    break;
-                }
-                case CanvasImage image:
-                {
-                    if (boundRect.Contains(image.Bounds))
-                    {
-                        bound.Targets.Add(image.Id);
-                    }
-
-                    break;
-                }
-            }
-        }
     }
 
     /// <summary>
@@ -162,13 +121,13 @@ internal static class SelectionReplayHandler
             CreatorConnectionId = ev.CreatorConnectionId
         };
 
-        var validIds = ctx.ElementsWithLayers
-            .Where(e => ev.CreatorConnectionId == null || e.CreatorConnectionId == ev.CreatorConnectionId)
-            .Select(e => e.Id).ToHashSet();
-
+        // Look up only the requested IDs so selecting one element does not index the entire board.
         foreach (var id in ev.ElementIds)
         {
-            if (validIds.Contains(id))
+            CanvasElement? element = ctx.PaintableStrokes.GetValueOrDefault(id);
+            element ??= ctx.CanvasImages.GetValueOrDefault(id);
+            if (element != null &&
+                (ev.CreatorConnectionId == null || element.CreatorConnectionId == ev.CreatorConnectionId))
             {
                 bound.Targets.Add(id);
             }

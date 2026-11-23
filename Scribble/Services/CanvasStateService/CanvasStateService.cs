@@ -5,6 +5,7 @@ using Scribble.Services.MultiUserDrawing;
 using Scribble.Shared.Lib;
 using Scribble.Shared.Lib.CanvasElements;
 using Scribble.Shared.Lib.Events;
+using Scribble.Shared.Utils;
 using SkiaSharp;
 
 namespace Scribble.Services.CanvasStateService;
@@ -127,7 +128,21 @@ public class CanvasStateService : ICanvasStateService
 
     public void ClearSelection()
     {
-        ApplyEvent(new ClearSelectionEvent(Guid.NewGuid()));
+        // An empty clear would replay over selections restored by a later undo.
+        if (ActiveSelectionBoundId != null)
+        {
+            ApplyEvent(new ClearSelectionEvent(Guid.NewGuid()));
+        }
+    }
+
+    /// <summary>Hit-tests the marquee against the elements this participant can select.</summary>
+    public List<Guid> GetEnclosedElementIds(SKRect bounds)
+    {
+        return
+        [
+            .. CanvasGeometryUtilities
+                .GetEnclosedElementIds(bounds, CanvasElements, _multiUserDrawingService.Room?.Me.ParticipantId)
+        ];
     }
 
     public List<CanvasElement> GetSelectedElements()

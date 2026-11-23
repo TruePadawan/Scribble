@@ -20,25 +20,25 @@ class SelectTool : PointerTool
     private readonly Canvas _canvasContainer;
     private readonly CameraState _camera;
     private SKPoint _startPoint;
-    private Guid _boundId = Guid.NewGuid();
-    private Guid _actionId = Guid.NewGuid();
+    private readonly Action<IReadOnlyList<Guid>> _showSelection;
 
     public SelectTool(string name, ICanvasStateService canvasStateService, Canvas canvasContainer,
-        CameraState camera) : base(name,
+        CameraState camera, Action<IReadOnlyList<Guid>> showSelection) : base(name,
         canvasStateService,
         LoadToolBitmap(typeof(SelectTool), "cursor.png"))
     {
         Cursor = Cursor.Default;
         _canvasContainer = canvasContainer;
         _camera = camera;
+        _showSelection = showSelection;
         HotKey = new KeyGesture(Key.V);
         ToolTip = "Select Tool (V)";
     }
 
     public override void HandlePointerClick(SKPoint coord)
     {
-        // coord is in world-space, convert to screen-space for positioning the visual border
-        _startPoint = _camera.WorldToScreen(coord);
+        _startPoint = coord;
+        var screenStart = _camera.WorldToScreen(coord);
 
         _selectionBorder = new Border
         {
@@ -47,18 +47,11 @@ class SelectTool : PointerTool
             Width = 0,
             Height = 0
         };
-        Canvas.SetLeft(_selectionBorder, _startPoint.X);
-        Canvas.SetTop(_selectionBorder, _startPoint.Y);
+        Canvas.SetLeft(_selectionBorder, screenStart.X);
+        Canvas.SetTop(_selectionBorder, screenStart.Y);
         _canvasContainer.Children.Add(_selectionBorder);
-        _boundId = Guid.NewGuid();
-        _actionId = Guid.NewGuid();
-        if (CanvasStateService.ActiveSelectionBoundId != null)
-        {
-            CanvasStateService.ClearSelection();
-        }
-
-        // Events use world-space coordinates
-        CanvasStateService.ApplyEvent(new CreateSelectionBoundEvent(_actionId, _boundId, coord));
+        // Preview the gesture locally. Only its final selection belongs in undo history.
+        _showSelection([]);
     }
 
     public override void HandlePointerMove(SKPoint prevCoord, SKPoint currentCoord)
@@ -66,29 +59,56 @@ class SelectTool : PointerTool
         if (_selectionBorder == null) return;
 
         // currentCoord is in world-space, convert to screen-space for visual border
+        var screenStart = _camera.WorldToScreen(_startPoint);
         var screenPos = _camera.WorldToScreen(currentCoord);
 
-        _selectionBorder.Width = Math.Abs(screenPos.X - _startPoint.X);
-        _selectionBorder.Height = Math.Abs(screenPos.Y - _startPoint.Y);
+        _selectionBorder.Width = Math.Abs(screenPos.X - screenStart.X);
+        _selectionBorder.Height = Math.Abs(screenPos.Y - screenStart.Y);
 
-        Canvas.SetLeft(_selectionBorder, Math.Min(_startPoint.X, screenPos.X));
-        Canvas.SetTop(_selectionBorder, Math.Min(_startPoint.Y, screenPos.Y));
+        Canvas.SetLeft(_selectionBorder, Math.Min(screenStart.X, screenPos.X));
+        Canvas.SetTop(_selectionBorder, Math.Min(screenStart.Y, screenPos.Y));
 
-        // Events use world-space coordinates
-        CanvasStateService.ApplyEvent(new IncreaseSelectionBoundEvent(_actionId, _boundId, currentCoord));
+        _showSelection(GetTargets(currentCoord));
     }
+
+    /// <summary>Resolves the drag rectangle in either direction using canvas ownership rules.</summary>
+    private List<Guid> GetTargets(SKPoint end) =>
+        end == _startPoint
+            ? []
+            : CanvasStateService.GetEnclosedElementIds(
+                new SKRect(_startPoint.X, _startPoint.Y, end.X, end.Y).Standardized);
 
     public override void HandlePointerRelease(SKPoint prevCoord, SKPoint currentCoord)
     {
-        if (_selectionBorder == null) return;
+        if (_selectionBorder == null)
+        {
+            return;
+        }
 
         _canvasContainer.Children.Remove(_selectionBorder);
         _selectionBorder = null;
-        CanvasStateService.ApplyEvent(new EndSelectionEvent(_actionId, _boundId));
+
+        var targets = GetTargets(currentCoord);
+        if (targets.Count > 0)
+        {
+            CanvasStateService.ApplyEvent(new SelectByIdsEvent(Guid.NewGuid(), Guid.NewGuid(), targets));
+        }
+        else
+        {
+            _showSelection([]);
+            CanvasStateService.ClearSelection();
+        }
     }
 
     public override void HandleToolSwitchOut()
     {
+        if (_selectionBorder != null)
+        {
+            _canvasContainer.Children.Remove(_selectionBorder);
+            _selectionBorder = null;
+            _showSelection([]);
+        }
+
         CanvasStateService.ClearSelection();
     }
 
@@ -108,7 +128,7 @@ class SelectTool : PointerTool
         var elementIds = elements
             .OfType<CanvasElement>()
             .Select(e => e.Id)
-            .Where(id => allElementIds.Contains(id))
+            .Where(allElementIds.Contains)
             .ToList();
 
         if (elementIds.Count == 0) return;

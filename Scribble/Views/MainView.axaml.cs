@@ -278,7 +278,8 @@ public partial class MainView : UserControl
         new RectangleTool("RectangleTool", _canvasStateService),
         new DiamondTool("DiamondTool", _canvasStateService),
         new TextTool("TextTool", _canvasStateService, CanvasContainer, _cameraState),
-        new SelectTool("SelectTool", _canvasStateService, CanvasContainer, _cameraState),
+        new SelectTool("SelectTool", _canvasStateService, CanvasContainer, _cameraState,
+            ids => VisualizeSelection(ids, false)),
         new ImageTool("ImageTool", _canvasStateService, _fileService, _dialogService),
     ];
 
@@ -636,8 +637,12 @@ public partial class MainView : UserControl
             return;
         }
 
+        // Keep the overlay scan linear when a drag encloses many elements.
+        var selectedIds = selectedElementIds.Count > 1 ? selectedElementIds.ToHashSet() : null;
+        var firstSelectedId = selectedElementIds[0];
         var selectedElements = _canvasStateService.CanvasElements
-            .Where(element => selectedElementIds.Contains(element.Id) && element is ISelectable)
+            .Where(element => (selectedIds?.Contains(element.Id) ?? element.Id == firstSelectedId) &&
+                              element is ISelectable)
             .Cast<ISelectable>()
             .ToList();
 
