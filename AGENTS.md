@@ -23,6 +23,10 @@ Use four spaces, file-scoped namespaces, and braces on separate lines in C#. Alw
 
 Use a brief C# XML documentation comment (`/// <summary>`) above each new class, method, function, or similar declaration to explain its purpose. Inside methods and functions, add short comments where a section's purpose or behavior needs clarification.
 
+## Performance Review
+
+Review every change for performance issues before handing it off. Pay particular attention to work repeated during pointer input, rendering, or multiplayer updates and to how it scales on large boards. Report any issues found in the change summary, including issues addressed by the change and any that remain.
+
 ## Testing
 
 Run `dotnet test --solution Scribble.slnx` with Microsoft Testing Platform. Use xUnit v3 and `[AvaloniaFact]` for tests that need Avalonia. Name tests after the method, scenario, and expected result, such as `SaveAsync_BackgroundColorIsSaved`. Add regression coverage for changed behavior. The release workflow runs tests on Linux and Windows without a coverage threshold.
